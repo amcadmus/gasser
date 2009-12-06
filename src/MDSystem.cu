@@ -1,0 +1,318 @@
+#include "MDSystem.h"
+#include <stdlib.h>
+
+HostMDData::HostMDData()
+{
+  numAtom = 0;
+  numMem = 0;
+  NFreedom = 0;
+  totalMass = totalMassi = 0.f;
+  coordx = coordy = coordz = NULL;
+  coordNoix = coordNoiy = coordNoiz = NULL;
+  velox = veloy = veloz = NULL;
+  forcx = forcy = forcz = NULL;
+  type = NULL;
+  mass = massi = NULL;
+  charge = NULL;
+  atomName = NULL;
+  resdName = NULL;
+  resdIndex = NULL;
+}
+
+HostMDData::~HostMDData()
+{
+  destroyHostMDData (this);
+}
+
+DeviceMDData::DeviceMDData()
+{
+  malloced = false;
+  numAtom = 0;
+  numMem = 0;
+  NFreedom = 0;
+  totalMass = totalMassi = 0.f;
+}
+
+DeviceMDData::~DeviceMDData()
+{
+  destroyDeviceMDData(this);
+}  
+
+
+__host__ void mallocHostMDData (IndexType numAtom, IndexType expectedMaxNumAtom,
+				HostMDData * hdata)
+{
+  hdata->numAtom = numAtom;
+  hdata->numMem = expectedMaxNumAtom;
+  size_t sizef = hdata->numMem * sizeof(ScalorType);
+  size_t sizei = hdata->numMem * sizeof(IntScalorType);
+  size_t sizec = hdata->numMem * sizeof(char) * StringSize;
+  size_t sizeidx = hdata->numMem * sizeof(IndexType);
+  
+  hdata->coordx = (ScalorType *) malloc (sizef);
+  if (hdata->coordx == NULL) throw MDExcptFailedMallocOnHost("hdata->coordx", sizef);
+  hdata->coordy = (ScalorType *) malloc (sizef);
+  if (hdata->coordy == NULL) throw MDExcptFailedMallocOnHost("hdata->coordy", sizef);
+  hdata->coordz = (ScalorType *) malloc (sizef);
+  if (hdata->coordz == NULL) throw MDExcptFailedMallocOnHost("hdata->coordz", sizef);
+
+  hdata->coordNoix = (IntScalorType *) malloc (sizei);
+  if (hdata->coordNoix == NULL) throw MDExcptFailedMallocOnHost ("hdata->coordNoix", sizei);
+  hdata->coordNoiy = (IntScalorType *) malloc (sizei);
+  if (hdata->coordNoiy == NULL) throw MDExcptFailedMallocOnHost ("hdata->coordNoiy", sizei);
+  hdata->coordNoiz = (IntScalorType *) malloc (sizei);
+  if (hdata->coordNoiz == NULL) throw MDExcptFailedMallocOnHost ("hdata->coordNoiz", sizei);
+  
+  hdata->velox = (ScalorType *) malloc (sizef);
+  if (hdata->velox == NULL) throw MDExcptFailedMallocOnHost("hdata->velox", sizef);
+  hdata->veloy = (ScalorType *) malloc (sizef);
+  if (hdata->veloy == NULL) throw MDExcptFailedMallocOnHost("hdata->veloy", sizef);
+  hdata->veloz = (ScalorType *) malloc (sizef);
+  if (hdata->veloz == NULL) throw MDExcptFailedMallocOnHost("hdata->veloz", sizef);
+  
+  hdata->forcx = (ScalorType *) malloc (sizef);
+  if (hdata->forcx == NULL) throw MDExcptFailedMallocOnHost("hdata->forcx", sizef);
+  hdata->forcy = (ScalorType *) malloc (sizef);
+  if (hdata->forcy == NULL) throw MDExcptFailedMallocOnHost("hdata->forcy", sizef);
+  hdata->forcz = (ScalorType *) malloc (sizef);
+  if (hdata->forcz == NULL) throw MDExcptFailedMallocOnHost("hdata->forcz", sizef);
+
+  hdata->type = (TypeType *) malloc (hdata->numMem * sizeof(TypeType));
+  if (hdata->type == NULL) {
+    throw MDExcptFailedMallocOnHost("hdata->type", hdata->numMem * sizeof(TypeType));
+  }
+  hdata->mass = (ScalorType *) malloc (sizef);
+  if (hdata->mass == NULL) throw MDExcptFailedMallocOnHost("hdata->mass", sizef);
+  hdata->massi = (ScalorType *) malloc (sizef);
+  if (hdata->massi == NULL) throw MDExcptFailedMallocOnHost("hdata->massi", sizef);
+  hdata->charge = (ScalorType *) malloc(sizef);
+  if (hdata->charge == NULL) throw MDExcptFailedMallocOnHost("hdata->charge", sizef);
+
+  hdata->atomName = (char *) malloc (sizec);
+  if (hdata->atomName == NULL) throw MDExcptFailedMallocOnHost("hdata->atomName", sizec);
+  hdata->resdName = (char *) malloc (sizec);
+  if (hdata->resdName == NULL) throw MDExcptFailedMallocOnHost("hdata->resdName", sizec);
+  hdata->resdIndex = (IndexType *) malloc (sizeidx); 
+  if (hdata->resdIndex == NULL) throw MDExcptFailedMallocOnHost("hdata->resdIndex", sizeidx);
+}
+
+__host__ void lazyInitHostMDData (HostMDData * hdata)
+{
+  hdata->NFreedom = 3 * hdata->numAtom;
+  for (IndexType i = 0; i < hdata->numAtom; ++i){
+    hdata->coordx[i] = 0.;
+    hdata->coordy[i] = 0.;
+    hdata->coordz[i] = 0.;
+
+    hdata->coordNoix[i] = 0;
+    hdata->coordNoiy[i] = 0;
+    hdata->coordNoiz[i] = 0;
+
+    hdata->velox[i] = 0.;
+    hdata->veloy[i] = 0.;
+    hdata->veloz[i] = 0.;
+
+    hdata->forcx[i] = 0.;
+    hdata->forcy[i] = 0.;
+    hdata->forcz[i] = 0.;
+    
+    hdata->type[i] = (TypeType)(i);
+    hdata->mass[i] = 1.f;
+    hdata->massi[i] = 1.f;
+    hdata->charge[i] = 0.f;
+
+    strcpy (&(hdata->atomName)[i*8], "AName");
+    strcpy (&(hdata->resdName)[i*8], "RName");
+    hdata->resdIndex[i] = i;
+  }
+  initMass (hdata);
+}
+
+__host__ void initMass (HostMDData * hdata)
+{
+  for (IndexType i = 0; i < hdata->numAtom; ++i){
+    hdata->massi[i] = 1./(hdata->mass[i]);
+  }
+  hdata->totalMass = 0;
+  for (IndexType i = 0; i < hdata->numAtom; ++i){
+    hdata->totalMass += hdata->mass[i];
+  }
+  hdata->totalMassi = 1./hdata->totalMass;  
+}
+
+__host__ void destroyHostMDData (HostMDData * hdata)
+{
+  freeAPointer ((void**)&hdata->coordx);
+  freeAPointer ((void**)&hdata->coordy);
+  freeAPointer ((void**)&hdata->coordz);
+  
+  freeAPointer ((void**)&hdata->coordNoix);
+  freeAPointer ((void**)&hdata->coordNoiy);
+  freeAPointer ((void**)&hdata->coordNoiz);
+  
+  freeAPointer ((void**)&hdata->velox);
+  freeAPointer ((void**)&hdata->veloy);
+  freeAPointer ((void**)&hdata->veloz);
+  
+  freeAPointer ((void**)&hdata->forcx);
+  freeAPointer ((void**)&hdata->forcy);
+  freeAPointer ((void**)&hdata->forcz);
+
+  freeAPointer ((void**)&hdata->type);
+  freeAPointer ((void**)&hdata->mass);
+  freeAPointer ((void**)&hdata->massi);
+  freeAPointer ((void**)&hdata->charge);
+
+  freeAPointer ((void**)&hdata->atomName);
+  freeAPointer ((void**)&hdata->resdName);
+  freeAPointer ((void**)&hdata->resdIndex);
+}
+
+
+
+
+__host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hdata)
+{
+  size_t sizef = ddata->numAtom * sizeof(ScalorType);
+  size_t sizei = ddata->numAtom * sizeof(IntScalorType);
+  hdata->numAtom = ddata->numAtom;
+  hdata->totalMass = ddata->totalMass;
+  hdata->totalMassi = ddata->totalMassi;
+  
+  cudaMemcpy (hdata->coordx, ddata->coordx, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->coordy, ddata->coordy, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->coordz, ddata->coordz, sizef, cudaMemcpyDeviceToHost);
+  checkCUDAError ("cpyDeviceMDDataToHost coord");
+
+  cudaMemcpy (hdata->coordNoix, ddata->coordNoix, sizei, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->coordNoiy, ddata->coordNoiy, sizei, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->coordNoiz, ddata->coordNoiz, sizei, cudaMemcpyDeviceToHost);
+  checkCUDAError ("cpyDeviceMDDataToHost coordNoi");
+  
+  cudaMemcpy (hdata->velox, ddata->velox, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->veloy, ddata->veloy, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->veloz, ddata->veloz, sizef, cudaMemcpyDeviceToHost);
+  checkCUDAError ("cpyDeviceMDDataToHost velo");
+
+  cudaMemcpy (hdata->forcx, ddata->forcx, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->forcy, ddata->forcy, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->forcz, ddata->forcz, sizef, cudaMemcpyDeviceToHost);
+  checkCUDAError ("cpyDeviceMDDataToHost forc");
+
+  cudaMemcpy (hdata->type, ddata->type, ddata->numAtom * sizeof(TypeType), cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->mass, ddata->mass, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->massi, ddata->massi, sizef, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->charge, ddata->charge, sizef, cudaMemcpyDeviceToHost);  
+  checkCUDAError ("cpyDeviceMDDataToHost other");
+}
+
+
+__host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * ddata)
+{
+  size_t sizef = hdata->numAtom * sizeof(ScalorType);
+  size_t sizei = hdata->numAtom * sizeof(IntScalorType);
+  ddata->numAtom = hdata->numAtom;
+  ddata->totalMass = hdata->totalMass;
+  ddata->totalMassi = hdata->totalMassi;
+  
+  cudaMemcpy (ddata->coordx, hdata->coordx, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->coordy, hdata->coordy, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->coordz, hdata->coordz, sizef, cudaMemcpyHostToDevice);
+  checkCUDAError ("cpyHostMDDataToDevice coord");
+
+  cudaMemcpy (ddata->coordNoix, hdata->coordNoix, sizei, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->coordNoiy, hdata->coordNoiy, sizei, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->coordNoiz, hdata->coordNoiz, sizei, cudaMemcpyHostToDevice);
+  checkCUDAError ("cpyHostMDDataToDevice coordNoi");
+  
+  cudaMemcpy (ddata->velox, hdata->velox, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->veloy, hdata->veloy, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->veloz, hdata->veloz, sizef, cudaMemcpyHostToDevice);
+  checkCUDAError ("cpyHostMDDataToDevice velo");
+
+  cudaMemcpy (ddata->forcx, hdata->forcx, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->forcy, hdata->forcy, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->forcz, hdata->forcz, sizef, cudaMemcpyHostToDevice);
+  checkCUDAError ("cpyHostMDDataToDevice forc");
+
+  cudaMemcpy (ddata->type, hdata->type, ddata->numAtom * sizeof(TypeType), cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->mass, hdata->mass, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->massi, hdata->massi, sizef, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->charge, hdata->charge, sizef, cudaMemcpyHostToDevice);   
+  checkCUDAError ("cpyHostMDDataToDevice other");
+}
+
+
+__host__ void initDeviceMDData (const HostMDData * hdata, DeviceMDData * ddata)
+{
+  size_t sizef = hdata->numMem * sizeof(ScalorType);
+  size_t sizei = hdata->numMem * sizeof(IntScalorType);
+  ddata->numMem = hdata->numMem;
+  ddata->totalMass = hdata->totalMass;
+  ddata->totalMassi = hdata->totalMassi;
+  ddata->NFreedom = hdata->NFreedom;
+  
+  cudaMalloc ((void**) &ddata->coordx, sizef);
+  cudaMalloc ((void**) &ddata->coordy, sizef);
+  cudaMalloc ((void**) &ddata->coordz, sizef);
+  checkCUDAError ("initDeviceMDData coord");
+
+  cudaMalloc ((void**) &ddata->velox, sizef);
+  cudaMalloc ((void**) &ddata->veloy, sizef);
+  cudaMalloc ((void**) &ddata->veloz, sizef);
+  checkCUDAError ("initDeviceMDData velo");
+
+  cudaMalloc ((void**) &ddata->forcx, sizef);
+  cudaMalloc ((void**) &ddata->forcy, sizef);
+  cudaMalloc ((void**) &ddata->forcz, sizef);
+  checkCUDAError ("initDeviceMDData forc");
+
+  cudaMalloc ((void**) &ddata->coordNoix, sizei);
+  cudaMalloc ((void**) &ddata->coordNoiy, sizei);
+  cudaMalloc ((void**) &ddata->coordNoiz, sizei);
+  checkCUDAError ("initDeviceMDData coordNoi");
+
+  cudaMalloc ((void**) &ddata->type, hdata->numMem * sizeof(TypeType));
+  cudaMalloc ((void**) &ddata->mass, sizef);
+  cudaMalloc ((void**) &ddata->massi, sizef);
+  cudaMalloc ((void**) &ddata->charge, sizef);
+  checkCUDAError ("initDeviceMDData other");
+
+  ddata->malloced = true;
+  
+  /* bindTextureOnDeviceMDData (ddata); */
+  cpyHostMDDataToDevice (hdata, ddata);
+
+// cudaBindTexture(0, ddata->texReftype, ddata->type, ddata->numMem);
+}
+
+
+__host__ void destroyDeviceMDData (DeviceMDData * ddata)
+{
+  if (ddata->malloced){
+    cudaFree (ddata->coordx);
+    cudaFree (ddata->coordy);
+    cudaFree (ddata->coordz);
+  
+    cudaFree (ddata->coordNoix);
+    cudaFree (ddata->coordNoiy);
+    cudaFree (ddata->coordNoiz);
+  
+    cudaFree (ddata->velox);
+    cudaFree (ddata->veloy);
+    cudaFree (ddata->veloz);
+  
+    cudaFree (ddata->forcx);
+    cudaFree (ddata->forcy);
+    cudaFree (ddata->forcz);
+
+    cudaFree (ddata->type);
+    cudaFree (ddata->mass);
+    cudaFree (ddata->massi);
+    cudaFree (ddata->charge);
+    ddata->malloced = false;
+  }
+}
+
+
+
