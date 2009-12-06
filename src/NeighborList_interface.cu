@@ -112,11 +112,16 @@ void NeighborList::init (const MDSystem & sys,
   // to the number of threads in a block
   dclist.stride = myBlockDim.x;
   
-  if ((dclist.NCell.x < 4 || dclist.NCell.y < 4 || dclist.NCell.z < 4) &&
-      bdir == 8)
-    mode = AllPairBuilt;
-  else 
-    mode = CellListBuilt;
+  // if ((dclist.NCell.x < 4 || dclist.NCell.y < 4 || dclist.NCell.z < 4) &&
+  //     bdir == 8)
+  //   mode = AllPairBuilt;
+  // else 
+  //   mode = CellListBuilt;
+
+  mode = CellListBuilt;
+  if (CellOnX && dclist.NCell.x < 4) mode = AllPairBuilt;
+  if (CellOnY && dclist.NCell.y < 4) mode = AllPairBuilt;
+  if (CellOnZ && dclist.NCell.z < 4) mode = AllPairBuilt;
   
   IndexType nob;
   if (sys.ddata.numAtom % myBlockDim.x == 0){

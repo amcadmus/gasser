@@ -149,24 +149,28 @@ int main(int argc, char * argv[])
 
   MDStatistic st(sys);
 
+  InteractionEngine_interface interaction(sys, NThreadsPerBlockAtom);;
+
   VelocityVerlet inte (sys, NThreadsPerBlockAtom);;
 
-  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, 1.08088629683116564358, 0.1);
-// // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
-  // inte.removeTranslationalFreedom (ddata);
-  // // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
+  ScalorType dt = 0.005;
+  ScalorType rebuildThreshold = 0.5 * nlistExten;
+  
+  BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
+			  interaction,
+			  nlist, rebuildThreshold);
+  blpf.TCouple (1.08088629683116564358, 0.1);
+  blpf.addPcoupleGroup (PCoupleX,
+  			0., 2, 1.);
 
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
 
-  InteractionEngine_interface interaction(sys, NThreadsPerBlockAtom);;
-
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.005;
 
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3        4         5       6           7           8           9        10        11        12        13\n");
-  printf ("#* nstep  time  nonBondedE  bondedE  kineticE  totalE  pressurexx  pressureyy  pressurezz  pressure  virialxx  virialyy  virialzz\n");
+  printf ("#*     1     2           3        4         5       6           7           8           9        10    11    12    13\n");
+  printf ("#* nstep  time  nonBondedE  bondedE  kineticE  totalE  pressurexx  pressureyy  pressurezz  pressure  boxx  boxy  boxz\n");
   
   try{
     timer.tic(mdTimeTotal);
@@ -176,19 +180,12 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      // if (i%1 == 0){
-      //   if (i == 0) nlist.build (sys);
-      //   else nlist.reBuild (sys);
-      //   // resh.shuffleSystem (sys, nlist);
-      // }   
 	  
       if ((i+1) % 10 == 0){
 	st.clearDevice();
-	inte_vr.step1 (sys, dt, &timer);
-	interaction.applyInteraction (sys, nlist, st, &timer);
-	inte_vr.step2 (sys, dt, st, &timer);
+	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
@@ -201,25 +198,15 @@ int main(int argc, char * argv[])
 		st.pressureYY(),
 		st.pressureZZ(),
 		st.pressure(),
-		st.getStatistic(mdStatisticVirialXX)*0.5,
-		st.getStatistic(mdStatisticVirialYY)*0.5,
-		st.getStatistic(mdStatisticVirialZZ)*0.5);
+		sys.box.size.x,
+		sys.box.size.y,
+		sys.box.size.z);
 	fflush(stdout);
       }
       else {
-	inte_vr.step1 (sys, dt, &timer);
-	interaction.applyInteraction (sys, nlist, &timer);
-	inte_vr.step2 (sys, dt, &timer);
-      }
-      if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	printf ("# Rebuild at step %09i ... ", i+1);
-	fflush(stdout);
-	nlist.reBuild(sys, &timer);
-	printf ("done\n");
-	fflush(stdout);
+	blpf.oneStep (sys, &timer);
       }
       if ((i+1) % 1000 == 0){
-	// sys.updateHost(&timer);
 	resh.recoverMDDataToHost (sys, &timer);
 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
