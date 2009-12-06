@@ -155,13 +155,13 @@ int main(int argc, char * argv[])
 
   ScalorType dt = 0.005;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
-  
+  ScalorType refT = 1.08088629683116564358;
   BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
 			  interaction,
 			  nlist, rebuildThreshold);
-  blpf.TCouple (1.08088629683116564358, 0.1);
+  blpf.TCouple (refT, 0.1);
   blpf.addPcoupleGroup (PCoupleX,
-  			0., 2, 1.);
+  			0., 2, 100);
 
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
 

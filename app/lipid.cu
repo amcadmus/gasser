@@ -97,7 +97,8 @@ int main(int argc, char * argv[])
 
   VelocityVerlet inte (sys, NThreadsPerBlockAtom);;
 
-  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, 0.9977411970749, 0.1);
+  ScalorType refT = 0.9977411970749;
+  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
 // // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
   // inte.removeTranslationalFreedom (ddata);
   // // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
@@ -109,7 +110,9 @@ int main(int argc, char * argv[])
   MDTimer timer;
   unsigned i;
   ScalorType dt = 0.005;
-
+  ScalorType seed = 1;
+  RandomGenerator_MT19937::init_genrand (seed);
+  
   printf ("# prepare ok, start to run\n");
 
   try{
