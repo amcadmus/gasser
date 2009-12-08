@@ -78,7 +78,7 @@ int main(int argc, char * argv[])
 
   ScalorType maxrcut = sys.calMaxNBRcut ();
   printf ("# max rcut is %f\n", maxrcut);
-  ScalorType nlistExten = 0.8f;
+  ScalorType nlistExten = 0.5f;
   ScalorType rlist = maxrcut + nlistExten;
   // NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
   // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
