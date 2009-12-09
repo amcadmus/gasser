@@ -76,6 +76,20 @@ __global__ void rescaleProperty (T * data, const IndexType N,
     data[ii] *= scalor;
   }
 }
+#ifdef COORD_IN_ONE_VEC
+static __global__ void rescaleCoord (CoordType * data, const IndexType N,
+				     const CoordType scalor)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < N) {
+    data[ii].x *= scalor.x;
+    data[ii].y *= scalor.y;
+    data[ii].z *= scalor.z;
+  }
+}
+#endif
+
 
 template<typename T>
 __global__ void cpyProperty (T * to,

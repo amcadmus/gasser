@@ -4,6 +4,7 @@
 #include "Statistic_interface.h"
 
 
+#ifndef COORD_IN_ONE_VEC
 __global__ void leapFrog1Step (const IndexType numAtom,
 			       const ScalorType * massi,
 			       ScalorType * coordx,
@@ -29,7 +30,33 @@ __global__ void leapFrog1Step (const IndexType numAtom,
   vz = (veloz[ii] += dt * forcz[ii] * mi);
   coordz[ii] += dt * vz;
 }
+#else
+__global__ void leapFrog1Step (const IndexType numAtom,
+			       const ScalorType * massi,
+			       CoordType * coord,
+			       ScalorType * velox,
+			       ScalorType * veloy, 
+			       ScalorType * veloz,
+			       const ScalorType * forcx,
+			       const ScalorType * forcy, 
+			       const ScalorType * forcz,
+			       const ScalorType dt)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii >= numAtom) return;
+  ScalorType mi = massi[ii];
+  ScalorType vx, vy, vz;
+  vx = (velox[ii] += dt * forcx[ii] * mi);
+  coord[ii].x += dt * vx;
+  vy = (veloy[ii] += dt * forcy[ii] * mi);
+  coord[ii].y += dt * vy;
+  vz = (veloz[ii] += dt * forcz[ii] * mi);
+  coord[ii].z += dt * vz;
+}
+#endif
 
+#ifndef COORD_IN_ONE_VEC
 __global__ void leapFrog1Step (const IndexType numAtom,
 			       const ScalorType * mass,
 			       const ScalorType * massi,
@@ -88,7 +115,66 @@ __global__ void leapFrog1Step (const IndexType numAtom,
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
 }
+#else
+__global__ void leapFrog1Step (const IndexType numAtom,
+			       const ScalorType * mass,
+			       const ScalorType * massi,
+			       CoordType * coord,
+			       ScalorType * velox,
+			       ScalorType * veloy, 
+			       ScalorType * veloz,
+			       const ScalorType * forcx,
+			       const ScalorType * forcy, 
+			       const ScalorType * forcz,
+			       const ScalorType dt,
+			       ScalorType * statistic_buffxx,
+			       ScalorType * statistic_buffyy,
+			       ScalorType * statistic_buffzz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  ScalorType vx, vy, vz;
+  
+  if (ii < numAtom) {
+    ScalorType mi = massi[ii];
+    vx = (velox[ii] += dt * forcx[ii] * mi);
+    coord[ii].x += dt * vx;
+    vy = (veloy[ii] += dt * forcy[ii] * mi);
+    coord[ii].y += dt * vy;
+    vz = (veloz[ii] += dt * forcz[ii] * mi);
+    coord[ii].z += dt * vz;
+  }
 
+  extern __shared__ volatile ScalorType buff [];
+
+  ScalorType scalor;
+  if (ii < numAtom) scalor = 0.5f * mass[ii];
+  else scalor = 0.f;
+  
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vx * vx;
+  }
+  else {
+    buff[threadIdx.x] = 0.f;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffxx[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vy * vy;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffyy[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vz * vz;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
+}
+#endif
+
+#ifndef COORD_IN_ONE_VEC
 __global__ void leapFrogStepX (const IndexType numAtom,
 			       const ScalorType * massi,
 			       ScalorType * coordx,
@@ -106,6 +192,24 @@ __global__ void leapFrogStepX (const IndexType numAtom,
   coordy[ii] += dt * veloy[ii];
   coordz[ii] += dt * veloz[ii];
 }
+#else
+__global__ void leapFrogStepX (const IndexType numAtom,
+			       const ScalorType * massi,
+			       CoordType * coord,
+			       const ScalorType * velox,
+			       const ScalorType * veloy, 
+			       const ScalorType * veloz,
+			       const ScalorType dt)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii >= numAtom) return;
+  coord[ii].x += dt * velox[ii];
+  coord[ii].y += dt * veloy[ii];
+  coord[ii].z += dt * veloz[ii];
+}
+#endif
+
 
 __global__ void leapFrogStepV (const IndexType numAtom,
 			       const ScalorType * massi,
@@ -360,45 +464,6 @@ ScalorType vx(0.f), vy(0.f), vz(0.f);
   }
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
-  
-  
-  // __syncthreads();
-  // IndexType num = ((bid+1) * blockDim.x > numAtom) ? 
-  //     (blockDim.x - ((bid+1) * blockDim.x) + numAtom) : blockDim.x;
-  // __shared__ volatile ScalorType buff [MaxThreadsPerBlock * 2];
-  // buff[tid] = 0.0f;
-  // buff[tid + blockDim.x] = 0.0f;
-  // if (tid < num)
-  //   buff[tid] = mass[ii] * (vx*vx + vy*vy + vz*vz);
-  // __syncthreads();
-  
-  // __shared__ volatile  bool isLastBlockDone_for_velocityVerlet;
-  // ScalorType partialSum = sumVectorBlockBuffer (buff, num);
-  // if (tid == 0){
-  //   statistic_buff[bid] = partialSum;
-  //   IndexType value = atomicInc(&integrator_counter_for_velocityVerlet, gridDim.x*gridDim.y);
-  //   isLastBlockDone_for_velocityVerlet = (value == (gridDim.x*gridDim.y - 1));
-  //   // printf ("bid %d, sum %f, mark %d\n", bid, partialSum, isLastBlockDone_for_velocityVerlet);
-  // }
-  // __threadfence();
-  // __syncthreads();
-  
-  // if (isLastBlockDone_for_velocityVerlet){
-  //   IndexType p = 0;
-  //   ScalorType tmpsum = 0.0f;
-  //   while (p < gridDim.x*gridDim.y){
-  //     IndexType tmp = gridDim.x*gridDim.y - p;
-  //     IndexType n = ((tmp < blockDim.x) ? tmp : blockDim.x);
-  //     // printf ("%d\n", blockDim.x);
-  //     tmpsum += sumVectorBlock (statistic_buff, p, n);
-  //     p += blockDim.x;
-  //   }
-  //   if (tid == 0){
-  //     integrator_counter_for_velocityVerlet = 0;
-  //     stddata[mdStatisticKineticEnergy] = tmpsum * 0.5f;
-  //   }
-  // }  
-  // __threadfence();
 }
 
 __global__ void velocityVerlet_part2a (const IndexType numAtom,

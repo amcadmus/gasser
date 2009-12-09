@@ -30,9 +30,13 @@ __global__ void removeFreedom (IndexType numAtom,
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void leapFrog1Step (const IndexType numAtom,
 			       const ScalorType * massi,
+#ifndef COORD_IN_ONE_VEC
 			       ScalorType * coordx,
 			       ScalorType * coordy, 
 			       ScalorType * coordz,
+#else
+			       CoordType * coord,
+#endif
 			       ScalorType * velox,
 			       ScalorType * veloy, 
 			       ScalorType * veloz,
@@ -43,9 +47,13 @@ __global__ void leapFrog1Step (const IndexType numAtom,
 __global__ void leapFrog1Step (const IndexType numAtom,
 			       const ScalorType * mass,
 			       const ScalorType * massi,
+#ifndef COORD_IN_ONE_VEC
 			       ScalorType * coordx,
 			       ScalorType * coordy, 
 			       ScalorType * coordz,
+#else
+			       CoordType * coord,
+#endif
 			       ScalorType * velox,
 			       ScalorType * veloy, 
 			       ScalorType * veloz,
@@ -58,9 +66,13 @@ __global__ void leapFrog1Step (const IndexType numAtom,
 			       ScalorType * statistic_buffzz);
 __global__ void leapFrogStepX (const IndexType numAtom,
 			       const ScalorType * massi,
+#ifndef COORD_IN_ONE_VEC
 			       ScalorType * coordx,
 			       ScalorType * coordy, 
 			       ScalorType * coordz,
+#else
+			       CoordType * coord,
+#endif
 			       const ScalorType * velox,
 			       const ScalorType * veloy, 
 			       const ScalorType * veloz,
