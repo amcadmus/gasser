@@ -15,7 +15,9 @@ namespace GromacsFileManager{
 		      ScalorType * velox,
 		      ScalorType * veloy,
 		      ScalorType * veloz,
-		      ScalorType * boxx,  ScalorType * boxy,  ScalorType * boxz);
+		      ScalorType * boxx,  
+		      ScalorType * boxy,  
+		      ScalorType * boxz);
 };
 
 

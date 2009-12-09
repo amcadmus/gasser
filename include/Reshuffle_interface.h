@@ -20,9 +20,13 @@ class Reshuffle
   IndexType * bkBondListData;
   ForceIndexType * bkBondListBondIndex;
   IndexType * bkBondListNumB;
+#ifndef COORD_IN_ONE_VEC
   ScalorType * bkNlistJudgeBuffx;
   ScalorType * bkNlistJudgeBuffy;
   ScalorType * bkNlistJudgeBuffz;
+#else
+  CoordType * bkNlistJudgeBuff;
+#endif
   dim3 cellGridDim;
   dim3 atomGridDim;
   dim3 myBlockDim;

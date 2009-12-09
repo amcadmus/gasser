@@ -41,12 +41,32 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
 				     sizeof(IndexType) * numMem);
   }
   ScalorType bx, by, bz;
+#ifdef COORD_IN_ONE_VEC
+  ScalorType * tmpx, * tmpy, * tmpz;
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numMem);
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numMem);
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numMem);
+#endif
   GromacsFileManager::readGroFile (configfile,
 				   hdata.resdIndex, hdata.resdName, 
 				   hdata.atomName, tmpatomIndex,
+#ifndef COORD_IN_ONE_VEC
 				   hdata.coordx, hdata.coordy, hdata.coordz,
+#else
+				   tmpx, tmpy, tmpz,
+#endif
 				   hdata.velox,  hdata.veloy,  hdata.veloz,
-				   &bx, &by, &bz) ;  
+				   &bx, &by, &bz) ;
+#ifdef COORD_IN_ONE_VEC
+  for (IndexType i = 0; i < numAtom; ++i){
+    hdata.coord[i].x = tmpx[i];
+    hdata.coord[i].y = tmpy[i];
+    hdata.coord[i].z = tmpz[i];
+  }
+  free (tmpx);
+  free (tmpy);
+  free (tmpz);
+#endif
   freeAPointer ((void**)&tmpatomIndex);
   RectangularBoxGeometry::setBoxSize (bx, by, bz, &box);
   
@@ -169,9 +189,15 @@ void MDSystem::writeHostDataXtc (int step, float time, MDTimer *timer)
 {
   if (timer != NULL) timer->tic(mdTimeDataIO);
   for (IndexType i = 0; i < hdata.numAtom; ++i){
+#ifndef COORD_IN_ONE_VEC
     xdx[i][0] = hdata.coordx[i];
     xdx[i][1] = hdata.coordy[i];
     xdx[i][2] = hdata.coordz[i];
+#else
+    xdx[i][0] = hdata.coord[i].x;
+    xdx[i][1] = hdata.coord[i].y;
+    xdx[i][2] = hdata.coord[i].z;
+#endif
   }
   write_xtc (xdfile, hdata.numAtom, step, time, xdbox, xdx, xdprec);
   if (timer != NULL) timer->tic(mdTimeDataIO);

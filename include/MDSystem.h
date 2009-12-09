@@ -9,9 +9,13 @@ public:
   IndexType numAtom;
   IndexType numMem;
   IndexType NFreedom;
+#ifndef COORD_IN_ONE_VEC
   ScalorType * coordx;
   ScalorType * coordy;
   ScalorType * coordz;
+#else
+  CoordType * coord;
+#endif
   IntScalorType * coordNoix;
   IntScalorType * coordNoiy;
   IntScalorType * coordNoiz;
@@ -45,9 +49,13 @@ public:
   IndexType numAtom;
   IndexType numMem;
   IndexType NFreedom;
+#ifndef COORD_IN_ONE_VEC
   ScalorType * coordx;
   ScalorType * coordy;
   ScalorType * coordz;
+#else
+  CoordType * coord;
+#endif
   IntScalorType * coordNoix;
   IntScalorType * coordNoiy;
   IntScalorType * coordNoiz;
@@ -99,10 +107,14 @@ __device__ void cpyDeviceMDDataElement (const DeviceMDData * ddata1,
 					DeviceMDData * ddata2,
 					const IndexType indx2)
 {
+#ifndef COORD_IN_ONE_VEC
   ddata2->coordx[indx2] = ddata1->coordx[indx1];
   ddata2->coordy[indx2] = ddata1->coordy[indx1];
   ddata2->coordz[indx2] = ddata1->coordz[indx1];
-
+#else
+  (ddata2->coord[indx2]) = (ddata1->coord[indx1]);
+#endif
+  
   ddata2->coordNoix[indx2] = ddata1->coordNoix[indx1];
   ddata2->coordNoiy[indx2] = ddata1->coordNoiy[indx1];
   ddata2->coordNoiz[indx2] = ddata1->coordNoiz[indx1];

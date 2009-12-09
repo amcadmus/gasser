@@ -46,9 +46,13 @@ public:
   dim3 atomGridDim;
   dim3 myBlockDim;
 public:
+#ifndef COORD_IN_ONE_VEC
   ScalorType * backupCoordx;
   ScalorType * backupCoordy;
   ScalorType * backupCoordz;
+#else
+  CoordType * backupCoord;
+#endif
 public:
   /** 
    * Constructure

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "Statistic_interface.h"
 
+
 __global__ void leapFrog1Step (const IndexType numAtom,
 			       const ScalorType * massi,
 			       ScalorType * coordx,
@@ -181,8 +182,6 @@ __global__ void leapFrogStepV (const IndexType numAtom,
 }
 
 
-
-
 __device__ IndexType integrator_counter_prepare_x = 0;
 __device__ IndexType integrator_counter_prepare_y = 0;
 __device__ IndexType integrator_counter_prepare_z = 0;
@@ -235,7 +234,7 @@ __global__ void removeFreedom (IndexType numAtom,
 }
 
 
-
+#ifndef COORD_IN_ONE_VEC
 __global__ void velocityVerlet_part1 (const IndexType numAtom,
 				      const ScalorType * massi,
 				      ScalorType * coordx,
@@ -262,6 +261,32 @@ __global__ void velocityVerlet_part1 (const IndexType numAtom,
   veloz[ii]  += hdtmi * forcz[ii];
   coordz[ii] += dt * veloz[ii];
 }
+#else
+__global__ void velocityVerlet_part1 (const IndexType numAtom,
+				      const ScalorType * massi,
+				      CoordType * coord,
+				      ScalorType * velox,
+				      ScalorType * veloy, 
+				      ScalorType * veloz,
+				      const ScalorType * forcx,
+				      const ScalorType * forcy, 
+				      const ScalorType * forcz,
+				      const ScalorType dt)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  if (ii >= numAtom) return;
+  
+  ScalorType hdtmi = 0.5f*dt*massi[ii];
+  velox[ii]  += hdtmi * forcx[ii];
+  coord[ii].x += dt * velox[ii];
+  veloy[ii]  += hdtmi * forcy[ii];
+  coord[ii].y += dt * veloy[ii];
+  veloz[ii]  += hdtmi * forcz[ii];
+  coord[ii].z += dt * veloz[ii];
+}
+#endif
 
 
 __global__ void velocityVerlet_part2 (const IndexType numAtom,
@@ -406,44 +431,7 @@ __global__ void velocityVerlet_part2a (const IndexType numAtom,
   else
     buff[tid] = 0.f;
   sumVectorBlockBuffer_2 (buff);
-  if (threadIdx.x == 0) statistic_buff[bid] = buff[0];
-  
-  // __syncthreads();
-  // IndexType num = ((bid+1) * blockDim.x > numAtom) ? 
-  //     (blockDim.x - ((bid+1) * blockDim.x) + numAtom) : blockDim.x;
-  // __shared__ volatile ScalorType buff [MaxThreadsPerBlock * 2];
-  // buff[tid] = 0.0f;
-  // buff[tid + blockDim.x] = 0.0f;
-  // if (tid < num)
-  //   buff[tid] = mass[ii] * (vx*vx + vy*vy + vz*vz);
-  // __syncthreads();
-  
-  // __shared__ volatile bool isLastBlockDone_for_velocityVerlet;
-  // ScalorType partialSum = sumVectorBlockBuffer (buff, num);
-  // if (tid == 0){
-  //   statistic_buff[bid] = partialSum;
-  //   IndexType value = atomicInc(&integrator_counter_for_velocityVerlet, gridDim.x*gridDim.y);
-  //   isLastBlockDone_for_velocityVerlet = (value == (gridDim.x*gridDim.y - 1));
-  //   // printf ("bid %d, sum %f, mark %d\n", bid, partialSum, isLastBlockDone_for_velocityVerlet);
-  // }
-  // __threadfence();
-  // __syncthreads();
-  
-  // if (isLastBlockDone_for_velocityVerlet){
-  //   IndexType p = 0;
-  //   ScalorType tmpsum = 0.0f;
-  //   while (p < gridDim.x*gridDim.y){
-  //     IndexType tmp = gridDim.x*gridDim.y - p;
-  //     IndexType n = ((tmp < blockDim.x) ? tmp : blockDim.x);
-  //     // printf ("%d\n", blockDim.x);
-  //     tmpsum += sumVectorBlock (statistic_buff, p, n);
-  //     p += blockDim.x;
-  //   }
-  //   if (tid == 0){
-  //     integrator_counter_for_velocityVerlet = 0;
-  //     *kineticE = tmpsum * 0.5f;
-  //   }
-  // }  
+  if (threadIdx.x == 0) statistic_buff[bid] = buff[0];  
 }
 
 
@@ -514,42 +502,6 @@ __global__ void velocityRescale_rescale (const IndexType numAtom,
   }
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
-
-  // __syncthreads();
-  // IndexType num = ((bid+1) * blockDim.x > numAtom) ? 
-  //     (blockDim.x - ((bid+1) * blockDim.x) + numAtom) : blockDim.x;
-  // __shared__ volatile ScalorType buff [MaxThreadsPerBlock * 2];
-  // buff[tid] = 0.0f;
-  // buff[tid + blockDim.x] = 0.0f;
-  // if (tid < num)
-  //   buff[tid] = mass[ii] * (vx*vx +vy*vy + vz*vz);
-  // __syncthreads();
-  
-  // __shared__ volatile bool isLastBlockDone_for_velocityVerlet;
-  // ScalorType partialSum = sumVectorBlockBuffer (buff, num);
-  // if (tid == 0){
-  //   statistic_buff[bid] = partialSum;
-  //   IndexType value = atomicInc(&integrator_counter_for_velocityVerlet, gridDim.x*gridDim.y);
-  //   isLastBlockDone_for_velocityVerlet = (value == (gridDim.x*gridDim.y - 1));
-  //   // printf ("bid %d, sum %f, mark %d\n", bid, partialSum, isLastBlockDone_for_velocityVerlet);
-  // }
-  // __threadfence();
-  // __syncthreads();
-  
-  // if (isLastBlockDone_for_velocityVerlet){
-  //   IndexType p = 0;
-  //   ScalorType tmpsum = 0;
-  //   while (p < gridDim.x*gridDim.y){
-  //     IndexType tmp = gridDim.x*gridDim.y - p;
-  //     IndexType n = ((tmp < blockDim.x) ? tmp : blockDim.x);
-  //     tmpsum += sumVectorBlock (statistic_buff, p, n);
-  //     p += blockDim.x;
-  //   }
-  //   if (tid == 0){
-  //     integrator_counter_for_velocityVerlet = 0;
-  //     stddata[mdStatisticKineticEnergy] = tmpsum * 0.5f;
-  //   }
-  // }  
 }
 
 

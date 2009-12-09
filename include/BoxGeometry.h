@@ -47,9 +47,13 @@ namespace RectangularBoxGeometry{
     // needs ceil(numAtom/blockDim.x) blocks
     __global__ void normalizeSystem (RectangularBox box, 
 				     IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 				     ScalorType *coordx, 
 				     ScalorType *coordy, 
 				     ScalorType *coordz,
+#else
+				     CoordType * coord,
+#endif
 				     IntScalorType *coordNoix, 
 				     IntScalorType *coordNoiy, 
 				     IntScalorType *coordNoiz);

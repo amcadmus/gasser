@@ -28,6 +28,7 @@ typedef int		TypeType;
 #define GlobalFunctionParamSizeLimit	256
 
 #ifndef CPP_FILE
+typedef float4		CoordType;
 typedef float3		VectorType;
 typedef int3		IntVectorType;
 typedef uint3		IndexVectorType;

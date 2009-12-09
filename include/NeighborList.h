@@ -83,18 +83,26 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
 __global__ void prepare_naivlyBuildDeviceCellList (DeviceCellList  clist);
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void naivlyBuildDeviceCellList (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 					   ScalorType * coordx,
 					   ScalorType * coordy,
 					   ScalorType * coordz,
+#else
+					   CoordType * coord,
+#endif
 					   RectangularBox box,
 					   DeviceCellList clist,
 					   mdError_t * ptr_de = NULL,
 					   IndexType * erridx = NULL,
 					   ScalorType * errsrc = NULL);
 __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 					    ScalorType * coordx,
 					    ScalorType * coordy,
 					    ScalorType * coordz,
+#else
+					    CoordType * coord,
+#endif
 					    RectangularBox box,
 					    DeviceCellList clist,
 					    mdError_t * ptr_de = NULL,
@@ -108,9 +116,13 @@ __global__ void buildDeviceCellList_initBuff (IndexType * sendBuff,
 __global__ void buildDeviceCellList_clearBuff (IndexType * sendBuff);
 // needs NCell blocks
 __global__ void buildDeviceCellList_step1 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 					   ScalorType * coordx,
 					   ScalorType * coordy,
 					   ScalorType * coordz,
+#else
+					   CoordType * coord,
+#endif
 					   IntScalorType * coordNoix,
 					   IntScalorType * coordNoiy,
 					   IntScalorType * coordNoiz,
@@ -135,9 +147,13 @@ __global__ void buildDeviceCellList_step2 (RectangularBox box,
 ////////////////////////////////////////////////////////////
 //needs ceil(numAtom/blockDim.x) blocks
 __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 						  ScalorType * coordx,
 						  ScalorType * coordy, 
 						  ScalorType * coordz,
+#else
+						  CoordType * coord,
+#endif
 						  TypeType * type,
 						  RectangularBox box,
 						  DeviceNeighborList nlist,
@@ -147,9 +163,13 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 						  mdError_t * ptr_de = NULL);
 // needs NCell blocks
 __global__ void buildDeviceNeighborList_DeviceCellList (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 							ScalorType * coordx, 
 							ScalorType * coordy, 
 							ScalorType * coordz,
+#else
+							CoordType * coord,
+#endif
 							TypeType * type,
 							RectangularBox box,
 							DeviceCellList clist,
@@ -165,23 +185,33 @@ __global__ void judgeRebuild_backupCoord (const IndexType numAtom,
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void judgeRebuild_judgeCoord (const IndexType numAtom,
 					 const RectangularBox box,
+#ifndef COORD_IN_ONE_VEC
 					 const ScalorType* coordx,
 					 const ScalorType* coordy,
 					 const ScalorType* coordz,
 					 const ScalorType* backupCoordx,
 					 const ScalorType* backupCoordy,
 					 const ScalorType* backupCoordz,
+#else
+					 const CoordType * coord,
+					 const CoordType * backupCoord,
+#endif
 					 const ScalorType diffTol2,
 					 ScalorType * buff,
 					 IndexType * tag);
 __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
 					       const RectangularBox box,
+#ifndef COORD_IN_ONE_VEC
 					       const ScalorType* coordx,
 					       const ScalorType* coordy,
 					       const ScalorType* coordz,
 					       const ScalorType* backupCoordx,
 					       const ScalorType* backupCoordy,
 					       const ScalorType* backupCoordz,
+#else
+					       const CoordType * coord,
+					       const CoordType * backupCoord,
+#endif
 					       const ScalorType diffTol2,
 					       IndexType * judgeRebuild_buff);
 

@@ -8,15 +8,23 @@
 // __global__ void Reshuffle_backupSystem (const DeviceMDData data1,
 // 					DeviceMDData data2);
 __global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 						    const ScalorType * coordx1,
 						    const ScalorType * coordy1,
 						    const ScalorType * coordz1,
+#else
+						    const CoordType * coord,
+#endif
 						    const IntScalorType * coordNoix1,
 						    const IntScalorType * coordNoiy1,
 						    const IntScalorType * coordNoiz1,
+#ifndef COORD_IN_ONE_VEC
 						    ScalorType * coordx2,
 						    ScalorType * coordy2,
 						    ScalorType * coordz2,
+#else
+						    CoordType * coord,
+#endif
 						    IntScalorType * coordNoix2,
 						    IntScalorType * coordNoiy2,
 						    IntScalorType * coordNoiz2);
@@ -46,6 +54,11 @@ __global__ void Reshuffle_backupDeviceMDData_part3 (IndexType numAtom,
 __global__ void Reshuffle_backupScalorTypeBuff (IndexType numAtom,
 						const ScalorType * buff,
 						ScalorType * bkbuff);
+#ifdef COORD_IN_ONE_VEC
+__global__ void Reshuffle_backupCoord (IndexType numAtom,
+				       const CoordType * buff,
+				       CoordType * bkbuff);
+#endif
 __global__ void Reshuffle_backupIntScalorTypeBuff (IndexType numAtom,
 						   const IntScalorType * buff,
 						   IntScalorType * bkbuff);
@@ -59,6 +72,12 @@ __global__ void Reshuffle_reshuffleScalorTypeBuff (IndexType numAtom,
 						   const ScalorType * bkbuff,
 						   const IndexType * idxTable,
 						   ScalorType * buff);
+#ifdef COORD_IN_ONE_VEC
+__global__ void Reshuffle_reshuffleCoord (IndexType numAtom,
+					  const CoordType * bkbuff,
+					  const IndexType * idxTable,
+					  CoordType * buff);
+#endif
 __global__ void Reshuffle_reshuffleIntScalorTypeBuff (IndexType numAtom,
 						      const IntScalorType * bkbuff,
 						      const IndexType * idxTable,
@@ -150,16 +169,24 @@ __global__ void Reshuffle_reshuffleBondList (const IndexType numAtom,
 // 						 const IndexType * idxTable,
 // 						 DeviceMDData ddata2);
 __global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 						       const ScalorType * coordx1,
 						       const ScalorType * coordy1,
 						       const ScalorType * coordz1,
+#else
+						       const CoordType * coord,
+#endif
 						       const IntScalorType * coordNoix1,
 						       const IntScalorType * coordNoiy1,
 						       const IntScalorType * coordNoiz1,
 						       const IndexType * idxTable,
+#ifndef COORD_IN_ONE_VEC
 						       ScalorType * coordx2,
 						       ScalorType * coordy2,
 						       ScalorType * coordz2,
+#else
+						       CoordType * coord,
+#endif
 						       IntScalorType * coordNoix2,
 						       IntScalorType * coordNoiy2,
 						       IntScalorType * coordNoiz2);
@@ -187,9 +214,6 @@ __global__ void Reshuffle_reshuffleDeviceMDData_part3 (IndexType numAtom,
 						       ScalorType * mass2,
 						       ScalorType * massi2,
 						       ScalorType * charge2);
-
-
-
 
 
 #endif

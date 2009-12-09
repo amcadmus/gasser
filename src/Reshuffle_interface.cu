@@ -47,10 +47,13 @@ void Reshuffle::init (const MDSystem & sys,
 	      sizeof(ForceIndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
   cudaMalloc ((void**)&bkBondListNumB,
 	      sizeof(IndexType) * sys.bdlist.dbdlist.stride);
+#ifndef COORD_IN_ONE_VEC
   cudaMalloc ((void**)&bkNlistJudgeBuffx, sizeof(ScalorType)*sys.hdata.numAtom);
   cudaMalloc ((void**)&bkNlistJudgeBuffy, sizeof(ScalorType)*sys.hdata.numAtom);
   cudaMalloc ((void**)&bkNlistJudgeBuffz, sizeof(ScalorType)*sys.hdata.numAtom);
-  
+#else
+  cudaMalloc ((void**)&bkNlistJudgeBuff, sizeof(CoordType) * sys.hdata.numAtom);
+#endif
   checkCUDAError ("Reshuffle::init allocation");
   
   init_bkNlistData <<<atomGridDim, myBlockDim>>>
@@ -111,9 +114,13 @@ Reshuffle::~Reshuffle ()
   cudaFree(bkBondListData);
   cudaFree(bkBondListBondIndex);
   cudaFree(bkBondListNumB);
+#ifndef COORD_IN_ONE_VEC
   cudaFree(bkNlistJudgeBuffx);
   cudaFree(bkNlistJudgeBuffy);
   cudaFree(bkNlistJudgeBuffz);
+#else
+  cudaFree(bkNlistJudgeBuff);
+#endif
   checkCUDAError ("Reshuffle::~Reshuffle");
 }
 
@@ -135,9 +142,17 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   Reshuffle_backupDeviceMDData_part1 
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz,
+#ifndef COORD_IN_ONE_VEC
 	  imageSystem.coordx, imageSystem.coordy, imageSystem.coordz,
+#else
+	  imageSystem.coord,
+#endif
 	  imageSystem.coordNoix, imageSystem.coordNoiy, imageSystem.coordNoiz);
   Reshuffle_backupDeviceMDData_part2
       <<<atomGridDim, myBlockDim>>> (
@@ -159,6 +174,7 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  nlist.dnlist.data, nlist.dnlist.forceIndex,
 	  nlist.dnlist.stride, nlist.dnlist.Nneighbor,
 	  bknlistData, bkNBForceIndex, bkNneighbor);
+#ifndef COORD_IN_ONE_VEC
   Reshuffle_backupScalorTypeBuff
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom, nlist.backupCoordx, bkNlistJudgeBuffx);
@@ -168,6 +184,11 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   Reshuffle_backupScalorTypeBuff
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom, nlist.backupCoordz, bkNlistJudgeBuffz);
+#else
+  Reshuffle_backupCoord
+      <<<atomGridDim, myBlockDim>>> (
+	  sys.ddata.numAtom, nlist.backupCoord, bkNlistJudgeBuff);
+#endif
   checkCUDAError ("Reshuffle::shuffleSystem, back up neighbor list");
   Reshuffle_backupBondList
       <<<atomGridDim, myBlockDim>>> (
@@ -189,22 +210,22 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   checkCUDAError ("Reshuffle::shuffleSystem, back up backMapTable");
 
   
-   Reshuffle_calPosiList
-       <<<1, 1>>> (
+  Reshuffle_calPosiList
+      <<<1, 1>>> (
    	  nlist.dclist.numbers, nob, posiBuff);
-   checkCUDAError ("Reshuffle::shuffleSystem, cal posi");
-   Reshuffle_calIndexTable 
-       <<<cellGridDim, myBlockDim>>> (
-   	  nlist.dclist.data, posiBuff, idxTable);
-   checkCUDAError ("Reshuffle::shuffleSystem, cal idxTable");
-/*  Reshuffle_calPosiList_HSFC
-      <<<1, 32>>> (
-  	  nlist.dclist, posiBuff, dmap3dto1d);
   checkCUDAError ("Reshuffle::shuffleSystem, cal posi");
-  Reshuffle_calIndexTable_HSFC
+  Reshuffle_calIndexTable 
       <<<cellGridDim, myBlockDim>>> (
-  	  nlist.dclist, posiBuff, idxTable, dmap3dto1d);
+   	  nlist.dclist.data, posiBuff, idxTable);
   checkCUDAError ("Reshuffle::shuffleSystem, cal idxTable");
+/*  Reshuffle_calPosiList_HSFC
+    <<<1, 32>>> (
+    nlist.dclist, posiBuff, dmap3dto1d);
+    checkCUDAError ("Reshuffle::shuffleSystem, cal posi");
+    Reshuffle_calIndexTable_HSFC
+    <<<cellGridDim, myBlockDim>>> (
+    nlist.dclist, posiBuff, idxTable, dmap3dto1d);
+    checkCUDAError ("Reshuffle::shuffleSystem, cal idxTable");
 */
 
   Reshuffle_calBackMapTable
@@ -221,6 +242,7 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  idxTable,
 	  nlist.dnlist.data, nlist.dnlist.forceIndex,
 	  nlist.dnlist.Nneighbor);
+#ifndef COORD_IN_ONE_VEC
   Reshuffle_reshuffleScalorTypeBuff
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom, bkNlistJudgeBuffx, idxTable, nlist.backupCoordx);
@@ -229,7 +251,12 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  sys.ddata.numAtom, bkNlistJudgeBuffy, idxTable, nlist.backupCoordy);
   Reshuffle_reshuffleScalorTypeBuff
       <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.numAtom, bkNlistJudgeBuffz, idxTable, nlist.backupCoordz);  
+	  sys.ddata.numAtom, bkNlistJudgeBuffz, idxTable, nlist.backupCoordz);
+#else
+  Reshuffle_reshuffleCoord
+      <<<atomGridDim, myBlockDim>>> (
+	  sys.ddata.numAtom, bkNlistJudgeBuff, idxTable, nlist.backupCoord);
+#endif
   checkCUDAError ("Reshuffle::shuffleSystem, reshuffle neighbor list");
   Reshuffle_reshuffleBondList
       <<<atomGridDim,myBlockDim>>> (
@@ -254,17 +281,25 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   Reshuffle_reshuffleDeviceMDData_part1 
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  imageSystem.coordx, 
 	  imageSystem.coordy, 
 	  imageSystem.coordz,
+#else
+	  imageSystem.coord,
+#endif
 	  imageSystem.coordNoix, 
 	  imageSystem.coordNoiy, 
 	  imageSystem.coordNoiz,
 	  idxTable,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx,
 	  sys.ddata.coordy,
 	  sys.ddata.coordz,
-	  sys.ddata.coordNoix, 
+#else
+	  sys.ddata.coord,
+#endif
+	  sys.ddata.coordNoix,
 	  sys.ddata.coordNoiy, 
 	  sys.ddata.coordNoiz);
   Reshuffle_reshuffleDeviceMDData_part2
@@ -300,10 +335,18 @@ void Reshuffle::recoverMDData (const DeviceMDData & currentData,
   Reshuffle_reshuffleDeviceMDData_part1 
       <<<atomGridDim, myBlockDim>>> (
 	  currentData.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  currentData.coordx, currentData.coordy, currentData.coordz,
+#else
+	  currentData.coord,
+#endif
 	  currentData.coordNoix, currentData.coordNoiy, currentData.coordNoiz,
 	  backMapTable,
+#ifndef COORD_IN_ONE_VEC
 	  recoveredData.coordx, recoveredData.coordy, recoveredData.coordz,
+#else
+	  recoveredData.coord,
+#endif
 	  recoveredData.coordNoix, recoveredData.coordNoiy, recoveredData.coordNoiz);
   Reshuffle_reshuffleDeviceMDData_part2
       <<<atomGridDim, myBlockDim>>> (
@@ -348,6 +391,7 @@ void Reshuffle::recoverMDDataToHost (MDSystem & sys   ,
 // }
 
 
+#ifndef COORD_IN_ONE_VEC
 __global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
 						    const ScalorType * coordx1,
 						    const ScalorType * coordy1,
@@ -375,6 +419,29 @@ __global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
     coordNoiz2[ii] = coordNoiz1[ii];
   }
 }
+#else
+__global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
+						    const CoordType * coord1,
+						    const IntScalorType * coordNoix1,
+						    const IntScalorType * coordNoiy1,
+						    const IntScalorType * coordNoiz1,
+						    CoordType * coord2,
+						    IntScalorType * coordNoix2,
+						    IntScalorType * coordNoiy2,
+						    IntScalorType * coordNoiz2)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  if (ii < numAtom){
+    coord2[ii] = coord1[ii];
+    coordNoix2[ii] = coordNoix1[ii];
+    coordNoiy2[ii] = coordNoiy1[ii];
+    coordNoiz2[ii] = coordNoiz1[ii];
+  }
+}
+#endif
 
 __global__ void Reshuffle_backupDeviceMDData_part2 (IndexType numAtom,
 						    const ScalorType * velox1,
@@ -426,6 +493,19 @@ __global__ void Reshuffle_backupDeviceMDData_part3 (IndexType numAtom,
     charge2[ii] = charge1[ii];
   }
 }
+
+#ifdef COORD_IN_ONE_VEC
+__global__ void Reshuffle_backupCoord (IndexType numAtom,
+				       const CoordType * buff,
+				       CoordType * bkbuff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    bkbuff[ii] = buff[ii];
+  }
+}
+#endif
 
 __global__ void Reshuffle_backupScalorTypeBuff (IndexType numAtom,
 						const ScalorType * buff,
@@ -776,6 +856,20 @@ __global__ void Reshuffle_reshuffleScalorTypeBuff (IndexType numAtom,
   }
 }
 
+#ifdef COORD_IN_ONE_VEC
+__global__ void Reshuffle_reshuffleCoord (IndexType numAtom,
+					  const CoordType * bkbuff,
+					  const IndexType * idxTable,
+					  CoordType * buff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    buff[idxTable[ii]] = bkbuff[ii];
+  }
+}
+#endif
+
 __global__ void Reshuffle_reshuffleTypeTypeBuff (IndexType numAtom,
 						 const TypeType * bkbuff,
 						 const IndexType * idxTable,
@@ -812,7 +906,7 @@ __global__ void Reshuffle_reshuffleIndexTypeBuff (IndexType numAtom,
   }
 }
   
-
+#ifndef COORD_IN_ONE_VEC
 __global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
 						       const ScalorType * coordx2,
 						       const ScalorType * coordy2,
@@ -842,6 +936,32 @@ __global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
     coordNoiz1[toid] = coordNoiz2[ii];
   }
 }
+#else
+__global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
+						       const CoordType * coord2,
+						       const IntScalorType * coordNoix2,
+						       const IntScalorType * coordNoiy2,
+						       const IntScalorType * coordNoiz2,
+						       const IndexType * idxTable,
+						       CoordType * coord1,
+						       IntScalorType * coordNoix1,
+						       IntScalorType * coordNoiy1,
+						       IntScalorType * coordNoiz1)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  
+  if (ii < numAtom){
+    IndexType toid = idxTable[ii];
+    coord1[toid] = coord2[ii];
+    coordNoix1[toid] = coordNoix2[ii];
+    coordNoiy1[toid] = coordNoiy2[ii];
+    coordNoiz1[toid] = coordNoiz2[ii];
+  }
+}
+#endif
+
 
 __global__ void Reshuffle_reshuffleDeviceMDData_part2 (IndexType numAtom,
 						       const ScalorType * velox2,

@@ -13,9 +13,13 @@ using namespace RectangularBoxGeometry;
 
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void calNonBondedInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 					 const ScalorType * coordx,
 					 const ScalorType * coordy, 
 					 const ScalorType * coordz,
+#else
+					 const CoordType * coord,
+#endif
 					 ScalorType * forcx,
 					 ScalorType * forcy, 
 					 ScalorType * forcz,
@@ -26,9 +30,13 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 					 IndexType * errorIndex,
 					 ScalorType * errorScalor);
 __global__ void calNonBondedInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 					 const ScalorType * coordx,
 					 const ScalorType * coordy, 
 					 const ScalorType * coordz,
+#else
+					 const CoordType * coord,
+#endif
 					 ScalorType * forcx,
 					 ScalorType * forcy, 
 					 ScalorType * forcz,
@@ -43,18 +51,26 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 					 IndexType * errorIndex,
 					 ScalorType * errorScalor);
 __global__ void calBondInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 				    const ScalorType * coordx,
 				    const ScalorType * coordy, 
 				    const ScalorType * coordz,
+#else
+				    const CoordType * coord,
+#endif
 				    ScalorType * forcx,
 				    ScalorType * forcy, 
 				    ScalorType * forcz,
 				    const RectangularBox box,
 				    const DeviceBondList bdlist);
 __global__ void calBondInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
 				    const ScalorType * coordx,
 				    const ScalorType * coordy, 
 				    const ScalorType * coordz,
+#else
+				    const CoordType * coord,
+#endif
 				    ScalorType * forcx,
 				    ScalorType * forcy, 
 				    ScalorType * forcz,

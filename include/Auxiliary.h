@@ -67,7 +67,7 @@ __device__ static IndexType roundUp4 (IndexType x)
 }
 
 template<typename T>
-__global__ void rescaleProperty (T * data, IndexType N,
+__global__ void rescaleProperty (T * data, const IndexType N,
 				 const T scalor)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -77,7 +77,17 @@ __global__ void rescaleProperty (T * data, IndexType N,
   }
 }
 
-
+template<typename T>
+__global__ void cpyProperty (T * to,
+			     const T * from,
+			     const IndexType numAtom)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    to[ii] = from[ii];
+  }
+}
 
 
 

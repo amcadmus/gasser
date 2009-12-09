@@ -66,15 +66,15 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.001;
   ScalorType rebuildThreshold = 0.5 *(rlist - 3.2);
 
-  LeapFrog lpfrog (sys, NThreadsPerBlockAtom);
-  BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
-			  interaction,
-			  nlist, rebuildThreshold);
-  blpf.TCouple (1, 0.1);
-  blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
-  			4., 1, 1);
-  blpf.addPcoupleGroup (PCoupleZ,
-  			4., 10, 1);
+  // LeapFrog lpfrog (sys, NThreadsPerBlockAtom);
+  // BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
+  // 			  interaction,
+  // 			  nlist, rebuildThreshold);
+  // blpf.TCouple (1, 0.1);
+  // blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
+  // 			4., 1, 1);
+  // blpf.addPcoupleGroup (PCoupleZ,
+  // 			4., 10, 1);
   VelocityVerlet inte (sys, NThreadsPerBlockAtom);;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, 1, 0.1);
 // // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
@@ -96,22 +96,22 @@ int main(int argc, char * argv[])
 //       else 
 // 	nlist.reBuild (ddata, box, &timer);
 //     }
-    // if (nlist.judgeRebuild(sys, rebuildThreshold, &timer)){
-    //   printf("# rebuild at step %d\n", i);
-    //   fflush(stdout);
-    //   nlist.reBuild(sys, &timer);
-    // }
+    if (nlist.judgeRebuild(sys, rebuildThreshold, &timer)){
+      printf("# rebuild at step %d\n", i);
+      fflush(stdout);
+      nlist.reBuild(sys, &timer);
+    }
     if (reshFeq != 0 && i%reshFeq == 0){
       resh.shuffleSystem (sys, nlist, &timer);
     }
     if ((i+1)%10 == 0){
       st.clearDevice();
-      blpf.oneStep (sys, st, &timer);
+      // blpf.oneStep (sys, st, &timer);
       // interaction.applyInteraction (sys, nlist, st, &timer);
       // lpfrog.step (sys, dt, st, &timer);
-      // inte.step1 (sys, dt, &timer);
-      // interaction.applyInteraction (sys, nlist, st, &timer);
-      // inte.step2 (sys, dt, st, &timer);
+      inte.step1 (sys, dt, &timer);
+      interaction.applyInteraction (sys, nlist, st, &timer);
+      inte.step2 (sys, dt, st, &timer);
       st.updateHost();
       printf ("%07d %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 	      i+1,
@@ -130,12 +130,12 @@ int main(int argc, char * argv[])
       fflush(stdout);
     }
     else {
-      blpf.oneStep (sys, &timer);      
+      // blpf.oneStep (sys, &timer);      
       // interaction.applyInteraction (sys, nlist, &timer);
       // lpfrog.step (sys, dt, &timer);
-      // inte.step1 (sys, dt, &timer);
-      // interaction.applyInteraction (sys, nlist, &timer);
-      // inte.step2 (sys, dt, &timer);
+      inte.step1 (sys, dt, &timer);
+      interaction.applyInteraction (sys, nlist, &timer);
+      inte.step2 (sys, dt, &timer);
     }    
   }
   timer.toc (mdTimeTotal);

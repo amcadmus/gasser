@@ -16,9 +16,13 @@
  * these are textures for a fast reference of particle position.
  * 
  */
+#ifndef COORD_IN_ONE_VEC
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordx;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordy;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordz;
+#else
+texture<CoordType, 1, cudaReadModeElementType> global_texRef_neighbor_coord;
+#endif
 texture<TypeType, 1, cudaReadModeElementType> global_texRef_neighbor_type;
 
 NeighborList::~NeighborList()
@@ -33,13 +37,21 @@ NeighborList::~NeighborList()
     cudaFree (dnlist.forceIndex);
 
     cudaFree (nbForceTable);
+#ifndef COORD_IN_ONE_VEC
     cudaUnbindTexture(global_texRef_neighbor_coordx);
     cudaUnbindTexture(global_texRef_neighbor_coordy);
     cudaUnbindTexture(global_texRef_neighbor_coordz);
+#else
+    cudaUnbindTexture(global_texRef_neighbor_coord);
+#endif
     cudaUnbindTexture(global_texRef_neighbor_type);
+#ifndef COORD_IN_ONE_VEC
     cudaFree (backupCoordx);
     cudaFree (backupCoordy);
     cudaFree (backupCoordz);
+#else
+    cudaFree (backupCoord);
+#endif
     cudaFree (judgeRebuild_tag);
     checkCUDAError ("NeighborList::~NeighborList");
   }
@@ -174,28 +186,41 @@ void NeighborList::init (const MDSystem & sys,
   
   // bind texture
   // printf ("numMem is %d\n", sys.ddata.numMem);
-  size_t sizescalor = sizeof(ScalorType)*sys.ddata.numMem;
   size_t sizetype   = sizeof(TypeType)  *sys.ddata.numMem;
+#ifndef COORD_IN_ONE_VEC
+  size_t sizescalor = sizeof(ScalorType)*sys.ddata.numMem;
   cudaBindTexture(0, global_texRef_neighbor_coordx, sys.ddata.coordx, sizescalor);
   cudaBindTexture(0, global_texRef_neighbor_coordy, sys.ddata.coordy, sizescalor);
   cudaBindTexture(0, global_texRef_neighbor_coordz, sys.ddata.coordz, sizescalor);
+#else
+  size_t sizecoord  = sizeof(CoordType) *sys.ddata.numMem;
+  cudaBindTexture(0, global_texRef_neighbor_coord, sys.ddata.coord, sizecoord);
+#endif
   cudaBindTexture(0, global_texRef_neighbor_type, sys.ddata.type, sizetype);
   checkCUDAError ("NeighborList::init texture");
 
   // init backup Coords
+#ifndef COORD_IN_ONE_VEC
   cudaMalloc ((void **)& backupCoordx, sizeof(ScalorType)*sys.ddata.numAtom);
   cudaMalloc ((void **)& backupCoordy, sizeof(ScalorType)*sys.ddata.numAtom);
   cudaMalloc ((void **)& backupCoordz, sizeof(ScalorType)*sys.ddata.numAtom);
+#else
+  cudaMalloc ((void **)& backupCoord,  sizeof(CoordType) *sys.ddata.numAtom);
+#endif
   cudaMalloc ((void **)& judgeRebuild_tag,  sizeof(IndexType));
-  // cudaMalloc ((void **)& judgeRebuild_buff, sizeof(ScalorType)*nob);
   sum_judge.init (nob, NThreadForSum);
   checkCUDAError ("NeighborList::init judge build allocations");
+#ifndef COORD_IN_ONE_VEC
   judgeRebuild_backupCoord
       <<<atomGridDim, myBlockDim>>> (sys.ddata.numAtom, sys.ddata.coordx, backupCoordx);
   judgeRebuild_backupCoord
       <<<atomGridDim, myBlockDim>>> (sys.ddata.numAtom, sys.ddata.coordy, backupCoordy);
   judgeRebuild_backupCoord
       <<<atomGridDim, myBlockDim>>> (sys.ddata.numAtom, sys.ddata.coordz, backupCoordz);
+#else
+  cpyProperty <<<atomGridDim, myBlockDim>>> (
+      backupCoord, sys.ddata.coord, sys.ddata.numAtom);
+#endif
   checkCUDAError ("NeighborList::init backup coords");
   malloced = true;
 
@@ -203,7 +228,11 @@ void NeighborList::init (const MDSystem & sys,
   sharednbForceTable = true;
   buildDeviceNeighborList_DeviceCellList_sbuffSize =
       sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
+#ifndef COORD_IN_ONE_VEC
       sizeof(ScalorType) * 3 * hroundUp4(myBlockDim.x) +
+#else
+      sizeof(CoordType) * hroundUp4(myBlockDim.x) +
+#endif
       sizeof(TypeType)  *      hroundUp4(myBlockDim.x) +
       sizeof(ForceIndexType) * hroundUp4(nbForceTableLength);
   if (buildDeviceNeighborList_DeviceCellList_sbuffSize >=
@@ -211,7 +240,11 @@ void NeighborList::init (const MDSystem & sys,
     sharednbForceTable = false;
     buildDeviceNeighborList_DeviceCellList_sbuffSize =
 	sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
+#ifndef COORD_IN_ONE_VEC
 	sizeof(ScalorType) * 3 * hroundUp4(myBlockDim.x) +
+#else
+	sizeof(CoordType) * hroundUp4(myBlockDim.x) +
+#endif
 	sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
   }  
   buildDeviceNeighborList_AllPair_sbuffSize =
@@ -227,7 +260,11 @@ void NeighborList::build (const MDSystem & sys,
   normalizeSystem
       <<<atomGridDim, myBlockDim>>> (
 	  sys.box, sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz);
   checkCUDAError ("NeighborList::build, normalize System");
   if (timer != NULL) timer->toc(mdTimeNormalizeSys);
@@ -247,7 +284,11 @@ void NeighborList::build (const MDSystem & sys,
     	<<<atomGridDim, myBlockDim,
 	buildDeviceCellList_step1_sbuffSize>>> (
     	    sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
     	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz, 
+#else
+	    sys.ddata.coord,
+#endif
     	    sys.box, dclist,
 	    err.ptr_de,
 	    err.ptr_dindex, err.ptr_dscalor);
@@ -258,9 +299,13 @@ void NeighborList::build (const MDSystem & sys,
     buildDeviceNeighborList_DeviceCellList 
     	<<<cellGridDim, myBlockDim,
 	buildDeviceNeighborList_DeviceCellList_sbuffSize>>> (
-    	// <<<cellGridDim, myBlockDim>>> (
+	    // <<<cellGridDim, myBlockDim>>> (
     	    sys.ddata.numAtom, 
+#ifndef COORD_IN_ONE_VEC
     	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	    sys.ddata.coord,
+#endif
 	    sys.ddata.type,
 	    sys.box, dclist, dnlist,
 	    nbForceTable, NatomType,
@@ -276,7 +321,11 @@ void NeighborList::build (const MDSystem & sys,
 	<<<atomGridDim, myBlockDim,
 	buildDeviceNeighborList_AllPair_sbuffSize>>>(
 	    sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	    sys.ddata.coord,
+#endif
 	    sys.ddata.type,
 	    sys.box, dnlist,
 	    nbForceTable, NatomType,
@@ -296,7 +345,11 @@ void NeighborList::reBuild (const MDSystem & sys,
   normalizeSystem
       <<<atomGridDim, myBlockDim>>> (
 	  sys.box, sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz);
   checkCUDAError ("NeighborList::rebuild, normalize System");
   if (timer != NULL) timer->toc(mdTimeNormalizeSys);
@@ -325,7 +378,11 @@ void NeighborList::reBuild (const MDSystem & sys,
     	<<<cellGridDim, myBlockDim,
     	buildDeviceCellList_step1_sbuffSize>>> (
     	    sys.ddata.numAtom, 
+#ifndef COORD_IN_ONE_VEC
     	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	    sys.ddata.coord,
+#endif
     	    sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz,
     	    sys.box, dclist, mySendBuff, myTargetBuff,
     	    err.ptr_de, err.ptr_dindex, err.ptr_dscalor);
@@ -342,9 +399,13 @@ void NeighborList::reBuild (const MDSystem & sys,
     buildDeviceNeighborList_DeviceCellList 
     	<<<cellGridDim, myBlockDim,
     	buildDeviceNeighborList_DeviceCellList_sbuffSize>>> (
-    	// <<<cellGridDim, myBlockDim>>>(
+	    // <<<cellGridDim, myBlockDim>>>(
     	    sys.ddata.numAtom, 
-    	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#ifndef COORD_IN_ONE_VEC
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	    sys.ddata.coord,
+#endif
     	    sys.ddata.type,
     	    sys.box, dclist, dnlist,
     	    nbForceTable, NatomType,
@@ -360,7 +421,11 @@ void NeighborList::reBuild (const MDSystem & sys,
 	<<<atomGridDim, myBlockDim,
 	buildDeviceNeighborList_AllPair_sbuffSize>>>(
 	    sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	    sys.ddata.coord,
+#endif
 	    sys.ddata.type,
 	    sys.box, dnlist,
 	    nbForceTable, NatomType,
@@ -392,13 +457,19 @@ bool NeighborList::judgeRebuild (const MDSystem & sys,
       <<<atomGridDim, myBlockDim,
       judgeRebuild_judgeCoord_block_sbuffSize>>> (
   	  sys.ddata.numAtom, sys.box,
+#ifndef COORD_IN_ONE_VEC
   	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
   	  backupCoordx, backupCoordy, backupCoordz,
+#else
+	  sys.ddata.coord,
+	  backupCoord,
+#endif
   	  diffTol2,
   	  sum_judge.getBuff());
   sum_judge.sumBuff (judgeRebuild_tag, 0);	  
   cudaMemcpy (&mytag, judgeRebuild_tag, sizeof(IndexType), cudaMemcpyDeviceToHost);
   if (mytag != 0){
+#ifndef COORD_IN_ONE_VEC
     judgeRebuild_backupCoord
 	<<<atomGridDim, myBlockDim>>> (
 	    sys.ddata.numAtom, sys.ddata.coordx, backupCoordx);
@@ -408,6 +479,10 @@ bool NeighborList::judgeRebuild (const MDSystem & sys,
     judgeRebuild_backupCoord
 	<<<atomGridDim, myBlockDim>>> (
 	    sys.ddata.numAtom, sys.ddata.coordz, backupCoordz);
+#else
+    cpyProperty <<<atomGridDim, myBlockDim>>> (
+	backupCoord, sys.ddata.coord, sys.ddata.numAtom);
+#endif    
     if (timer != NULL) timer->toc(mdTimeJudgeRebuild);
     // fprintf (stderr, "rebuild!\n");
     return true;
@@ -444,6 +519,7 @@ __device__ IndexType shiftedD3toD1 (
 }
 
 
+#ifndef COORD_IN_ONE_VEC
 __global__ void buildDeviceNeighborList_DeviceCellList (
     IndexType numAtom,
     ScalorType * coordx, ScalorType * coordy, ScalorType * coordz,
@@ -934,3 +1010,392 @@ __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
   if (threadIdx.x == 0) judgeRebuild_buff[bid] = (sbuff[0] != 0);
 }
 
+
+
+//////////////////////////////////////////////////
+// coord in one vec
+//////////////////////////////////////////////////
+
+#else
+__global__ void buildDeviceNeighborList_DeviceCellList (
+    IndexType numAtom,
+    CoordType * coord,
+    TypeType * type,
+    RectangularBox box,
+    DeviceCellList clist,
+    DeviceNeighborList nlist,
+    ForceIndexType *nbForceTable,
+    IndexType NatomType,
+    bool sharednbForceTable,
+    mdError_t * ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType bidx, bidy, bidz;
+  D1toD3 (clist, bid, bidx, bidy, bidz);
+  
+  // set number of neighbor to 0
+  IndexType Nneighbor = 0;
+  // load index
+  IndexType ii = getDeviceCellListData (clist, bid, tid);
+  // load iith coordinate // use texturefetch instead
+  CoordType ref;
+  TypeType reftype;
+  if (ii != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+    reftype = type[ii];
+#else
+    ref = tex1Dfetch (global_texRef_neighbor_coord, ii);
+    reftype = tex1Dfetch(global_texRef_neighbor_type, ii);
+#endif
+  }
+  ScalorType rlist = clist.rlist;
+
+  // the target index and coordinates are shared
+
+  extern __shared__ volatile char pub_sbuff[];
+  
+  volatile IndexType * targetIndexes =
+      (volatile IndexType *) pub_sbuff;
+  CoordType * target =
+      (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+  volatile ForceIndexType * nbForceTableBuff = NULL;
+
+  IndexType nbForceTableLength = AtomNBForceTable::dCalDataLength(NatomType);
+  if (sharednbForceTable){
+    nbForceTableBuff = (volatile ForceIndexType *) &targettype[roundUp4(blockDim.x)];
+    cpyGlobalDataToSharedBuff (nbForceTable, nbForceTableBuff, nbForceTableLength);
+  }
+  __syncthreads();
+
+  // __shared__ volatile  IndexType  targetIndexes [MaxThreadsPerBlock];
+  // __shared__ volatile CoordType target [MaxThreadsPerBlock];
+  // __shared__ volatile  TypeType   targettype    [MaxThreadsPerBlock];
+  // __shared__ volatile  ForceIndexType nbForceTableBuff [MaxNBForceTableBuffSize];
+
+  // IndexType nbForceTableLength = AtomNBForceTable::dCalDataLength(NatomType);
+  // if (sharednbForceTable){
+  //   cpyGlobalDataToSharedBuff (nbForceTable, nbForceTableBuff, nbForceTableLength);
+  // }
+  // __syncthreads();
+  
+  int upperx, lowerx;
+  int uppery, lowery;
+  int upperz, lowerz;
+  (clist.NCell.x != 1) ? (upperx =  1) : (upperx = 0);
+  (clist.NCell.x != 1) ? (lowerx = -1) : (lowerx = 0);
+  (clist.NCell.y != 1) ? (uppery =  1) : (uppery = 0);
+  (clist.NCell.y != 1) ? (lowery = -1) : (lowery = 0);
+  (clist.NCell.z != 1) ? (upperz =  1) : (upperz = 0);
+  (clist.NCell.z != 1) ? (lowerz = -1) : (lowerz = 0);
+  
+  // loop over 27 neighbor cells
+  for (int di = lowerx; di <= upperx; ++di){
+    for (int dj = lowery; dj <= uppery; ++dj){
+      for (int dk = lowerz; dk <= upperz; ++dk){
+	__syncthreads();
+	// the shift value of a cell is pre-computed
+	ScalorType xshift, yshift, zshift;
+	int nci = di + bidx;
+	int ncj = dj + bidy;
+	int nck = dk + bidz;
+	IndexType targetCellIdx = shiftedD3toD1 (clist, box, 
+						 nci, ncj, nck, 
+						 &xshift, &yshift, &zshift);
+	// load target index and coordinates form global memary
+	IndexType tmp = (targetIndexes[tid] = 
+			 getDeviceCellListData(clist, targetCellIdx, tid));
+	if (tmp != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+	  target[tid] = coord[tmp];
+	  targettype[tid] = type[tmp];
+#else
+	  target[tid] = tex1Dfetch(global_texRef_neighbor_coord, tmp);
+	  targettype[tid] = tex1Dfetch(global_texRef_neighbor_type, tmp);
+#endif
+	}
+	__syncthreads();
+	// find neighbor
+	if (ii != MaxIndexValue){
+	  for (IndexType jj = 0; jj < blockDim.x; ++jj){
+	    if (targetIndexes[jj] == MaxIndexValue) break;
+	    ScalorType diffx = target[jj].x - xshift - ref.x;
+	    ScalorType diffy = target[jj].y - yshift - ref.y;
+	    ScalorType diffz = target[jj].z - zshift - ref.z;
+	    if (clist.NCell.x == 1) shortestImage (box, &diffx);
+	    if (clist.NCell.y == 1) shortestImage (box, &diffy);
+	    if (clist.NCell.z == 1) shortestImage (box, &diffz);
+	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist*rlist &&
+		targetIndexes[jj] != ii){
+	      ForceIndexType fidx;
+	      if (sharednbForceTable){
+		fidx = AtomNBForceTable::calForceIndex (
+		    nbForceTableBuff, NatomType, reftype, targettype[jj]);
+	      }
+	      else {
+		fidx = AtomNBForceTable::calForceIndex (
+		    nbForceTable, NatomType, reftype, targettype[jj]);
+	      }
+	      if (fidx != mdForceNBNull) {
+		IndexType listIdx = Nneighbor * nlist.stride + ii;
+		nlist.data[listIdx] = targetIndexes[jj];
+		nlist.forceIndex[listIdx] = fidx;
+		Nneighbor ++;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+  if (ii != MaxIndexValue) {
+    nlist.Nneighbor[ii] = Nneighbor;
+    if (Nneighbor > nlist.listLength && ptr_de != NULL){
+      *ptr_de = mdErrorShortNeighborList;
+    }
+  }
+}
+
+
+
+__global__ void buildDeviceCellList_step1 (IndexType numAtom,
+					   CoordType * coord,
+					   IntScalorType * coordNoix,
+					   IntScalorType * coordNoiy,
+					   IntScalorType * coordNoiz,
+					   RectangularBox box,
+					   DeviceCellList clist,
+					   IndexType * sendBuff,
+					   IndexType * targetBuff,
+					   mdError_t * ptr_de,
+					   IndexType * erridx,
+					   ScalorType * errsrc)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  extern __shared__ volatile IndexType sbuff[];
+  volatile IndexType * originalData = (volatile IndexType *) sbuff;
+  volatile IndexType * targetCellid = (volatile IndexType *) &originalData[blockDim.x];
+  
+  // __shared__ volatile  IndexType originalData[MaxThreadsPerBlock];
+  // __shared__ volatile  IndexType targetCellid[MaxThreadsPerBlock];
+  
+  // copy data from cell list
+  originalData[tid] = clist.data[bid*clist.stride + tid];
+  IndexType originalNumber = clist.numbers[bid];
+
+  // calculate the target cell
+  if (originalData[tid] != MaxIndexValue){
+    IndexType targetCelli, targetCellj, targetCellk;
+    IndexType thisid = originalData[tid];
+#ifdef COMPILE_NO_TEX
+    ref = coord[thisid];
+#else
+    CoordType ref (tex1Dfetch(global_texRef_neighbor_coord, thisid));
+#endif
+    targetCelli = IndexType(ref.x * box.sizei.x * ScalorType (clist.NCell.x));
+    targetCellj = IndexType(ref.y * box.sizei.y * ScalorType (clist.NCell.y));
+    targetCellk = IndexType(ref.z * box.sizei.z * ScalorType (clist.NCell.z));
+    if (targetCelli == clist.NCell.x){
+      targetCelli -= clist.NCell.x;
+      coord[thisid].x -= box.size.x;
+      coordNoix[thisid] ++;
+    }
+    if (targetCellj == clist.NCell.y){
+      targetCellj -= clist.NCell.y;
+      coord[thisid].y -= box.size.y;
+      coordNoiy[thisid] ++;
+    }
+    if (targetCellk == clist.NCell.z){
+      targetCellk -= clist.NCell.z;
+      coord[thisid].z -= box.size.z;
+      coordNoiz[thisid] ++;
+    }
+    targetCellid[tid] = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
+    if (ptr_de != NULL && 
+	(targetCelli >= clist.NCell.x || 
+	 targetCellj >= clist.NCell.y || 
+	 targetCellk >= clist.NCell.z)){
+      *ptr_de = mdErrorOverFlowCellIdx;
+      if (targetCelli >= IndexType(clist.NCell.x)){
+	*erridx = targetCelli;
+	*errsrc = ref.x;
+	return;
+      }
+      if (targetCellj >= IndexType(clist.NCell.y)){
+	*erridx = targetCellj;
+	*errsrc = ref.y;
+	return;
+      }
+      if (targetCellk >= IndexType(clist.NCell.z)){
+	*erridx = targetCellk;
+	*errsrc = ref.z;
+	return;
+      }      
+    }
+  }
+  else {
+    targetCellid[tid] = MaxIndexValue;
+  }
+
+  // mark particles to be send 
+  IndexType mark = MaxIndexValue - (MaxIndexValue >> 1);
+  if (tid < originalNumber && targetCellid[tid] != bid){
+    originalData[tid] += mark;
+  }
+  
+  // head sort
+  IndexType total1 = headSort (originalData, targetCellid);
+  IndexType total0 = blockDim.x - total1;
+  
+  // unmark and copy to send buff
+  if (tid < originalNumber && targetCellid[tid] != bid){
+    sendBuff  [bid*clist.stride + tid - total0] = originalData[tid] - mark;
+    targetBuff[bid*clist.stride + tid - total0] = targetCellid[tid];
+    originalData[tid] = MaxIndexValue;
+  }
+  __syncthreads();
+  
+  // modify cell list
+  clist.data[bid*clist.stride + tid] = originalData[tid];
+  if (tid == 0) clist.numbers[bid] = total0;
+}
+
+
+
+__global__ void buildDeviceCellList_initBuff (IndexType * sendBuff,
+					      IndexType * targetBuff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  sendBuff[ii] = MaxIndexValue;
+  targetBuff[ii] = 0;
+}
+__global__ void buildDeviceCellList_clearBuff (IndexType * sendBuff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  sendBuff[ii] = MaxIndexValue;
+}
+
+  
+  
+__global__ void buildDeviceCellList_step2 (RectangularBox box,
+					   DeviceCellList clist,
+					   IndexType * sendBuff,
+					   IndexType * targetBuff,
+					   IndexType bitDeepth,
+					   mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType thisid;
+  IndexType ii = 0;
+  IndexType buffPosi;
+  if (tid == 0){
+    while ((thisid = sendBuff[buffPosi = (bid*clist.stride + ii)]) != MaxIndexValue){
+      IndexType cellid = targetBuff[buffPosi];
+      IndexType tailIdx = atomicInc(&clist.numbers[cellid], blockDim.x);
+      if (tailIdx >= blockDim.x&& ptr_de != NULL) {
+	*ptr_de = mdErrorShortCellList;
+	return;
+      } 
+      clist.data[cellid * clist.stride + tailIdx] = thisid;
+      sendBuff[buffPosi] = MaxIndexValue;
+      ii ++;
+    }
+  }
+}
+
+__global__ void judgeRebuild_backupCoord (const IndexType numAtom,
+					  const ScalorType * from,
+					  ScalorType * to)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    to[ii] = from[ii];
+  }
+}
+
+
+__device__ IndexType judgeRebuild_counter = 0;
+__global__ void judgeRebuild_judgeCoord (const IndexType numAtom,
+					 const RectangularBox box,
+					 const CoordType * coord,
+					 const CoordType * backupCoord,
+					 const ScalorType diffTol2,
+					 ScalorType * judgeRebuild_buff,
+					 IndexType * tag)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  __shared__ volatile ScalorType mydiff2[MaxThreadsPerBlock * 2];
+
+  ScalorType dx=0.f, dy=0.f, dz=0.f;
+  if (ii < numAtom){
+    dx = coord[ii].x - backupCoord[ii].x;
+    dy = coord[ii].y - backupCoord[ii].y;
+    dz = coord[ii].z - backupCoord[ii].z;
+    shortestImage (box, &dx, &dy, &dz);
+  }
+  mydiff2[threadIdx.x] = dx*dx + dy*dy + dz*dz;
+  mydiff2[threadIdx.x + blockDim.x] = 0.f;
+  __syncthreads();
+  IndexType num = ((bid+1) * blockDim.x > numAtom) ? 
+      (blockDim.x - ((bid+1) * blockDim.x) + numAtom) : blockDim.x;
+  ScalorType partialMax = maxVectorBlockBuffer (mydiff2, num);
+  ScalorType maxDiff2;
+  
+  if (maxPartialMax (partialMax, judgeRebuild_buff, &judgeRebuild_counter, &maxDiff2)){
+    if (maxDiff2 > diffTol2){
+      *tag = 1;
+    }
+    else {
+      *tag = 0;
+    }
+  }
+}
+
+
+__global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
+					       const RectangularBox box,
+					       const CoordType * coord,
+					       const CoordType * backupCoord,
+					       const ScalorType diffTol2,
+					       IndexType * judgeRebuild_buff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  extern __shared__ volatile IndexType sbuff[];  
+  // __shared__ volatile IndexType sbuff [MaxThreadsPerBlock];
+
+  ScalorType dx=0.f, dy=0.f, dz=0.f;
+  if (ii < numAtom){
+    dx = coord[ii].x - backupCoord[ii].x;
+    dy = coord[ii].y - backupCoord[ii].y;
+    dz = coord[ii].z - backupCoord[ii].z;
+    shortestImage (box, &dx, &dy, &dz);
+  }
+
+  if (ii < numAtom){
+    sbuff[threadIdx.x] = ((dx*dx + dy*dy + dz*dz) > diffTol2);
+  }
+  else {
+    sbuff[threadIdx.x] = 0;
+  }
+  __syncthreads();
+  sumVectorBlockBuffer_2 (sbuff);
+  if (threadIdx.x == 0) judgeRebuild_buff[bid] = (sbuff[0] != 0);
+}
+
+#endif

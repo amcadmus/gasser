@@ -1,9 +1,12 @@
 #include "InteractionEngine_interface.h"
 
+#ifndef COORD_IN_ONE_VEC
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_interaction_coordx;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_interaction_coordy;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_interaction_coordz;
-// texture<TypeType, 1, cudaReadModeElementType> global_texRef_interaction_type;
+#else
+texture<CoordType,  1, cudaReadModeElementType> global_texRef_interaction_coord;
+#endif
 
 __constant__ mdNBInteraction_t nbForceType [MaxNumberNBForce];
 __constant__ ScalorType nbForceParam       [MaxNumberNBForceParam];
@@ -26,24 +29,17 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
   }
   atomGridDim = toGridDim (nob);
 
-  size_t sizescalor = sizeof(ScalorType)*sys.ddata.numMem;
   // size_t sizetype = sizeof(TypeType)*sys.ddata.numMem;
+#ifndef COORD_IN_ONE_VEC
+  size_t sizescalor = sizeof(ScalorType)*sys.ddata.numMem;
   cudaBindTexture(0, global_texRef_interaction_coordx, sys.ddata.coordx, sizescalor);
   cudaBindTexture(0, global_texRef_interaction_coordy, sys.ddata.coordy, sizescalor);
   cudaBindTexture(0, global_texRef_interaction_coordz, sys.ddata.coordz, sizescalor);
-  // cudaBindTexture(0, global_texRef_interaction_type, sys.ddata.type, sizetype);
+#else
+  cudaBindTexture(0, global_texRef_interaction_coord, sys.ddata.coord,
+		  sizeof(CoordType) * sys.ddata.numMem);
+#endif
   checkCUDAError ("InteractionEngine::init, bind texture");
-
-  // init statistical buff
-  // cudaMalloc((void**)&(statistic_nb_buff0), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_nb_buff1), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_nb_buff2), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_nb_buff3), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_b_buff0), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_b_buff1), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_b_buff2), sizeof(ScalorType) * nob);
-  // cudaMalloc((void**)&(statistic_b_buff3), sizeof(ScalorType) * nob);
-  // checkCUDAError ("InteractionEngine::init, allocate for statistic buff");
   
   // init sum vectors
   sum_nb_p.init (sys.ddata.numAtom, NThreadForSum);
@@ -114,9 +110,13 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
 
 InteractionEngine_interface::~InteractionEngine_interface()
 {
+#ifndef COORD_IN_ONE_VEC
   cudaUnbindTexture(global_texRef_interaction_coordx);
   cudaUnbindTexture(global_texRef_interaction_coordy);
   cudaUnbindTexture(global_texRef_interaction_coordz);
+#else
+  cudaUnbindTexture(global_texRef_interaction_coord);
+#endif
   // cudaUnbindTexture(global_texRef_interaction_type);
 
   // cudaFree(statistic_nb_buff0);
@@ -153,7 +153,11 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
   calNonBondedInteraction
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	  sys.ddata.type, 
 	  sys.box, nlist.dnlist,
@@ -167,7 +171,11 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
   calBondInteraction
       <<<atomGridDim, myBlockDim>>> (
   	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
   	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
   	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
   	  sys.box, sys.bdlist.dbdlist);
   checkCUDAError ("InteractionEngine::applyInteraction bonded");
@@ -185,7 +193,11 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
   calNonBondedInteraction
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	  sys.ddata.type, 
 	  sys.box, nlist.dnlist
@@ -206,7 +218,11 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
       <<<atomGridDim, myBlockDim,
       calBondInteraction_sbuffSize>>> (
 	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
 	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
 	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	  sys.box, sys.bdlist.dbdlist
 	  ,
@@ -255,6 +271,8 @@ __global__ void clearForce (const IndexType numAtom,
   }
 }
 
+
+#ifndef COORD_IN_ONE_VEC
 __global__ void calNonBondedInteraction (const IndexType numAtom,
 					 const ScalorType * coordx,
 					 const ScalorType * coordy, 
@@ -687,3 +705,284 @@ __global__ void calBondInteraction (const IndexType numAtom,
   //   stddata[mdStatisticVirialZZ] += tmpVzz * 0.5f;
   // }
 }
+
+
+////////////////////////////////////////////////////
+// coord in one vec
+////////////////////////////////////////////////////
+#else
+__global__ void calNonBondedInteraction (const IndexType numAtom,
+					 const CoordType * coord,
+					 ScalorType * forcx,
+					 ScalorType * forcy, 
+					 ScalorType * forcz,
+					 const TypeType * type,
+					 const RectangularBox box,
+					 const DeviceNeighborList nlist,
+					 mdError_t * ptr_de,
+					 IndexType * errorIndex,
+					 ScalorType * errorScalor)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  
+  if (ii < numAtom) {
+#ifdef COMPILE_NO_TEX
+    CoordType ref (coord[ii]);
+#else
+    CoordType ref (tex1Dfetch(global_texRef_interaction_coord, ii));
+#endif
+    IndexType myNumNei = nlist.Nneighbor[ii];
+    for (IndexType jj = 0; jj < myNumNei; ++jj){
+      IndexType nlistPosi = jj * nlist.stride + ii;
+      IndexType targetIdx   = nlist.data [nlistPosi];
+      ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
+      CoordType target;
+#ifdef COMPILE_NO_TEX
+      target = coord[targetIdx];
+#else
+      target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+#endif
+      ScalorType diffx, diffy, diffz;
+      diffx = target.x - ref.x;
+      diffy = target.y - ref.y;
+      diffz = target.z - ref.z;
+      shortestImage (box, &diffx, &diffy, &diffz);
+      ScalorType fx(0.f), fy(0.f), fz(0.f);
+      ScalorType * forceParam;
+      NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
+				&forceParam);
+      nbForce (nbForceType[nbForceIndex], forceParam,
+      	       diffx, diffy, diffz, 
+      	       &fx, &fy, &fz);
+      fsumx -= fx;
+      fsumy -= fy;
+      fsumz -= fz;
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+}
+
+
+__global__ void calNonBondedInteraction (const IndexType numAtom,
+					 const CoordType * coord,
+					 ScalorType * forcx,
+					 ScalorType * forcy, 
+					 ScalorType * forcz,
+					 const TypeType * type,
+					 const RectangularBox box,
+					 const DeviceNeighborList nlist,
+					 ScalorType * statistic_nb_buff0,
+					 ScalorType * statistic_nb_buff1,
+					 ScalorType * statistic_nb_buff2,
+					 ScalorType * statistic_nb_buff3,
+					 mdError_t * ptr_de,
+					 IndexType * errorIndex,
+					 ScalorType * errorScalor)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+  if (ii < numAtom) {
+    CoordType ref;
+#ifdef COMPILE_NO_TEX    
+    ref = coord[ii];
+#else
+    ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+#endif
+    IndexType myNumNei = nlist.Nneighbor[ii];
+    for (IndexType jj = 0; jj < myNumNei; ++jj){
+      IndexType nlistPosi = jj * nlist.stride + ii;
+      IndexType targetIdx = nlist.data[nlistPosi];
+      ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
+      CoordType target;
+#ifdef COMPILE_NO_TEX    
+      target = coord[targetIdx];
+#else
+      target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+#endif
+      ScalorType diffx, diffy, diffz;
+      diffx = target.x - ref.x;
+      diffy = target.y - ref.y;
+      diffz = target.z - ref.z;
+      shortestImage (box, &diffx, &diffy, &diffz);
+      ScalorType fx(0.f), fy(0.f), fz(0.f);
+      ScalorType * forceParam;
+      NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
+      				&forceParam);
+      ScalorType dp;
+
+      nbForcePoten (nbForceType[nbForceIndex],
+      		    forceParam,
+      		    diffx, diffy, diffz, 
+      		    &fx, &fy, &fz, &dp);
+      myPoten += dp;
+      myVxx -= fx * diffx;
+      myVyy -= fy * diffy;
+      myVzz -= fz * diffz;
+      fsumx -= fx;
+      fsumy -= fy;
+      fsumz -= fz;
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+  
+  if (ii < numAtom){
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }  
+}
+
+
+__global__ void calBondInteraction (const IndexType numAtom,
+				    const CoordType * coord,
+				    ScalorType * forcx,
+				    ScalorType * forcy, 
+				    ScalorType * forcz,
+				    const RectangularBox box,
+				    const DeviceBondList bdlist)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  if (ii >= numAtom) return;
+  CoordType ref;
+#ifndef COMPILE_NO_TEX
+  ref = coord[ii];
+#else
+  ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+#endif  
+      
+  IndexType myNumBond = bdlist.Nbond[ii];
+  
+  for (IndexType jj = 0; jj < bdlist.listLength; ++jj){
+    if (jj == myNumBond) break;
+    IndexType targetIdx = bdlist.data[jj * bdlist.stride + ii];
+    CoordType target;
+#ifndef COMPILE_NO_TEX
+    target = coord[targetIdx];
+#else
+    target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+#endif 
+    ScalorType diffx, diffy, diffz;
+    diffx = target.x - ref.x;
+    diffy = target.y - ref.y;
+    diffz = target.z - ref.z;
+    shortestImage (box, &diffx, &diffy, &diffz);
+    ScalorType fx, fy, fz;
+    ForceIndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
+    bondForce (bondForceType[bondFindex],
+	       &bondForceParam[bondForceParamPosi[bondFindex]],
+	       diffx, diffy, diffz, &fx, &fy, &fz);
+    fsumx -= fx;
+    fsumy -= fy;
+    fsumz -= fz;
+  }
+  forcx[ii] += fsumx;
+  forcy[ii] += fsumy;
+  forcz[ii] += fsumz;
+}
+
+
+__global__ void calBondInteraction (const IndexType numAtom,
+				    const CoordType * coord,
+				    ScalorType * forcx,
+				    ScalorType * forcy, 
+				    ScalorType * forcz,
+				    const RectangularBox box,
+				    const DeviceBondList bdlist,
+				    ScalorType * statistic_b_buff0,
+				    ScalorType * statistic_b_buff1,
+				    ScalorType * statistic_b_buff2,
+				    ScalorType * statistic_b_buff3,
+				    mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  extern __shared__ volatile ScalorType buff[];
+  buff[tid] = 0.f;
+  __syncthreads();
+  
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+  if (ii < numAtom) {
+    CoordType ref;
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+#else 
+    ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+#endif
+    IndexType myNumBond = bdlist.Nbond[ii];
+    for (IndexType jj = 0; jj < bdlist.listLength; ++jj){
+      if (jj == myNumBond) break;
+      IndexType targetIdx = bdlist.data[jj * bdlist.stride + ii];
+      CoordType target;
+#ifdef COMPILE_NO_TEX
+      target = coord[targetIdx];
+#else
+      target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+#endif
+      ScalorType diffx, diffy, diffz;
+      diffx = target.x - ref.x;
+      diffy = target.y - ref.y;
+      diffz = target.z - ref.z;
+      shortestImage (box, &diffx, &diffy, &diffz);
+      ScalorType fx, fy, fz;
+      ForceIndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
+      ScalorType dp;
+      bondForcePoten (bondForceType[bondFindex],
+		      &bondForceParam[bondForceParamPosi[bondFindex]],
+		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
+      myPoten += dp;
+      myVxx -= fx * diffx;
+      myVyy -= fy * diffy;
+      myVzz -= fz * diffz;
+      fsumx -= fx;
+      fsumy -= fy;
+      fsumz -= fz;
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+
+  buff[tid] = myPoten * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVxx * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff1[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVyy * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff2[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVzz * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
+  __syncthreads();
+}
+#endif

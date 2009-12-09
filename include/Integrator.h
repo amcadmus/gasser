@@ -92,9 +92,13 @@ __global__ void leapFrogStepV (const IndexType numAtom,
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void velocityVerlet_part1 (const IndexType numAtom,
 				      const ScalorType * massi,
+#ifndef COORD_IN_ONE_VEC
 				      ScalorType * coordx,
 				      ScalorType * coordy, 
 				      ScalorType * coordz,
+#else
+				      CoordType * coord,
+#endif
 				      ScalorType * velox,
 				      ScalorType * veloy, 
 				      ScalorType * veloz,
