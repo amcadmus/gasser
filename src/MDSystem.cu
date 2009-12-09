@@ -278,6 +278,16 @@ __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * dd
   checkCUDAError ("cpyHostMDDataToDevice other");
 }
 
+#ifdef COORD_IN_ONE_VEC
+__global__ void deviceCpyTypeToCoordW (CoordType * coord,
+				       const TypeType * type,
+				       const IndexType N)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < N) coord[ii].w = type[ii];
+}
+#endif
 
 __host__ void initDeviceMDData (const HostMDData * hdata, DeviceMDData * ddata)
 {
@@ -325,8 +335,20 @@ __host__ void initDeviceMDData (const HostMDData * hdata, DeviceMDData * ddata)
   
   /* bindTextureOnDeviceMDData (ddata); */
   cpyHostMDDataToDevice (hdata, ddata);
-
-// cudaBindTexture(0, ddata->texReftype, ddata->type, ddata->numMem);
+  
+#ifdef COORD_IN_ONE_VEC
+  IndexType nob ;
+  dim3 myBlockDim;
+  myBlockDim.x = 64;
+  if (ddata->numAtom % myBlockDim.x == 0){
+    nob = ddata->numAtom / myBlockDim.x;
+  } else {
+    nob = ddata->numAtom / myBlockDim.x + 1;
+  }
+  dim3 atomGridDim = toGridDim (nob);
+  deviceCpyTypeToCoordW<<<atomGridDim, myBlockDim>>> (
+      ddata->coord, ddata->type, ddata->numAtom);
+#endif
 }
 
 

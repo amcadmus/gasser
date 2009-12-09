@@ -81,6 +81,11 @@ public:
 
 __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * ddata);
 __host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hdata);
+#ifdef COORD_IN_ONE_VEC
+__global__ void deviceCpyTypeToCoordW (CoordType * coord,
+				       const TypeType * type,
+				       const IndexType N);
+#endif
 
 __host__ void mallocHostMDData (IndexType numAtom, IndexType expectedMaxNumAtom,
 				HostMDData * hdata);
