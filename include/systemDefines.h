@@ -27,6 +27,8 @@ typedef int		TypeType;
 #define SystemSharedBuffSize		16384
 #define GlobalFunctionParamSizeLimit	256
 
+#define M_PIF				3.14159265f
+
 #ifndef CPP_FILE
 typedef float4		CoordType;
 typedef float3		VectorType;

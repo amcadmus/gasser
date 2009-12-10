@@ -102,6 +102,7 @@ int main(int argc, char * argv[])
       nlist.reBuild(sys, &timer);
     }
     if (reshFeq != 0 && i%reshFeq == 0){
+      tfremover.remove (sys, &timer);
       resh.shuffleSystem (sys, nlist, &timer);
     }
     if ((i+1)%10 == 0){

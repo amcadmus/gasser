@@ -736,9 +736,9 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 #else
     CoordType ref (tex1Dfetch(global_texRef_interaction_coord, ii));
 #endif
-    IndexType myNumNei = nlist.Nneighbor[ii];
-    for (IndexType jj = 0; jj < myNumNei; ++jj){
-      IndexType nlistPosi = jj * nlist.stride + ii;
+    for (IndexType jj = 0, nlistPosi = ii;
+	 jj < nlist.Nneighbor[ii];
+	 ++jj, nlistPosi += nlist.stride){
       IndexType targetIdx   = nlist.data [nlistPosi];
       ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
       CoordType target;
@@ -801,9 +801,9 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 #else
     ref = tex1Dfetch(global_texRef_interaction_coord, ii);
 #endif
-    IndexType myNumNei = nlist.Nneighbor[ii];
-    for (IndexType jj = 0; jj < myNumNei; ++jj){
-      IndexType nlistPosi = jj * nlist.stride + ii;
+    for (IndexType jj = 0, nlistPosi = ii;
+	 jj < nlist.Nneighbor[ii];
+	 ++jj, nlistPosi += nlist.stride){
       IndexType targetIdx = nlist.data[nlistPosi];
       ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
       CoordType target;

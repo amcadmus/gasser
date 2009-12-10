@@ -84,7 +84,7 @@ int main(int argc, char * argv[])
   // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
   // 		     RectangularBoxGeometry::mdRectBoxDirectionY |
   // 		     RectangularBoxGeometry::mdRectBoxDirectionZ);;
-  NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
+  NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 40,
   		     RectangularBoxGeometry::mdRectBoxDirectionX |
   		     RectangularBoxGeometry::mdRectBoxDirectionY);
   
