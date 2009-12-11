@@ -705,30 +705,80 @@ __device__ void CosTail::force (const ScalorType * param,
 				ScalorType *fz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  ScalorType fscalor = 0.f;
+  ScalorType ri = 1.f / sqrtf (dr2);
+
   if (dr2 <= param[rc] * param[rc]){
-    ScalorType ri2 = __frcp_rn(dr2);
-    ScalorType sri2 = param[bv] * param[bv] * ri2;
+    ScalorType sri = param[bv] * ri;
+    ScalorType sri2 = sri * sri;
     ScalorType sri6 = sri2*sri2*sri2;
-    ScalorType scalor = 4.f * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
-    *fx = diffx * scalor;
-    *fy = diffy * scalor;
-    *fz = diffz * scalor;
+    fscalor = 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
   }
   else if (dr2 < param[rcut] * param[rcut]) {
-    ScalorType r = __fsqrt_rn(dr2);
-    ScalorType ri = __frcp_rn(r);
-    ScalorType term = 0.5f * M_PIF * (r - param[rc]) * param[wci];
-    ScalorType cost = __cosf(term);
-    // ScalorType sint = __fsqrt_rn (1.f - cost*cost);
-    ScalorType sint = __sinf(term);
-    ScalorType scalor = - param[epsilon] * M_PIF * param[wci] * cost * sint * ri;
-    *fx = diffx * scalor;
-    *fy = diffy * scalor;
-    *fz = diffz * scalor;
+    ScalorType tmp = M_PIF * param[wci];
+    ScalorType term = 0.5f *  (dr2 * ri - param[rc]) * tmp;
+    fscalor = - param[epsilon] * tmp *
+    	__cosf(term) * __sinf(term) * ri;
   }
-  else {
-    *fx = *fy = *fz = 0.f;
-  }
+
+  *fx = diffx * fscalor;
+  *fy = diffy * fscalor;
+  *fz = diffz * fscalor;
+
+
+// ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  // ScalorType boolLJ = 0.f, boolCos = 0.f;
+  // if (dr2 <= param[rc] * param[rc]){
+  //   boolLJ = 1.f;
+  // }
+  // else if (dr2 < param[rcut] * param[rcut]) {
+  //   boolCos = 1.f;
+  // }
+  // ScalorType ri = 1.f / sqrtf (dr2);
+
+  // if (boolLJ == 1.f){
+  //   ScalorType sri = param[bv] * ri;
+  //   ScalorType sri2 = sri * sri;
+  //   ScalorType sri6 = sri2*sri2*sri2;
+  //   boolLJ *= 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+  // }
+  // if (boolCos == 1.f){
+  //   ScalorType term = 0.5f * M_PIF * (dr2 * ri - param[rc]) * param[wci];
+  //   boolCos *= - param[epsilon] * M_PIF * param[wci] *
+  // 	__cosf(term) * __sinf(term) * ri;
+  // }
+  
+  // boolLJ += boolCos;
+  // *fx = diffx * boolLJ;
+  // *fy = diffy * boolLJ;
+  // *fz = diffz * boolLJ;
+
+
+// ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  // if (dr2 <= param[rc] * param[rc]){
+  //   ScalorType ri2 = __frcp_rn(dr2);
+  //   ScalorType sri2 = param[bv] * param[bv] * ri2;
+  //   ScalorType sri6 = sri2*sri2*sri2;
+  //   ScalorType scalor = 4.f * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
+  //   *fx = diffx * scalor;
+  //   *fy = diffy * scalor;
+  //   *fz = diffz * scalor;
+  // }
+  // else if (dr2 < param[rcut] * param[rcut]) {
+  //   ScalorType r = __fsqrt_rn(dr2);
+  //   ScalorType ri = __frcp_rn(r);
+  //   ScalorType term = 0.5f * M_PIF * (r - param[rc]) * param[wci];
+  //   ScalorType cost = __cosf(term);
+  //   // ScalorType sint = __fsqrt_rn (1.f - cost*cost);
+  //   ScalorType sint = __sinf(term);
+  //   ScalorType scalor = - param[epsilon] * M_PIF * param[wci] * cost * sint * ri;
+  //   *fx = diffx * scalor;
+  //   *fy = diffy * scalor;
+  //   *fz = diffz * scalor;
+  // }
+  // else {
+  //   *fx = *fy = *fz = 0.f;
+  // }
 }
   
 __device__ ScalorType CosTail::forcePoten (const ScalorType * param,
@@ -740,39 +790,67 @@ __device__ ScalorType CosTail::forcePoten (const ScalorType * param,
 					   ScalorType *fz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  ScalorType rvalue = 0.f;
+  ScalorType fscalor = 0.f;
+  ScalorType ri = 1.f / sqrtf (dr2);
+
   if (dr2 <= param[rc] * param[rc]){
-    ScalorType ri2 = __frcp_rn(dr2);
-    ScalorType sri2 = param[bv] * param[bv] * ri2;
+    ScalorType sri = param[bv] * ri;
+    ScalorType sri2 = sri * sri;
     ScalorType sri6 = sri2*sri2*sri2;
-    ScalorType scalor = 4.f * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
-    *fx = diffx * scalor;
-    *fy = diffy * scalor;
-    *fz = diffz * scalor;
-    ScalorType tmp = 4.f * param[epsilon] * (sri6*sri6 - sri6);
-    if (param[wc] == 0.f){
-      return tmp + param[epsilon];
-    }
-    else {
-      return tmp;
-    }
+    fscalor = 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+    rvalue = 4.f * param[epsilon] * (sri6*sri6 - sri6);
+    if (param[wc] == 0.f) rvalue += param[epsilon];
+    else rvalue += 0.f;
   }
   else if (dr2 < param[rcut] * param[rcut]) {
-    ScalorType r = __fsqrt_rn(dr2);
-    ScalorType ri = __frcp_rn(r);
-    ScalorType term = 0.5f * M_PIF * (r - param[rc]) * param[wci];
+    ScalorType term = 0.5f * M_PIF * (dr2 * ri - param[rc]) * param[wci];
     ScalorType cost = __cosf(term);
-    // ScalorType sint = __fsqrt_rn (1.f - cost*cost);
-    ScalorType sint = __sinf(term);
-    ScalorType scalor = - param[epsilon] * M_PIF * param[wci] * cost * sint * ri;
-    *fx = diffx * scalor;
-    *fy = diffy * scalor;
-    *fz = diffz * scalor;
-    return - param[epsilon] * cost * cost;
+    fscalor = - param[epsilon] * M_PIF * param[wci] *
+	cost * __sinf(term) * ri;
+    rvalue = - param[epsilon] * cost * cost;
   }
-  else {
-    *fx = *fy = *fz = 0.f;
-    return 0.f;
-  }
+
+  *fx = diffx * fscalor;
+  *fy = diffy * fscalor;
+  *fz = diffz * fscalor;
+
+  return rvalue;
+  
+  // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  // if (dr2 <= param[rc] * param[rc]){
+  //   ScalorType ri2 = __frcp_rn(dr2);
+  //   ScalorType sri2 = param[bv] * param[bv] * ri2;
+  //   ScalorType sri6 = sri2*sri2*sri2;
+  //   ScalorType scalor = 4.f * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
+  //   *fx = diffx * scalor;
+  //   *fy = diffy * scalor;
+  //   *fz = diffz * scalor;
+  //   ScalorType tmp = 4.f * param[epsilon] * (sri6*sri6 - sri6);
+  //   if (param[wc] == 0.f){
+  //     return tmp + param[epsilon];
+  //   }
+  //   else {
+  //     return tmp;
+  //   }
+  // }
+  // else if (dr2 < param[rcut] * param[rcut]) {
+  //   ScalorType r = __fsqrt_rn(dr2);
+  //   ScalorType ri = __frcp_rn(r);
+  //   ScalorType term = 0.5f * M_PIF * (r - param[rc]) * param[wci];
+  //   ScalorType cost = __cosf(term);
+  //   // ScalorType sint = __fsqrt_rn (1.f - cost*cost);
+  //   ScalorType sint = __sinf(term);
+  //   ScalorType scalor = - param[epsilon] * M_PIF * param[wci] * cost * sint * ri;
+  //   *fx = diffx * scalor;
+  //   *fy = diffy * scalor;
+  //   *fz = diffz * scalor;
+  //   return - param[epsilon] * cost * cost;
+  // }
+  // else {
+  //   *fx = *fy = *fz = 0.f;
+  //   return 0.f;
+  // }
 }
 
 #endif
