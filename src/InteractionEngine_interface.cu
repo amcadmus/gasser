@@ -149,38 +149,42 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
 						    MDTimer *timer )
 {
   clearInteraction (sys);
-  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
-  calNonBondedInteraction
-      <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.numAtom,
+  {
+    if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
+    calNonBondedInteraction
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.ddata.type, 
-	  sys.box, nlist.dnlist,
-	  err.ptr_de,
-	  err.ptr_dindex,
-	  err.ptr_dscalor);
-  checkCUDAError ("InteractionEngine::applyInteraction nb");
-  err.check ("interaction engine nb");	
-  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
-  if (timer != NULL) timer->tic(mdTimeBondedInteraction);
-  calBondInteraction
-      <<<atomGridDim, myBlockDim>>> (
-  	  sys.ddata.numAtom,
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box, nlist.dnlist,
+	    err.ptr_de,
+	    err.ptr_dindex,
+	    err.ptr_dscalor);
+    checkCUDAError ("InteractionEngine::applyInteraction nb");
+    err.check ("interaction engine nb");	
+    if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
+  }
+  if (sys.bdlist.dbdlist.listLength != 0) {
+    if (timer != NULL) timer->tic(mdTimeBondedInteraction);
+    calBondInteraction
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-  	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-  	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-  	  sys.box, sys.bdlist.dbdlist);
-  checkCUDAError ("InteractionEngine::applyInteraction bonded");
-  err.check ("interaction engine b");	
-  if (timer != NULL) timer->toc(mdTimeBondedInteraction);
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.box, sys.bdlist.dbdlist);
+    checkCUDAError ("InteractionEngine::applyInteraction bonded");
+    err.check ("interaction engine b");	
+    if (timer != NULL) timer->toc(mdTimeBondedInteraction);
+  }
 }
 
 void InteractionEngine_interface::applyInteraction (MDSystem &sys,
@@ -189,69 +193,77 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
 						    MDTimer *timer )
 {
   clearInteraction (sys);
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  calNonBondedInteraction
-      <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.numAtom,
+  {
+    if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+    calNonBondedInteraction
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.ddata.type, 
-	  sys.box, nlist.dnlist
-	  ,
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
-	  err.ptr_de,
-	  err.ptr_dindex,
-	  err.ptr_dscalor
-	  );
-  checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
-  err.check ("interaction engine nb");	
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-  if (timer != NULL) timer->tic(mdTimeBInterStatistic);
-  calBondInteraction
-      <<<atomGridDim, myBlockDim,
-      calBondInteraction_sbuffSize>>> (
-	  sys.ddata.numAtom,
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box, nlist.dnlist
+	    ,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de,
+	    err.ptr_dindex,
+	    err.ptr_dscalor
+	    );
+    checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
+    err.check ("interaction engine nb");	
+    if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+  }
+  if (sys.bdlist.dbdlist.listLength != 0) {
+    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
+    calBondInteraction
+	<<<atomGridDim, myBlockDim,
+	calBondInteraction_sbuffSize>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.box, sys.bdlist.dbdlist
-	  ,
-	  sum_b_p.getBuff(),
-	  sum_b_vxx.getBuff(),
-	  sum_b_vyy.getBuff(),
-	  sum_b_vzz.getBuff(),
-	  err.ptr_de
-	  );
-  checkCUDAError ("InteractionEngine::applyInteraction bonded (with statistic)");
-  err.check ("interaction engine");	
-  if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.box, sys.bdlist.dbdlist
+	    ,
+	    sum_b_p.getBuff(),
+	    sum_b_vxx.getBuff(),
+	    sum_b_vyy.getBuff(),
+	    sum_b_vzz.getBuff(),
+	    err.ptr_de
+	    );
+    checkCUDAError ("InteractionEngine::applyInteraction bonded (with statistic)");
+    err.check ("interaction engine");	
+    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+  }
 
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  cudaThreadSynchronize();
-  sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
-  cudaThreadSynchronize();
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-  if (timer != NULL) timer->tic(mdTimeBInterStatistic);
-  cudaThreadSynchronize();
-  sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-  sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
-  sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
-  sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
-  cudaThreadSynchronize();
-  if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+  {
+    if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+    cudaThreadSynchronize();
+    sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+    sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+    sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+    sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+    cudaThreadSynchronize();
+    if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+  }
+  if (sys.bdlist.dbdlist.listLength != 0) {
+    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
+    cudaThreadSynchronize();
+    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
+    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
+    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    cudaThreadSynchronize();
+    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+  }
   checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
@@ -729,37 +741,56 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
   ScalorType fsumy = 0.0f;
   ScalorType fsumz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
+
+  // IndexType num = 0;
+  // IndexType start = bid * blockDim.x;
+  // if (start < numAtom){
+  //   if (start + blockDim.x <= numAtom){
+  //     num = blockDim.x;
+  //   }
+  //   else {
+  //     num = start + blockDim.x - numAtom;
+  //   }
+  // }
+  // IndexType maxNei = maxVectorBlock (nlist.Nneighbor, start, num);
+  // IndexType myNei = nlist.Nneighbor[ii];
   
   if (ii < numAtom) {
 #ifdef COMPILE_NO_TEX
     CoordType ref (coord[ii]);
 #else
     CoordType ref (tex1Dfetch(global_texRef_interaction_coord, ii));
-#endif
+#endif    
+    ScalorType fx(0.f), fy(0.f), fz(0.f);
     for (IndexType jj = 0, nlistPosi = ii;
-	 jj < nlist.Nneighbor[ii];
-	 ++jj, nlistPosi += nlist.stride){
-      IndexType targetIdx   = nlist.data [nlistPosi];
-      ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
-      CoordType target;
+    	 jj < nlist.Nneighbor[ii];
+    	 ++jj, nlistPosi += nlist.stride){
+
+    // for (IndexType jj = 0, nlistPosi = ii;
+    // 	 jj < maxNei;
+    // 	 ++jj, nlistPosi += nlist.stride){
+    //   __syncthreads();
+    //   if (jj >= myNei) continue;
+      
+      IndexType targetIdx ( nlist.data [nlistPosi] );
+      ForceIndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
 #ifdef COMPILE_NO_TEX
-      target = coord[targetIdx];
+      CoordType target ( coord[targetIdx] );
 #else
-      target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+      CoordType target ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
 #endif
-      ScalorType diffx, diffy, diffz;
-      diffx = target.x - ref.x;
-      diffy = target.y - ref.y;
-      diffz = target.z - ref.z;
+      ScalorType diffx ( target.x - ref.x );
+      ScalorType diffy ( target.y - ref.y );
+      ScalorType diffz ( target.z - ref.z );
       shortestImage (box, &diffx, &diffy, &diffz);
-      ScalorType fx(0.f), fy(0.f), fz(0.f);
       // ScalorType * forceParam;
       // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
       // 				&forceParam);
       // nbForce (nbForceType[nbForceIndex], forceParam,
       // 	       diffx, diffy, diffz, 
       // 	       &fx, &fy, &fz);
-      nbForce (nbForceType[nbForceIndex], &nbForceParam[nbForceParamPosi[nbForceIndex]],
+      nbForce (nbForceType[nbForceIndex],
+	       &nbForceParam[nbForceParamPosi[nbForceIndex]],
       	       diffx, diffy, diffz, 
       	       &fx, &fy, &fz);
       fsumx -= fx;
@@ -804,28 +835,25 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 #else
     ref = tex1Dfetch(global_texRef_interaction_coord, ii);
 #endif
+    ScalorType fx(0.f), fy(0.f), fz(0.f);
+    ScalorType dp;
     for (IndexType jj = 0, nlistPosi = ii;
 	 jj < nlist.Nneighbor[ii];
 	 ++jj, nlistPosi += nlist.stride){
-      IndexType targetIdx = nlist.data[nlistPosi];
-      ForceIndexType nbForceIndex = nlist.forceIndex [nlistPosi];
-      CoordType target;
+      IndexType targetIdx ( nlist.data[nlistPosi] );
+      ForceIndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
 #ifdef COMPILE_NO_TEX    
-      target = coord[targetIdx];
+      CoordType target ( coord[targetIdx] );
 #else
-      target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+      CoordType target ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
 #endif
-      ScalorType diffx, diffy, diffz;
-      diffx = target.x - ref.x;
-      diffy = target.y - ref.y;
-      diffz = target.z - ref.z;
+      ScalorType diffx ( target.x - ref.x );
+      ScalorType diffy ( target.y - ref.y );
+      ScalorType diffz ( target.z - ref.z );
       shortestImage (box, &diffx, &diffy, &diffz);
-      ScalorType fx(0.f), fy(0.f), fz(0.f);
       // ScalorType * forceParam;
       // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
       // 				&forceParam);
-      ScalorType dp;
-
       // nbForcePoten (nbForceType[nbForceIndex],
       // 		    forceParam,
       // 		    diffx, diffy, diffz, 
@@ -870,6 +898,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
   ScalorType fsumy = 0.0f;
   ScalorType fsumz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
+  
   if (ii >= numAtom) return;
   CoordType ref;
 #ifndef COMPILE_NO_TEX

@@ -658,6 +658,36 @@ __device__ ScalorType maxVectorBlock (ScalorType * data, IndexType start,
   return buff[0];
 }
 
+
+
+__device__ IndexType maxVectorBlock (IndexType * data, IndexType start,
+				      IndexType N)
+{
+  IndexType tid = threadIdx.x;
+  IndexType num = N;
+  IndexType skip = 1;
+  __shared__ volatile IndexType buff [MaxThreadsPerBlock * 2];
+  buff[tid] = 0;
+  buff[tid + blockDim.x] = 0;
+  if (tid < num)
+    buff[tid] = data[tid + start];
+  __syncthreads();
+  
+  while (num != 1){
+    IndexType tmp = (buff[tid] >  buff[tid+skip]) ? buff[tid] : buff[tid+skip];
+    __syncthreads();
+    buff[tid] = tmp;
+    num += 1;
+    num >>= 1;
+    skip <<= 1;
+    __syncthreads();
+  }
+  return buff[0];
+}
+
+
+
+
 __device__ ScalorType sumVectorBlockBuffer (ScalorType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;

@@ -123,6 +123,12 @@ __device__ void RectangularBoxGeometry::shortestImage (
   *x -= floorf(*x * box.sizei.x + 0.5f) * box.size.x;
   *y -= floorf(*y * box.sizei.y + 0.5f) * box.size.y;
   *z -= floorf(*z * box.sizei.z + 0.5f) * box.size.z;
+  // if (*x >  0.5f * box.size.x) *x -= box.size.x;
+  // if (*x < -0.5f * box.size.x) *x += box.size.x;
+  // if (*y >  0.5f * box.size.y) *y -= box.size.y;
+  // if (*y < -0.5f * box.size.y) *y += box.size.y;
+  // if (*z >  0.5f * box.size.z) *z -= box.size.z;
+  // if (*z < -0.5f * box.size.z) *z += box.size.z;
 }
 
 __device__ void RectangularBoxGeometry::shortestImage (
