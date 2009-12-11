@@ -753,10 +753,13 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       diffz = target.z - ref.z;
       shortestImage (box, &diffx, &diffy, &diffz);
       ScalorType fx(0.f), fy(0.f), fz(0.f);
-      ScalorType * forceParam;
-      NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
-				&forceParam);
-      nbForce (nbForceType[nbForceIndex], forceParam,
+      // ScalorType * forceParam;
+      // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
+      // 				&forceParam);
+      // nbForce (nbForceType[nbForceIndex], forceParam,
+      // 	       diffx, diffy, diffz, 
+      // 	       &fx, &fy, &fz);
+      nbForce (nbForceType[nbForceIndex], &nbForceParam[nbForceParamPosi[nbForceIndex]],
       	       diffx, diffy, diffz, 
       	       &fx, &fy, &fz);
       fsumx -= fx;
@@ -818,13 +821,17 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       diffz = target.z - ref.z;
       shortestImage (box, &diffx, &diffy, &diffz);
       ScalorType fx(0.f), fy(0.f), fz(0.f);
-      ScalorType * forceParam;
-      NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
-      				&forceParam);
+      // ScalorType * forceParam;
+      // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
+      // 				&forceParam);
       ScalorType dp;
 
+      // nbForcePoten (nbForceType[nbForceIndex],
+      // 		    forceParam,
+      // 		    diffx, diffy, diffz, 
+      // 		    &fx, &fy, &fz, &dp);
       nbForcePoten (nbForceType[nbForceIndex],
-      		    forceParam,
+		    &nbForceParam[nbForceParamPosi[nbForceIndex]],
       		    diffx, diffy, diffz, 
       		    &fx, &fy, &fz, &dp);
       myPoten += dp;

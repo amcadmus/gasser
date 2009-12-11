@@ -27,7 +27,8 @@ struct DeviceNeighborList
   IndexType listLength;		/**< max length of the neighbor list */
   IndexType * data;		/**< matrix, i-th row stores the
 				 * indexes of neigbors of i-th atom*/
-  IndexType * Nneighbor;	/**< vector stores the number of neigbors */
+  IndexType * Nneighbor;	/**< vector stores the number of neigbors of
+				 * each atom*/
   ForceIndexType * forceIndex;	/**< matrix stores the index of
 				 * non-bonded interaction, whose type
 				 * and parameters are keeped by the
