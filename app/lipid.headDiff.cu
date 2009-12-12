@@ -132,7 +132,7 @@ int main(int argc, char * argv[])
 
   ScalorType maxrcut = sys.calMaxNBRcut ();
   printf ("# max rcut is %f\n", maxrcut);
-  ScalorType nlistExten = 0.8f;
+  ScalorType nlistExten = 0.5f;
   ScalorType rlist = maxrcut + nlistExten;
   // NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
   // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -185,7 +185,7 @@ int main(int argc, char * argv[])
       //   // resh.shuffleSystem (sys, nlist);
       // }   
 	  
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 200 == 0){
 	st.clearDevice();
 	inte_vr.step1 (sys, dt, &timer);
 	interaction.applyInteraction (sys, nlist, st, &timer);
@@ -215,11 +215,11 @@ int main(int argc, char * argv[])
 	inte_vr.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	printf ("# Rebuild at step %09i ... ", i+1);
-	fflush(stdout);
+	// printf ("# Rebuild at step %09i ... ", i+1);
+	// fflush(stdout);
 	nlist.reBuild(sys, &timer);
-	printf ("done\n");
-	fflush(stdout);
+	// printf ("done\n");
+	// fflush(stdout);
       }
       if ((i+1) % 1000 == 0){
 	// sys.updateHost(&timer);

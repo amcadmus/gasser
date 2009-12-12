@@ -132,7 +132,7 @@ int main(int argc, char * argv[])
 
   ScalorType maxrcut = sys.calMaxNBRcut ();
   printf ("# max rcut is %f\n", maxrcut);
-  ScalorType nlistExten = 0.8f;
+  ScalorType nlistExten = 0.5f;
   ScalorType rlist = maxrcut + nlistExten;
   // NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
   // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -155,13 +155,13 @@ int main(int argc, char * argv[])
 
   ScalorType dt = 0.005;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
-  ScalorType refT = 1.08088629683116564358;
+  ScalorType refT = 1.0808863f;
   BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
 			  interaction,
 			  nlist, rebuildThreshold);
   blpf.TCouple (refT, 0.1);
   blpf.addPcoupleGroup (PCoupleX,
-  			0., 2, 100);
+  			0., 1, 23);
 
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
 
@@ -181,7 +181,7 @@ int main(int argc, char * argv[])
 	tfremover.remove (sys, &timer);
       }
 	  
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 200 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
@@ -206,7 +206,7 @@ int main(int argc, char * argv[])
       else {
 	blpf.oneStep (sys, &timer);
       }
-      if ((i+1) % 1000 == 0){
+      if ((i+1) % 20000 == 0){
 	resh.recoverMDDataToHost (sys, &timer);
 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
