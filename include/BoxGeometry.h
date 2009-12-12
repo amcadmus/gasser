@@ -32,7 +32,7 @@ namespace RectangularBoxGeometry{
 	IntScalorType *noix);
     __device__ void shortestImage (RectangularBox box,
 				   ScalorType * x, ScalorType * y, ScalorType * z);
-    __device__ void shortestImage (RectangularBox box,
+    __device__ void shortestImage (const ScalorType boxL, const ScalorType boxLi,
 				   ScalorType * x);
     // __device__ void normalizeSystem (RectangularBox box, DeviceMDData * ddata);
     // __device__ void normalizeSystem (RectangularBox box, 
@@ -132,10 +132,10 @@ __device__ void RectangularBoxGeometry::shortestImage (
 }
 
 __device__ void RectangularBoxGeometry::shortestImage (
-    RectangularBoxGeometry::RectangularBox box,
+    const ScalorType boxL, const ScalorType boxLi,
     ScalorType * x)
 {
-  *x -= floorf(*x * box.sizei.x + 0.5f) * box.size.x;
+  *x -= floorf(*x * boxLi + 0.5f) * boxL;
 }
 
 

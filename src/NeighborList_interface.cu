@@ -646,9 +646,9 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 	    ScalorType diffx = targetx[jj] - xshift - refx;
 	    ScalorType diffy = targety[jj] - yshift - refy;
 	    ScalorType diffz = targetz[jj] - zshift - refz;
-	    if (clist.NCell.x == 1) shortestImage (box, &diffx);
-	    if (clist.NCell.y == 1) shortestImage (box, &diffy);
-	    if (clist.NCell.z == 1) shortestImage (box, &diffz);
+	    if (clist.NCell.x == 1) shortestImage (box.size.x, box.sizei.x, &diffx);
+	    if (clist.NCell.y == 1) shortestImage (box.size.y, box.sizei.y, &diffy);
+	    if (clist.NCell.z == 1) shortestImage (box.size.z, box.sizei.z, &diffz);
 	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist*rlist &&
 		targetIndexes[jj] != ii){
 	      ForceIndexType fidx;
@@ -1082,16 +1082,18 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   //   cpyGlobalDataToSharedBuff (nbForceTable, nbForceTableBuff, nbForceTableLength);
   // }
   // __syncthreads();
-  
-  int upperx, lowerx;
-  int uppery, lowery;
-  int upperz, lowerz;
-  (clist.NCell.x != 1) ? (upperx =  1) : (upperx = 0);
-  (clist.NCell.x != 1) ? (lowerx = -1) : (lowerx = 0);
-  (clist.NCell.y != 1) ? (uppery =  1) : (uppery = 0);
-  (clist.NCell.y != 1) ? (lowery = -1) : (lowery = 0);
-  (clist.NCell.z != 1) ? (upperz =  1) : (upperz = 0);
-  (clist.NCell.z != 1) ? (lowerz = -1) : (lowerz = 0);
+
+  bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  if (clist.NCell.x == 1) oneCellX = true;
+  if (clist.NCell.y == 1) oneCellY = true;
+  if (clist.NCell.z == 1) oneCellZ = true;
+  int upperx(1), lowerx(-1);
+  int uppery(1), lowery(-1);
+  int upperz(1), lowerz(-1);
+  if (oneCellX) {lowerx =  0; upperx = 0;}
+  if (oneCellY) {lowery =  0; uppery = 0;}
+  if (oneCellZ) {lowerz =  0; upperz = 0;}
+  ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
   for (int di = lowerx; di <= upperx; ++di){
@@ -1126,10 +1128,10 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 	    ScalorType diffx = target[jj].x - xshift - ref.x;
 	    ScalorType diffy = target[jj].y - yshift - ref.y;
 	    ScalorType diffz = target[jj].z - zshift - ref.z;
-	    if (clist.NCell.x == 1) shortestImage (box, &diffx);
-	    if (clist.NCell.y == 1) shortestImage (box, &diffy);
-	    if (clist.NCell.z == 1) shortestImage (box, &diffz);
-	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist*rlist &&
+	    if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	    if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	    if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
 		targetIndexes[jj] != ii){
 	      ForceIndexType fidx;
 	      if (sharednbForceTable){
