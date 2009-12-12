@@ -54,7 +54,7 @@ appobjects=	$(subst .cu,.o,$(wildcard $(application_dir)/*.cu))
 
 C:=		gcc
 CFLAGS +=	-g -O0 
-CFLAGS += 	$(addprefix -I ,$(include_dirs))
+CFLAGS += 	$(addprefix -I ,$(include_dirs))  -DCOORD_IN_ONE_VEC
 
 CXX:=		g++
 CXXFLAGS += 	$(CFLAGS)
