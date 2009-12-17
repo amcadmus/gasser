@@ -105,72 +105,55 @@ void BondList::addBond (const IndexType & ii, const IndexType & jj,
   hbdlist.addBond (ii, jj, looking);
 }
 
-static void sortBuff (TypeType * ref, IndexType * indexMap, IndexType N)
-{
-  if (N == 0){
-    return ;
-  }
-  for (IndexType i = 0; i < N - 1; ++i){
-    IndexType j = i;
-    while (j + 1 < N && ref[j] > ref[j+1]){
-      TypeType tmptype = ref[j];
-      ref[j] = ref[j+1];
-      ref[j+1] = tmptype;
-      IndexType tmpindex = indexMap[j];
-      indexMap[j] = indexMap[j+1];
-      indexMap[j+1] = tmpindex;
-      j++;
-    }
-  }
-}
 
 // bubble sorting
-void BondList::sortBond()
-{
-  IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * hbdlist.listLength);
-  if (indexMap == NULL){
-    MDExcptFailedMallocOnHost ("BondList::sortBond", "indexMap",
-			       sizeof(IndexType) * hbdlist.listLength);
-  }
-  TypeType  *typeBuff = (TypeType *) malloc (sizeof(TypeType)  * hbdlist.listLength);
-  if (typeBuff == NULL){
-    MDExcptFailedMallocOnHost ("BondList::sortBond", "typeBuff",
-			       sizeof(TypeType)  * hbdlist.listLength);
-  }
-  ForceIndexType * bkForceIndex = (ForceIndexType *) malloc (
-      sizeof (ForceIndexType) * hbdlist.listLength);
-  if (bkForceIndex == NULL){
-    MDExcptFailedMallocOnHost ("BondList::sortBond", "bkForceIndex",
-			       sizeof (ForceIndexType) * hbdlist.listLength);
-  }			     
-  IndexType * bkData = (IndexType *) malloc (
-      sizeof (IndexType) * hbdlist.listLength);
-  if (bkData == NULL){
-    MDExcptFailedMallocOnHost ("BondList::sortBond", "bkData",
-			       sizeof (IndexType) * hbdlist.listLength);
-  }
-  for (IndexType i = 0; i < hbdlist.stride; ++i){
-    for (IndexType j = 0; j < hbdlist.Nbond[i]; ++j){
-      indexMap[j] = j;
-      typeBuff[j] = bondType[hbdlist.bondIndex[j * hbdlist.stride + i]];
-      bkForceIndex[j] = hbdlist.bondIndex[j * hbdlist.stride + i];
-      bkData[j]       = hbdlist.data     [j * hbdlist.stride + i];
-    }
-    sortBuff (typeBuff, indexMap, hbdlist.Nbond[i]);
-    for (IndexType j = 0; j < hbdlist.Nbond[i]; ++j){
-      hbdlist.bondIndex[j * hbdlist.stride + i] = bkForceIndex[indexMap[j]];
-      hbdlist.data     [j * hbdlist.stride + i] = bkData      [indexMap[j]];
-    }
-  }
-  freeAPointer ((void**)&indexMap);
-  freeAPointer ((void**)&typeBuff);
-  freeAPointer ((void**)&bkForceIndex);
-  freeAPointer ((void**)&bkData);
-}    
+// void BondList::sortBond()
+// {
+//   IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * hbdlist.listLength);
+//   if (indexMap == NULL){
+//     MDExcptFailedMallocOnHost ("BondList::sortBond", "indexMap",
+// 			       sizeof(IndexType) * hbdlist.listLength);
+//   }
+//   TypeType  *typeBuff = (TypeType *) malloc (sizeof(TypeType)  * hbdlist.listLength);
+//   if (typeBuff == NULL){
+//     MDExcptFailedMallocOnHost ("BondList::sortBond", "typeBuff",
+// 			       sizeof(TypeType)  * hbdlist.listLength);
+//   }
+//   ForceIndexType * bkForceIndex = (ForceIndexType *) malloc (
+//       sizeof (ForceIndexType) * hbdlist.listLength);
+//   if (bkForceIndex == NULL){
+//     MDExcptFailedMallocOnHost ("BondList::sortBond", "bkForceIndex",
+// 			       sizeof (ForceIndexType) * hbdlist.listLength);
+//   }			     
+//   IndexType * bkData = (IndexType *) malloc (
+//       sizeof (IndexType) * hbdlist.listLength);
+//   if (bkData == NULL){
+//     MDExcptFailedMallocOnHost ("BondList::sortBond", "bkData",
+// 			       sizeof (IndexType) * hbdlist.listLength);
+//   }
+//   for (IndexType i = 0; i < hbdlist.stride; ++i){
+//     for (IndexType j = 0; j < hbdlist.Nbond[i]; ++j){
+//       indexMap[j] = j;
+//       typeBuff[j] = bondType[hbdlist.bondIndex[j * hbdlist.stride + i]];
+//       bkForceIndex[j] = hbdlist.bondIndex[j * hbdlist.stride + i];
+//       bkData[j]       = hbdlist.data     [j * hbdlist.stride + i];
+//     }
+//     sortBuff (typeBuff, indexMap, hbdlist.Nbond[i]);
+//     for (IndexType j = 0; j < hbdlist.Nbond[i]; ++j){
+//       hbdlist.bondIndex[j * hbdlist.stride + i] = bkForceIndex[indexMap[j]];
+//       hbdlist.data     [j * hbdlist.stride + i] = bkData      [indexMap[j]];
+//     }
+//   }
+//   freeAPointer ((void**)&indexMap);
+//   freeAPointer ((void**)&typeBuff);
+//   freeAPointer ((void**)&bkForceIndex);
+//   freeAPointer ((void**)&bkData);
+// }    
+
 
 void BondList::build()
 {
-  sortBond();
+  hbdlist.sort(bondType);
   buildDeviceBondList (hbdlist, dbdlist);
 }
 
@@ -283,3 +266,66 @@ void HostBondList::addBond (const IndexType & ii,
   Nbond[ii] ++;
   Nbond[jj] ++;
 }
+
+
+static void sortBuff (TypeType * ref, IndexType * indexMap, IndexType N)
+{
+  if (N == 0){
+    return ;
+  }
+  for (IndexType i = 0; i < N - 1; ++i){
+    IndexType j = i;
+    while (j + 1 < N && ref[j] > ref[j+1]){
+      TypeType tmptype = ref[j];
+      ref[j] = ref[j+1];
+      ref[j+1] = tmptype;
+      IndexType tmpindex = indexMap[j];
+      indexMap[j] = indexMap[j+1];
+      indexMap[j+1] = tmpindex;
+      j++;
+    }
+  }
+}
+
+void HostBondList::sort(mdBondInteraction_t * bondType)
+{
+  IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * listLength);
+  if (indexMap == NULL){
+    MDExcptFailedMallocOnHost ("BondList::sortBond", "indexMap",
+			       sizeof(IndexType) * listLength);
+  }
+  TypeType  *typeBuff = (TypeType *) malloc (sizeof(TypeType)  * listLength);
+  if (typeBuff == NULL){
+    MDExcptFailedMallocOnHost ("BondList::sortBond", "typeBuff",
+			       sizeof(TypeType)  * listLength);
+  }
+  ForceIndexType * bkForceIndex = (ForceIndexType *) malloc (
+      sizeof (ForceIndexType) * listLength);
+  if (bkForceIndex == NULL){
+    MDExcptFailedMallocOnHost ("BondList::sortBond", "bkForceIndex",
+			       sizeof (ForceIndexType) * listLength);
+  }			     
+  IndexType * bkData = (IndexType *) malloc (
+      sizeof (IndexType) * listLength);
+  if (bkData == NULL){
+    MDExcptFailedMallocOnHost ("BondList::sortBond", "bkData",
+			       sizeof (IndexType) * listLength);
+  }
+  for (IndexType i = 0; i < stride; ++i){
+    for (IndexType j = 0; j < Nbond[i]; ++j){
+      indexMap[j] = j;
+      typeBuff[j] = bondType[bondIndex[j * stride + i]];
+      bkForceIndex[j] = bondIndex[j * stride + i];
+      bkData[j]       = data     [j * stride + i];
+    }
+    sortBuff (typeBuff, indexMap, Nbond[i]);
+    for (IndexType j = 0; j < Nbond[i]; ++j){
+      bondIndex[j * stride + i] = bkForceIndex[indexMap[j]];
+      data     [j * stride + i] = bkData      [indexMap[j]];
+    }
+  }
+  freeAPointer ((void**)&indexMap);
+  freeAPointer ((void**)&typeBuff);
+  freeAPointer ((void**)&bkForceIndex);
+  freeAPointer ((void**)&bkData);
+}    

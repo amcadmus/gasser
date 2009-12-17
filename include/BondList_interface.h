@@ -14,9 +14,10 @@ class BondList
   IndexType paramLength_mem;
 public:
   DeviceBondList dbdlist;
+public:
+  IndexType NBondForce;
   mdBondInteraction_t * bondType;
   IndexType * paramPosi;
-  IndexType NBondForce;
   ScalorType * param;
   IndexType paramLength;
 public:

@@ -2,6 +2,7 @@
 #define __BondList_h_wanghan__
 
 #include "common.h"
+#include "BondedInteraction.h"
 
 struct HostBondList 
 {
@@ -17,6 +18,7 @@ public:
 	     const IndexType & listLength);
   void addBond (const IndexType &i, const IndexType &j,
 		const ForceIndexType &fidx);
+  void sort (mdBondInteraction_t * bondType);
 };
 
 
