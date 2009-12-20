@@ -111,6 +111,19 @@ __global__ void Reshuffle_backupBondList (const IndexType numAtom,
 					  ForceIndexType * bdlistBondIndex2,
 					  IndexType * bdlistNumB2);
 // needs ceil(numAtom/blockDim.x) blocks
+__global__ void
+Reshuffle_backupAngleList (const IndexType numAtom,
+			   const IndexType * angleListNei,
+			   const IndexType * angleListPosi,
+			   const ForceIndexType * angleListAngleIndex,
+			   const IndexType * anglelistNangle,
+			   const IndexType stride,
+			   const IndexType listLength,
+			   IndexType * bkAngleListNei,
+			   IndexType * bkAngleListPosi,
+			   ForceIndexType * bkAngleListAngleIndex,
+			   IndexType * bkAngleListNangle);
+// needs ceil(numAtom/blockDim.x) blocks
 __global__ void Reshuffle_backupBackMapTable (const IndexType numAtom,
 					      const IndexType * backMapTable,
 					      IndexType * backMapTableBuff);
@@ -164,6 +177,20 @@ __global__ void Reshuffle_reshuffleBondList (const IndexType numAtom,
 					     IndexType * bdlistData,
 					     ForceIndexType  * bdlistBondIndex,
 					     IndexType * bdlistNumB);
+// needs ceil(numAtom/blockDim.x) blocks
+__global__ void
+Reshuffle_reshuffleAngleList (const IndexType numAtom,
+			      const IndexType * bkAngleListNei,
+			      const IndexType * bkAngleListPosi,
+			      const ForceIndexType * bkAngleListAngleIndex,
+			      const IndexType * bkAnglelistNangle,
+			      const IndexType stride,
+			      const IndexType listLength,
+			      const IndexType * idxTable,
+			      IndexType * angleListNei,
+			      IndexType * angleListPosi,
+			      ForceIndexType * angleListAngleIndex,
+			      IndexType * angleListNangle);
 // needs ceil(numAtom/blockDim.x) blocks
 // __global__ void Reshuffle_reshuffleDeviceMDData (const DeviceMDData ddata1,
 // 						 const IndexType * idxTable,

@@ -41,12 +41,25 @@ void Reshuffle::init (const MDSystem & sys,
   cudaMalloc ((void**)&idxTable, sizeof(IndexType) * sys.hdata.numAtom);
   cudaMalloc ((void**)&backMapTable, sizeof(IndexType) * sys.hdata.numAtom);
   cudaMalloc ((void**)&backMapTableBuff, sizeof(IndexType) * sys.hdata.numAtom);
+  // bond list
   cudaMalloc ((void**)&bkBondListData, 
 	      sizeof(IndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
   cudaMalloc ((void**)&bkBondListBondIndex, 
 	      sizeof(ForceIndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
   cudaMalloc ((void**)&bkBondListNumB,
 	      sizeof(IndexType) * sys.bdlist.dbdlist.stride);
+  // angle list
+  cudaMalloc ((void**)&bkAngleListNei,
+	      sizeof(IndexType) * sys.anglelist.danglelist.stride *
+	      sys.anglelist.danglelist.listLength * 2);
+  cudaMalloc ((void**)&bkAngleListPosi,
+	      sizeof(IndexType) * sys.anglelist.danglelist.stride *
+	      sys.anglelist.danglelist.listLength);
+  cudaMalloc ((void**)&bkAngleListAngleIndex,
+	      sizeof(ForceIndexType) * sys.anglelist.danglelist.stride *
+	      sys.anglelist.danglelist.listLength);
+  cudaMalloc ((void**)&bkAngleListNangle,
+	      sizeof(IndexType) * sys.anglelist.danglelist.stride);
 #ifndef COORD_IN_ONE_VEC
   cudaMalloc ((void**)&bkNlistJudgeBuffx, sizeof(ScalorType)*sys.hdata.numAtom);
   cudaMalloc ((void**)&bkNlistJudgeBuffy, sizeof(ScalorType)*sys.hdata.numAtom);
@@ -190,6 +203,7 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  sys.ddata.numAtom, nlist.backupCoord, bkNlistJudgeBuff);
 #endif
   checkCUDAError ("Reshuffle::shuffleSystem, back up neighbor list");
+  // bond list
   Reshuffle_backupBondList
       <<<atomGridDim, myBlockDim>>> (
   	  sys.ddata.numAtom,
@@ -202,6 +216,21 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  bkBondListBondIndex,
 	  bkBondListNumB);
   checkCUDAError ("Reshuffle::shuffleSystem, back up bond list");
+  // angle list
+  Reshuffle_backupAngleList
+      <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.numAtom,
+	  sys.anglelist.danglelist.angleNei,
+	  sys.anglelist.danglelist.myPosi,
+	  sys.anglelist.danglelist.angleIndex,
+	  sys.anglelist.danglelist.Nangle,
+  	  sys.anglelist.danglelist.stride, 
+	  sys.anglelist.danglelist.listLength,
+	  bkAngleListNei,
+	  bkAngleListPosi,
+	  bkAngleListAngleIndex,
+	  bkAngleListNangle);
+  checkCUDAError ("Reshuffle::shuffleSystem, back up angle list");
   Reshuffle_backupBackMapTable 
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
@@ -271,6 +300,21 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  sys.bdlist.dbdlist.bondIndex, 
 	  sys.bdlist.dbdlist.Nbond);
   checkCUDAError ("Reshuffle::shuffleSystem, reshuffle bond list");
+  Reshuffle_reshuffleAngleList
+      <<<atomGridDim,myBlockDim>>> (
+	  sys.ddata.numAtom,
+	  bkAngleListNei,
+	  bkAngleListPosi,
+	  bkAngleListAngleIndex,
+	  bkAngleListNangle,
+  	  sys.anglelist.danglelist.stride,
+	  sys.anglelist.danglelist.listLength, 
+  	  idxTable,
+	  sys.anglelist.danglelist.angleNei,
+	  sys.anglelist.danglelist.myPosi,
+	  sys.anglelist.danglelist.angleIndex,
+	  sys.anglelist.danglelist.Nangle);
+  checkCUDAError ("Reshuffle::shuffleSystem, reshuffle angle list");
   Reshuffle_reshuffleCellList
       <<<cellGridDim, myBlockDim>>> (
 	  nlist.dclist.data, idxTable, posiBuff);
@@ -591,15 +635,16 @@ __global__ void Reshuffle_backupNeighborLists (const IndexType numAtom,
 }
 
 
-__global__ void Reshuffle_backupBondList (const IndexType numAtom,
-					  const IndexType * bdlistData,
-					  const ForceIndexType * bdlistBondIndex,
-					  const IndexType * bdlistNumB,
-					  const IndexType stride,
-					  const IndexType listLength,
-					  IndexType * bdlistData2,
-					  ForceIndexType * bdlistBondIndex2,
-					  IndexType * bdlistNumB2)
+__global__ void
+Reshuffle_backupBondList (const IndexType numAtom,
+			  const IndexType * bdlistData,
+			  const ForceIndexType * bdlistBondIndex,
+			  const IndexType * bdlistNumB,
+			  const IndexType stride,
+			  const IndexType listLength,
+			  IndexType * bdlistData2,
+			  ForceIndexType * bdlistBondIndex2,
+			  IndexType * bdlistNumB2)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -612,6 +657,34 @@ __global__ void Reshuffle_backupBondList (const IndexType numAtom,
     }
   }
 }
+
+__global__ void
+Reshuffle_backupAngleList (const IndexType numAtom,
+			   const IndexType * angleListNei,
+			   const IndexType * angleListPosi,
+			   const ForceIndexType * angleListAngleIndex,
+			   const IndexType * anglelistNangle,
+			   const IndexType stride,
+			   const IndexType listLength,
+			   IndexType * bkAngleListNei,
+			   IndexType * bkAngleListPosi,
+			   ForceIndexType * bkAngleListAngleIndex,
+			   IndexType * bkAngleListNangle)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < numAtom){
+    bkAngleListNangle[ii] = anglelistNangle[ii];
+    for (IndexType jj = 0; jj < listLength; ++ jj){
+      bkAngleListNei[((jj<<1)+0)*stride + ii] =angleListNei[((jj<<1)+0)*stride + ii];
+      bkAngleListNei[((jj<<1)+1)*stride + ii] =angleListNei[((jj<<1)+1)*stride + ii];
+      bkAngleListAngleIndex[jj * stride + ii] =angleListAngleIndex[jj * stride + ii];
+      bkAngleListPosi[jj * stride + ii] = angleListPosi[jj * stride + ii];
+    }
+  }
+}
+
 
 
 __global__ void Reshuffle_backupBackMapTable (const IndexType numAtom,
@@ -803,16 +876,17 @@ __global__ void Reshuffle_reshuffleNeighborList (const IndexType numAtom,
   }
 }
 
-__global__ void Reshuffle_reshuffleBondList (const IndexType numAtom,
-					     const IndexType * bdlistData2,
-					     const ForceIndexType * bdlistBondIndex2,
-					     const IndexType * bdlistNumB2,
-					     const IndexType stride,
-					     const IndexType listLength,
-					     const IndexType * idxTable,
-					     IndexType * bdlistData,
-					     ForceIndexType * bdlistBondIndex,
-					     IndexType * bdlistNumB)
+__global__ void
+Reshuffle_reshuffleBondList (const IndexType numAtom,
+			     const IndexType * bdlistData2,
+			     const ForceIndexType * bdlistBondIndex2,
+			     const IndexType * bdlistNumB2,
+			     const IndexType stride,
+			     const IndexType listLength,
+			     const IndexType * idxTable,
+			     IndexType * bdlistData,
+			     ForceIndexType * bdlistBondIndex,
+			     IndexType * bdlistNumB)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -828,6 +902,39 @@ __global__ void Reshuffle_reshuffleBondList (const IndexType numAtom,
     }
   }
 }
+
+__global__ void
+Reshuffle_reshuffleAngleList (const IndexType numAtom,
+			      const IndexType * bkAngleListNei,
+			      const IndexType * bkAngleListPosi,
+			      const ForceIndexType * bkAngleListAngleIndex,
+			      const IndexType * bkAngleListNangle,
+			      const IndexType stride,
+			      const IndexType listLength,
+			      const IndexType * idxTable,
+			      IndexType * angleListNei,
+			      IndexType * angleListPosi,
+			      ForceIndexType * angleListAngleIndex,
+			      IndexType * angleListNangle)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < numAtom){
+    IndexType toid = idxTable[ii];
+    angleListNangle[toid] = bkAngleListNangle[ii];
+    for (IndexType jj = 0; jj < bkAngleListNangle[ii]; ++ jj){
+      angleListNei[((jj<<1)+0)*stride + toid] =
+	  idxTable[bkAngleListNei[((jj<<1)+0)*stride + ii]];
+      angleListNei[((jj<<1)+1)*stride + toid] =
+	  idxTable[bkAngleListNei[((jj<<1)+1)*stride + ii]];
+      angleListPosi[jj * stride + toid] = bkAngleListPosi[jj * stride + ii];
+      angleListAngleIndex[jj * stride + toid] =
+	  bkAngleListAngleIndex[jj * stride + ii];
+    }
+  }
+}
+
 
 
 // __global__ void Reshuffle_reshuffleDeviceMDData (const DeviceMDData ddata,

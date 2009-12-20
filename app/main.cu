@@ -17,7 +17,7 @@
 
 //#include "cutil.h"
 
-#define NThreadsPerBlock	11
+#define NThreadsPerBlock	5
 
 int main(int argc, char * argv[])
 {
@@ -101,8 +101,8 @@ int main(int argc, char * argv[])
     NeighborList nlist(sys, rlist, NThreadsPerBlock, 20);;
     nlist.build (sys);
   
-    // Reshuffle resh (sys, nlist, NThreadsPerBlock);
-    // resh.shuffleSystem ( sys, nlist);
+    Reshuffle resh (sys, nlist, NThreadsPerBlock);
+    resh.shuffleSystem ( sys, nlist);
 
     MDStatistic st(sys);
 
@@ -134,7 +134,7 @@ int main(int argc, char * argv[])
 	nlist.reBuild(sys);
       }
 	  
-      if ((i+1) % 5 == 0){
+      if ((i+1) % 1 == 0){
 	st.clearDevice();
 	inte.step1 (sys, dt);
 	interaction.applyInteraction (sys, nlist,  st);
@@ -149,7 +149,7 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy());
 	fflush(stdout);
-        // resh.shuffleSystem (sys, nlist);
+        resh.shuffleSystem (sys, nlist);
       }
       else {
 	inte.step1 (sys, dt);

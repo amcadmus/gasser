@@ -47,6 +47,8 @@ int main(int argc, char * argv[])
 
   sys.initBond ();
   sys.buildBond();
+  sys.initAngle ();
+  sys.buildAngle();
   
   if (argc != 1){
     nstep = atoi(argv[1]);

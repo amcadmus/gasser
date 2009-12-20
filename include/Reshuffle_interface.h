@@ -22,6 +22,10 @@ class Reshuffle
   ForceIndexType * bkBondListBondIndex;
   IndexType * bkBondListNumB;
   // bk angle list
+  IndexType * bkAngleListNei;
+  IndexType * bkAngleListPosi;
+  ForceIndexType * bkAngleListAngleIndex;
+  IndexType * bkAngleListNangle;
 #ifndef COORD_IN_ONE_VEC
   ScalorType * bkNlistJudgeBuffx;
   ScalorType * bkNlistJudgeBuffy;

@@ -67,7 +67,9 @@ int main(int argc, char * argv[])
     sys.addBond (i, i+2, mdForceHarmonicSpring, hsparam);
   }   
   sys.buildBond();
-
+  sys.initAngle();
+  sys.buildAngle();
+  
   ScalorType tmpsum = 0.;
   for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
     tmpsum += 0.5 * (sys.hdata.velox[i] * sys.hdata.velox[i] +
