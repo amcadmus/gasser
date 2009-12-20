@@ -17,9 +17,11 @@ class Reshuffle
   IndexType * bkNneighbor;
   IndexType * backMapTable;
   IndexType * backMapTableBuff;
+  // bk bond list
   IndexType * bkBondListData;
   ForceIndexType * bkBondListBondIndex;
   IndexType * bkBondListNumB;
+  // bk angle list
 #ifndef COORD_IN_ONE_VEC
   ScalorType * bkNlistJudgeBuffx;
   ScalorType * bkNlistJudgeBuffy;

@@ -53,6 +53,12 @@ void MDTimer::printRecord (FILE * fp)
   fprintf(fp, "Cal. bond interaction(st):           %1.3es   (% 3.1f%)\n",
 	  0.001 * timeRecord[mdTimeBInterStatistic],
 	  100 * timeRecord[mdTimeBInterStatistic] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "Cal. angle interaction:              %1.3es   (% 3.1f%)\n",
+	  0.001 * timeRecord[mdTimeBondedInteraction],
+	  100 * timeRecord[mdTimeAngleInteraction] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "Cal. angle interaction(st):          %1.3es   (% 3.1f%)\n",
+	  0.001 * timeRecord[mdTimeAngleInterStatistic],
+	  100 * timeRecord[mdTimeBInterStatistic] / timeRecord[mdTimeTotal]);
   fprintf(fp, "Data transfer:                       %1.3es   (% 3.1f%)\n",
 	  0.001 * timeRecord[mdTimeDataTransfer],
 	  100 * timeRecord[mdTimeDataTransfer] / timeRecord[mdTimeTotal]);

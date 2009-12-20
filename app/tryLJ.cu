@@ -45,7 +45,7 @@ int main(int argc, char * argv[])
 		   mdForceLennardJones6_12, 
 		   ljparam);
 
-  sys.initBond (0);
+  sys.initBond ();
   sys.buildBond();
   
   if (argc != 1){

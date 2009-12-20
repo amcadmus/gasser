@@ -55,7 +55,7 @@ int main(int argc, char * argv[])
   CosTail::initParameter (cosparam, 1.f, 1.0f, 1.6f);
   sys.addNBForce (1, 1, mdForceCosTail, cosparam);
 
-  sys.initBond (2);
+  sys.initBond ();
   ScalorType hsparam[mdForceNParamHarmonicSpring] ;
   HarmonicSpring::initParameter (hsparam, 10.f, 4.f);
   ScalorType feneparam[mdForceNParamFENE];

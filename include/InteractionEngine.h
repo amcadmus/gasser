@@ -8,6 +8,7 @@
 #include "Statistic.h"
 #include "Auxiliary.h"
 #include "BondList.h"
+#include "AngleList.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -81,8 +82,36 @@ __global__ void calBondInteraction (const IndexType numAtom,
 				    ScalorType * statistic_buff2,
 				    ScalorType * statistic_buff3,
 				    mdError_t * ptr_de);
+__global__ void calAngleInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
+				     const ScalorType * coordx,
+				     const ScalorType * coordy, 
+				     const ScalorType * coordz,
+#else
+				     const CoordType * coord,
+#endif
+				     ScalorType * forcx,
+				     ScalorType * forcy, 
+				     ScalorType * forcz,
+				     const RectangularBox box,
+				     const DeviceAngleList bdlist);
+__global__ void calAngleInteraction (const IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
+				     const ScalorType * coordx,
+				     const ScalorType * coordy, 
+				     const ScalorType * coordz,
+#else
+				     const CoordType * coord,
+#endif
+				     ScalorType * forcx,
+				     ScalorType * forcy, 
+				     ScalorType * forcz,
+				     const RectangularBox box,
+				     const DeviceAngleList bdlist,
+				     ScalorType * statistic_buff,
+				     mdError_t * ptr_de);
 
-// __global__ void calNonBondedInteraction (const IndexType numAtom,
+// __global__ void calNonAngleedInteraction (const IndexType numAtom,
 // 					 const ScalorType * coordx,
 // 					 const ScalorType * coordy, 
 // 					 const ScalorType * coordz,

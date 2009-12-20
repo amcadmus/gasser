@@ -18,11 +18,13 @@ typedef int		TypeType;
 #define StringSize			8
 #define MaxExceptionMsgLength		512
 #define MaxNBForceTableBuffSize		512
+#define MaxNumberParamPerForce		16	
 #define MaxNumberNBForce		512
 #define MaxNumberNBForceParam		(512*5)
-#define MaxNumberParamPerForce		16	
-#define MaxNumberBondForce		512
-#define MaxNumberBondForceParam		(512*3)
+#define MaxNumberBondForce		256
+#define MaxNumberBondForceParam		(256*3)
+#define MaxNumberAngleForce		256
+#define MaxNumberAngleForceParam	(256*3)
 
 #define SystemSharedBuffSize		16384
 #define GlobalFunctionParamSizeLimit	256

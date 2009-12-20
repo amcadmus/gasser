@@ -23,9 +23,9 @@ public:
 public:
   AngleList () ;
   ~AngleList ();
-  AngleList(const DeviceMDData & ddata, const IndexType & listLength) 
-      {init (ddata, listLength);}
-  void init (const DeviceMDData & ddata, const IndexType & listLength);
+  AngleList(const DeviceMDData & ddata)
+      {init (ddata);}
+  void init (const DeviceMDData & ddata);
   void addAngle (const IndexType & ii,
 		 const IndexType & jj,
 		 const IndexType & kk,

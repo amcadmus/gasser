@@ -23,9 +23,9 @@ public:
 public:
   BondList () ;
   ~BondList ();
-  BondList(const DeviceMDData & ddata, const IndexType & listLength) 
-      {init (ddata, listLength);}
-  void init (const DeviceMDData & ddata, const IndexType & listLength);
+  BondList(const DeviceMDData & ddata)
+      {init (ddata);}
+  void init (const DeviceMDData & ddata);
   void addBond (const IndexType & ii, const IndexType & jj,
 		const mdBondInteraction_t & type,
 		const ScalorType * param);

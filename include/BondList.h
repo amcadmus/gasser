@@ -7,15 +7,15 @@
 struct HostBondList 
 {
   IndexType stride; // is the expected larger than or equal to the number of Atoms
-  IndexType listLength;
+  // IndexType listLength;
+  IndexType listLength_mem;
   IndexType * data;
   ForceIndexType * bondIndex;
   IndexType * Nbond;
 public:
   HostBondList ();
   ~HostBondList ();
-  void init (const IndexType & stride,
-	     const IndexType & listLength);
+  void init (const IndexType & stride);
   void addBond (const IndexType &i, const IndexType &j,
 		const ForceIndexType &fidx);
   void sort (mdBondInteraction_t * bondType);
@@ -33,7 +33,7 @@ struct DeviceBondList
 };
 
 void initDeviceBondList (DeviceBondList & dbdlist) ;
-void buildDeviceBondList (const HostBondList & hbdlist,
+void buildDeviceBondList (HostBondList & hbdlist,
 			  DeviceBondList & dbdlist);
 void destroyDeviceBondList (DeviceBondList & dbdlist) ;
 

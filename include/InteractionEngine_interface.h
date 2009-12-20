@@ -13,6 +13,7 @@ class InteractionEngine_interface
   dim3 atomGridDim;
   dim3 myBlockDim;
   IndexType calBondInteraction_sbuffSize;
+  IndexType calAngleInteraction_sbuffSize;
   // ScalorType * statistic_nb_buff0;
   // ScalorType * statistic_nb_buff1;
   // ScalorType * statistic_nb_buff2;
@@ -28,7 +29,8 @@ class InteractionEngine_interface
   SumVector<ScalorType> sum_b_p;
   SumVector<ScalorType> sum_b_vxx;
   SumVector<ScalorType> sum_b_vyy;
-  SumVector<ScalorType> sum_b_vzz;  
+  SumVector<ScalorType> sum_b_vzz;
+  SumVector<ScalorType> sum_angle_p;
   cudaStream_t sum_stream[8];
   MDError err;
 public:

@@ -3,6 +3,7 @@
 
 #include "MDSystem.h"
 #include "BondList_interface.h"
+#include "AngleList_interface.h"
 #include "BoxGeometry.h"
 #include "NonBondedInteraction.h"
 #include "MDTimer_interface.h"
@@ -28,6 +29,7 @@ public:
 				 * system */
   RectangularBox box;		/**< box geometry */
   BondList bdlist;		/**< bond list of the system */
+  AngleList anglelist;		/**< angle list of the system */
   SystemNBForce nbForce;	/**< non-bonded interaction in the system */
 public:
   MDSystem () ;
@@ -84,9 +86,8 @@ public:
   /** 
    * Initialize the bond list.
    * 
-   * @param maxNBond Maximum number of bonds on an atom.
    */
-  void initBond (const IndexType & maxNBond);
+  void initBond ();
   /** 
    * Add a bond to the system.
    * 
@@ -104,6 +105,14 @@ public:
    * 
    */
   void buildBond ();
+
+  void initAngle ();
+  void addAngle (const IndexType & ii,
+		 const IndexType & jj,
+		 const IndexType & kk,
+		 const mdAngleInteraction_t & type,
+		 const ScalorType * param);
+  void buildAngle ();
 public:
   /** 
    * Update host data from device.

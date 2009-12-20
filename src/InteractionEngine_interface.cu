@@ -14,6 +14,9 @@ __constant__ IndexType  nbForceParamPosi   [MaxNumberNBForce];
 __constant__ mdBondInteraction_t bondForceType [MaxNumberBondForce];
 __constant__ ScalorType bondForceParam         [MaxNumberBondForceParam];
 __constant__ IndexType  bondForceParamPosi     [MaxNumberBondForce];
+__constant__ mdAngleInteraction_t angleForceType [MaxNumberAngleForce];
+__constant__ ScalorType angleForceParam          [MaxNumberAngleForceParam];
+__constant__ IndexType  angleForceParamPosi      [MaxNumberAngleForce];
 
 void InteractionEngine_interface::init (const MDSystem  & sys,
 					const IndexType & NTread)
@@ -50,6 +53,7 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
   sum_b_vxx.init (nob, NThreadForSum);
   sum_b_vyy.init (nob, NThreadForSum);
   sum_b_vzz.init (nob, NThreadForSum);
+  sum_angle_p.init (nob, NThreadForSum);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamCreate(&sum_stream[i]);
   }
@@ -104,8 +108,18 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
 		      sizeof(IndexType) * sys.bdlist.NBondForce);
   checkCUDAError ("InteractionEngine::init, init bond force setting");
 
+  // init angle force param
+  cudaMemcpyToSymbol (angleForceType, sys.anglelist.angleType,
+		      sizeof(mdAngleInteraction_t) * sys.anglelist.NAngleForce);
+  cudaMemcpyToSymbol (angleForceParam, sys.anglelist.param,
+		      sizeof(ScalorType) * sys.anglelist.paramLength);
+  cudaMemcpyToSymbol (angleForceParamPosi, sys.anglelist.paramPosi,
+		      sizeof(IndexType) * sys.anglelist.NAngleForce);
+  checkCUDAError ("InteractionEngine::init, init angle force setting");
+
   // cal shared buff size
-  calBondInteraction_sbuffSize = myBlockDim.x * sizeof(ScalorType);
+  calBondInteraction_sbuffSize  = myBlockDim.x * sizeof(ScalorType);
+  calAngleInteraction_sbuffSize = myBlockDim.x * sizeof(ScalorType);
 }
 
 InteractionEngine_interface::~InteractionEngine_interface()
@@ -185,6 +199,21 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
     err.check ("interaction engine b");	
     if (timer != NULL) timer->toc(mdTimeBondedInteraction);
   }
+
+  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+  calAngleInteraction
+      <<<atomGridDim, myBlockDim>>> (
+	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
+	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
+	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	  sys.box, sys.anglelist.danglelist);
+  checkCUDAError ("InteractionEngine::applyInteraction angle");
+  err.check ("interaction engine angle");	
+  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
 }
 
 void InteractionEngine_interface::applyInteraction (MDSystem &sys,
@@ -244,6 +273,25 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
 
+  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+  calAngleInteraction
+      <<<atomGridDim, myBlockDim,
+      calAngleInteraction_sbuffSize>>> (
+	  sys.ddata.numAtom,
+#ifndef COORD_IN_ONE_VEC
+	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	  sys.ddata.coord,
+#endif
+	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	  sys.box,
+	  sys.anglelist.danglelist,
+	  sum_angle_p.getBuff(),
+	  err.ptr_de);
+  checkCUDAError ("InteractionEngine::applyInteraction angle");
+  err.check ("interaction engine angle");	
+  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+
   {
     if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
     cudaThreadSynchronize();
@@ -264,6 +312,10 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
+  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+  sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+  
   checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
@@ -552,7 +604,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
     IndexType targetIdx = bdlist.data[jj * bdlist.stride + ii];
     ScalorType targetx, targety, targetz;
 
-#ifndef COMPILE_NO_TEX
+#ifdef COMPILE_NO_TEX
     targetx = coordx[targetIdx];
     targety = coordy[targetIdx];
     targetz = coordz[targetIdx];
@@ -901,7 +953,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
   
   if (ii >= numAtom) return;
   CoordType ref;
-#ifndef COMPILE_NO_TEX
+#ifdef COMPILE_NO_TEX
   ref = coord[ii];
 #else
   ref = tex1Dfetch(global_texRef_interaction_coord, ii);
@@ -913,7 +965,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
     if (jj == myNumBond) break;
     IndexType targetIdx = bdlist.data[jj * bdlist.stride + ii];
     CoordType target;
-#ifndef COMPILE_NO_TEX
+#ifdef COMPILE_NO_TEX
     target = coord[targetIdx];
 #else
     target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
@@ -1021,4 +1073,263 @@ __global__ void calBondInteraction (const IndexType numAtom,
   if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
   __syncthreads();
 }
+
+
+
+__global__ void calAngleInteraction (const IndexType numAtom,
+				     const CoordType * coord,
+				     ScalorType * forcx,
+				     ScalorType * forcy, 
+				     ScalorType * forcz,
+				     const RectangularBox box,
+				     const DeviceAngleList anglelist)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  IndexType myNumAngle;
+  
+  if (ii < numAtom){
+    myNumAngle = anglelist.Nangle[ii];  
+  }
+  else {
+    myNumAngle = 0;
+  }
+  if (__all(myNumAngle == 0)) return ;
+  
+  if (ii < numAtom) {
+    CoordType ref;
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+#else
+    ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+#endif
+    for (IndexType jj = 0; jj < myNumAngle; ++jj){
+      IndexType targetIdx0 = anglelist.angleNei[((jj<<1)  ) * anglelist.stride + ii];
+      IndexType targetIdx1 = anglelist.angleNei[((jj<<1)+1) * anglelist.stride + ii];
+      IndexType myPosi     = anglelist.myPosi[jj * anglelist.stride + ii];
+      CoordType target0, target1;
+#ifdef COMPILE_NO_TEX
+      target0 = coord[targetIdx0];
+      target1 = coord[targetIdx1];
+#else
+      target0 = tex1Dfetch(global_texRef_interaction_coord, targetIdx0);
+      target1 = tex1Dfetch(global_texRef_interaction_coord, targetIdx1);
+#endif 
+      ScalorType diff0x, diff0y, diff0z;
+      ScalorType diff1x, diff1y, diff1z;
+      bool center = (myPosi == 1);
+      if (center){
+	diff0x = ref.x - target0.x;
+	diff0y = ref.y - target0.y;
+	diff0z = ref.z - target0.z;
+	diff1x = target1.x -  ref.x;
+	diff1y = target1.y -  ref.y;
+	diff1z = target1.z -  ref.z;
+      } else {
+	diff0x = target0.x - ref.x;
+	diff0y = target0.y - ref.y;
+	diff0z = target0.z - ref.z;
+	diff1x = target1.x - target0.x;
+	diff1y = target1.y - target0.y;
+	diff1z = target1.z - target0.z;
+      }      
+      shortestImage (box, &diff0x, &diff0y, &diff0z);
+      shortestImage (box, &diff1x, &diff1y, &diff1z);
+      ScalorType fx, fy, fz;
+      ForceIndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
+      angleForce (center,
+		  angleForceType[angleFindex],
+		  &angleForceParam[angleForceParamPosi[angleFindex]],
+		  diff0x, diff0y, diff0z,
+		  diff1x, diff1y, diff1z,
+		  &fx, &fy, &fz);
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+}
+
+
+__global__ void calAngleInteraction (const IndexType numAtom,
+				     const CoordType * coord,
+				     ScalorType * forcx,
+				     ScalorType * forcy, 
+				     ScalorType * forcz,
+				     const RectangularBox box,
+				     const DeviceAngleList anglelist,
+				     ScalorType * statistic_b_buff0,
+				     mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  ScalorType myPoten = 0.f;
+  IndexType ii = tid + bid * blockDim.x;
+  IndexType myNumAngle;
+  extern __shared__ volatile ScalorType buff[];
+  buff[tid] = 0.f;
+  __syncthreads();
+  
+  if (ii < numAtom) {
+    CoordType ref;
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+#else
+    ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+#endif
+    myNumAngle = anglelist.Nangle[ii];  
+    for (IndexType jj = 0; jj < myNumAngle; ++jj){
+      IndexType targetIdx0 = anglelist.angleNei[((jj<<1)  ) * anglelist.stride + ii];
+      IndexType targetIdx1 = anglelist.angleNei[((jj<<1)+1) * anglelist.stride + ii];
+      IndexType myPosi     = anglelist.myPosi[jj * anglelist.stride + ii];
+      CoordType target0, target1;
+#ifdef COMPILE_NO_TEX
+      target0 = coord[targetIdx0];
+      target1 = coord[targetIdx1];
+#else
+      target0 = tex1Dfetch(global_texRef_interaction_coord, targetIdx0);
+      target1 = tex1Dfetch(global_texRef_interaction_coord, targetIdx1);
+#endif 
+      ScalorType diff0x, diff0y, diff0z;
+      ScalorType diff1x, diff1y, diff1z;
+      bool center = (myPosi == 1);
+      if (center){
+	diff0x = ref.x - target0.x;
+	diff0y = ref.y - target0.y;
+	diff0z = ref.z - target0.z;
+	diff1x = target1.x -  ref.x;
+	diff1y = target1.y -  ref.y;
+	diff1z = target1.z -  ref.z;
+      } else {
+	diff0x = target0.x - ref.x;
+	diff0y = target0.y - ref.y;
+	diff0z = target0.z - ref.z;
+	diff1x = target1.x - target0.x;
+	diff1y = target1.y - target0.y;
+	diff1z = target1.z - target0.z;
+      }      
+      shortestImage (box, &diff0x, &diff0y, &diff0z);
+      shortestImage (box, &diff1x, &diff1y, &diff1z);
+      ScalorType fx, fy, fz;
+      ForceIndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
+      ScalorType dp;
+      angleForcePoten (center,
+		       angleForceType[angleFindex],
+		       &angleForceParam[angleForceParamPosi[angleFindex]],
+		       diff0x, diff0y, diff0z,
+		       diff1x, diff1y, diff1z,
+		       &fx, &fy, &fz, &dp);
+      myPoten += dp;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+
+  buff[tid] = myPoten * 0.33333333333333333f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+}
+
+
+
+
+// __global__ void calAngleInteraction (const IndexType numAtom,
+// 				    const CoordType * coord,
+// 				    ScalorType * forcx,
+// 				    ScalorType * forcy, 
+// 				    ScalorType * forcz,
+// 				    const RectangularBox box,
+// 				    const DeviceAngleList anglelist,
+// 				    ScalorType * statistic_b_buff0,
+// 				    ScalorType * statistic_b_buff1,
+// 				    ScalorType * statistic_b_buff2,
+// 				    ScalorType * statistic_b_buff3,
+// 				    mdError_t * ptr_de)
+// {
+//   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+//   IndexType tid = threadIdx.x;
+
+//   extern __shared__ volatile ScalorType buff[];
+//   buff[tid] = 0.f;
+//   __syncthreads();
+  
+//   ScalorType fsumx = 0.0f;
+//   ScalorType fsumy = 0.0f;
+//   ScalorType fsumz = 0.0f;
+//   IndexType ii = tid + bid * blockDim.x;
+//   ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+//   if (ii < numAtom) {
+//     CoordType ref;
+// #ifdef COMPILE_NO_TEX
+//     ref = coord[ii];
+// #else 
+//     ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+// #endif
+//     IndexType myNumAngle = anglelist.Nangle[ii];
+//     for (IndexType jj = 0; jj < anglelist.listLength; ++jj){
+//       if (jj == myNumAngle) break;
+//       IndexType targetIdx = anglelist.data[jj * anglelist.stride + ii];
+//       CoordType target;
+// #ifdef COMPILE_NO_TEX
+//       target = coord[targetIdx];
+// #else
+//       target = tex1Dfetch(global_texRef_interaction_coord, targetIdx);
+// #endif
+//       ScalorType diffx, diffy, diffz;
+//       diffx = target.x - ref.x;
+//       diffy = target.y - ref.y;
+//       diffz = target.z - ref.z;
+//       shortestImage (box, &diffx, &diffy, &diffz);
+//       ScalorType fx, fy, fz;
+//       ForceIndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
+//       ScalorType dp;
+//       angleForcePoten (angleForceType[angleFindex],
+// 		      &angleForceParam[angleForceParamPosi[angleFindex]],
+// 		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
+//       myPoten += dp;
+//       myVxx -= fx * diffx;
+//       myVyy -= fy * diffy;
+//       myVzz -= fz * diffz;
+//       fsumx -= fx;
+//       fsumy -= fy;
+//       fsumz -= fz;
+//     }
+//     forcx[ii] += fsumx;
+//     forcy[ii] += fsumy;
+//     forcz[ii] += fsumz;
+//   }
+
+//   buff[tid] = myPoten * 0.5f;
+//   sumVectorBlockBuffer_2 (buff);
+//   if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+//   __syncthreads();
+//   buff[tid] = myVxx * 0.5f;
+//   sumVectorBlockBuffer_2 (buff);
+//   if (threadIdx.x == 0) statistic_b_buff1[bid] = buff[0];
+//   __syncthreads();
+//   buff[tid] = myVyy * 0.5f;
+//   sumVectorBlockBuffer_2 (buff);
+//   if (threadIdx.x == 0) statistic_b_buff2[bid] = buff[0];
+//   __syncthreads();
+//   buff[tid] = myVzz * 0.5f;
+//   sumVectorBlockBuffer_2 (buff);
+//   if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
+//   __syncthreads();
+// }
+
+
 #endif

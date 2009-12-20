@@ -168,6 +168,9 @@ void NeighborList::init (const MDSystem & sys,
   IndexType expectedNumberInList 
       = 4./3. * M_PI * rlist * rlist * rlist * density;
   dnlist.listLength = expectedNumberInList * DeviceNeighborListExpansion;
+  if (dnlist.listLength < sys.ddata.numAtom * 10){
+    dnlist.listLength = sys.ddata.numAtom * 10;
+  }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
   cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
@@ -1155,10 +1158,11 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
     }
   }
   if (ii != MaxIndexValue) {
-    nlist.Nneighbor[ii] = Nneighbor;
     if (Nneighbor > nlist.listLength && ptr_de != NULL){
       *ptr_de = mdErrorShortNeighborList;
+      return;
     }
+    nlist.Nneighbor[ii] = Nneighbor;
   }
 }
 

@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
   sys.addNBForce (5, 4, mdForceCosTail, cosparam);
   sys.addNBForce (5, 7, mdForceCosTail, cosparam);  
 
-  sys.initBond (2);
+  sys.initBond ();
   ScalorType hsparam[mdForceNParamHarmonicSpring] ;
   HarmonicSpring::initParameter (hsparam, 10.f, 4.f);
   ScalorType feneparam[mdForceNParamFENE];

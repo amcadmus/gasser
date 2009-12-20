@@ -55,23 +55,44 @@ int main(int argc, char * argv[])
 		    mdForceLennardJones6_12, 
 		    ljparam);
 
-    sys.initBond (2);
+    sys.initBond ();
     ScalorType hsparam[mdForceNParamHarmonicSpring] ;
     HarmonicSpring::initParameter (hsparam, 5.f, 1);
     ScalorType feneparam[mdForceNParamFENE];
     FENE::initParameter (feneparam, 20.f, 2.3f);
   
-    for (unsigned i = 0; i < sys.hdata.numAtom; i+=2){
+    // for (unsigned i = 0; i < sys.hdata.numAtom; i+=2){
+    //   if (i < 50){
+    // 	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    // 	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    //   }
+    //   else{
+    // 	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    // 	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    //   }
+    // }   
+    for (unsigned i = 0; i < sys.hdata.numAtom-1; i++){
       if (i < 50){
-	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
-	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    	sys.addBond (i, i+1, mdForceFENE, feneparam);
       }
       else{
-	sys.addBond (i, i+1, mdForceFENE, feneparam);
-	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
       }
     }   
     sys.buildBond();
+
+    ScalorType ahparam [mdForceNParamAngleHarmonic];
+    AngleHarmonic::initParameter (ahparam, 5.f, 2./3.*M_PI);
+    sys.initAngle();
+    // for (unsigned i = 0; i < sys.hdata.numAtom-2; ++i){
+    //   sys.addAngle (i, i+1, i+2, mdForceAngleHarmonic, ahparam);
+    // }
+    sys.addAngle(0, 1, 2, mdForceAngleHarmonic, ahparam);
+    sys.addAngle(1, 2, 3, mdForceAngleHarmonic, ahparam);
+    sys.addAngle(2, 3, 4, mdForceAngleHarmonic, ahparam);
+    sys.buildAngle();
 
     ScalorType maxrcut = sys.calMaxNBRcut ();
     printf ("# max rcut is %f\n", maxrcut);
@@ -80,8 +101,8 @@ int main(int argc, char * argv[])
     NeighborList nlist(sys, rlist, NThreadsPerBlock, 20);;
     nlist.build (sys);
   
-    Reshuffle resh (sys, nlist, NThreadsPerBlock);
-    resh.shuffleSystem ( sys, nlist);
+    // Reshuffle resh (sys, nlist, NThreadsPerBlock);
+    // resh.shuffleSystem ( sys, nlist);
 
     MDStatistic st(sys);
 
@@ -119,19 +140,16 @@ int main(int argc, char * argv[])
 	interaction.applyInteraction (sys, nlist,  st);
 	inte.step2 (sys, dt, st);
 	st.updateHost();
-	printf ("%07d %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%07d %.7e %.7e %.7e %.7e\n",
 		i+1, 
 		st.getStatistic(mdStatisticNonBondedPotential),
 		st.getStatistic(mdStatisticBondedPotential),
 		st.kineticEnergy(),
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
-		st.getStatistic(mdStatisticVirialXX) + 
-		st.getStatistic(mdStatisticVirialYY) +
-		st.getStatistic(mdStatisticVirialZZ));
+		st.kineticEnergy());
 	fflush(stdout);
-        resh.shuffleSystem (sys, nlist);
+        // resh.shuffleSystem (sys, nlist);
       }
       else {
 	inte.step1 (sys, dt);

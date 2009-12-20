@@ -139,12 +139,13 @@ MDSystem::~MDSystem()
 }
 
   
-void MDSystem::initBond (const IndexType & maxNBond)
+void MDSystem::initBond ()
 {
-  bdlist.init (ddata, maxNBond);
+  bdlist.init (ddata);
 }
 
-void MDSystem::addBond (const IndexType & ii, const IndexType & jj,
+void MDSystem::addBond (const IndexType & ii,
+			const IndexType & jj,
 			const mdBondInteraction_t & type,
 			const ScalorType * param)
 {
@@ -154,6 +155,25 @@ void MDSystem::addBond (const IndexType & ii, const IndexType & jj,
 void MDSystem::buildBond ()
 {
   bdlist.build();
+}
+
+void MDSystem::initAngle ()
+{
+  anglelist.init (ddata);
+}
+
+void MDSystem::addAngle (const IndexType & ii,
+			 const IndexType & jj,
+			 const IndexType & kk,
+			 const mdAngleInteraction_t & type,
+			 const ScalorType * param)
+{
+  anglelist.addAngle(ii, jj, kk, type, param);
+}
+
+void MDSystem::buildAngle ()
+{
+  anglelist.build();
 }
 
 void MDSystem::updateHost(MDTimer *timer)

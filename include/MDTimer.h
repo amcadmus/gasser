@@ -18,7 +18,9 @@ enum mdTimeItem {
   mdTimeNBInterStatistic	= 8,
   mdTimeBondedInteraction	= 9,
   mdTimeBInterStatistic		= 10,
-  mdTimeDataTransfer		= 11,
+  mdTimeAngleInteraction	= 11,
+  mdTimeAngleInterStatistic	= 12,
+  mdTimeDataTransfer		= 13,
   mdTimeJudgeRebuild		= 19,
   mdTimeDataIO			= 20
 };

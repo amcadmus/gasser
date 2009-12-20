@@ -19,10 +19,9 @@ BondList::~BondList()
 }
 
 
-void BondList::init (const DeviceMDData & ddata,
-		     const IndexType & listLength)
+void BondList::init (const DeviceMDData & ddata)
 {
-  hbdlist.init (ddata.numAtom, listLength);
+  hbdlist.init (ddata.numAtom);
 
   NBondForce_mem = 1024;
   paramLength_mem = NBondForce_mem * 3;
@@ -174,17 +173,26 @@ void destroyDeviceBondList(DeviceBondList &dbdlist )
   }
 }
 
-void buildDeviceBondList (const HostBondList & hbdlist,
+void buildDeviceBondList (HostBondList & hbdlist,
 			  DeviceBondList & dbdlist)
 {
   dbdlist.stride = hbdlist.stride;
-  dbdlist.listLength = hbdlist.listLength;
+
+  IndexType maxLength = 0;
+  for (IndexType i = 0; i < hbdlist.stride; ++i){
+    for (IndexType j = hbdlist.Nbond[i]; j < hbdlist.listLength_mem; ++j){
+      hbdlist.data[j * hbdlist.stride + i] = MaxIndexValue;
+      hbdlist.bondIndex[j * hbdlist.stride + i] = MaxForceIndexValue;
+    }
+    if (hbdlist.Nbond[i] > maxLength) maxLength = hbdlist.Nbond[i];
+  }
+  dbdlist.listLength = maxLength;
   
   cudaMalloc (&(dbdlist.data), 
-	      sizeof(IndexType) * hbdlist.stride * hbdlist.listLength);
+	      sizeof(IndexType) * hbdlist.stride * maxLength);
   checkCUDAError ("buildDeviceBondList malloc data");
   cudaMalloc (&(dbdlist.bondIndex),
-	      sizeof(TypeType) * hbdlist.stride * hbdlist.listLength);
+	      sizeof(TypeType) * hbdlist.stride * maxLength);
   checkCUDAError ("buildDeviceBondList malloc bondIndex");
   cudaMalloc (&(dbdlist.Nbond),
 	      sizeof(IndexType) * hbdlist.stride);
@@ -193,11 +201,11 @@ void buildDeviceBondList (const HostBondList & hbdlist,
   dbdlist.malloced = true;
 
   cudaMemcpy (dbdlist.data, hbdlist.data,
-	      sizeof(IndexType) * hbdlist.stride * hbdlist.listLength,
+	      sizeof(IndexType) * hbdlist.stride * maxLength,
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("buildDeviceBondList cpy host data to device");
   cudaMemcpy (dbdlist.bondIndex, hbdlist.bondIndex,
-	      sizeof(ForceIndexType) * hbdlist.stride * hbdlist.listLength,
+	      sizeof(ForceIndexType) * hbdlist.stride * maxLength,
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("buildDeviceBondList cpy host bondIndex to device");
   cudaMemcpy (dbdlist.Nbond, hbdlist.Nbond,
@@ -211,7 +219,7 @@ void buildDeviceBondList (const HostBondList & hbdlist,
 HostBondList::HostBondList ()
 {
   stride = 0;
-  listLength = 0;
+  listLength_mem = 0;
   data = NULL;
   bondIndex = NULL;
   Nbond = NULL;
@@ -224,20 +232,20 @@ HostBondList::~HostBondList()
   freeAPointer ((void**)&Nbond);
 }
 
-void HostBondList::init (const IndexType & stride_,
-				const IndexType & listLength_)
+void HostBondList::init (const IndexType & stride_)
 {
   stride = stride_;
-  listLength = listLength_;
-  data = (IndexType *) malloc (sizeof(IndexType) * stride * listLength);
+  listLength_mem = 1;
+  data = (IndexType *) malloc (sizeof(IndexType) * stride * listLength_mem);
   if (data == NULL){
     throw MDExcptFailedMallocOnHost ("HostBondList::init", "data",
-				     sizeof(IndexType) * stride * listLength);
+				     sizeof(IndexType) * stride * listLength_mem);
   }
-  bondIndex = (ForceIndexType *) malloc (sizeof(ForceIndexType *) * stride * listLength);
+  bondIndex = (ForceIndexType *) malloc
+      (sizeof(ForceIndexType *) * stride * listLength_mem);
   if (bondIndex == NULL){
     throw MDExcptFailedMallocOnHost ("HostBondList::init", "bondIndex",
-				     sizeof(ForceIndexType *) * stride * listLength);
+				     sizeof(ForceIndexType *) * stride * listLength_mem);
   }
   Nbond = (IndexType *) malloc (sizeof(IndexType) * stride);
   if (Nbond == NULL){
@@ -248,17 +256,31 @@ void HostBondList::init (const IndexType & stride_,
   for (IndexType i = 0; i < stride; ++i){
     Nbond[i] = 0;
   }
-  for (IndexType i = 0; i < stride * listLength; ++i){
-    data[i] = MaxForceIndexValue;
-    bondIndex[i] = 0;
-  }
+  // for (IndexType i = 0; i < stride * listLength_mem; ++i){
+  //   data[i] = MaxForceIndexValue;
+  //   bondIndex[i] = 0;
+  // }
 }
 
 
 void HostBondList::addBond (const IndexType & ii,
 			    const IndexType & jj,
 			    const ForceIndexType &looking)
-{  
+{
+  if (Nbond[ii] == listLength_mem || Nbond[jj] == listLength_mem){
+    listLength_mem *= 2;
+    data = (IndexType *) realloc (data, sizeof(IndexType) * stride * listLength_mem);
+    if (data == NULL){
+      throw MDExcptFailedReallocOnHost ("HostBondList::addBond", "data",
+					sizeof(IndexType) * stride * listLength_mem);
+    }
+    bondIndex = (ForceIndexType *) realloc
+	(bondIndex, sizeof(ForceIndexType *) * stride * listLength_mem);
+    if (bondIndex == NULL){
+      throw MDExcptFailedReallocOnHost ("HostBondList::init", "bondIndex",
+					sizeof(ForceIndexType *) * stride * listLength_mem);
+    }
+  }
   data[Nbond[ii] * stride + ii] = jj;
   data[Nbond[jj] * stride + jj] = ii;
   bondIndex[Nbond[ii] * stride + ii] = looking;
@@ -289,27 +311,27 @@ static void sortBuff (TypeType * ref, IndexType * indexMap, IndexType N)
 
 void HostBondList::sort(mdBondInteraction_t * bondType)
 {
-  IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * listLength);
+  IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * listLength_mem);
   if (indexMap == NULL){
     MDExcptFailedMallocOnHost ("BondList::sortBond", "indexMap",
-			       sizeof(IndexType) * listLength);
+			       sizeof(IndexType) * listLength_mem);
   }
-  TypeType  *typeBuff = (TypeType *) malloc (sizeof(TypeType)  * listLength);
+  TypeType  *typeBuff = (TypeType *) malloc (sizeof(TypeType)  * listLength_mem);
   if (typeBuff == NULL){
     MDExcptFailedMallocOnHost ("BondList::sortBond", "typeBuff",
-			       sizeof(TypeType)  * listLength);
+			       sizeof(TypeType)  * listLength_mem);
   }
   ForceIndexType * bkForceIndex = (ForceIndexType *) malloc (
-      sizeof (ForceIndexType) * listLength);
+      sizeof (ForceIndexType) * listLength_mem);
   if (bkForceIndex == NULL){
     MDExcptFailedMallocOnHost ("BondList::sortBond", "bkForceIndex",
-			       sizeof (ForceIndexType) * listLength);
+			       sizeof (ForceIndexType) * listLength_mem);
   }			     
   IndexType * bkData = (IndexType *) malloc (
-      sizeof (IndexType) * listLength);
+      sizeof (IndexType) * listLength_mem);
   if (bkData == NULL){
     MDExcptFailedMallocOnHost ("BondList::sortBond", "bkData",
-			       sizeof (IndexType) * listLength);
+			       sizeof (IndexType) * listLength_mem);
   }
   for (IndexType i = 0; i < stride; ++i){
     for (IndexType j = 0; j < Nbond[i]; ++j){
