@@ -587,7 +587,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
   if (ii >= numAtom) return;
   ScalorType refx = 0.0f, refy = 0.0f, refz = 0.0f;
 
-#ifndef COMPILE_NO_TEX
+#ifdef COMPILE_NO_TEX
   refx = coordx[ii];
   refy = coordy[ii];
   refz = coordz[ii];

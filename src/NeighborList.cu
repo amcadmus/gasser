@@ -135,8 +135,7 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
 	  *ptr_de = mdErrorShortCellList;
 	}
       }
-      else
-  	break;
+      else break;
     }
   }
 }

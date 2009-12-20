@@ -32,9 +32,16 @@ private:
   IndexType buildDeviceNeighborList_DeviceCellList_sbuffSize;
   IndexType buildDeviceCellList_step1_sbuffSize;
   IndexType judgeRebuild_judgeCoord_block_sbuffSize;
+private:
+  void initCellList (const MDSystem & sys,
+		     const ScalorType & rlist,
+		     const BoxDirection_t & bdir);
+  void reinitCellList (const MDSystem & sys,
+		       const ScalorType & rlist,
+		       const BoxDirection_t & bdir);  
 public:
   NeighborListBuiltMode mode;
-  bool CellOnX, CellOnY, CellOnZ;
+  BoxDirection_t mybdir;
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
   IndexType NatomType;

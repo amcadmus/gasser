@@ -77,21 +77,11 @@ static IndexType hroundUp4 (IndexType x)
   }
 }
 
-void NeighborList::init (const MDSystem & sys,
-			 const ScalorType & rlist,
-			 const IndexType & NTread,
-			 const IndexType & DeviceNeighborListExpansion,
-			 const RectangularBoxGeometry::BoxDirection_t & bdir)
+void NeighborList::initCellList (const MDSystem & sys,
+				 const ScalorType & rlist,
+				 const BoxDirection_t & bdir)
 {
-  malloced = false;
-  myBlockDim.y = 1;
-  myBlockDim.z = 1;
-  myBlockDim.x = NTread;
-  bitDeepth = calDeepth(sys.ddata.numAtom);
-  printf ("# the bit deepth is %d\n", bitDeepth);
-  
-  // init cell list
-  // calculate cell dimension
+  bool CellOnX, CellOnY, CellOnZ;
   CellOnX = bdir & RectangularBoxGeometry::mdRectBoxDirectionX;
   CellOnY = bdir & RectangularBoxGeometry::mdRectBoxDirectionY;
   CellOnZ = bdir & RectangularBoxGeometry::mdRectBoxDirectionZ;
@@ -123,31 +113,14 @@ void NeighborList::init (const MDSystem & sys,
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block
   dclist.stride = myBlockDim.x;
-  
-  // if ((dclist.NCell.x < 4 || dclist.NCell.y < 4 || dclist.NCell.z < 4) &&
-  //     bdir == 8)
-  //   mode = AllPairBuilt;
-  // else 
-  //   mode = CellListBuilt;
 
+  cellGridDim = toGridDim (numCell);
+  
   mode = CellListBuilt;
   if (CellOnX && dclist.NCell.x < 4) mode = AllPairBuilt;
   if (CellOnY && dclist.NCell.y < 4) mode = AllPairBuilt;
   if (CellOnZ && dclist.NCell.z < 4) mode = AllPairBuilt;
-  
-  IndexType nob;
-  if (sys.ddata.numAtom % myBlockDim.x == 0){
-    nob = sys.ddata.numAtom / myBlockDim.x;
-  } else {
-    nob = sys.ddata.numAtom / myBlockDim.x + 1;
-  }
-  atomGridDim = toGridDim (nob);
-  nob = numCell;
-  cellGridDim = toGridDim (nob);
-
-  if (mode == AllPairBuilt){
-  }
-  else if (mode == CellListBuilt){
+  if (mode == CellListBuilt){
     cudaMalloc ((void**)&(dclist.data), 
 		sizeof(ScalorType) * numCell * dclist.stride);
     cudaMalloc ((void**)&mySendBuff, 
@@ -160,7 +133,47 @@ void NeighborList::init (const MDSystem & sys,
 	(mySendBuff, myTargetBuff);
     checkCUDAError ("NeighborList::init cell list buff");
   }			  
+}
 
+void NeighborList::reinitCellList (const MDSystem & sys,
+				   const ScalorType & rlist,
+				   const BoxDirection_t & bdir)
+{
+  if (mode == CellListBuilt){
+    cudaFree (dclist.data);
+    cudaFree (dclist.numbers);
+    cudaFree (mySendBuff);
+    cudaFree (myTargetBuff);
+  }
+  initCellList (sys, rlist, bdir);
+}
+
+
+void NeighborList::init (const MDSystem & sys,
+			 const ScalorType & rlist,
+			 const IndexType & NTread,
+			 const IndexType & DeviceNeighborListExpansion,
+			 const BoxDirection_t & bdir)
+{
+  malloced = false;
+  myBlockDim.y = 1;
+  myBlockDim.z = 1;
+  myBlockDim.x = NTread;
+  bitDeepth = calDeepth(sys.ddata.numAtom);
+  printf ("# the bit deepth is %d\n", bitDeepth);
+
+  IndexType nob;
+  if (sys.ddata.numAtom % myBlockDim.x == 0){
+    nob = sys.ddata.numAtom / myBlockDim.x;
+  } else {
+    nob = sys.ddata.numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
+  
+  // init cell list
+  mybdir = bdir;
+  initCellList (sys, rlist, mybdir);
+  
   // init neighbor list
   dnlist.rlist = rlist;
   dnlist.stride = sys.ddata.numAtom;
@@ -185,7 +198,6 @@ void NeighborList::init (const MDSystem & sys,
 	      nbForceTableLength * sizeof(ForceIndexType),
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("AtomNBForceTable::deviceInitTable");
-
   
   // bind texture
   // printf ("numMem is %d\n", sys.ddata.numMem);
@@ -358,44 +370,56 @@ void NeighborList::reBuild (const MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeNormalizeSys);
 
   if (mode == CellListBuilt){
-    // if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
-    // buildDeviceNeighborList_AllPair 
-    // 	<<<atomGridDim, myBlockDim,
-    // 	buildDeviceNeighborList_AllPair_sbuffSize>>>(
-    // 	    sys.ddata.numAtom,
-    // 	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
-    // 	    sys.ddata.type,
-    // 	    sys.box, dnlist,
-    // 	    nbForceTable, NatomType,
-    // 	    sharednbForceTable,
-    // 	    err.ptr_de);
-    // checkCUDAError ("NeighborList::build, build neighbor list all pair");
-    // if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
-
     if (timer != NULL) timer->tic(mdTimeBuildCellList);
-    buildDeviceCellList_clearBuff
-    	<<<cellGridDim, myBlockDim>>> (
-    	    mySendBuff);
-    err.check ("NeighborList::rebuild, clear buff");
-    buildDeviceCellList_step1 
-    	<<<cellGridDim, myBlockDim,
-    	buildDeviceCellList_step1_sbuffSize>>> (
-    	    sys.ddata.numAtom, 
+    ScalorType rlisti = 1./dclist.rlist;
+    if (fabsf(floorf(sys.box.size.x * rlisti) - dclist.NCell.x) > 0.1 ||
+    	fabsf(floorf(sys.box.size.y * rlisti) - dclist.NCell.y) > 0.1 ||
+    	fabsf(floorf(sys.box.size.z * rlisti) - dclist.NCell.z) > 0.1 ){
+    // if (true){
+      printf ("### box changes too much naively rebuild\n");
+      reinitCellList (sys, dclist.rlist, mybdir);
+      prepare_naivlyBuildDeviceCellList
+	  <<<cellGridDim, myBlockDim>>> (dclist);
+      naivlyBuildDeviceCellList2        
+	  <<<atomGridDim, myBlockDim,
+	  buildDeviceCellList_step1_sbuffSize>>> (
+	      sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-    	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	      sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz, 
 #else
-	    sys.ddata.coord,
+	      sys.ddata.coord,
 #endif
-    	    sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz,
-    	    sys.box, dclist, mySendBuff, myTargetBuff,
-    	    err.ptr_de, err.ptr_dindex, err.ptr_dscalor);
-    err.check ("NeighborList::rebuild, build cell list step1");
-    checkCUDAError ("NeighborList::rebuild, build cell list step1");
-    buildDeviceCellList_step2
-    	<<<cellGridDim, myBlockDim>>> (
-    	    sys.box, dclist, mySendBuff, myTargetBuff, bitDeepth,
-    	    err.ptr_de);
-    err.check ("NeighborList::rebuild, build cell list step2");
+	      sys.box, dclist,
+	      err.ptr_de,
+	      err.ptr_dindex, err.ptr_dscalor);
+      err.check ("NeighborList::rebuild, naivly build cell list");
+      checkCUDAError ("NeighborList::rebuild, naivly build cell list");
+    }
+    else {
+      buildDeviceCellList_clearBuff
+	  <<<cellGridDim, myBlockDim>>> (
+	      mySendBuff);
+      err.check ("NeighborList::rebuild, clear buff");
+      buildDeviceCellList_step1 
+	  <<<cellGridDim, myBlockDim,
+	  buildDeviceCellList_step1_sbuffSize>>> (
+	      sys.ddata.numAtom, 
+#ifndef COORD_IN_ONE_VEC
+	      sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+#else
+	      sys.ddata.coord,
+#endif
+	      sys.ddata.coordNoix, sys.ddata.coordNoiy, sys.ddata.coordNoiz,
+	      sys.box, dclist, mySendBuff, myTargetBuff,
+	      err.ptr_de, err.ptr_dindex, err.ptr_dscalor);
+      err.check ("NeighborList::rebuild, build cell list step1");
+      checkCUDAError ("NeighborList::rebuild, build cell list step1");
+      buildDeviceCellList_step2
+	  <<<cellGridDim, myBlockDim>>> (
+	      sys.box, dclist, mySendBuff, myTargetBuff, bitDeepth,
+	      err.ptr_de);
+      err.check ("NeighborList::rebuild, build cell list step2");
+    }
     checkCUDAError ("NeighborList::rebuild, build cell list step2");
     if (timer != NULL) timer->toc(mdTimeBuildCellList);
     if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
