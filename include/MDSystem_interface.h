@@ -140,6 +140,11 @@ public:
    * 
    */
   void endWriteXtc ();
+  
+  void writeHostDataGro (const char * filename,
+			 int step,
+			 float time,
+			 MDTimer *timer=NULL);
 }
     ;
 

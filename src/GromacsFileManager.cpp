@@ -3,20 +3,21 @@
 #include <stdio.h>
 #include <string.h>
 
-void GromacsFileManager::readGroFile (const char * filename,
-				      IndexType * resdindex,
-				      char * resdname,
-				      char * atomname,
-				      IndexType * atomindex,
-				      ScalorType * posix,
-				      ScalorType * posiy,
-				      ScalorType * posiz,
-				      ScalorType * velox,
-				      ScalorType * veloy,
-				      ScalorType * veloz,
-				      ScalorType * boxx,  
-				      ScalorType * boxy,  
-				      ScalorType * boxz)
+void
+GromacsFileManager::readGroFile (const char * filename,
+				 IndexType * resdindex,
+				 char * resdname,
+				 char * atomname,
+				 IndexType * atomindex,
+				 ScalorType * posix,
+				 ScalorType * posiy,
+				 ScalorType * posiz,
+				 ScalorType * velox,
+				 ScalorType * veloy,
+				 ScalorType * veloz,
+				 ScalorType * boxx,  
+				 ScalorType * boxy,  
+				 ScalorType * boxz)
 {
   FILE * fp = fopen (filename, "r");
   if (fp == NULL){
@@ -90,3 +91,34 @@ void GromacsFileManager::readGroFile (const char * filename,
   
   fclose (fp);
 }
+
+
+void
+GromacsFileManager::writeGroFile (FILE * fp,
+				  const IndexType num,
+				  const IndexType * resdindex,
+				  const char * resdname,
+				  const char * atomname,
+				  const IndexType * atomindex,
+				  const ScalorType * posix,
+				  const ScalorType * posiy,
+				  const ScalorType * posiz,
+				  const ScalorType * velox,
+				  const ScalorType * veloy,
+				  const ScalorType * veloz,
+				  const ScalorType boxx,  
+				  const ScalorType boxy,  
+				  const ScalorType boxz)
+{
+  fprintf (fp, "\n%d\n", num);
+  for (IndexType i = 0; i < num; ++i){
+    fprintf(fp, "%5d%5s%5s%5d%8.3f%8.3f%8.3f%8.4f%8.4f%8.4f\n",
+	    resdindex[i], &resdname[i*StringSize],
+	    &atomname[i*StringSize], atomindex[i],
+	    posix[i], posiy[i], posiz[i],
+	    velox[i], veloy[i], veloz[i]);
+  }
+  fprintf (fp, "%f %f %f\n", boxx, boxy, boxz);
+}
+
+

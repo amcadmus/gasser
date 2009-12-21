@@ -19,6 +19,7 @@ HostMDData::HostMDData()
   mass = massi = NULL;
   charge = NULL;
   atomName = NULL;
+  atomIndex = NULL;
   resdName = NULL;
   resdIndex = NULL;
 }
@@ -102,6 +103,8 @@ __host__ void mallocHostMDData (IndexType numAtom, IndexType expectedMaxNumAtom,
 
   hdata->atomName = (char *) malloc (sizec);
   if (hdata->atomName == NULL) throw MDExcptFailedMallocOnHost("hdata->atomName", sizec);
+  hdata->atomIndex = (IndexType *) malloc (sizeidx);
+  if (hdata->atomIndex == NULL) throw MDExcptFailedMallocOnHost("hdata->atomIndex", sizeidx);
   hdata->resdName = (char *) malloc (sizec);
   if (hdata->resdName == NULL) throw MDExcptFailedMallocOnHost("hdata->resdName", sizec);
   hdata->resdIndex = (IndexType *) malloc (sizeidx); 
@@ -142,6 +145,7 @@ __host__ void lazyInitHostMDData (HostMDData * hdata)
     strcpy (&(hdata->atomName)[i*8], "AName");
     strcpy (&(hdata->resdName)[i*8], "RName");
     hdata->resdIndex[i] = i;
+    hdata->atomIndex[i] = i;
   }
   initMass (hdata);
 }
@@ -186,6 +190,7 @@ __host__ void destroyHostMDData (HostMDData * hdata)
   freeAPointer ((void**)&hdata->charge);
 
   freeAPointer ((void**)&hdata->atomName);
+  freeAPointer ((void**)&hdata->atomIndex);
   freeAPointer ((void**)&hdata->resdName);
   freeAPointer ((void**)&hdata->resdIndex);
 }

@@ -32,6 +32,7 @@ public:
   ScalorType totalMassi;
   ScalorType * charge;
   char * atomName;
+  IndexType * atomIndex;
   char * resdName;
   IndexType * resdIndex;
 public:

@@ -18,6 +18,21 @@ namespace GromacsFileManager{
 		      ScalorType * boxx,  
 		      ScalorType * boxy,  
 		      ScalorType * boxz);
+    void writeGroFile (FILE * fp,
+		       const IndexType num,
+		       const IndexType * resdindex,
+		       const char * resdname,
+		       const char * atomname,
+		       const IndexType * atomindex,
+		       const ScalorType * posix,
+		       const ScalorType * posiy,
+		       const ScalorType * posiz,
+		       const ScalorType * velox,
+		       const ScalorType * veloy,
+		       const ScalorType * veloz,
+		       const ScalorType boxx,  
+		       const ScalorType boxy,  
+		       const ScalorType boxz);
 };
 
 

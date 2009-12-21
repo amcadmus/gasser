@@ -49,7 +49,7 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
 #endif
   GromacsFileManager::readGroFile (configfile,
 				   hdata.resdIndex, hdata.resdName, 
-				   hdata.atomName, tmpatomIndex,
+				   hdata.atomName, hdata.atomIndex,
 #ifndef COORD_IN_ONE_VEC
 				   hdata.coordx, hdata.coordy, hdata.coordz,
 #else
@@ -93,6 +93,49 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
 
   initDeviceMDData (&hdata, &ddata);
   initDeviceMDData (&hdata, &recoveredDdata);
+}
+
+
+void MDSystem::writeHostDataGro (const char * filename,
+				 int step,
+				 float time,
+				 MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeDataIO);
+  FILE * fp = fopen (filename, "w");
+  if (fp == NULL){
+    throw MDExcptCannotOpenFile (filename);
+  }
+  fprintf (fp, "# at time = %f, step = %d", time, step);
+#ifdef COORD_IN_ONE_VEC
+  ScalorType * tmpx, * tmpy, * tmpz;
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * hdata.numMem);
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * hdata.numMem);
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * hdata.numMem);
+  for (IndexType i = 0; i < hdata.numAtom; ++i){
+    tmpx[i] = hdata.coord[i].x;
+    tmpy[i] = hdata.coord[i].y;
+    tmpz[i] = hdata.coord[i].z;
+  }
+#endif
+  GromacsFileManager::writeGroFile (fp,
+				    hdata.numAtom,
+				    hdata.resdIndex, hdata.resdName, 
+				    hdata.atomName, hdata.atomIndex,
+#ifndef COORD_IN_ONE_VEC
+				    hdata.coordx, hdata.coordy, hdata.coordz,
+#else
+				    tmpx, tmpy, tmpz,
+#endif
+				    hdata.velox,  hdata.veloy,  hdata.veloz,
+				    box.size.x, box.size.y, box.size.z) ;
+#ifdef COORD_IN_ONE_VEC
+  free (tmpx);
+  free (tmpy);
+  free (tmpz);
+#endif
+  fclose (fp);
+  if (timer != NULL) timer->toc(mdTimeDataIO);
 }
 
 
@@ -191,10 +234,10 @@ void MDSystem::initWriteXtc (const char * filename, float prec)
     MDExcptCannotOpenFile ("MDSystem::initWriteXtc", filename);
   }
   for (unsigned i = 0; i < 3; ++i){
-      for (unsigned j = 0; j < 3; ++j){
-      	  xdbox[i][j] = 0.f;
-	  }	      
-	  }
+    for (unsigned j = 0; j < 3; ++j){
+      xdbox[i][j] = 0.f;
+    }	      
+  }
   xdbox[0][0] = box.size.x;
   xdbox[1][1] = box.size.y;
   xdbox[2][2] = box.size.z;

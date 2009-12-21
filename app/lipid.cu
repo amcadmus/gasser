@@ -126,6 +126,7 @@ int main(int argc, char * argv[])
   
   printf ("# prepare ok, start to run\n");
 
+  sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
     timer.tic(mdTimeTotal);
     sys.initWriteXtc ("traj.xtc");
@@ -186,6 +187,8 @@ int main(int argc, char * argv[])
       }
     }
     sys.endWriteXtc();
+    resh.recoverMDDataToHost (sys, &timer);
+    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
