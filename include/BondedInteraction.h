@@ -163,10 +163,11 @@ __device__ void HarmonicSpring::force (const ScalorType * param,
 				       ScalorType *fy,
 				       ScalorType *fz)
 {
-  ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
-  ScalorType dri = __frcp_rn(dr);
-
-  ScalorType scalor = - param[epsilon] * (1.f - param[r0] * dri) ;
+//   ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
+//   ScalorType dri = __frcp_rn(dr);
+  ScalorType dri = 1./sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+  
+  ScalorType scalor = param[epsilon] * (1.f - param[r0] * dri) ;
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
@@ -181,10 +182,13 @@ __device__ ScalorType HarmonicSpring::forcePoten (const ScalorType * param,
 						  ScalorType *fy,
 						  ScalorType *fz)
 {
-  ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
-  ScalorType dri = __frcp_rn(dr);
+//   ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
+//   ScalorType dri = __frcp_rn(dr);
+  ScalorType dr = diffx*diffx + diffy*diffy + diffz*diffz;
+  ScalorType dri = 1./sqrtf(dr);
+  dr *= dri;
 
-  ScalorType scalor = - param[epsilon] * (1.f - param[r0] * dri) ;
+  ScalorType scalor = param[epsilon] * (1.f - param[r0] * dri) ;
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
@@ -211,7 +215,7 @@ __device__  void FENE::force (const ScalorType * param,
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
 
-  ScalorType scalor = - param[epsilon] * __fdiv_rn(param[rinf2], param[rinf2] - dr2);
+  ScalorType scalor = param[epsilon] * __fdiv_rn(param[rinf2], param[rinf2] - dr2);
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
@@ -228,7 +232,7 @@ __device__ ScalorType FENE::forcePoten (const ScalorType * param,
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
 
   ScalorType core =  __fdiv_rn(param[rinf2], param[rinf2] - dr2);
-  ScalorType scalor = - core * param[epsilon];
+  ScalorType scalor = core * param[epsilon];
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
@@ -240,155 +244,6 @@ __device__ ScalorType FENE::forcePoten (const ScalorType * param,
     return -0.5f * param[epsilon] * param[rinf2] * __logf (tmp);
   }
 }
-  
-
-
-
-
-
-    
-
-struct HarmonicSpringParameters
-{
-  ScalorType k;
-  ScalorType r0;
-};
-
-__device__ void initHarmonicSpringParameters (HarmonicSpringParameters * param,
-					      ScalorType k_,
-					      ScalorType r0_);
-__device__ void harmonicSpringForce (HarmonicSpringParameters param,
-				     ScalorType diffx,
-				     ScalorType diffy,
-				     ScalorType diffz,
-				     ScalorType *fx, ScalorType *fy, ScalorType *fz);
-__device__ ScalorType harmonicSpringForcePoten (HarmonicSpringParameters param,
-						ScalorType diffx,
-						ScalorType diffy,
-						ScalorType diffz,
-						ScalorType *fx, 
-						ScalorType *fy, 
-						ScalorType *fz);
-
-struct FENEBondParameters
-{
-  ScalorType k;
-  ScalorType rinf2;
-};
-__device__ void initFENEBondParameters (FENEBondParameters * param,
-					ScalorType k_,
-					ScalorType rinf_);
-__device__ void FENEBondForce (FENEBondParameters  param,
-			       ScalorType diffx,
-			       ScalorType diffy,
-			       ScalorType diffz,
-			       ScalorType *fx, 
-			       ScalorType *fy, 
-			       ScalorType *fz);
-__device__ ScalorType ScalorTypeFENEBondForcePoten (FENEBondParameters  param,
-						    ScalorType diffx,
-						    ScalorType diffy,
-						    ScalorType diffz,
-						    ScalorType *fx, 
-						    ScalorType *fy, 
-						    ScalorType *fz);
-
-
-
-////////////////////////////////////////////////////////////
-// implementation Harmonic Spring
-// /////////////////////////////////////////////////////////
-__device__ void initHarmonicSpringParameters (HarmonicSpringParameters * param,
-					      ScalorType k_,
-					      ScalorType r0_)
-{
-  param->k = k_;
-  param->r0 = r0_;
-}
-
-__device__ void harmonicSpringForce (HarmonicSpringParameters  param,
-				     ScalorType diffx,
-				     ScalorType diffy,
-				     ScalorType diffz,
-				     ScalorType *fx, ScalorType *fy, ScalorType *fz)
-{
-  ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
-  ScalorType dri = __frcp_rn(dr);
-
-  ScalorType scalor = - param.k * (1.f - param.r0 * dri) ;
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
-}
-
-__device__ ScalorType harmonicSpringForcePoten (HarmonicSpringParameters  param,
-						ScalorType diffx,
-						ScalorType diffy,
-						ScalorType diffz,
-						ScalorType *fx, 
-						ScalorType *fy, 
-						ScalorType *fz)
-{
-  ScalorType dr = __fsqrt_rn(diffx*diffx + diffy*diffy + diffz*diffz);
-  ScalorType dri = __frcp_rn(dr);
-
-  ScalorType scalor = - param.k * (1.f - param.r0 * dri) ;
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
-
-  return 0.5f * param.k * (dr - param.r0) * (dr - param.r0);
-}
-
-
-////////////////////////////////////////////////////////////
-// implementation  fene bond
-// /////////////////////////////////////////////////////////
-__device__ void initFENEBondParameters (FENEBondParameters * param,
-					ScalorType k_,
-					ScalorType rinf_)
-{
-  param->k = k_;
-  param->rinf2 = rinf_ * rinf_;
-}
-
-__device__ void FENEBondForce (FENEBondParameters  param,
-			       ScalorType diffx,
-			       ScalorType diffy,
-			       ScalorType diffz,
-			       ScalorType *fx, 
-			       ScalorType *fy, 
-			       ScalorType *fz)
-{
-  ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-
-  ScalorType scalor = - param.k * __fdiv_rn(param.rinf2, param.rinf2 - dr2);
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
-}
-
-__device__ ScalorType FENEBondForcePoten (FENEBondParameters  param,
-					  ScalorType diffx,
-					  ScalorType diffy,
-					  ScalorType diffz,
-					  ScalorType *fx, 
-					  ScalorType *fy, 
-					  ScalorType *fz)
-{
-  ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-
-  ScalorType core =  __fdiv_rn(param.rinf2, param.rinf2 - dr2);
-  ScalorType scalor = - core * param.k;
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
-
-  return -0.5f * param.k * param.rinf2 * logf (__fdiv_rn(param.rinf2 - dr2, param.rinf2));
-}
-
-
-
 
 
 #endif

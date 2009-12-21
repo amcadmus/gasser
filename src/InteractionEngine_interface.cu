@@ -199,21 +199,22 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
     err.check ("interaction engine b");	
     if (timer != NULL) timer->toc(mdTimeBondedInteraction);
   }
-
-  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
-  calAngleInteraction
-      <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.numAtom,
+  if (sys.anglelist.danglelist.listLength != 0){
+    if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+    calAngleInteraction
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.box, sys.anglelist.danglelist);
-  checkCUDAError ("InteractionEngine::applyInteraction angle");
-  err.check ("interaction engine angle");	
-  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.box, sys.anglelist.danglelist);
+    checkCUDAError ("InteractionEngine::applyInteraction angle");
+    err.check ("interaction engine angle");	
+    if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+  }
 }
 
 void InteractionEngine_interface::applyInteraction (MDSystem &sys,
@@ -272,26 +273,27 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     err.check ("interaction engine");	
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
-
-  if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
-  calAngleInteraction
-      <<<atomGridDim, myBlockDim,
-      calAngleInteraction_sbuffSize>>> (
-	  sys.ddata.numAtom,
+  if (sys.anglelist.danglelist.listLength != 0){
+    if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
+    calAngleInteraction
+	<<<atomGridDim, myBlockDim,
+	calAngleInteraction_sbuffSize>>> (
+	    sys.ddata.numAtom,
 #ifndef COORD_IN_ONE_VEC
-	  sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
+	    sys.ddata.coordx, sys.ddata.coordy, sys.ddata.coordz,
 #else
-	  sys.ddata.coord,
+	    sys.ddata.coord,
 #endif
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.box,
-	  sys.anglelist.danglelist,
-	  sum_angle_p.getBuff(),
-	  err.ptr_de);
-  checkCUDAError ("InteractionEngine::applyInteraction angle");
-  err.check ("interaction engine angle");	
-  if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
-
+	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	    sys.box,
+	    sys.anglelist.danglelist,
+	    sum_angle_p.getBuff(),
+	    err.ptr_de);
+    checkCUDAError ("InteractionEngine::applyInteraction angle");
+    err.check ("interaction engine angle");	
+    if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
+  }
+  
   {
     if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
     cudaThreadSynchronize();
@@ -312,10 +314,11 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
-  if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
-  sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-  if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
-  
+  if (sys.anglelist.danglelist.listLength != 0){
+    if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
+    sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
+  }
   checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
@@ -396,9 +399,9 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       nbForce (nbForceType[nbForceIndex], forceParam,
       	       diffx, diffy, diffz, 
       	       &fx, &fy, &fz);
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -480,12 +483,12 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       		    diffx, diffy, diffz, 
       		    &fx, &fy, &fz, &dp);
       myPoten += dp;
-      myVxx -= fx * diffx;
-      myVyy -= fy * diffy;
-      myVzz -= fz * diffz;
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -623,9 +626,9 @@ __global__ void calBondInteraction (const IndexType numAtom,
     bondForce (bondForceType[bondFindex],
 	       &bondForceParam[bondForceParamPosi[bondFindex]],
 	       diffx, diffy, diffz, &fx, &fy, &fz);
-    fsumx -= fx;
-    fsumy -= fy;
-    fsumz -= fz;
+    fsumx += fx;
+    fsumy += fy;
+    fsumz += fz;
   }
   forcx[ii] += fsumx;
   forcy[ii] += fsumy;
@@ -701,12 +704,12 @@ __global__ void calBondInteraction (const IndexType numAtom,
 		      &bondForceParam[bondForceParamPosi[bondFindex]],
 		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
       myPoten += dp;
-      myVxx -= fx * diffx;
-      myVyy -= fy * diffy;
-      myVzz -= fz * diffz;
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -845,9 +848,9 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 	       &nbForceParam[nbForceParamPosi[nbForceIndex]],
       	       diffx, diffy, diffz, 
       	       &fx, &fy, &fz);
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -915,12 +918,12 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       		    diffx, diffy, diffz, 
       		    &fx, &fy, &fz, &dp);
       myPoten += dp;
-      myVxx -= fx * diffx;
-      myVyy -= fy * diffy;
-      myVzz -= fz * diffz;
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -980,9 +983,9 @@ __global__ void calBondInteraction (const IndexType numAtom,
     bondForce (bondForceType[bondFindex],
 	       &bondForceParam[bondForceParamPosi[bondFindex]],
 	       diffx, diffy, diffz, &fx, &fy, &fz);
-    fsumx -= fx;
-    fsumy -= fy;
-    fsumz -= fz;
+    fsumx += fx;
+    fsumy += fy;
+    fsumz += fz;
   }
   forcx[ii] += fsumx;
   forcy[ii] += fsumy;
@@ -1044,12 +1047,12 @@ __global__ void calBondInteraction (const IndexType numAtom,
 		      &bondForceParam[bondForceParamPosi[bondFindex]],
 		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
       myPoten += dp;
-      myVxx -= fx * diffx;
-      myVyy -= fy * diffy;
-      myVzz -= fz * diffz;
-      fsumx -= fx;
-      fsumy -= fy;
-      fsumz -= fz;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -1121,7 +1124,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 #endif 
       ScalorType diff0x, diff0y, diff0z;
       ScalorType diff1x, diff1y, diff1z;
-      bool center = (myPosi == 1);
+      bool center (myPosi == 1);
       if (center){
 	diff0x = ref.x - target0.x;
 	diff0y = ref.y - target0.y;
@@ -1301,12 +1304,12 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 // 		      &angleForceParam[angleForceParamPosi[angleFindex]],
 // 		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
 //       myPoten += dp;
-//       myVxx -= fx * diffx;
-//       myVyy -= fy * diffy;
-//       myVzz -= fz * diffz;
-//       fsumx -= fx;
-//       fsumy -= fy;
-//       fsumz -= fz;
+//       myVxx += fx * diffx;
+//       myVyy += fy * diffy;
+//       myVzz += fz * diffz;
+//       fsumx += fx;
+//       fsumy += fy;
+//       fsumz += fz;
 //     }
 //     forcx[ii] += fsumx;
 //     forcy[ii] += fsumy;

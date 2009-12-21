@@ -44,7 +44,12 @@ int main(int argc, char * argv[])
   sys.addNBForce  (1, 1, 
 		   mdForceLennardJones6_12, 
 		   ljparam);
-
+//   ScalorType ljcapparam[mdForceNParamLennardJones6_12_cap];
+//   LennardJones6_12_cap::initParameter (ljcapparam, 1.f, 1.f, 0.f, 3.2f, 10);
+//   sys.addNBForce  (1, 1, 
+// 		   mdForceLennardJones6_12_cap, 
+// 		   ljcapparam);
+  
   sys.initBond ();
   sys.buildBond();
   sys.initAngle ();

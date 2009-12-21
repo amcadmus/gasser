@@ -372,9 +372,12 @@ void NeighborList::reBuild (const MDSystem & sys,
   if (mode == CellListBuilt){
     if (timer != NULL) timer->tic(mdTimeBuildCellList);
     ScalorType rlisti = 1./dclist.rlist;
-    if (fabsf(floorf(sys.box.size.x * rlisti) - dclist.NCell.x) > 0.1 ||
-    	fabsf(floorf(sys.box.size.y * rlisti) - dclist.NCell.y) > 0.1 ||
-    	fabsf(floorf(sys.box.size.z * rlisti) - dclist.NCell.z) > 0.1 ){
+    bool CellOnX = mybdir & RectangularBoxGeometry::mdRectBoxDirectionX;
+    bool CellOnY = mybdir & RectangularBoxGeometry::mdRectBoxDirectionY;
+    bool CellOnZ = mybdir & RectangularBoxGeometry::mdRectBoxDirectionZ;
+    if ((CellOnX && fabsf(floorf(sys.box.size.x * rlisti) - dclist.NCell.x) > 0.1) ||
+	(CellOnY && fabsf(floorf(sys.box.size.y * rlisti) - dclist.NCell.y) > 0.1) ||
+	(CellOnZ && fabsf(floorf(sys.box.size.z * rlisti) - dclist.NCell.z) > 0.1) ){
     // if (true){
       printf ("### box changes too much naively rebuild\n");
       reinitCellList (sys, dclist.rlist, mybdir);
@@ -1123,6 +1126,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
+  #pragma unroll 3
   for (int di = lowerx; di <= upperx; ++di){
     for (int dj = lowery; dj <= uppery; ++dj){
       for (int dk = lowerz; dk <= upperz; ++dk){
