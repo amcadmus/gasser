@@ -273,7 +273,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
 
-  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+  if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
   calAngleInteraction
       <<<atomGridDim, myBlockDim,
       calAngleInteraction_sbuffSize>>> (
@@ -290,7 +290,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
 	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyInteraction angle");
   err.check ("interaction engine angle");	
-  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+  if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
 
   {
     if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
@@ -312,9 +312,9 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
-  if (timer != NULL) timer->tic(mdTimeAngleInteraction);
+  if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
   sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-  if (timer != NULL) timer->toc(mdTimeAngleInteraction);
+  if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
   
   checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
