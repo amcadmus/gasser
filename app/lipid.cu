@@ -23,7 +23,6 @@
 
 #include "MDSystem_interface.h"
 
-
 #define NThreadsPerBlockCell	192
 #define NThreadsPerBlockAtom	128
 
@@ -47,6 +46,7 @@ int main(int argc, char * argv[])
   MDSystem sys;
   sys.initConfig(filename, "lipid.map");
   sys.initNBForce(2);
+
   ScalorType cosparam[mdForceNParamCosTail];  
   CosTail::initParameter (cosparam, 1.f, 0.95f, 0.f);
   sys.addNBForce (0, 0, mdForceCosTail, cosparam);
@@ -55,6 +55,15 @@ int main(int argc, char * argv[])
   CosTail::initParameter (cosparam, 1.f, 1.0f, 1.6f);
   sys.addNBForce (1, 1, mdForceCosTail, cosparam);
 
+//   ScalorType cap = 100;
+//   ScalorType cosparam[mdForceNParamCosTail_cap];  
+//   CosTail_cap::initParameter (cosparam, 1.f, 0.95f, 0.f, cap);
+//   sys.addNBForce (0, 0, mdForceCosTail_cap, cosparam);
+//   CosTail_cap::initParameter (cosparam, 1.f, 0.975f, 0.f, cap);
+//   sys.addNBForce (0, 1, mdForceCosTail_cap, cosparam);
+//   CosTail_cap::initParameter (cosparam, 1.f, 1.0f, 1.6f, cap);
+//   sys.addNBForce (1, 1, mdForceCosTail_cap, cosparam);
+  
   sys.initBond ();
   ScalorType hsparam[mdForceNParamHarmonicSpring] ;
   HarmonicSpring::initParameter (hsparam, 10.f, 4.f);
@@ -194,3 +203,129 @@ int main(int argc, char * argv[])
 
   return 0;
 }
+
+
+// typedef enum paramIndex {
+//   epsilon		= 0,
+//   bv		= 1,
+//   rc		= 2,
+//   wc		= 3,
+//   wci		= 4,
+//   rcut		= 5,
+//   cap		= 6,
+//   capR		= 7,
+//   pcapR		= 8
+// } paramIndex_t;
+
+
+
+
+// void
+// force (const ScalorType * param,
+// 		    ScalorType diffx,
+// 		    ScalorType diffy,
+// 		    ScalorType diffz,
+// 		    ScalorType *fx, 
+// 		    ScalorType *fy, 
+// 		    ScalorType *fz)
+// {
+//   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+//   ScalorType fscalor = 0.f;
+//   ScalorType ri = 1.f / sqrtf (dr2);
+
+//   if (dr2 == 0.f){
+//     *fx = - param[cap];
+//     *fy = 0.f;
+//     *fz = 0.f;
+//     return;
+//   }
+//   else if (dr2 < param[capR]*param[capR]){
+//     ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+//     fscalor = -s * param[cap];
+//   }
+//   else if (dr2 <= param[rc] * param[rc]){
+//     ScalorType sri = param[bv] * ri;
+//     ScalorType sri2 = sri * sri;
+//     ScalorType sri6 = sri2*sri2*sri2;
+//     fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+//   }
+//   else if (dr2 < param[rcut] * param[rcut]) {
+//     ScalorType tmp = M_PIF * param[wci];
+//     ScalorType term = 0.5f *  (dr2 * ri - param[rc]) * tmp;
+//     fscalor = param[epsilon] * tmp *
+//     	cosf(term) * sinf(term) * ri;
+//   }
+
+//   *fx = diffx * fscalor;
+//   *fy = diffy * fscalor;
+//   *fz = diffz * fscalor;
+// }
+
+
+// ScalorType
+// forcePoten (const ScalorType * param,
+// 			 ScalorType diffx,
+// 			 ScalorType diffy,
+// 			 ScalorType diffz,
+// 			 ScalorType *fx, 
+// 			 ScalorType *fy, 
+// 			 ScalorType *fz)
+// {
+//   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+//   ScalorType rvalue = 0.f;
+//   ScalorType fscalor = 0.f;
+//   ScalorType ri = 1.f / sqrtf (dr2);
+
+// //   printf ("capR pcarR is %f %f\n", param[capR], param[pcapR]);
+
+//   if (dr2 == 0.f){
+//     *fy = 0.f;
+//     *fz = 0.f;
+//     return 0.f;
+//   }
+//   else if (dr2 < param[capR]*param[capR]){
+//     ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+//     fscalor = -s * param[cap];
+//     rvalue = -param[cap] * (sqrtf(dr2) - param[capR]) + param[pcapR] ;
+//   }
+//   else if (dr2 <= param[rc] * param[rc]){
+//     ScalorType sri = param[bv] * ri;
+//     ScalorType sri2 = sri * sri;
+//     ScalorType sri6 = sri2*sri2*sri2;
+//     fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+//     rvalue = 4.f * param[epsilon] * (sri6*sri6 - sri6);
+//     if (param[wc] == 0.f) rvalue += param[epsilon];
+//     else rvalue += 0.f;
+//   }
+//   else if (dr2 < param[rcut] * param[rcut]) {
+//     ScalorType term = 0.5f * M_PIF * (dr2 * ri - param[rc]) * param[wci];
+//     ScalorType cost = cosf(term);
+//     fscalor = param[epsilon] * M_PIF * param[wci] *
+// 	cost * sinf(term) * ri;
+//     rvalue = - param[epsilon] * cost * cost;
+//   }
+
+//   *fx = diffx * fscalor;
+//   *fy = diffy * fscalor;
+//   *fz = diffz * fscalor;
+
+//   return rvalue;
+// }
+
+// void printfF (ScalorType * param, const char * name)
+// {
+//   FILE * fp = fopen (name, "w");
+//   ScalorType fx, fy, fz;
+//   ScalorType x;
+//   ScalorType lower = 0.8, upper = 3;
+//   IndexType N = 1000;
+//   ScalorType h = (upper - lower) / N;
+
+//   for (unsigned i = 0; i <= N; ++i){
+//     x = lower + i * h;
+//     ScalorType p ;
+//     p = forcePoten (param, x, 0., 0., &fx, &fy, &fz);
+//     fprintf (fp, "%f\t%f\t%f\n", x, p, fx);
+//   }
+//   fclose (fp);
+// }	     

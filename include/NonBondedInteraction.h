@@ -10,6 +10,7 @@ enum mdNBInteraction {
   mdForceLennardJones6_12		= 1,
   mdForceLennardJones6_12_cap		= 2,
   mdForceCosTail			= 3,
+  mdForceCosTail_cap			= 4,
 };
 typedef  int mdNBInteraction_t;
 
@@ -17,7 +18,8 @@ enum mdNBInteractionNParam {
   mdForceNParamNBNull			= 1,
   mdForceNParamLennardJones6_12		= 4,
   mdForceNParamLennardJones6_12_cap	= 7,
-  mdForceNParamCosTail			= 6
+  mdForceNParamCosTail			= 6,
+  mdForceNParamCosTail_cap		= 9
 };
 
 inline __host__ IndexType calNumNBParameter (mdNBInteraction_t type) 
@@ -31,6 +33,8 @@ inline __host__ IndexType calNumNBParameter (mdNBInteraction_t type)
       return mdForceNParamLennardJones6_12_cap;
   case mdForceCosTail:
       return mdForceNParamCosTail;
+  case mdForceCosTail_cap:
+      return mdForceNParamCosTail_cap;
   default:
       return 0;
   }
@@ -241,12 +245,40 @@ namespace CosTail{
 };
 
 
-
-
-
-
-
-
+namespace CosTail_cap{
+    typedef enum paramIndex {
+      epsilon		= 0,
+      bv		= 1,
+      rc		= 2,
+      wc		= 3,
+      wci		= 4,
+      rcut		= 5,
+      cap		= 6,
+      capR		= 7,
+      pcapR		= 8
+    } paramIndex_t;
+    
+    __host__ void initParameter (ScalorType * param, 
+				 ScalorType epsilon_,
+				 ScalorType bv_,
+				 ScalorType wc_,
+				 ScalorType cap_);
+    __host__ ScalorType calRcut (const ScalorType * param);
+    __device__ void force (const ScalorType * param,
+			   ScalorType diffx,
+			   ScalorType diffy,
+			   ScalorType diffz,
+			   ScalorType *fx, 
+			   ScalorType *fy,
+			   ScalorType *fz);
+    __device__ ScalorType forcePoten (const ScalorType * param,
+				      ScalorType diffx,
+				      ScalorType diffy,
+				      ScalorType diffz,
+				      ScalorType *fx, 
+				      ScalorType *fy,
+				      ScalorType *fz);
+};
 
 
 			   
@@ -266,6 +298,9 @@ nbForce (const mdNBInteraction_t ftype,
   }
   if (ftype == mdForceCosTail){
     CosTail::force (param,  diffx, diffy, diffz, fx, fy, fz);
+  }
+  if (ftype == mdForceCosTail_cap){
+    CosTail_cap::force (param,  diffx, diffy, diffz, fx, fy, fz);
   }
   if (ftype == mdForceNBNull){
     *fx = *fy = *fz = 0.f;
@@ -302,6 +337,9 @@ nbForcePoten (const mdNBInteraction_t ftype,
   if (ftype == mdForceCosTail){
     *dp = CosTail::forcePoten (param,  diffx, diffy, diffz, fx, fy, fz);
   }
+  if (ftype == mdForceCosTail_cap){
+    *dp = CosTail_cap::forcePoten (param,  diffx, diffy, diffz, fx, fy, fz);
+  }
   if (ftype == mdForceNBNull){
     *fx = *fy = *fz = 0.f;
     *dp = 0.f;
@@ -337,6 +375,8 @@ calRcut (const mdNBInteraction_t ftype,
       return LennardJones6_12_cap::calRcut (param);
   case mdForceCosTail:
       return CosTail::calRcut (param);
+  case mdForceCosTail_cap:
+      return CosTail_cap::calRcut (param);
   default:
       throw MDExcptUndefinedNBForceType ("calRcut");
   }
@@ -762,5 +802,133 @@ __device__ ScalorType CosTail::forcePoten (const ScalorType * param,
 
   return rvalue;
 }
+
+
+
+
+inline __host__ void
+CosTail_cap::initParameter (ScalorType * param, 
+			    ScalorType epsilon_,
+			    ScalorType bv_,
+			    ScalorType wc_,
+			    ScalorType cap_)
+{
+  param[bv] = bv_;
+  param[epsilon] = epsilon_;
+  param[wc] = wc_;
+  if (param[wc] != 0.f)   param[wci] = 1.f / param[wc];
+  else param[wci] = 0.f;
+  param[rc] = param[bv] * powf (2.f, 1.f / 6.f);
+  param[rcut] = param[rc] + param[wc];
+
+  param[cap] = cap_;
+
+  ScalorType ljparam[mdForceNParamLennardJones6_12_cap];
+  LennardJones6_12_cap::initParameter
+      (ljparam, epsilon_, param[bv], 0.f, param[rc], cap_);
+
+  param[capR] = LennardJones6_12_cap::lj6_12_findCapR (ljparam);
+  param[pcapR] = LennardJones6_12_cap::lj6_12_originPoten(ljparam, param[capR]);
+}
+
+inline __host__ ScalorType
+CosTail_cap::calRcut (const ScalorType * param)
+{
+  return param[rcut];
+}
+
+__device__ void
+CosTail_cap::force (const ScalorType * param,
+		    ScalorType diffx,
+		    ScalorType diffy,
+		    ScalorType diffz,
+		    ScalorType *fx, 
+		    ScalorType *fy, 
+		    ScalorType *fz)
+{
+  ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  ScalorType fscalor = 0.f;
+  ScalorType ri = 1.f / sqrtf (dr2);
+
+  if (dr2 == 0.f){
+    *fx = - param[cap];
+    *fy = 0.f;
+    *fz = 0.f;
+    return;
+  }
+  else if (dr2 < param[capR]*param[capR]){
+    ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+    fscalor = -s * param[cap];
+  }
+  else if (dr2 <= param[rc] * param[rc]){
+    ScalorType sri = param[bv] * ri;
+    ScalorType sri2 = sri * sri;
+    ScalorType sri6 = sri2*sri2*sri2;
+    fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+  }
+  else if (dr2 < param[rcut] * param[rcut]) {
+    ScalorType tmp = M_PIF * param[wci];
+    ScalorType term = 0.5f *  (dr2 * ri - param[rc]) * tmp;
+    fscalor = param[epsilon] * tmp *
+    	__cosf(term) * __sinf(term) * ri;
+  }
+
+  *fx = diffx * fscalor;
+  *fy = diffy * fscalor;
+  *fz = diffz * fscalor;
+}
+
+
+__device__ ScalorType
+CosTail_cap::forcePoten (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy, 
+			 ScalorType *fz)
+{
+  ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  ScalorType rvalue = 0.f;
+  ScalorType fscalor = 0.f;
+  ScalorType ri = 1.f / sqrtf (dr2);
+
+  if (dr2 == 0.f){
+    *fy = 0.f;
+    *fz = 0.f;
+    return 0.f;
+  }
+  else if (dr2 < param[capR]*param[capR]){
+    ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+    fscalor = -s * param[cap];
+    rvalue = -param[cap] * (sqrtf(dr2) - param[capR]) + param[pcapR] ;
+  }
+  else if (dr2 <= param[rc] * param[rc]){
+    ScalorType sri = param[bv] * ri;
+    ScalorType sri2 = sri * sri;
+    ScalorType sri6 = sri2*sri2*sri2;
+    fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
+    rvalue = 4.f * param[epsilon] * (sri6*sri6 - sri6);
+    if (param[wc] == 0.f) rvalue += param[epsilon];
+    else rvalue += 0.f;
+  }
+  else if (dr2 < param[rcut] * param[rcut]) {
+    ScalorType term = 0.5f * M_PIF * (dr2 * ri - param[rc]) * param[wci];
+    ScalorType cost = __cosf(term);
+    fscalor = param[epsilon] * M_PIF * param[wci] *
+	cost * __sinf(term) * ri;
+    rvalue = - param[epsilon] * cost * cost;
+  }
+
+  *fx = diffx * fscalor;
+  *fy = diffy * fscalor;
+  *fz = diffz * fscalor;
+
+  return rvalue;
+}
+
+
+
+
 
 #endif

@@ -134,7 +134,7 @@ int main(int argc, char * argv[])
 
   ScalorType maxrcut = sys.calMaxNBRcut ();
   printf ("# max rcut is %f\n", maxrcut);
-  ScalorType nlistExten = 0.5f;
+  ScalorType nlistExten = 0.6f;
   ScalorType rlist = maxrcut + nlistExten;
   // NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
   // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -163,7 +163,7 @@ int main(int argc, char * argv[])
 			  nlist, rebuildThreshold);
   blpf.TCouple (refT, 0.1);
   blpf.addPcoupleGroup (PCoupleX,
-  			0., 1, 23);
+  			0., 20, 23);
 
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
 
