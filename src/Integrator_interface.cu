@@ -482,8 +482,8 @@ BerendsenLeapFrog::firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
   ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
   lpfrog.step (sys, dt, myst, timer);
   if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-    printf("# rebuild at step %d\n", nstep);
-    fflush(stdout);
+    // printf("# rebuild at step %d\n", nstep);
+    // fflush(stdout);
     ptr_nlist->reBuild(sys, timer);
   }
   ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
@@ -498,8 +498,8 @@ BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
   ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
   lpfrog.step (sys, dt, myst, timer);
   if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-    printf("# rebuild at step %d\n", nstep);
-    fflush(stdout);
+    // printf("# rebuild at step %d\n", nstep);
+    // fflush(stdout);
     ptr_nlist->reBuild(sys, timer);
   }
   ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
@@ -590,8 +590,8 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      printf("# rebuild at step %d\n", nstep);
-      fflush(stdout);
+      // printf("# rebuild at step %d\n", nstep);
+      // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
@@ -682,8 +682,8 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      printf("# rebuild at step %d\n", nstep);
-      fflush(stdout);
+      // printf("# rebuild at step %d\n", nstep);
+      // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
@@ -777,8 +777,8 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      printf("# rebuild at step %d\n", nstep);
-      fflush(stdout);
+      // printf("# rebuild at step %d\n", nstep);
+      // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
@@ -871,8 +871,8 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      printf("# rebuild at step %d\n", nstep);
-      fflush(stdout);
+      // printf("# rebuild at step %d\n", nstep);
+      // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
