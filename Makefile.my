@@ -31,7 +31,7 @@ tmp_cusources =  	$(notdir $(cusources))
 tmp_cudepends = 	$(subst .cu,.d,$(tmp_cusources))
 tmp_cuobjects = 	$(subst .cu,.o,$(tmp_cusources))
 
-
+lib_dir =		lib/
 cppdepends_dir = 	.depends/cpp
 cppobjects_dir = 	lib/cpp
 cdepends_dir = 		.depends/c
@@ -51,21 +51,24 @@ cuobjects = 	$(addprefix $(cuobjects_dir)/,$(tmp_cuobjects))
 
 appobjects=	$(subst .cu,.o,$(wildcard $(application_dir)/*.cu))
 
+libtarget=	$(lib_dir)/libmd.a
 
 C:=		gcc
 CFLAGS +=	-g -O0 
-CFLAGS += 	$(addprefix -I ,$(include_dirs))  -DCOORD_IN_ONE_VEC
+CFLAGS += 	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC
 
 CXX:=		g++
 CXXFLAGS += 	$(CFLAGS)
 
 CU:=		nvcc
-CUFLAGS +=	$(CFLAGS)  -arch sm_12
+CUFLAGS +=	$(CFLAGS)  -arch sm_12 
 
-target:		$(application_target)
+target:		$(application_target) $(libtarget)
 
-%:	$(application_dir)/%.o $(cobjects) $(cppobjects) $(cuobjects) 
+%:		$(application_dir)/%.o $(libtarget)
 	$(call make-target,$@,$^) 
+$(libtarget):	$(cobjects) $(cppobjects) $(cuobjects)
+	ar -rc $@ $^
 
 $(cuobjects):
 $(cppobjects):
