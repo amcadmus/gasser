@@ -104,6 +104,9 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
 #else
 					    CoordType * coord,
 #endif
+					    IntScalorType * coordNoix,
+					    IntScalorType * coordNoiy,
+					    IntScalorType * coordNoiz,
 					    RectangularBox box,
 					    DeviceCellList clist,
 					    mdError_t * ptr_de = NULL,

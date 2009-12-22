@@ -97,6 +97,21 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
     targetCelli = IndexType(coordx[ii] * box.sizei.x * ScalorType (clist.NCell.x));
     targetCellj = IndexType(coordy[ii] * box.sizei.y * ScalorType (clist.NCell.y));
     targetCellk = IndexType(coordz[ii] * box.sizei.z * ScalorType (clist.NCell.z));
+    if (targetCelli == clist.NCell.x){
+      targetCelli -= clist.NCell.x;
+      coordx[ii] -= box.size.x;
+      coordNoix[ii] ++;
+    }
+    if (targetCellj == clist.NCell.y){
+      targetCellj -= clist.NCell.y;
+      coordy[ii] -= box.size.y;
+      coordNoiy[ii] ++;
+    }
+    if (targetCellk == clist.NCell.z){
+      targetCellk -= clist.NCell.z;
+      coordz[ii] -= box.size.z;
+      coordNoiz[ii] ++;
+    }
     targetCellid[tid] = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
 	(targetCelli >= clist.NCell.x || 
@@ -327,6 +342,9 @@ __global__ void naivlyBuildDeviceCellList (IndexType numAtom,
 
 __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
 					    CoordType * coord,
+					    IntScalorType * coordNoix,
+					    IntScalorType * coordNoiy,
+					    IntScalorType * coordNoiz,
 					    RectangularBox box,
 					    DeviceCellList clist,
 					    mdError_t * ptr_de,
@@ -345,6 +363,21 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
     targetCelli = IndexType(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
     targetCellj = IndexType(coord[ii].y * box.sizei.y * ScalorType (clist.NCell.y));
     targetCellk = IndexType(coord[ii].z * box.sizei.z * ScalorType (clist.NCell.z));
+    if (targetCelli == clist.NCell.x){
+      targetCelli -= clist.NCell.x;
+      coord[ii].x -= box.size.x;
+      coordNoix[ii] ++;
+    }
+    if (targetCellj == clist.NCell.y){
+      targetCellj -= clist.NCell.y;
+      coord[ii].y -= box.size.y;
+      coordNoiy[ii] ++;
+    }
+    if (targetCellk == clist.NCell.z){
+      targetCellk -= clist.NCell.z;
+      coord[ii].z -= box.size.z;
+      coordNoiz[ii] ++;
+    }
     targetCellid[tid] = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
 	(targetCelli >= clist.NCell.x || 

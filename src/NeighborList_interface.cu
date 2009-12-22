@@ -304,6 +304,9 @@ void NeighborList::build (const MDSystem & sys,
 #else
 	    sys.ddata.coord,
 #endif
+	    sys.ddata.coordNoix,
+	    sys.ddata.coordNoiy,
+	    sys.ddata.coordNoiz,
     	    sys.box, dclist,
 	    err.ptr_de,
 	    err.ptr_dindex, err.ptr_dscalor);
@@ -392,6 +395,9 @@ void NeighborList::reBuild (const MDSystem & sys,
 #else
 	      sys.ddata.coord,
 #endif
+	      sys.ddata.coordNoix,
+	      sys.ddata.coordNoiy,
+	      sys.ddata.coordNoiz,
 	      sys.box, dclist,
 	      err.ptr_de,
 	      err.ptr_dindex, err.ptr_dscalor);

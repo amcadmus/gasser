@@ -25,7 +25,7 @@
 #include "MDSystem_interface.h"
 
 
-#define NThreadsPerBlockCell	192
+#define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	128
 
 int main(int argc, char * argv[])
