@@ -262,6 +262,9 @@ void MDSystem::writeHostDataXtc (int step, float time, MDTimer *timer)
     xdx[i][2] = hdata.coord[i].z;
 #endif
   }
+  xdbox[0][0] = box.size.x;
+  xdbox[1][1] = box.size.y;
+  xdbox[2][2] = box.size.z;
   write_xtc (xdfile, hdata.numAtom, step, time, xdbox, xdx, xdprec);
   if (timer != NULL) timer->tic(mdTimeDataIO);
 }
