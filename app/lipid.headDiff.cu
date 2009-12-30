@@ -233,6 +233,8 @@ int main(int argc, char * argv[])
       }
     }
     sys.endWriteXtc();
+    resh.recoverMDDataToHost (sys, &timer);
+    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
