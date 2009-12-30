@@ -223,7 +223,7 @@ int main(int argc, char * argv[])
 	// printf ("done\n");
 	// fflush(stdout);
       }
-      if ((i+1) % 1000 == 0){
+      if ((i+1) % 200 == 0){
 	// sys.updateHost(&timer);
 	resh.recoverMDDataToHost (sys, &timer);
 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
