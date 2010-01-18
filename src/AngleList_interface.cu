@@ -148,16 +148,16 @@ void buildDeviceAngleList (HostAngleList & hanglelist,
   }
   danglelist.listLength = maxLength;
   
-  cudaMalloc (&(danglelist.angleNei), 
+  cudaMalloc ((void**)&(danglelist.angleNei), 
 	      sizeof(IndexType) * hanglelist.stride * 2 * maxLength);
   checkCUDAError ("buildDeviceAngleList malloc angleNei");
-  cudaMalloc (&(danglelist.myPosi), 
+  cudaMalloc ((void**)&(danglelist.myPosi), 
 	      sizeof(IndexType) * hanglelist.stride * maxLength);
   checkCUDAError ("buildDeviceAngleList malloc myPosi");
-  cudaMalloc (&(danglelist.angleIndex),
+  cudaMalloc ((void**)&(danglelist.angleIndex),
 	      sizeof(TypeType) * hanglelist.stride * maxLength);
   checkCUDAError ("buildDeviceAngleList malloc angleIndex");
-  cudaMalloc (&(danglelist.Nangle),
+  cudaMalloc ((void**)&(danglelist.Nangle),
 	      sizeof(IndexType) * hanglelist.stride);
   checkCUDAError ("buildDeviceAngleList malloc Nangle");
   
