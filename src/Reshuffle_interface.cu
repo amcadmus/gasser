@@ -145,6 +145,8 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
     return;
   }
 
+  cellGridDim = nlist.cellGridDim;
+  
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
   IndexType nob = cellGridDim.x * cellGridDim.y;
   // possible streams
