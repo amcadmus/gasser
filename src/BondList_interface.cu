@@ -188,13 +188,13 @@ void buildDeviceBondList (HostBondList & hbdlist,
   }
   dbdlist.listLength = maxLength;
   
-  cudaMalloc (&(dbdlist.data), 
+  cudaMalloc ((void**)&(dbdlist.data), 
 	      sizeof(IndexType) * hbdlist.stride * maxLength);
   checkCUDAError ("buildDeviceBondList malloc data");
-  cudaMalloc (&(dbdlist.bondIndex),
+  cudaMalloc ((void**)&(dbdlist.bondIndex),
 	      sizeof(TypeType) * hbdlist.stride * maxLength);
   checkCUDAError ("buildDeviceBondList malloc bondIndex");
-  cudaMalloc (&(dbdlist.Nbond),
+  cudaMalloc ((void**)&(dbdlist.Nbond),
 	      sizeof(IndexType) * hbdlist.stride);
   checkCUDAError ("buildDeviceBondList malloc Nbond");
   
