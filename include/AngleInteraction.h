@@ -2,25 +2,29 @@
 #define __AngleInteraction_h_wanghan__
 
 #include "common.h"
-
-enum mdAngleInteraction{
-  mdForceAngleHarmonic		= 0
-};
-typedef int mdAngleInteraction_t;
+#include "Interaction.h"
 
 enum mdAngleInteractionNParam{
   mdForceNParamAngleHarmonic	= 2
 };
 
-inline __host__ IndexType calNumAngleParameter (mdAngleInteraction_t type)
+class AngleInteractionParameter : public InteractionParamter
 {
-  switch (type){
-  case mdForceAngleHarmonic:
-      return mdForceNParamAngleHarmonic;
-  default:
-      return 0;
-  }
-}
+public:
+  bool same (const AngleInteractionParameter & f1) const ;
+  bool operator == (const AngleInteractionParameter & f1) const;
+};
+
+class AngleHarmonicParameter : public AngleInteractionParameter
+{
+  ScalorType param [mdForceNParamAngleHarmonic];
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  void init (ScalorType k,
+	     ScalorType theta0);
+};
 
 namespace AngleHarmonic {
     typedef enum paramIndex{
@@ -77,7 +81,7 @@ namespace AngleHarmonic {
 
 
 __device__ void angleForce (const bool center,
-			    const mdAngleInteraction_t ftype,
+			    const InteractionType ftype,
 			    ScalorType * param,
 			    const ScalorType diff0x,
 			    const ScalorType diff0y,
@@ -103,7 +107,7 @@ __device__ void angleForce (const bool center,
 }
 
 __device__ void angleForcePoten (const bool center,
-				 const mdAngleInteraction_t ftype,
+				 const InteractionType ftype,
 				 ScalorType * param,
 				 const ScalorType diff0x,
 				 const ScalorType diff0y,
@@ -358,7 +362,7 @@ __device__ ScalorType AngleHarmonic::forcePoten1 (const ScalorType * param,
 
 
 
-__device__ void angleForce0 (const mdAngleInteraction_t ftype,
+__device__ void angleForce0 (const InteractionType ftype,
 			     ScalorType * param,
 			     const ScalorType diff0x,
 			     const ScalorType diff0y,
@@ -377,7 +381,7 @@ __device__ void angleForce0 (const mdAngleInteraction_t ftype,
   }
 }
 
-__device__ void angleForcePoten0 (const mdAngleInteraction_t ftype,
+__device__ void angleForcePoten0 (const InteractionType ftype,
 				  ScalorType * param,
 				  const ScalorType diff0x,
 				  const ScalorType diff0y,
@@ -399,7 +403,7 @@ __device__ void angleForcePoten0 (const mdAngleInteraction_t ftype,
 }
 
 
-__device__ void angleForce1 (const mdAngleInteraction_t ftype,
+__device__ void angleForce1 (const InteractionType ftype,
 			     ScalorType * param,
 			     const ScalorType diff0x,
 			     const ScalorType diff0y,
@@ -418,7 +422,7 @@ __device__ void angleForce1 (const mdAngleInteraction_t ftype,
   }
 }
 
-__device__ void angleForcePoten1 (const mdAngleInteraction_t ftype,
+__device__ void angleForcePoten1 (const InteractionType ftype,
 				  ScalorType * param,
 				  const ScalorType diff0x,
 				  const ScalorType diff0y,

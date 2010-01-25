@@ -21,7 +21,7 @@ public:
 		 const IndexType &j,
 		 const IndexType &k,
 		 const ForceIndexType &fidx);
-  void sort (mdAngleInteraction_t * angleType);
+  void sort (InteractionType * angleType);
 };
 
 

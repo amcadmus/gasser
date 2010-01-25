@@ -3,16 +3,8 @@
 
 #include "common.h"
 #include <math.h>
+#include "Interaction.h"
 
-#pragma option -b
-enum mdNBInteraction {
-  mdForceNBNull				= 0,
-  mdForceLennardJones6_12		= 1,
-  mdForceLennardJones6_12_cap		= 2,
-  mdForceCosTail			= 3,
-  mdForceCosTail_cap			= 4,
-};
-typedef  int mdNBInteraction_t;
 
 enum mdNBInteractionNParam {
   mdForceNParamNBNull			= 1,
@@ -22,92 +14,116 @@ enum mdNBInteractionNParam {
   mdForceNParamCosTail_cap		= 9
 };
 
-inline __host__ IndexType calNumNBParameter (mdNBInteraction_t type) 
+class NonBondedInteractionParameter : public InteractionParamter
 {
-  switch (type){
-  case mdForceNBNull:
-      return mdForceNParamNBNull;
-  case mdForceLennardJones6_12:
-      return mdForceNParamLennardJones6_12;
-  case mdForceLennardJones6_12_cap:
-      return mdForceNParamLennardJones6_12_cap;
-  case mdForceCosTail:
-      return mdForceNParamCosTail;
-  case mdForceCosTail_cap:
-      return mdForceNParamCosTail_cap;
-  default:
-      return 0;
-  }
-}
-  
-
-/**
- * Records all infromation of non-bonded interaction. Including the
- * type and parameters of the interactions.
- * 
- */
-struct HostNBForceSetting
-{
-  mdNBInteraction_t * type;	/**< vector keeps types of non-bonded
-				 * interactions */
-  IndexType NNBForce;		/**< number of non-bonded interactions */
-  ScalorType * param;		/**< vector keeps parameters of interactions */
-  IndexType * paramPosi;	/**< i-th value is the start position
-				 * of i-th interaction in the vector
-				 * param */
-  IndexType paramLength;	/**< length of the vector param */
-};
-
-/**
- * Maps the type of atoms to the index of non-bonded interaction.
- * 
- */
-struct HostAtomNBForceTable
-{
-  ForceIndexType * data;	/**< data of the mapping table */
-  IndexType dataLength;		/**< length of the data */
-  IndexType NAtomType;		/**< number of atom type */
-};
-
-/**
- * The description of non-bonded interaction in a system.
- * 
- */
-class SystemNBForce
-{
-  IndexType memNBForce;
-  IndexType memNBParam;
 public:
-  HostAtomNBForceTable indexTable;
-  HostNBForceSetting   setting;
+  bool same (const NonBondedInteractionParameter & f1) const ;
+  bool operator == (const NonBondedInteractionParameter & f1) const;
+  virtual ScalorType rcut () const = 0;
+};
+
+class LennardJones6_12Parameter : public NonBondedInteractionParameter
+{
+  ScalorType param[mdForceNParamLennardJones6_12];
 public:
-  SystemNBForce();
-  ~SystemNBForce();
-  /** 
-   * Initialize the non-bonded interaction information in the system
-   * 
-   * @param NatomType Possible maximum number of atom types in the
-   * system.  This value should be larger than or equal to the maximum
-   * type (int value) will appear in the following function
-   * addNBForce.
-   */
-  void init (const IndexType NAtomType);
-  /** 
-   * Add a non-bonded interaction to the system.
-   * 
-   * @param i One atom type.
-   * @param j Another atom type.
-   * @param forceType Non-bonded force type.
-   * @param param Parameters of the force.
-   */
-  void addNBForce (const TypeType &i,
-		   const TypeType &j, 
-		   const mdNBInteraction_t & forceType,
-		   const ScalorType * param);
+  void init (ScalorType epsilon,
+	     ScalorType sigma,
+	     ScalorType shift,
+	     ScalorType rcut);
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  virtual ScalorType rcut () const ;
+};
+
+class LennardJones6_12CapParameter : public NonBondedInteractionParameter
+{
+  ScalorType param[mdForceNParamLennardJones6_12_cap];
+public:
+  void init (ScalorType epsilon,
+	     ScalorType sigma,
+	     ScalorType shift,
+	     ScalorType rcut,
+	     ScalorType cap);
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  virtual ScalorType rcut () const ;
+};
+  
+class CosTailParameter : public NonBondedInteractionParameter
+{
+  ScalorType param[mdForceNParamCosTail];
+public:
+  void init (ScalorType epsilon,
+	     ScalorType b,
+	     ScalorType wc);
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  virtual ScalorType rcut () const ;
+};
+
+class CosTailCapParameter : public NonBondedInteractionParameter
+{
+  ScalorType param[mdForceNParamCosTail_cap];
+public:
+  void init (ScalorType epsilon,
+	     ScalorType b,
+	     ScalorType wc,
+	     ScalorType cap);
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  virtual ScalorType rcut () const ;
 };
 
 
-  
+#include <vector>
+class SystemNonBondedInteraction
+{
+public:
+  IndexType numAtomTypes;
+private:  
+  std::vector<std::vector<std::vector<ScalorType> > > paramMat;
+  std::vector<std::vector<InteractionType > > typeMat;
+private:
+  void resizeMem (IndexType size);
+  bool checkIntegrity ();
+public:
+  bool isBuilt;
+  InteractionType * types;
+  ScalorType * parameters;
+  IndexType * positions;
+  IndexType numParameters;
+  IndexType numInteractionItems;
+  IndexType * interactionTable;
+  IndexType interactionTableLength;
+private:
+  ScalorType maxrc;
+public:
+  void freeBuilt ();
+  IndexType * interactionTableItem (TypeType atom0,
+				    TypeType atom1);
+  IndexType * interactionTableItem (IndexType atom0,
+				    IndexType atom1);
+  void calInteractionTableLength ();
+public:
+  SystemNonBondedInteraction();
+  ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
+  void clear ();
+  ScalorType maxRcut() {return maxrc;}
+  void add (const TypeType &i,
+	    const TypeType &j,
+	    const NonBondedInteractionParameter & param);
+  void build ();
+};
+
+
 
 
 namespace AtomNBForceTable{
@@ -131,14 +147,6 @@ namespace AtomNBForceTable{
     __device__ IndexType dCalDataLength (const IndexType Ntype);
 };
 
-namespace NBForceSetting {
-    __device__ void getParam (ForceIndexType forceIdx,
-			      ScalorType * param, 
-			      IndexType  * paramPosi,
-			      ScalorType ** ptr_param);
-    __device__ mdNBInteraction_t getType (ForceIndexType forceIdx,
-					  const mdNBInteraction_t * typeTable);
-};
 
 
 namespace LennardJones6_12{
@@ -285,7 +293,7 @@ namespace CosTail_cap{
 
 
 __device__ void 
-nbForce (const mdNBInteraction_t ftype,
+nbForce (const InteractionType ftype,
 	 const ScalorType * param,
 	 ScalorType diffx, ScalorType diffy, ScalorType diffz,
 	 ScalorType *fx,   ScalorType *fy,   ScalorType *fz)
@@ -302,7 +310,7 @@ nbForce (const mdNBInteraction_t ftype,
   if (ftype == mdForceCosTail_cap){
     CosTail_cap::force (param,  diffx, diffy, diffz, fx, fy, fz);
   }
-  if (ftype == mdForceNBNull){
+  if (ftype == mdForceNULL){
     *fx = *fy = *fz = 0.f;
   } 
   // switch (ftype){
@@ -322,7 +330,7 @@ nbForce (const mdNBInteraction_t ftype,
 }
 
 __device__ void
-nbForcePoten (const mdNBInteraction_t ftype,
+nbForcePoten (const InteractionType ftype,
 	      const ScalorType * param,
 	      ScalorType diffx, ScalorType diffy, ScalorType diffz,
 	      ScalorType *fx,   ScalorType *fy,   ScalorType *fz,
@@ -340,7 +348,7 @@ nbForcePoten (const mdNBInteraction_t ftype,
   if (ftype == mdForceCosTail_cap){
     *dp = CosTail_cap::forcePoten (param,  diffx, diffy, diffz, fx, fy, fz);
   }
-  if (ftype == mdForceNBNull){
+  if (ftype == mdForceNULL){
     *fx = *fy = *fz = 0.f;
     *dp = 0.f;
   }  
@@ -362,25 +370,25 @@ nbForcePoten (const mdNBInteraction_t ftype,
 }
 
 
-inline __host__  ScalorType 
-calRcut (const mdNBInteraction_t ftype,
-	 const ScalorType * param)
-{
-  switch (ftype){
-  case mdForceNBNull:
-      return 0.f;
-  case mdForceLennardJones6_12:
-      return LennardJones6_12::calRcut (param);
-  case mdForceLennardJones6_12_cap:
-      return LennardJones6_12_cap::calRcut (param);
-  case mdForceCosTail:
-      return CosTail::calRcut (param);
-  case mdForceCosTail_cap:
-      return CosTail_cap::calRcut (param);
-  default:
-      throw MDExcptUndefinedNBForceType ("calRcut");
-  }
-}
+// inline __host__  ScalorType 
+// calRcut (const InteractionType ftype,
+// 	 const ScalorType * param)
+// {
+//   switch (ftype){
+//   case mdForceNBNull:
+//       return 0.f;
+//   case mdForceLennardJones6_12:
+//       return LennardJones6_12::calRcut (param);
+//   case mdForceLennardJones6_12_cap:
+//       return LennardJones6_12_cap::calRcut (param);
+//   case mdForceCosTail:
+//       return CosTail::calRcut (param);
+//   case mdForceCosTail_cap:
+//       return CosTail_cap::calRcut (param);
+//   default:
+//       throw MDExcptUndefinedNBForceType ("calRcut");
+//   }
+// }
 
 
 
@@ -453,45 +461,7 @@ inline __host__ void AtomNBForceTable::setTableItem (ForceIndexType * table,
   // table[i * Ntype + j - i] = forceIdx;
 }
 
-__device__ mdNBInteraction_t NBForceSetting::getType (ForceIndexType forceIdx,
-						      const mdNBInteraction_t * typeTable)
-{
-  return typeTable[forceIdx];
-}
 
-
-
-// __host__ int NBForceSetting::reallocHostNBForceSetting (HostNBForceSetting * hsetting, 
-// 							size_t sizef, size_t sizep)
-// {
-//   hsetting->type = (mdNBInteraction_t *) realloc (hsetting->type, 
-// 						  sizef * sizeof(mdNBInteraction_t));
-//   hsetting->param = (ScalorType *) realloc (hsetting->param, 
-// 					    sizep * sizeof(ScalorType));
-//   hsetting->paramPosi = (IndexType *) realloc (hsetting->paramPosi, 
-// 					       sizef * sizeof(IndexType));
-//   if (hsetting->type == NULL || 
-//       hsetting->param == NULL || 
-//       hsetting->paramPosi == NULL){
-//     return 1;
-//   }
-//   else return 0;
-// }
-
-
-
-
-
-
-
-
-__device__ void  NBForceSetting::getParam (ForceIndexType forceIdx,
-					   ScalorType * param, 
-					   IndexType  * paramPosi,
-					   ScalorType ** param_ptr)
-{
-  *param_ptr = &param[paramPosi[(forceIdx)]];
-}
 
 inline __host__ void LennardJones6_12::initParameter (ScalorType * param, 
 						      ScalorType epsilon_,

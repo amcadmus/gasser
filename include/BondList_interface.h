@@ -16,7 +16,7 @@ public:
   DeviceBondList dbdlist;
 public:
   IndexType NBondForce;
-  mdBondInteraction_t * bondType;
+  InteractionType * bondType;
   IndexType * paramPosi;
   ScalorType * param;
   IndexType paramLength;
@@ -26,9 +26,9 @@ public:
   BondList(const DeviceMDData & ddata)
       {init (ddata);}
   void init (const DeviceMDData & ddata);
-  void addBond (const IndexType & ii, const IndexType & jj,
-		const mdBondInteraction_t & type,
-		const ScalorType * param);
+  void addBond (const IndexType & ii,
+		const IndexType & jj,
+		const BondInteractionParameter & param_);
   void build ();
 };
 

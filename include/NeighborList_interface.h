@@ -38,7 +38,8 @@ private:
 		     const BoxDirection_t & bdir);
   void reinitCellList (const MDSystem & sys,
 		       const ScalorType & rlist,
-		       const BoxDirection_t & bdir);  
+		       const BoxDirection_t & bdir);
+  void initNonBondedInteraction (const MDSystem & sys);
 public:
   NeighborListBuiltMode mode;
   BoxDirection_t mybdir;

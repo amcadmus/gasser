@@ -16,7 +16,7 @@ public:
   DeviceAngleList danglelist;
 public:
   IndexType NAngleForce;
-  mdAngleInteraction_t * angleType;
+  InteractionType * angleType;
   IndexType * paramPosi;
   ScalorType * param;
   IndexType paramLength;
@@ -29,8 +29,7 @@ public:
   void addAngle (const IndexType & ii,
 		 const IndexType & jj,
 		 const IndexType & kk,
-		 const mdAngleInteraction_t & type,
-		 const ScalorType * param);
+		 const AngleInteractionParameter & param_);
   void build ();
 };
 

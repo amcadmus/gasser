@@ -2,29 +2,41 @@
 #define __BondedInteraction_h_wanghan__
 
 #include "common.h"
-
-enum mdBondInteraction {
-  mdForceHarmonicSpring		= 0,
-  mdForceFENE			= 1
-} ;
-typedef enum mdBondInteraction mdBondInteraction_t;
+#include "Interaction.h"
 
 enum mdBondInteractionNParam{
   mdForceNParamHarmonicSpring	= 2,
   mdForceNParamFENE		= 2
 };
 
-inline __host__ IndexType calNumBondParameter (mdBondInteraction_t type)
+class BondInteractionParameter : public InteractionParamter
 {
-  switch (type){
-  case mdForceHarmonicSpring:
-      return mdForceNParamHarmonicSpring;
-  case mdForceFENE:
-      return mdForceNParamFENE;
-  default:
-      return 0;
-  }
-}
+public:
+  bool same (const BondInteractionParameter & f1) const ;
+  bool operator == (const BondInteractionParameter & f1) const;
+};
+
+class HarmonicSpringParameter : public BondInteractionParameter
+{
+  ScalorType param [mdForceNParamHarmonicSpring];
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  void init (ScalorType k,
+	     ScalorType r0);
+};
+
+class FENEParameter : public BondInteractionParameter
+{
+  ScalorType param [mdForceNParamFENE];
+public:
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual const ScalorType * c_ptr () const ;
+  void init (ScalorType k,
+	     ScalorType rinf);
+};
 
 namespace HarmonicSpring {
     typedef enum paramIndex{
@@ -78,7 +90,7 @@ namespace FENE {
 
 
 __device__ void 
-bondForce (const mdBondInteraction_t ftype,
+bondForce (const InteractionType ftype,
 	   const ScalorType * param,
 	   ScalorType diffx, ScalorType diffy, ScalorType diffz,
 	   ScalorType *fx,   ScalorType *fy,   ScalorType *fz)
@@ -104,7 +116,7 @@ bondForce (const mdBondInteraction_t ftype,
 
 
 __device__ void
-bondForcePoten (const mdBondInteraction_t ftype,
+bondForcePoten (const InteractionType ftype,
 		const ScalorType * param,
 		ScalorType diffx, ScalorType diffy, ScalorType diffz,
 		ScalorType *fx,   ScalorType *fy,   ScalorType *fz,

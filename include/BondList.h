@@ -18,7 +18,7 @@ public:
   void init (const IndexType & stride);
   void addBond (const IndexType &i, const IndexType &j,
 		const ForceIndexType &fidx);
-  void sort (mdBondInteraction_t * bondType);
+  void sort (InteractionType * bondType);
 };
 
 

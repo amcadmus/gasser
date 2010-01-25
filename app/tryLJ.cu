@@ -38,22 +38,11 @@ int main(int argc, char * argv[])
   
   MDSystem sys;
   sys.initConfig(filename, "atom.map");  
-  sys.initNBForce (2);
-  ScalorType ljparam[mdForceNParamLennardJones6_12];
-  LennardJones6_12::initParameter (ljparam, 1.f, 1.f, 0.f, 3.2f);
-  sys.addNBForce  (1, 1, 
-		   mdForceLennardJones6_12, 
-		   ljparam);
-//   ScalorType ljcapparam[mdForceNParamLennardJones6_12_cap];
-//   LennardJones6_12_cap::initParameter (ljcapparam, 1.f, 1.f, 0.f, 3.2f, 10);
-//   sys.addNBForce  (1, 1, 
-// 		   mdForceLennardJones6_12_cap, 
-// 		   ljcapparam);
-  
-  sys.initBond ();
-  sys.buildBond();
-  sys.initAngle ();
-  sys.buildAngle();
+
+  LennardJones6_12Parameter ljparam;
+  ljparam.init (1.f, 1.f, 0.f, 3.2f);
+  sys.addNonBondedInteraction (1, 1, ljparam);
+  sys.buildNonBondedInteraction ();  
   
   if (argc != 1){
     nstep = atoi(argv[1]);

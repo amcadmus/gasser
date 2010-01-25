@@ -25,17 +25,17 @@ void AngleList::init (const DeviceMDData & ddata)
 
   NAngleForce_mem = 1024;
   paramLength_mem = NAngleForce_mem * 3;
-  angleType = (mdAngleInteraction_t *) realloc (
-      angleType, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+  angleType = (InteractionType *) realloc (
+      angleType, sizeof(InteractionType) * NAngleForce_mem);
   if (angleType == NULL) {
     throw MDExcptFailedReallocOnHost ("AngleList::init", "angleType",
-				      sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+				      sizeof(InteractionType) * NAngleForce_mem);
   }
   paramPosi = (IndexType *) realloc (
-      paramPosi, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+      paramPosi, sizeof(InteractionType) * NAngleForce_mem);
   if (paramPosi == NULL){
     throw MDExcptFailedReallocOnHost ("AngleList::init", "paramPosi",
-				      sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+				      sizeof(InteractionType) * NAngleForce_mem);
   }				      
   param = (ScalorType *) realloc (
       param, sizeof(ScalorType) * paramLength_mem);
@@ -49,12 +49,14 @@ void AngleList::init (const DeviceMDData & ddata)
 void AngleList::addAngle (const IndexType & ii,
 			  const IndexType & jj,
 			  const IndexType & kk,
-			  const mdAngleInteraction_t & type,
-			  const ScalorType * thisparam)
+			  const AngleInteractionParameter & param_)
 {
+  InteractionType type = param_.type();
+  const ScalorType * thisparam = param_.c_ptr();
+  IndexType NParam = param_.numParam();
+
   bool exist = false;
   ForceIndexType looking;;
-  IndexType NParam = calNumAngleParameter (type);
   for (looking = 0; looking < NAngleForce; ++looking){
     if (type == angleType[looking]){
       bool same = true;
@@ -73,17 +75,17 @@ void AngleList::addAngle (const IndexType & ii,
   if (!exist){
     if (NAngleForce == NAngleForce_mem){
       NAngleForce_mem *= 2;
-      angleType = (mdAngleInteraction_t *) realloc (
-	  angleType, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+      angleType = (InteractionType *) realloc (
+	  angleType, sizeof(InteractionType) * NAngleForce_mem);
       if (angleType == NULL) {
 	throw MDExcptFailedReallocOnHost ("AngleList::init", "angleType",
-					  sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+					  sizeof(InteractionType) * NAngleForce_mem);
       }
       paramPosi = (IndexType *) realloc (
-	  paramPosi, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+	  paramPosi, sizeof(InteractionType) * NAngleForce_mem);
       if (paramPosi == NULL){
 	throw MDExcptFailedReallocOnHost ("AngleList::init", "paramPosi",
-					  sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+					  sizeof(InteractionType) * NAngleForce_mem);
       }				      
     }
     if (paramLength == paramLength_mem){
@@ -298,7 +300,7 @@ static void sortBuff (TypeType * ref, IndexType * indexMap, IndexType N)
   }
 }
 
-void HostAngleList::sort(mdAngleInteraction_t * angleType)
+void HostAngleList::sort(InteractionType * angleType)
 {
   IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * listLength_mem);
   if (indexMap == NULL){
@@ -380,17 +382,17 @@ void HostAngleList::sort(mdAngleInteraction_t * angleType)
 
 //   NAngleForce_mem = 1024;
 //   paramLength_mem = NAngleForce_mem * 3;
-//   angleType = (mdAngleInteraction_t *) realloc (
-//       angleType, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+//   angleType = (InteractionType *) realloc (
+//       angleType, sizeof(InteractionType) * NAngleForce_mem);
 //   if (angleType == NULL) {
 //     throw MDExcptFailedReallocOnHost ("AngleList::init", "angleType",
-// 				      sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+// 				      sizeof(InteractionType) * NAngleForce_mem);
 //   }
 //   paramPosi = (IndexType *) realloc (
-//       paramPosi, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+//       paramPosi, sizeof(InteractionType) * NAngleForce_mem);
 //   if (paramPosi == NULL){
 //     throw MDExcptFailedReallocOnHost ("AngleList::init", "paramPosi",
-// 				      sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+// 				      sizeof(InteractionType) * NAngleForce_mem);
 //   }				      
 //   param = (ScalorType *) realloc (
 //       param, sizeof(ScalorType) * paramLength_mem);
@@ -403,7 +405,7 @@ void HostAngleList::sort(mdAngleInteraction_t * angleType)
 // void AngleList::addAngle (const IndexType & ii,
 // 			  const IndexType & jj,
 // 			  const IndexType & kk,
-// 			  const mdAngleInteraction_t & type,
+// 			  const InteractionType & type,
 // 			  const ScalorType * thisparam)
 // {
 //   bool exist = false;
@@ -427,17 +429,17 @@ void HostAngleList::sort(mdAngleInteraction_t * angleType)
 //   if (!exist){
 //     if (NAngleForce == NAngleForce_mem){
 //       NAngleForce_mem *= 2;
-//       angleType = (mdAngleInteraction_t *) realloc (
-// 	  angleType, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+//       angleType = (InteractionType *) realloc (
+// 	  angleType, sizeof(InteractionType) * NAngleForce_mem);
 //       if (angleType == NULL) {
 // 	throw MDExcptFailedReallocOnHost ("AngleList::init", "angleType",
-// 					  sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+// 					  sizeof(InteractionType) * NAngleForce_mem);
 //       }
 //       paramPosi = (IndexType *) realloc (
-// 	  paramPosi, sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+// 	  paramPosi, sizeof(InteractionType) * NAngleForce_mem);
 //       if (paramPosi == NULL){
 // 	throw MDExcptFailedReallocOnHost ("AngleList::init", "paramPosi",
-// 					  sizeof(mdAngleInteraction_t) * NAngleForce_mem);
+// 					  sizeof(InteractionType) * NAngleForce_mem);
 //       }				      
 //     }
 //     if (paramLength == paramLength_mem){
@@ -460,6 +462,53 @@ void HostAngleList::sort(mdAngleInteraction_t * angleType)
 //   hanglelist.addAngle (ii, jj, kk, looking);
 // }
 
+
+
+bool AngleInteractionParameter::
+same (const AngleInteractionParameter & f1) const
+{
+  if (f1.type() != this->type()){
+    return false;
+  }
+  const ScalorType * myparam = this->c_ptr();
+  const ScalorType * fparam  = f1.c_ptr();
+  for (unsigned i = 0; i < this->numParam(); ++i){
+    if (myparam[i] != fparam[i]){
+      return false;
+    }
+  }
+  return true;
+}
+
+bool AngleInteractionParameter::
+operator == (const AngleInteractionParameter & f1) const
+{
+  return this->same(f1);
+}
+
+InteractionType AngleHarmonicParameter::
+type () const 
+{
+  return mdForceAngleHarmonic;
+}
+
+unsigned AngleHarmonicParameter::
+numParam () const 
+{
+  return mdForceNParamAngleHarmonic;
+}
+
+const ScalorType * AngleHarmonicParameter::
+c_ptr () const 
+{
+  return param;
+}
+
+void AngleHarmonicParameter::
+init (ScalorType k, ScalorType theta0)
+{
+  AngleHarmonic::initParameter (param, k, theta0);
+}
 
 
 

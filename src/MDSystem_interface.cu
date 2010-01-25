@@ -9,6 +9,8 @@ MDSystem::MDSystem()
   xdfile = NULL;
   xdx = NULL;
   tmpNAtomType = 0;
+  hasBond = false;
+  hasAngle = false;
   // setNULL (&hdata);
   // setNULL (&ddata);
 }
@@ -139,41 +141,26 @@ void MDSystem::writeHostDataGro (const char * filename,
 }
 
 
-void MDSystem::initNBForce (const IndexType & NAtomType)
-{
-  if (NAtomType != 0){
-    nbForce.init (NAtomType);
-    printf ("# %d types of atoms will be registed for non-bonded interation\n",
-	    NAtomType);
-  }
-  else if (tmpNAtomType != 0){
-    nbForce.init (tmpNAtomType);
-    printf ("# %d types of atoms will be registed for non-bonded interation\n",
-	    tmpNAtomType);
-  }
-  else {
-    throw MDExcpt0AtomType();
-  }
-}
-
-void MDSystem::addNBForce (const TypeType &atomi, const TypeType &atomj, 
-			   const mdNBInteraction_t & forceType,
-			   const ScalorType * param)
-{
-  nbForce.addNBForce (atomi, atomj, forceType, param);
-}
-
 ScalorType MDSystem::
 calMaxNBRcut()
 {
-  ScalorType max  = 0.f;
-  for (IndexType i = 0; i < nbForce.setting.NNBForce; ++i){
-    ScalorType tmp = calRcut (nbForce.setting.type[i],
-			      &nbForce.setting.param[nbForce.setting.paramPosi[i]]);
-    if (tmp > max) max = tmp;
-  }
-  return max;
+  return nbInter.maxRcut();
 }
+
+void MDSystem::
+addNonBondedInteraction(const TypeType &i,
+				const TypeType &j,
+			const NonBondedInteractionParameter & param)
+{
+  nbInter.add (i, j, param);
+}
+
+void MDSystem::
+buildNonBondedInteraction ()
+{
+  nbInter.build();
+}
+
 
 
 MDSystem::~MDSystem()
@@ -184,15 +171,15 @@ MDSystem::~MDSystem()
   
 void MDSystem::initBond ()
 {
+  hasBond = true;
   bdlist.init (ddata);
 }
 
 void MDSystem::addBond (const IndexType & ii,
 			const IndexType & jj,
-			const mdBondInteraction_t & type,
-			const ScalorType * param)
+			const BondInteractionParameter & param)
 {
-  bdlist.addBond(ii, jj, type, param);
+  bdlist.addBond(ii, jj, param);
 }
 
 void MDSystem::buildBond ()
@@ -202,16 +189,16 @@ void MDSystem::buildBond ()
 
 void MDSystem::initAngle ()
 {
+  hasAngle = true;
   anglelist.init (ddata);
 }
 
 void MDSystem::addAngle (const IndexType & ii,
 			 const IndexType & jj,
 			 const IndexType & kk,
-			 const mdAngleInteraction_t & type,
-			 const ScalorType * param)
+			 const AngleInteractionParameter & param)
 {
-  anglelist.addAngle(ii, jj, kk, type, param);
+  anglelist.addAngle(ii, jj, kk, param);
 }
 
 void MDSystem::buildAngle ()

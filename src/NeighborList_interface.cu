@@ -149,6 +149,21 @@ void NeighborList::reinitCellList (const MDSystem & sys,
 }
 
 
+void NeighborList::initNonBondedInteraction (const MDSystem & sys)
+{
+  if (! sys.nbInter.isBuilt) {
+    throw MDExcptUnbuiltNonBondedInteraction ("NeighborList");
+  }
+  NatomType = sys.nbInter.numAtomTypes;
+  nbForceTableLength = sys.nbInter.interactionTableLength;
+  cudaMalloc ((void**)&nbForceTable, nbForceTableLength * sizeof(ForceIndexType));
+  cudaMemcpy (nbForceTable, sys.nbInter.interactionTable,
+	      nbForceTableLength * sizeof(ForceIndexType),
+	      cudaMemcpyHostToDevice);
+  checkCUDAError ("AtomNBForceTable::deviceInitTable");
+}
+
+
 void NeighborList::init (const MDSystem & sys,
 			 const ScalorType & rlist,
 			 const IndexType & NTread,
@@ -188,16 +203,18 @@ void NeighborList::init (const MDSystem & sys,
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
   cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
   checkCUDAError ("NeighborList::init allocate dnlist");
-  NatomType = sys.nbForce.indexTable.NAtomType;
-  // AtomNBForceTable::deviceInitTable (sys.nbForce.indexTable.data,
-  // 				     &nbForceTable, NatomType);
 
-  nbForceTableLength = AtomNBForceTable::calDataLength(NatomType);
-  cudaMalloc ((void**)&nbForceTable, nbForceTableLength * sizeof(ForceIndexType));
-  cudaMemcpy (nbForceTable, sys.nbForce.indexTable.data,
-	      nbForceTableLength * sizeof(ForceIndexType),
-	      cudaMemcpyHostToDevice);
-  checkCUDAError ("AtomNBForceTable::deviceInitTable");
+  // // nonbonded interaction
+  // NatomType = sys.nbForce.indexTable.NAtomType;
+  // // AtomNBForceTable::deviceInitTable (sys.nbForce.indexTable.data,
+  // // 				     &nbForceTable, NatomType);
+  // nbForceTableLength = AtomNBForceTable::calDataLength(NatomType);
+  // cudaMalloc ((void**)&nbForceTable, nbForceTableLength * sizeof(ForceIndexType));
+  // cudaMemcpy (nbForceTable, sys.nbForce.indexTable.data,
+  // 	      nbForceTableLength * sizeof(ForceIndexType),
+  // 	      cudaMemcpyHostToDevice);
+  // checkCUDAError ("AtomNBForceTable::deviceInitTable");
+  initNonBondedInteraction (sys);
   
   // bind texture
   // printf ("numMem is %d\n", sys.ddata.numMem);
@@ -1179,7 +1196,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 		fidx = AtomNBForceTable::calForceIndex (
 		    nbForceTable, NatomType, reftype, targettype[jj]);
 	      }
-	      if (fidx != mdForceNBNull) {
+	      if (fidx != mdForceNULL) {
 		IndexType listIdx = Nneighbor * nlist.stride + ii;
 		nlist.data[listIdx] = targetIndexes[jj];
 		nlist.forceIndex[listIdx] = fidx;

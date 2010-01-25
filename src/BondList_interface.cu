@@ -25,17 +25,17 @@ void BondList::init (const DeviceMDData & ddata)
 
   NBondForce_mem = 1024;
   paramLength_mem = NBondForce_mem * 3;
-  bondType = (mdBondInteraction_t *) realloc (
-      bondType, sizeof(mdBondInteraction_t) * NBondForce_mem);
+  bondType = (InteractionType *) realloc (
+      bondType, sizeof(InteractionType) * NBondForce_mem);
   if (bondType == NULL) {
     throw MDExcptFailedReallocOnHost ("BondList::init", "bondType",
-				      sizeof(mdBondInteraction_t) * NBondForce_mem);
+				      sizeof(InteractionType) * NBondForce_mem);
   }
   paramPosi = (IndexType *) realloc (
-      paramPosi, sizeof(mdBondInteraction_t) * NBondForce_mem);
+      paramPosi, sizeof(InteractionType) * NBondForce_mem);
   if (paramPosi == NULL){
     throw MDExcptFailedReallocOnHost ("BondList::init", "paramPosi",
-				      sizeof(mdBondInteraction_t) * NBondForce_mem);
+				      sizeof(InteractionType) * NBondForce_mem);
   }				      
   param = (ScalorType *) realloc (
       param, sizeof(ScalorType) * paramLength_mem);
@@ -46,13 +46,16 @@ void BondList::init (const DeviceMDData & ddata)
 }
 
   
-void BondList::addBond (const IndexType & ii, const IndexType & jj,
-			const mdBondInteraction_t & type,
-			const ScalorType * thisparam)
+void BondList::addBond (const IndexType & ii,
+			const IndexType & jj,
+			const BondInteractionParameter & param_)
 {
+  InteractionType type = param_.type();
+  const ScalorType * thisparam = param_.c_ptr();
+  IndexType NParam = param_.numParam();
+
   bool exist = false;
   ForceIndexType looking;;
-  IndexType NParam = calNumBondParameter (type);
   for (looking = 0; looking < NBondForce; ++looking){
     if (type == bondType[looking]){
       bool same = true;
@@ -71,17 +74,17 @@ void BondList::addBond (const IndexType & ii, const IndexType & jj,
   if (!exist){
     if (NBondForce == NBondForce_mem){
       NBondForce_mem *= 2;
-      bondType = (mdBondInteraction_t *) realloc (
-	  bondType, sizeof(mdBondInteraction_t) * NBondForce_mem);
+      bondType = (InteractionType *) realloc (
+	  bondType, sizeof(InteractionType) * NBondForce_mem);
       if (bondType == NULL) {
 	throw MDExcptFailedReallocOnHost ("BondList::init", "bondType",
-					  sizeof(mdBondInteraction_t) * NBondForce_mem);
+					  sizeof(InteractionType) * NBondForce_mem);
       }
       paramPosi = (IndexType *) realloc (
-	  paramPosi, sizeof(mdBondInteraction_t) * NBondForce_mem);
+	  paramPosi, sizeof(InteractionType) * NBondForce_mem);
       if (paramPosi == NULL){
 	throw MDExcptFailedReallocOnHost ("BondList::init", "paramPosi",
-					  sizeof(mdBondInteraction_t) * NBondForce_mem);
+					  sizeof(InteractionType) * NBondForce_mem);
       }				      
     }
     if (paramLength == paramLength_mem){
@@ -309,7 +312,7 @@ static void sortBuff (TypeType * ref, IndexType * indexMap, IndexType N)
   }
 }
 
-void HostBondList::sort(mdBondInteraction_t * bondType)
+void HostBondList::sort(InteractionType * bondType)
 {
   IndexType *indexMap = (IndexType *)malloc (sizeof(IndexType) * listLength_mem);
   if (indexMap == NULL){
@@ -350,4 +353,77 @@ void HostBondList::sort(mdBondInteraction_t * bondType)
   freeAPointer ((void**)&typeBuff);
   freeAPointer ((void**)&bkForceIndex);
   freeAPointer ((void**)&bkData);
-}    
+}
+
+bool BondInteractionParameter::
+same (const BondInteractionParameter & f1) const
+{
+  if (f1.type() != this->type()){
+    return false;
+  }
+  const ScalorType * myparam = this->c_ptr();
+  const ScalorType * fparam  = f1.c_ptr();
+  for (unsigned i = 0; i < this->numParam(); ++i){
+    if (myparam[i] != fparam[i]){
+      return false;
+    }
+  }
+  return true;
+}
+
+bool BondInteractionParameter::
+operator == (const BondInteractionParameter & f1) const
+{
+  return this->same(f1);
+}
+
+InteractionType HarmonicSpringParameter::
+type () const 
+{
+  return mdForceHarmonicSpring;
+}
+
+unsigned HarmonicSpringParameter::
+numParam () const 
+{
+  return mdForceNParamHarmonicSpring;
+}
+
+const ScalorType * HarmonicSpringParameter::
+c_ptr () const 
+{
+  return param;
+}
+
+void HarmonicSpringParameter::
+init (ScalorType k, ScalorType r0)
+{
+  HarmonicSpring::initParameter (param, k, r0);
+}
+
+
+InteractionType FENEParameter::
+type () const 
+{
+  return mdForceFENE;
+}
+
+unsigned FENEParameter::
+numParam () const 
+{
+  return mdForceNParamFENE;
+}
+
+const ScalorType * FENEParameter::
+c_ptr () const 
+{
+  return param;
+}
+
+void FENEParameter::
+init (ScalorType k, ScalorType rinf)
+{
+  FENE::initParameter (param, k, rinf);
+}
+
+

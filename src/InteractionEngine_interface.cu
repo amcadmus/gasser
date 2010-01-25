@@ -8,15 +8,41 @@ texture<ScalorType, 1, cudaReadModeElementType> global_texRef_interaction_coordz
 texture<CoordType,  1, cudaReadModeElementType> global_texRef_interaction_coord;
 #endif
 
-__constant__ mdNBInteraction_t nbForceType [MaxNumberNBForce];
+__constant__ InteractionType nbForceType [MaxNumberNBForce];
 __constant__ ScalorType nbForceParam       [MaxNumberNBForceParam];
 __constant__ IndexType  nbForceParamPosi   [MaxNumberNBForce];
-__constant__ mdBondInteraction_t bondForceType [MaxNumberBondForce];
+__constant__ InteractionType bondForceType [MaxNumberBondForce];
 __constant__ ScalorType bondForceParam         [MaxNumberBondForceParam];
 __constant__ IndexType  bondForceParamPosi     [MaxNumberBondForce];
-__constant__ mdAngleInteraction_t angleForceType [MaxNumberAngleForce];
+__constant__ InteractionType angleForceType [MaxNumberAngleForce];
 __constant__ ScalorType angleForceParam          [MaxNumberAngleForceParam];
 __constant__ IndexType  angleForceParamPosi      [MaxNumberAngleForce];
+
+
+void InteractionEngine_interface::
+initNonBondedInteraction (const MDSystem & sys)
+{
+  if (! sys.nbInter.isBuilt) {
+    throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine_interface");
+  }
+  if (sys.nbInter.numInteractionItems > MaxNumberNBForce ){
+    throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceType",
+					 MaxNumberNBForce * sizeof(InteractionType));
+  }
+  if (sys.nbInter.numParameters > MaxNumberNBForceParam ){
+    throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceParam",
+					 MaxNumberNBForceParam * sizeof(ScalorType));
+  }
+
+  cudaMemcpyToSymbol (nbForceType, sys.nbInter.types, 
+  		      sizeof(InteractionType) * sys.nbInter.numInteractionItems);
+  cudaMemcpyToSymbol (nbForceParam, sys.nbInter.parameters,
+  		      sizeof(ScalorType) * sys.nbInter.numParameters);
+  cudaMemcpyToSymbol (nbForceParamPosi, sys.nbInter.positions,
+		      sizeof(IndexType) * sys.nbInter.numInteractionItems);
+  checkCUDAError ("InteractionEngine::init, init NB force setting");
+}
+
 
 void InteractionEngine_interface::init (const MDSystem  & sys,
 					const IndexType & NTread)
@@ -60,66 +86,73 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
   checkCUDAError ("InteractionEngine::init init sum statistic");
   
   // init nb force param
-  if (sys.nbForce.setting.NNBForce > MaxNumberNBForce ){
-    throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceType",
-					 MaxNumberNBForce * sizeof(mdNBInteraction_t));
-  }
-  if (sys.nbForce.setting.paramLength > MaxNumberNBForceParam ){
-    throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceParam",
-					 MaxNumberNBForceParam * sizeof(ScalorType));
-  }
+  initNonBondedInteraction (sys);
 
-  // cudaMemset (nbForceType, 0,
-  // 	      sizeof(mdNBInteraction_t) * sys.nbForce.setting.NNBForce);
-  cudaMemcpyToSymbol (nbForceType, sys.nbForce.setting.type, 
-  		      sizeof(mdNBInteraction_t) * sys.nbForce.setting.NNBForce);
-  // printf ("# cpy nb force type, size %d N %d\n",
-  // 	  sizeof(mdNBInteraction_t) * sys.nbForce.setting.NNBForce,
-  // 	  sys.nbForce.setting.NNBForce);
-  for (IndexType i = 0; i < sys.nbForce.setting.NNBForce; ++i){
-    printf ("# %d\n", sys.nbForce.setting.type[i]);
-  }
-  // cudaMemset (nbForceParam, 0,
-  // 	      sizeof(ScalorType) * sys.nbForce.setting.paramLength);
-  // cudaThreadSynchronize ();
-  cudaMemcpyToSymbol (nbForceParam, sys.nbForce.setting.param,
-  		      sizeof(ScalorType) * sys.nbForce.setting.paramLength);
-  // cudaThreadSynchronize ();
-  // printf ("# cpy nb force param, N%d\n", sys.nbForce.setting.paramLength);
-  // for (IndexType i = 0; i < sys.nbForce.setting.paramLength; ++i){
-  //   printf("# %02d %f\n", i, sys.nbForce.setting.param[i]);
+// if (sys.nbForce.setting.NNBForce > MaxNumberNBForce ){
+  //   throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceType",
+  // 					 MaxNumberNBForce * sizeof(InteractionType));
   // }
-  // cudaMemset (nbForceParamPosi, 0,
-  // 	      sizeof(IndexType) * sys.nbForce.setting.NNBForce);
-  cudaMemcpyToSymbol (nbForceParamPosi, sys.nbForce.setting.paramPosi,
-		      sizeof(IndexType) * sys.nbForce.setting.NNBForce);
-  // printf ("# cpy nb force param posi\n");
-  checkCUDAError ("InteractionEngine::init, init NB force setting");
+  // if (sys.nbForce.setting.paramLength > MaxNumberNBForceParam ){
+  //   throw MDExcptExceedConstantMemLimit ("InteractionEngine::init", "nbForceParam",
+  // 					 MaxNumberNBForceParam * sizeof(ScalorType));
+  // }
+
+  // // cudaMemset (nbForceType, 0,
+  // // 	      sizeof(InteractionType) * sys.nbForce.setting.NNBForce);
+  // cudaMemcpyToSymbol (nbForceType, sys.nbForce.setting.type, 
+  // 		      sizeof(InteractionType) * sys.nbForce.setting.NNBForce);
+  // // printf ("# cpy nb force type, size %d N %d\n",
+  // // 	  sizeof(InteractionType) * sys.nbForce.setting.NNBForce,
+  // // 	  sys.nbForce.setting.NNBForce);
   // for (IndexType i = 0; i < sys.nbForce.setting.NNBForce; ++i){
-  //   printf ("# %d\n", sys.nbForce.setting.paramPosi[i]);
+  //   printf ("# %d\n", sys.nbForce.setting.type[i]);
   // }
+  // // cudaMemset (nbForceParam, 0,
+  // // 	      sizeof(ScalorType) * sys.nbForce.setting.paramLength);
+  // // cudaThreadSynchronize ();
+  // cudaMemcpyToSymbol (nbForceParam, sys.nbForce.setting.param,
+  // 		      sizeof(ScalorType) * sys.nbForce.setting.paramLength);
+  // // cudaThreadSynchronize ();
+  // // printf ("# cpy nb force param, N%d\n", sys.nbForce.setting.paramLength);
+  // // for (IndexType i = 0; i < sys.nbForce.setting.paramLength; ++i){
+  // //   printf("# %02d %f\n", i, sys.nbForce.setting.param[i]);
+  // // }
+  // // cudaMemset (nbForceParamPosi, 0,
+  // // 	      sizeof(IndexType) * sys.nbForce.setting.NNBForce);
+  // cudaMemcpyToSymbol (nbForceParamPosi, sys.nbForce.setting.paramPosi,
+  // 		      sizeof(IndexType) * sys.nbForce.setting.NNBForce);
+  // // printf ("# cpy nb force param posi\n");
+  // checkCUDAError ("InteractionEngine::init, init NB force setting");
+  // // for (IndexType i = 0; i < sys.nbForce.setting.NNBForce; ++i){
+  // //   printf ("# %d\n", sys.nbForce.setting.paramPosi[i]);
+  // // }
   
   //init bond force param
-  cudaMemcpyToSymbol (bondForceType, sys.bdlist.bondType,
-		      sizeof(mdBondInteraction_t) * sys.bdlist.NBondForce);
-  cudaMemcpyToSymbol (bondForceParam, sys.bdlist.param,
-		      sizeof(ScalorType) * sys.bdlist.paramLength);
-  cudaMemcpyToSymbol (bondForceParamPosi, sys.bdlist.paramPosi,
-		      sizeof(IndexType) * sys.bdlist.NBondForce);
-  checkCUDAError ("InteractionEngine::init, init bond force setting");
-
-  // init angle force param
-  cudaMemcpyToSymbol (angleForceType, sys.anglelist.angleType,
-		      sizeof(mdAngleInteraction_t) * sys.anglelist.NAngleForce);
-  cudaMemcpyToSymbol (angleForceParam, sys.anglelist.param,
-		      sizeof(ScalorType) * sys.anglelist.paramLength);
-  cudaMemcpyToSymbol (angleForceParamPosi, sys.anglelist.paramPosi,
-		      sizeof(IndexType) * sys.anglelist.NAngleForce);
-  checkCUDAError ("InteractionEngine::init, init angle force setting");
-
+  if (sys.hasBond ){
+    cudaMemcpyToSymbol (bondForceType, sys.bdlist.bondType,
+			sizeof(InteractionType) * sys.bdlist.NBondForce);
+    cudaMemcpyToSymbol (bondForceParam, sys.bdlist.param,
+			sizeof(ScalorType) * sys.bdlist.paramLength);
+    cudaMemcpyToSymbol (bondForceParamPosi, sys.bdlist.paramPosi,
+			sizeof(IndexType) * sys.bdlist.NBondForce);
+    checkCUDAError ("InteractionEngine::init, init bond force setting");
   // cal shared buff size
-  calBondInteraction_sbuffSize  = myBlockDim.x * sizeof(ScalorType);
-  calAngleInteraction_sbuffSize = myBlockDim.x * sizeof(ScalorType);
+    calBondInteraction_sbuffSize  = myBlockDim.x * sizeof(ScalorType);
+  }
+  
+  // init angle force param
+  if (sys.hasAngle){  
+    cudaMemcpyToSymbol (angleForceType, sys.anglelist.angleType,
+			sizeof(InteractionType) * sys.anglelist.NAngleForce);
+    cudaMemcpyToSymbol (angleForceParam, sys.anglelist.param,
+			sizeof(ScalorType) * sys.anglelist.paramLength);
+    cudaMemcpyToSymbol (angleForceParamPosi, sys.anglelist.paramPosi,
+			sizeof(IndexType) * sys.anglelist.NAngleForce);
+    checkCUDAError ("InteractionEngine::init, init angle force setting");
+  // cal shared buff size
+    calAngleInteraction_sbuffSize = myBlockDim.x * sizeof(ScalorType);
+  }
+  
 }
 
 InteractionEngine_interface::~InteractionEngine_interface()
@@ -183,7 +216,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
     err.check ("interaction engine nb");	
     if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
   }
-  if (sys.bdlist.dbdlist.listLength != 0) {
+  if (sys.hasBond) {
     if (timer != NULL) timer->tic(mdTimeBondedInteraction);
     calBondInteraction
 	<<<atomGridDim, myBlockDim>>> (
@@ -199,7 +232,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem & sys,
     err.check ("interaction engine b");	
     if (timer != NULL) timer->toc(mdTimeBondedInteraction);
   }
-  if (sys.anglelist.danglelist.listLength != 0){
+  if (sys.hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInteraction);
     calAngleInteraction
 	<<<atomGridDim, myBlockDim>>> (
@@ -249,7 +282,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     err.check ("interaction engine nb");	
     if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
   }
-  if (sys.bdlist.dbdlist.listLength != 0) {
+  if (sys.hasBond) {
     if (timer != NULL) timer->tic(mdTimeBInterStatistic);
     calBondInteraction
 	<<<atomGridDim, myBlockDim,
@@ -273,7 +306,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     err.check ("interaction engine");	
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
-  if (sys.anglelist.danglelist.listLength != 0){
+  if (sys.hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     calAngleInteraction
 	<<<atomGridDim, myBlockDim,
@@ -304,7 +337,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
   }
-  if (sys.bdlist.dbdlist.listLength != 0) {
+  if (sys.hasBond) {
     if (timer != NULL) timer->tic(mdTimeBInterStatistic);
     cudaThreadSynchronize();
     sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
@@ -314,7 +347,7 @@ void InteractionEngine_interface::applyInteraction (MDSystem &sys,
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
-  if (sys.anglelist.danglelist.listLength != 0){
+  if (sys.hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);

@@ -28,9 +28,11 @@ public:
 				 * data recovered from the reshuffled
 				 * system */
   RectangularBox box;		/**< box geometry */
-  BondList bdlist;		/**< bond list of the system */
-  AngleList anglelist;		/**< angle list of the system */
-  SystemNBForce nbForce;	/**< non-bonded interaction in the system */
+  bool				hasBond;
+  BondList			bdlist;		/**< bond list of the system */
+  bool				hasAngle;
+  AngleList			anglelist;	/**< angle list of the system */
+  SystemNonBondedInteraction	nbInter;
 public:
   MDSystem () ;
   ~MDSystem () ;
@@ -55,63 +57,23 @@ public:
 		   const IndexType & maxNumAtom = 0);
   void setBoxSize (const ScalorType & x, const ScalorType & y, const ScalorType & z)
       {RectangularBoxGeometry::setBoxSize (x, y, z, &box);}
-  /** 
-   * Initialize the non-bonded interaction information in the system
-   * 
-   * @param NatomType Possible maximum number of atom types in the
-   * system.  This value should be larger than or equal to the maximum
-   * type (int value) will appear in the following function
-   * addNBForce. If value 0 is given, the number of atom types found
-   * in mapping file will be used.
-   */
-  void initNBForce (const IndexType & NatomType = 0);
-  /** 
-   * Add a non-bonded interaction to the system.
-   * 
-   * @param i One atom type.
-   * @param j Another atom type.
-   * @param forceType Non-bonded force type.
-   * @param param Parameters of the force.
-   */
-  void addNBForce (const TypeType &i,
-		   const TypeType &j, 
-		   const mdNBInteraction_t & forceType,
-		   const ScalorType * param);
-  /** 
-   * Calculate the maximum cut-off radius of the non-bonded interactions.
-   * 
-   * @return the maximum cut-off radius.
-   */
+
+  void addNonBondedInteraction (const TypeType &i,
+				const TypeType &j,
+				const NonBondedInteractionParameter & param);
+  void buildNonBondedInteraction ();
   ScalorType calMaxNBRcut ();
-  /** 
-   * Initialize the bond list.
-   * 
-   */
   void initBond ();
-  /** 
-   * Add a bond to the system.
-   * 
-   * @param ii Index of one atom.
-   * @param jj Index of another atom.
-   * @param type Type of the bond interaction.
-   * @param param Parameters of the bond interaction.
-   */
   void addBond (const IndexType & ii,
 		const IndexType & jj,
-		const mdBondInteraction_t & type,
-		const ScalorType * param);
-  /** 
-   * Build up the bond list for the system.
-   * 
-   */
+		const BondInteractionParameter & param);
   void buildBond ();
 
   void initAngle ();
   void addAngle (const IndexType & ii,
 		 const IndexType & jj,
 		 const IndexType & kk,
-		 const mdAngleInteraction_t & type,
-		 const ScalorType * param);
+		 const AngleInteractionParameter & param);
   void buildAngle ();
 public:
   /** 

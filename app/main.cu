@@ -21,6 +21,71 @@
 
 int main(int argc, char * argv[])
 {
+
+  LennardJones6_12Parameter lp;
+  lp.init (1, 1, 1, 2.5);
+  LennardJones6_12Parameter lp1;
+  lp1.init (1, 1, 1, 2.5);
+  CosTailParameter cost;
+  cost.init (1, 1, 2.4);
+  
+  printf ("%d %d %d\n", lp.type(), lp.numParam(), lp == lp1);
+
+  SystemNonBondedInteraction sysnb;
+  printf ("is built %d\n", sysnb.isBuilt);
+  sysnb.clear();
+  printf ("is built %d\n", sysnb.isBuilt);
+
+  sysnb.add (1,1,lp);
+  sysnb.add (0,1,lp1);
+  sysnb.add (0,0,cost);
+  sysnb.add (0,2,cost);
+  // sysnb.add (2,2,lp);
+  printf ("is built %d\n", sysnb.isBuilt);
+  sysnb.build();
+  printf ("is built %d\n", sysnb.isBuilt);
+
+  for (unsigned i = 0; i < sysnb.numInteractionItems; ++i){
+    printf ("type: %d, ", sysnb.types[i]);
+    for (unsigned j = sysnb.positions[i]; j < sysnb.positions[i+1]; ++j){
+      printf ("%1.3e ", sysnb.parameters[j]);
+    }
+    printf("\n");
+  }
+  for (unsigned i = 0; i < sysnb.numAtomTypes; ++i){
+    for (unsigned j = 0; j < sysnb.numAtomTypes; ++j){
+      printf ("%d ", *sysnb.interactionTableItem(i,j));
+    }
+    printf("\n");    
+  }
+
+  printf ("##################################3\n");
+
+  printf ("is built %d\n", sysnb.isBuilt);
+  sysnb.clear();
+  printf ("is built %d\n", sysnb.isBuilt);
+  sysnb.add (1, 1, lp);
+  sysnb.add (1, 0, lp);
+  printf ("is built %d\n", sysnb.isBuilt);
+  sysnb.build();
+  printf ("is built %d\n", sysnb.isBuilt);
+  
+  for (unsigned i = 0; i < sysnb.numInteractionItems; ++i){
+    printf ("type: %d, ", sysnb.types[i]);
+    for (unsigned j = sysnb.positions[i]; j < sysnb.positions[i+1]; ++j){
+      printf ("%1.3e ", sysnb.parameters[j]);
+    }
+    printf("\n");
+  }
+  for (unsigned i = 0; i < sysnb.numAtomTypes; ++i){
+    for (unsigned j = 0; j < sysnb.numAtomTypes; ++j){
+      printf ("%d ", *sysnb.interactionTableItem(i,j));
+    }
+    printf("\n");    
+  }
+  
+  return 0;
+
   try{
     IndexType nstep = 20;
     char * filename;
@@ -38,22 +103,21 @@ int main(int argc, char * argv[])
     
     MDSystem sys;
     sys.initConfig(filename, "atom.map");
-    sys.initNBForce(2);
-    ScalorType ljparam[mdForceNParamLennardJones6_12];
-    ScalorType ljcapparam [mdForceNParamLennardJones6_12_cap];
+    // ScalorType ljparam[mdForceNParamLennardJones6_12];
+    // ScalorType ljcapparam [mdForceNParamLennardJones6_12_cap];
   
-    LennardJones6_12::initParameter (ljparam, 1.f, 1.f, 0.f, 2.5f);
-    sys.addNBForce (0, 0, 
-		    mdForceLennardJones6_12, 
-		    ljparam);
-    LennardJones6_12_cap::initParameter (ljcapparam, 1.f, 1.f, 0.f, 2.5f, 100.f);
-    sys.addNBForce (1, 1,
-		    mdForceLennardJones6_12_cap,
-		    ljcapparam);
-    LennardJones6_12::initParameter (ljparam, 1.f, 1.f, 0.f, 2.5f);
-    sys.addNBForce (0, 1, 
-		    mdForceLennardJones6_12, 
-		    ljparam);
+    // LennardJones6_12::initParameter (ljparam, 1.f, 1.f, 0.f, 2.5f);
+    // sys.addNBForce (0, 0, 
+    // 		    mdForceLennardJones6_12, 
+    // 		    ljparam);
+    // LennardJones6_12_cap::initParameter (ljcapparam, 1.f, 1.f, 0.f, 2.5f, 100.f);
+    // sys.addNBForce (1, 1,
+    // 		    mdForceLennardJones6_12_cap,
+    // 		    ljcapparam);
+    // LennardJones6_12::initParameter (ljparam, 1.f, 1.f, 0.f, 2.5f);
+    // sys.addNBForce (0, 1, 
+    // 		    mdForceLennardJones6_12, 
+    // 		    ljparam);
 
     sys.initBond ();
     ScalorType hsparam[mdForceNParamHarmonicSpring] ;
@@ -71,16 +135,16 @@ int main(int argc, char * argv[])
     // 	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
     //   }
     // }   
-    for (unsigned i = 0; i < sys.hdata.numAtom-1; i++){
-      if (i < 50){
-    	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
-    	sys.addBond (i, i+1, mdForceFENE, feneparam);
-      }
-      else{
-    	sys.addBond (i, i+1, mdForceFENE, feneparam);
-    	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
-      }
-    }   
+    // for (unsigned i = 0; i < sys.hdata.numAtom-1; i++){
+    //   if (i < 50){
+    // 	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    // 	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    //   }
+    //   else{
+    // 	sys.addBond (i, i+1, mdForceFENE, feneparam);
+    // 	sys.addBond (i, i+1, mdForceHarmonicSpring, hsparam);
+    //   }
+    // }   
     sys.buildBond();
 
     ScalorType ahparam [mdForceNParamAngleHarmonic];
@@ -89,9 +153,9 @@ int main(int argc, char * argv[])
     // for (unsigned i = 0; i < sys.hdata.numAtom-2; ++i){
     //   sys.addAngle (i, i+1, i+2, mdForceAngleHarmonic, ahparam);
     // }
-    sys.addAngle(0, 1, 2, mdForceAngleHarmonic, ahparam);
-    sys.addAngle(1, 2, 3, mdForceAngleHarmonic, ahparam);
-    sys.addAngle(2, 3, 4, mdForceAngleHarmonic, ahparam);
+    // sys.addAngle(0, 1, 2, mdForceAngleHarmonic, ahparam);
+    // sys.addAngle(1, 2, 3, mdForceAngleHarmonic, ahparam);
+    // sys.addAngle(2, 3, 4, mdForceAngleHarmonic, ahparam);
     sys.buildAngle();
 
     ScalorType maxrcut = sys.calMaxNBRcut ();

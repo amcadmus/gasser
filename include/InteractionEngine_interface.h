@@ -33,6 +33,8 @@ class InteractionEngine_interface
   SumVector<ScalorType> sum_angle_p;
   cudaStream_t sum_stream[8];
   MDError err;
+private:
+  void initNonBondedInteraction (const MDSystem & sys);
 public:
   InteractionEngine_interface(const MDSystem  & sys, 
 			      const IndexType & NThread)
