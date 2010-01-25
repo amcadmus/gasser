@@ -15,6 +15,9 @@ void Reshuffle::init (const MDSystem & sys,
 		      const NeighborList & nlist, 
 		      const IndexType & NTread)
 {
+  hasBond = sys.hasBond;
+  hasAngle = sys.hasAngle;
+
   myBlockDim.y = 1;
   myBlockDim.z = 1;
   myBlockDim.x = NTread;
@@ -42,24 +45,29 @@ void Reshuffle::init (const MDSystem & sys,
   cudaMalloc ((void**)&backMapTable, sizeof(IndexType) * sys.hdata.numAtom);
   cudaMalloc ((void**)&backMapTableBuff, sizeof(IndexType) * sys.hdata.numAtom);
   // bond list
-  cudaMalloc ((void**)&bkBondListData, 
-	      sizeof(IndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
-  cudaMalloc ((void**)&bkBondListBondIndex, 
-	      sizeof(ForceIndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
-  cudaMalloc ((void**)&bkBondListNumB,
-	      sizeof(IndexType) * sys.bdlist.dbdlist.stride);
+  if (sys.hasBond){
+    cudaMalloc ((void**)&bkBondListData, 
+		sizeof(IndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
+    cudaMalloc ((void**)&bkBondListBondIndex, 
+		sizeof(ForceIndexType) * sys.bdlist.dbdlist.stride * sys.bdlist.dbdlist.listLength);
+    cudaMalloc ((void**)&bkBondListNumB,
+		sizeof(IndexType) * sys.bdlist.dbdlist.stride);
+  }
   // angle list
-  cudaMalloc ((void**)&bkAngleListNei,
-	      sizeof(IndexType) * sys.anglelist.danglelist.stride *
-	      sys.anglelist.danglelist.listLength * 2);
-  cudaMalloc ((void**)&bkAngleListPosi,
-	      sizeof(IndexType) * sys.anglelist.danglelist.stride *
-	      sys.anglelist.danglelist.listLength);
-  cudaMalloc ((void**)&bkAngleListAngleIndex,
-	      sizeof(ForceIndexType) * sys.anglelist.danglelist.stride *
-	      sys.anglelist.danglelist.listLength);
-  cudaMalloc ((void**)&bkAngleListNangle,
-	      sizeof(IndexType) * sys.anglelist.danglelist.stride);
+  if (sys.hasAngle){
+    cudaMalloc ((void**)&bkAngleListNei,
+		sizeof(IndexType) * sys.anglelist.danglelist.stride *
+		sys.anglelist.danglelist.listLength * 2);
+    cudaMalloc ((void**)&bkAngleListPosi,
+		sizeof(IndexType) * sys.anglelist.danglelist.stride *
+		sys.anglelist.danglelist.listLength);
+    cudaMalloc ((void**)&bkAngleListAngleIndex,
+		sizeof(ForceIndexType) * sys.anglelist.danglelist.stride *
+		sys.anglelist.danglelist.listLength);
+    cudaMalloc ((void**)&bkAngleListNangle,
+		sizeof(IndexType) * sys.anglelist.danglelist.stride);
+  }
+  
 #ifndef COORD_IN_ONE_VEC
   cudaMalloc ((void**)&bkNlistJudgeBuffx, sizeof(ScalorType)*sys.hdata.numAtom);
   cudaMalloc ((void**)&bkNlistJudgeBuffy, sizeof(ScalorType)*sys.hdata.numAtom);
@@ -124,9 +132,17 @@ Reshuffle::~Reshuffle ()
   cudaFree(bkNneighbor);
   cudaFree(backMapTableBuff);
   cudaFree(backMapTable);
-  cudaFree(bkBondListData);
-  cudaFree(bkBondListBondIndex);
-  cudaFree(bkBondListNumB);
+  if (hasBond){
+    cudaFree(bkBondListData);
+    cudaFree(bkBondListBondIndex);
+    cudaFree(bkBondListNumB);
+  }
+  if (hasAngle){
+    cudaFree (bkAngleListNei);
+    cudaFree (bkAngleListPosi);
+    cudaFree (bkAngleListAngleIndex);
+    cudaFree (bkAngleListNangle);
+  }
 #ifndef COORD_IN_ONE_VEC
   cudaFree(bkNlistJudgeBuffx);
   cudaFree(bkNlistJudgeBuffy);
@@ -206,32 +222,36 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 #endif
   checkCUDAError ("Reshuffle::shuffleSystem, back up neighbor list");
   // bond list
-  Reshuffle_backupBondList
-      <<<atomGridDim, myBlockDim>>> (
-  	  sys.ddata.numAtom,
-  	  sys.bdlist.dbdlist.data, 
-	  sys.bdlist.dbdlist.bondIndex, 
-	  sys.bdlist.dbdlist.Nbond,
-  	  sys.bdlist.dbdlist.stride, 
-	  sys.bdlist.dbdlist.listLength,
-  	  bkBondListData,
-	  bkBondListBondIndex,
-	  bkBondListNumB);
-  checkCUDAError ("Reshuffle::shuffleSystem, back up bond list");
+  if (sys.hasBond){
+    Reshuffle_backupBondList
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
+	    sys.bdlist.dbdlist.data, 
+	    sys.bdlist.dbdlist.bondIndex, 
+	    sys.bdlist.dbdlist.Nbond,
+	    sys.bdlist.dbdlist.stride, 
+	    sys.bdlist.dbdlist.listLength,
+	    bkBondListData,
+	    bkBondListBondIndex,
+	    bkBondListNumB);
+    checkCUDAError ("Reshuffle::shuffleSystem, back up bond list");
+  }
   // angle list
-  Reshuffle_backupAngleList
-      <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.numAtom,
-	  sys.anglelist.danglelist.angleNei,
-	  sys.anglelist.danglelist.myPosi,
-	  sys.anglelist.danglelist.angleIndex,
-	  sys.anglelist.danglelist.Nangle,
-  	  sys.anglelist.danglelist.stride, 
-	  sys.anglelist.danglelist.listLength,
-	  bkAngleListNei,
-	  bkAngleListPosi,
-	  bkAngleListAngleIndex,
-	  bkAngleListNangle);
+  if (sys.hasAngle){
+    Reshuffle_backupAngleList
+	<<<atomGridDim, myBlockDim>>>(
+	    sys.ddata.numAtom,
+	    sys.anglelist.danglelist.angleNei,
+	    sys.anglelist.danglelist.myPosi,
+	    sys.anglelist.danglelist.angleIndex,
+	    sys.anglelist.danglelist.Nangle,
+	    sys.anglelist.danglelist.stride, 
+	    sys.anglelist.danglelist.listLength,
+	    bkAngleListNei,
+	    bkAngleListPosi,
+	    bkAngleListAngleIndex,
+	    bkAngleListNangle);
+  }
   checkCUDAError ("Reshuffle::shuffleSystem, back up angle list");
   Reshuffle_backupBackMapTable 
       <<<atomGridDim, myBlockDim>>> (
@@ -289,34 +309,39 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  sys.ddata.numAtom, bkNlistJudgeBuff, idxTable, nlist.backupCoord);
 #endif
   checkCUDAError ("Reshuffle::shuffleSystem, reshuffle neighbor list");
-  Reshuffle_reshuffleBondList
-      <<<atomGridDim,myBlockDim>>> (
-  	  sys.ddata.numAtom,
-  	  bkBondListData, 
-	  bkBondListBondIndex, 
-	  bkBondListNumB,
-  	  sys.bdlist.dbdlist.stride,
-	  sys.bdlist.dbdlist.listLength, 
-  	  idxTable,
-  	  sys.bdlist.dbdlist.data, 
-	  sys.bdlist.dbdlist.bondIndex, 
-	  sys.bdlist.dbdlist.Nbond);
-  checkCUDAError ("Reshuffle::shuffleSystem, reshuffle bond list");
-  Reshuffle_reshuffleAngleList
-      <<<atomGridDim,myBlockDim>>> (
-	  sys.ddata.numAtom,
-	  bkAngleListNei,
-	  bkAngleListPosi,
-	  bkAngleListAngleIndex,
-	  bkAngleListNangle,
-  	  sys.anglelist.danglelist.stride,
-	  sys.anglelist.danglelist.listLength, 
-  	  idxTable,
-	  sys.anglelist.danglelist.angleNei,
-	  sys.anglelist.danglelist.myPosi,
-	  sys.anglelist.danglelist.angleIndex,
-	  sys.anglelist.danglelist.Nangle);
-  checkCUDAError ("Reshuffle::shuffleSystem, reshuffle angle list");
+
+  if (sys.hasBond){
+    Reshuffle_reshuffleBondList
+	<<<atomGridDim,myBlockDim>>> (
+	    sys.ddata.numAtom,
+	    bkBondListData, 
+	    bkBondListBondIndex, 
+	    bkBondListNumB,
+	    sys.bdlist.dbdlist.stride,
+	    sys.bdlist.dbdlist.listLength, 
+	    idxTable,
+	    sys.bdlist.dbdlist.data, 
+	    sys.bdlist.dbdlist.bondIndex, 
+	    sys.bdlist.dbdlist.Nbond);
+    checkCUDAError ("Reshuffle::shuffleSystem, reshuffle bond list");
+  }
+  if (sys.hasAngle){
+    Reshuffle_reshuffleAngleList
+	<<<atomGridDim,myBlockDim>>> (
+	    sys.ddata.numAtom,
+	    bkAngleListNei,
+	    bkAngleListPosi,
+	    bkAngleListAngleIndex,
+	    bkAngleListNangle,
+	    sys.anglelist.danglelist.stride,
+	    sys.anglelist.danglelist.listLength, 
+	    idxTable,
+	    sys.anglelist.danglelist.angleNei,
+	    sys.anglelist.danglelist.myPosi,
+	    sys.anglelist.danglelist.angleIndex,
+	    sys.anglelist.danglelist.Nangle);
+    checkCUDAError ("Reshuffle::shuffleSystem, reshuffle angle list");
+  }
   Reshuffle_reshuffleCellList
       <<<cellGridDim, myBlockDim>>> (
 	  nlist.dclist.data, idxTable, posiBuff);

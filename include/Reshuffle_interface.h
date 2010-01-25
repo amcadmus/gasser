@@ -39,6 +39,8 @@ class Reshuffle
   void recoverMDData (const DeviceMDData & currentData,
 		      DeviceMDData & recoveredData,
 		      MDTimer * timer);
+  bool hasBond ;
+  bool hasAngle;
 public:
   Reshuffle (const MDSystem & sys,
 	     const NeighborList & nlist, 

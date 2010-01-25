@@ -139,14 +139,14 @@ int main(int argc, char * argv[])
   timer.printRecord (stderr);
   
 
-  IndexType * hnNei = (IndexType *) malloc (sizeof(IndexType)* nlist.dnlist.stride);
-  cudaMemcpy (hnNei, nlist.dnlist.Nneighbor, sizeof(IndexType) * nlist.dnlist.stride,
-	      cudaMemcpyDeviceToHost);
-  FILE * fp = fopen ("nnei.out", "w");
-  for (unsigned i = 0; i < nlist.dnlist.stride; ++i){
-    fprintf (fp, "%d\n", hnNei[i]);
-  }
-  fclose(fp);
+  // IndexType * hnNei = (IndexType *) malloc (sizeof(IndexType)* nlist.dnlist.stride);
+  // cudaMemcpy (hnNei, nlist.dnlist.Nneighbor, sizeof(IndexType) * nlist.dnlist.stride,
+  // 	      cudaMemcpyDeviceToHost);
+  // FILE * fp = fopen ("nnei.out", "w");
+  // for (unsigned i = 0; i < nlist.dnlist.stride; ++i){
+  //   fprintf (fp, "%d\n", hnNei[i]);
+  // }
+  // fclose(fp);
   
   // cpyDeviceMDDataToHost (&ddata, &hdata);
   // writeGroFile ("confout.gro", hdata.numAtom, 
