@@ -63,6 +63,7 @@ template<typename SCALORTYPE>
 void SumVector<SCALORTYPE>::clear()
 {
   freeAPointer ((void**)&NBlock);
+  // free (NBlock);
   if (deviceMalloced){
     cudaFree (buff);
     deviceMalloced = false;

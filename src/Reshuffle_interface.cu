@@ -162,10 +162,14 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   }
 
   cellGridDim = nlist.cellGridDim;
-  
+
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
   IndexType nob = cellGridDim.x * cellGridDim.y;
-  // possible streams
+  cudaFree(posiBuff);
+  cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);
+
+
+// possible streams
   // Reshuffle_backupSystem
   //     <<<atomGridDim, myBlockDim>>> (
   // 	  sys.ddata, imageSystem);
@@ -259,12 +263,16 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
 	  backMapTable,
 	  backMapTableBuff);
   checkCUDAError ("Reshuffle::shuffleSystem, back up backMapTable");
-
   
   Reshuffle_calPosiList
       <<<1, 1>>> (
    	  nlist.dclist.numbers, nob, posiBuff);
   checkCUDAError ("Reshuffle::shuffleSystem, cal posi");
+  // printf ("here %d %d %d\n", nlist.dclist.NCell.x,
+  // 	  nlist.dclist.NCell.y, nlist.dclist.NCell.z);
+  // printf ("mode %d\n", nlist.mode);
+  // printf ("here %d %d %d\n", cellGridDim.x, cellGridDim.y, cellGridDim.z);
+  // printf ("here %d %d %d\n", myBlockDim.x, myBlockDim.y, myBlockDim.z);
   Reshuffle_calIndexTable 
       <<<cellGridDim, myBlockDim>>> (
    	  nlist.dclist.data, posiBuff, idxTable);
