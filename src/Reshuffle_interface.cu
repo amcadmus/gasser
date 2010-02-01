@@ -149,6 +149,9 @@ void Reshuffle::shuffleSystem (MDSystem & sys,
   
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
   IndexType nob = cellGridDim.x * cellGridDim.y;
+  cudaFree(posiBuff);
+  cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);
+
   // possible streams
   // Reshuffle_backupSystem
   //     <<<atomGridDim, myBlockDim>>> (

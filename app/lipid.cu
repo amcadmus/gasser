@@ -143,9 +143,9 @@ int main(int argc, char * argv[])
 	  
       if ((i+1) % 10 == 0){
 	st.clearDevice();
-	inte_vr.step1 (sys, dt, &timer);
+	inte.step1 (sys, dt, &timer);
 	interaction.applyInteraction (sys, nlist, st, &timer);
-	inte_vr.step2 (sys, dt, st, &timer);
+	inte.step2 (sys, dt, st, &timer);
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
@@ -166,9 +166,9 @@ int main(int argc, char * argv[])
 	fflush(stdout);
       }
       else {
-	inte_vr.step1 (sys, dt, &timer);
+	inte.step1 (sys, dt, &timer);
 	interaction.applyInteraction (sys, nlist, &timer);
-	inte_vr.step2 (sys, dt, &timer);
+	inte.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
 	printf ("# Rebuild at step %09i ... ", i+1);
