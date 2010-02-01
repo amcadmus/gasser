@@ -12,8 +12,8 @@
 #include "Reshuffle_interface.h"
 #include "MDTimer_interface.h"
 
-#define NThreadsPerBlockCell	64
-#define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	15
+#define NThreadsPerBlockAtom	11
 
 int main(int argc, char * argv[])
 {   
@@ -48,7 +48,7 @@ int main(int argc, char * argv[])
     nstep = atoi(argv[1]);
   }
 
-  ScalorType rlist =3.5;
+  ScalorType rlist =3.3;
   NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 10);;
   nlist.build (sys);
   
@@ -96,6 +96,8 @@ int main(int argc, char * argv[])
       printf("# rebuild at step %d\n", i);
       fflush(stdout);
       nlist.reBuild(sys, &timer);
+      // nlist.reinit (sys, rlist, NThreadsPerBlockCell, 10);
+      // nlist.build (sys);
     }
     if (reshFeq != 0 && i%reshFeq == 0){
       tfremover.remove (sys, &timer);

@@ -17,10 +17,12 @@ class SumVector
   dim3 myBlockDim;
   IndexType bitBlockDim;
   IndexType sharedBuffSize;
+  void clear();
 public:
   SumVector();
   ~SumVector();
-  void init (IndexType NumberOfSum, IndexType NThread);
+  void init   (IndexType NumberOfSum, IndexType NThread);
+  void reinit (IndexType NumberOfSum, IndexType NThread);
   SCALORTYPE * getBuff () {return buff;}
   void sumBuff (SCALORTYPE * result, IndexType posi,
 		cudaStream_t stream = 0);
@@ -58,13 +60,24 @@ SumVector<SCALORTYPE>::SumVector()
 }
 
 template<typename SCALORTYPE>
-SumVector<SCALORTYPE>::~SumVector()
+void SumVector<SCALORTYPE>::clear()
 {
   freeAPointer ((void**)&NBlock);
   if (deviceMalloced){
     cudaFree (buff);
+    deviceMalloced = false;
   }
-}  
+  buffLength = 0;
+  NSum = 0;
+  bitBlockDim = 0;
+  sharedBuffSize = 0;
+}
+
+template<typename SCALORTYPE>
+SumVector<SCALORTYPE>::~SumVector()
+{
+  clear();
+}
 
 template<typename SCALORTYPE>
 void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
@@ -107,6 +120,14 @@ void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
   deviceMalloced = true;
   sharedBuffSize = (1 << bitBlockDim) * sizeof(SCALORTYPE);
 }
+
+template<typename SCALORTYPE>
+void SumVector<SCALORTYPE>::reinit (IndexType NumberOfSum, IndexType NThread)
+{
+  clear();
+  init (NumberOfSum, NThread);
+}
+
 
 extern __shared__ volatile int sbuffpub [];
 template<typename SCALORTYPE>

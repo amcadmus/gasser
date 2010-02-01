@@ -17,10 +17,10 @@ typedef enum {
   CellListBuilt
 } NeighborListBuiltMode;
 
+class WrongBuildMethod {};
 
 class NeighborList
 {
-  bool malloced ;
   IndexType * mySendBuff;
   IndexType * myTargetBuff;
   // ScalorType * judgeRebuild_buff;
@@ -33,15 +33,40 @@ private:
   IndexType buildDeviceCellList_step1_sbuffSize;
   IndexType judgeRebuild_judgeCoord_block_sbuffSize;
 private:
-  void initCellList (const MDSystem & sys,
-		     const ScalorType & rlist,
-		     const BoxDirection_t & bdir);
-  void reinitCellList (const MDSystem & sys,
-		       const ScalorType & rlist,
-		       const BoxDirection_t & bdir);
+  bool mallocedDeviceCellList;
+  bool mallocedDeviceNeighborList;
+  bool initedGlobalTexture;
+  bool mallocedJudgeStuff;
+  bool mallocedNonBondedForceTable;
+  void clearDeviceCellList();
+  void clearDeviceNeighborList();
+  void unbindGlobalTexture();
+  void clearJudgeStuff();
+  void clear();
+  void DecideNeighboringMethod (const MDSystem & sys,
+				const ScalorType & rlist,
+				const BoxDirection_t & bdir,
+				NeighborListBuiltMode & mode,
+				IntVectorType & NCell);
+  void mallocDeviceCellList (const IntVectorType & NCell,
+			     const VectorType & boxSize,
+			     const ScalorType & rlist);
+  void mallocDeviceNeighborList (const MDSystem & sys,
+				 const ScalorType & rlist,
+				 const IndexType & DeviceNeighborListExpansion);
+  void bindGlobalTexture (const MDSystem & sys);
+  void mallocJudgeStuff(const MDSystem & sys);
   void initNonBondedInteraction (const MDSystem & sys);
+private:
+  void normalizeMDSystem (const MDSystem & sys);
+  void backupJudgeCoord (const MDSystem & sys);
+  void naivelyBuildDeviceCellList (const MDSystem & sys);
+  void buildDeviceCellList (const MDSystem & sys);
+  void buildDeviceNeighborListCellList (const MDSystem & sys);
+  void buildDeviceNeighborListAllPair  (const MDSystem & sys);
 public:
   NeighborListBuiltMode mode;
+  ScalorType myrlist;
   BoxDirection_t mybdir;
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
@@ -81,6 +106,10 @@ public:
 		const ScalorType & rlist, const IndexType & NTread,
 		const IndexType & DeviceNeighborListExpansion = 5,
 		const RectangularBoxGeometry::BoxDirection_t & bdir = 7)
+      : mallocedDeviceCellList (false), mallocedDeviceNeighborList (false),
+	mallocedJudgeStuff (false), initedGlobalTexture (false),
+	mallocedNonBondedForceTable (false),
+	mode (NullMode)
       {init (sys, rlist, NTread, DeviceNeighborListExpansion, bdir);}
   /** 
    * Destructor
@@ -106,6 +135,10 @@ public:
 	     const ScalorType & rlist, const IndexType & NTread,
 	     const IndexType & DeviceNeighborListExpansion = 5,
 	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
+  void reinit (const MDSystem & sys,
+	       const ScalorType & rlist, const IndexType & NTread,
+	       const IndexType & DeviceNeighborListExpansion = 5,
+	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
   /** 
    * Build neighbor list
    * 
