@@ -49,10 +49,8 @@ private:
 				NeighborListBuiltMode & mode,
 				IntVectorType & NCell);
   void mallocDeviceCellList (const IntVectorType & NCell,
-			     const VectorType & boxSize,
-			     const ScalorType & rlist);
+			     const VectorType & boxSize);
   void mallocDeviceNeighborList (const MDSystem & sys,
-				 const ScalorType & rlist,
 				 const IndexType & DeviceNeighborListExpansion);
   void bindGlobalTexture (const MDSystem & sys);
   void mallocJudgeStuff(const MDSystem & sys);

@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
   NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 40,
   		     RectangularBoxGeometry::mdRectBoxDirectionX |
   		     RectangularBoxGeometry::mdRectBoxDirectionY);
-  
+  // printf ("# at step %d, ncelllx %d\n", 0, nlist.dclist.NCell.x);
   nlist.build (sys);
   
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
@@ -180,6 +180,13 @@ int main(int argc, char * argv[])
 	inte.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
+	// nlistExten = 0.2;
+	// rlist = maxrcut + nlistExten;
+	// nlist.reinit (sys, rlist, NThreadsPerBlockCell, 40,
+	// 	      RectangularBoxGeometry::mdRectBoxDirectionX |
+	// 	      RectangularBoxGeometry::mdRectBoxDirectionY);
+	// printf ("# at step %d, ncelllx %d\n", i+1, nlist.dclist.NCell.x);
+	// nlist.build(sys);
 	printf ("# Rebuild at step %09i ... ", i+1);
 	fflush(stdout);
 	nlist.reBuild(sys, &timer);

@@ -53,8 +53,7 @@ DecideNeighboringMethod (const MDSystem & sys,
 
 void NeighborList::
 mallocDeviceCellList (const IntVectorType & NCell,
-		      const VectorType & boxSize,
-		      const ScalorType & rlist)
+		      const VectorType & boxSize)
 {
   if (NCell.x == 1){
     dclist.NCell.x = 1;
@@ -79,7 +78,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
   }
 
   IndexType numCell = dclist.NCell.x * dclist.NCell.y * dclist.NCell.z;
-  dclist.rlist = rlist;
+  dclist.rlist = myrlist;
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block
   dclist.stride = myBlockDim.x;
@@ -316,14 +315,13 @@ initNonBondedInteraction (const MDSystem & sys)
 
 void NeighborList::
 mallocDeviceNeighborList (const MDSystem & sys,
-			  const ScalorType & rlist,
 			  const IndexType & DeviceNeighborListExpansion)
 {
-  dnlist.rlist = rlist;
+  dnlist.rlist = myrlist;
   dnlist.stride = sys.ddata.numAtom;
   ScalorType density = sys.ddata.numAtom / (sys.box.size.x * sys.box.size.y * sys.box.size.z);
   IndexType expectedNumberInList 
-      = 4./3. * M_PI * rlist * rlist * rlist * density;
+      = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
   dnlist.listLength = expectedNumberInList * DeviceNeighborListExpansion;
   if (dnlist.listLength < 10){
     dnlist.listLength = 10;
@@ -370,7 +368,7 @@ mallocJudgeStuff(const MDSystem & sys)
   cudaMalloc ((void **)& backupCoord,  sizeof(CoordType) *sys.ddata.numAtom);
 #endif
   cudaMalloc ((void **)& judgeRebuild_tag,  sizeof(IndexType));
-  sum_judge.init (nob, NThreadForSum);
+  sum_judge.reinit (nob, NThreadForSum);
   checkCUDAError ("NeighborList::init judge build allocations");
   mallocedJudgeStuff = true;
 }
@@ -401,11 +399,11 @@ init (const MDSystem & sys,
   myrlist = rlist;
   DecideNeighboringMethod (sys, myrlist, mybdir, mode, dclist.NCell);
   if (mode == CellListBuilt){
-    mallocDeviceCellList (dclist.NCell, sys.box.size, myrlist);
+    mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
   
   // init neighbor list
-  mallocDeviceNeighborList (sys, myrlist, DeviceNeighborListExpansion);
+  mallocDeviceNeighborList (sys, DeviceNeighborListExpansion);
   
   // // nonbonded interaction
   initNonBondedInteraction (sys);
@@ -487,12 +485,12 @@ void NeighborList::reinit (const MDSystem & sys,
   clearDeviceCellList ();
   DecideNeighboringMethod (sys, myrlist, mybdir, mode, dclist.NCell);
   if (mode == CellListBuilt){
-    mallocDeviceCellList (dclist.NCell, sys.box.size, myrlist);
+    mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
   
   // init neighbor list
   clearDeviceNeighborList ();
-  mallocDeviceNeighborList (sys, myrlist, DeviceNeighborListExpansion);  
+  mallocDeviceNeighborList (sys, DeviceNeighborListExpansion);  
   
   // bind texture
   unbindGlobalTexture ();
@@ -602,7 +600,7 @@ void NeighborList::reBuild (const MDSystem & sys,
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
   DecideNeighboringMethod (sys, myrlist, mybdir, tmpMode, tmpNCell);
 
-  // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
+  printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
   if (tmpMode == mode) {
     if (mode == AllPairBuilt){
@@ -617,7 +615,7 @@ void NeighborList::reBuild (const MDSystem & sys,
 	  tmpNCell.z != dclist.NCell.z ){
 	printf ("# box size change too much, rebuild cell list\n");
 	clearDeviceCellList ();
-	mallocDeviceCellList (tmpNCell, sys.box.size, myrlist);
+	mallocDeviceCellList (tmpNCell, sys.box.size);
 	naivelyBuildDeviceCellList (sys);
       }
       else {
@@ -635,7 +633,7 @@ void NeighborList::reBuild (const MDSystem & sys,
   else if (mode == AllPairBuilt && tmpMode == CellListBuilt){
     mode = tmpMode;
     if (timer != NULL) timer->tic(mdTimeBuildCellList);
-    mallocDeviceCellList (tmpNCell, sys.box.size, myrlist);
+    mallocDeviceCellList (tmpNCell, sys.box.size);
     naivelyBuildDeviceCellList (sys);
     if (timer != NULL) timer->toc(mdTimeBuildCellList);
     if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
