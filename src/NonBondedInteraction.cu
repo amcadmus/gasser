@@ -40,6 +40,12 @@ c_ptr () const
   return param;
 }
 
+ScalorType * LennardJones6_12Parameter::
+c_ptr () 
+{
+  return param;
+}
+
 ScalorType LennardJones6_12Parameter::
 rcut() const
 {
@@ -69,6 +75,12 @@ numParam () const
 
 const ScalorType * LennardJones6_12CapParameter::
 c_ptr() const 
+{
+  return param;
+}
+
+ScalorType * LennardJones6_12CapParameter::
+c_ptr() 
 {
   return param;
 }
@@ -108,6 +120,12 @@ c_ptr () const
   return param;
 }
 
+ScalorType * CosTailParameter::
+c_ptr () 
+{
+  return param;
+}
+
 ScalorType CosTailParameter::
 rcut () const 
 {
@@ -137,6 +155,12 @@ numParam () const
 
 const ScalorType * CosTailCapParameter::
 c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * CosTailCapParameter::
+c_ptr () 
 {
   return param;
 }

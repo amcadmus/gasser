@@ -3,6 +3,7 @@
 #include "GromacsFileManager.h"
 #include "FileManager.h"
 #include "MDException.h"
+#include "Reshuffle_interface.h"
 
 MDSystem::MDSystem()
 {
@@ -260,3 +261,130 @@ void MDSystem::endWriteXtc()
 {
   xdrfile_close(xdfile);
 }
+
+
+void MDSystem::
+reshuffle (const IndexType * indexTable)
+{
+  CoordType * coord;
+  IntScalorType * coordNoix, *coordNoiy, *coordNoiz;
+  ScalorType *velox, *veloy, *veloz;
+  ScalorType *forcx, *forcy, *forcz;
+  TypeType *type;
+  ScalorType *mass, *massi;
+  ScalorType *charge;
+
+  cudaMalloc ((void**)&coord, sizeof(CoordType)*ddata.numAtom);
+  cudaMalloc ((void**)&coordNoix, sizeof(IntScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&coordNoiy, sizeof(IntScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&coordNoiz, sizeof(IntScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&velox, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&veloy, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&veloz, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&forcx, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&forcy, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&forcz, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&type, sizeof(TypeType)*ddata.numAtom);
+  cudaMalloc ((void**)&mass, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&massi, sizeof(ScalorType)*ddata.numAtom);
+  cudaMalloc ((void**)&charge, sizeof(ScalorType)*ddata.numAtom);
+
+  cudaMemcpy (coord, ddata.coord, sizeof(CoordType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (coordNoix, ddata.coordNoix, sizeof(IntScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (coordNoiy, ddata.coordNoiy, sizeof(IntScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (coordNoiz, ddata.coordNoiz, sizeof(IntScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (velox, ddata.velox, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (veloy, ddata.veloy, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (veloz, ddata.veloz, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (forcx, ddata.forcx, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (forcy, ddata.forcy, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (forcz, ddata.forcz, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (type, ddata.type, sizeof(TypeType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (mass, ddata.mass, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (massi, ddata.massi, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (charge, ddata.charge, sizeof(ScalorType)*ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+
+  IndexType nob;
+  dim3 myBlockDim;
+  myBlockDim.x = 128;
+  
+  if (ddata.numAtom % myBlockDim.x == 0){
+    nob = ddata.numAtom / myBlockDim.x;
+  } else {
+    nob = ddata.numAtom / myBlockDim.x + 1;
+  }
+  dim3 atomGridDim = toGridDim (nob);
+
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (coord, ddata.numAtom, indexTable, ddata.coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (coordNoix, ddata.numAtom, indexTable, ddata.coordNoix);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (coordNoiy, ddata.numAtom, indexTable, ddata.coordNoiy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (coordNoiz, ddata.numAtom, indexTable, ddata.coordNoiz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (velox, ddata.numAtom, indexTable, ddata.velox);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (veloy, ddata.numAtom, indexTable, ddata.veloy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (veloz, ddata.numAtom, indexTable, ddata.veloz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (forcx, ddata.numAtom, indexTable, ddata.forcx);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (forcy, ddata.numAtom, indexTable, ddata.forcy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (forcz, ddata.numAtom, indexTable, ddata.forcz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (type, ddata.numAtom, indexTable, ddata.type);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (mass, ddata.numAtom, indexTable, ddata.mass);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (massi, ddata.numAtom, indexTable, ddata.massi);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (charge, ddata.numAtom, indexTable, ddata.charge);
+  
+  cudaFree (coord);
+  cudaFree (coordNoix);
+  cudaFree (coordNoiy);
+  cudaFree (coordNoiz);
+  cudaFree (velox);
+  cudaFree (veloy);
+  cudaFree (veloz);
+  cudaFree (forcx);
+  cudaFree (forcy);
+  cudaFree (forcz); 
+  cudaFree (type); 
+  cudaFree (mass); 
+  cudaFree (massi); 
+  cudaFree (charge); 
+}
+

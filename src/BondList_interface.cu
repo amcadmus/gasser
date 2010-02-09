@@ -377,6 +377,24 @@ operator == (const BondInteractionParameter & f1) const
   return this->same(f1);
 }
 
+BondInteractionParameter::
+BondInteractionParameter(const BondInteractionParameter & p1)
+{
+  this->copy(p1);
+}
+
+const BondInteractionParameter & BondInteractionParameter::
+copy (const BondInteractionParameter & p1)
+{
+  ScalorType * myparam = this->c_ptr();
+  const ScalorType * fparam  = p1.c_ptr();
+  for (unsigned i = 0; i < p1.numParam(); ++i){
+    myparam[i] = fparam[i];
+  }
+  return *this;
+}
+
+
 InteractionType HarmonicSpringParameter::
 type () const 
 {
@@ -391,6 +409,12 @@ numParam () const
 
 const ScalorType * HarmonicSpringParameter::
 c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * HarmonicSpringParameter::
+c_ptr ()  
 {
   return param;
 }
@@ -416,6 +440,12 @@ numParam () const
 
 const ScalorType * FENEParameter::
 c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * FENEParameter::
+c_ptr () 
 {
   return param;
 }
