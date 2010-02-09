@@ -9,12 +9,6 @@ enum mdBondInteractionNParam{
   mdForceNParamFENE		= 2
 };
 
-class BondInteractionParameter : public InteractionParamter
-{
-public:
-  bool same (const BondInteractionParameter & f1) const ;
-  bool operator == (const BondInteractionParameter & f1) const;
-};
 
 class HarmonicSpringParameter : public BondInteractionParameter
 {
@@ -22,6 +16,7 @@ class HarmonicSpringParameter : public BondInteractionParameter
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   void init (ScalorType k,
 	     ScalorType r0);
@@ -33,10 +28,12 @@ class FENEParameter : public BondInteractionParameter
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   void init (ScalorType k,
 	     ScalorType rinf);
 };
+
 
 namespace HarmonicSpring {
     typedef enum paramIndex{

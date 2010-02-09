@@ -8,23 +8,18 @@ enum mdAngleInteractionNParam{
   mdForceNParamAngleHarmonic	= 2
 };
 
-class AngleInteractionParameter : public InteractionParamter
-{
-public:
-  bool same (const AngleInteractionParameter & f1) const ;
-  bool operator == (const AngleInteractionParameter & f1) const;
-};
-
 class AngleHarmonicParameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamAngleHarmonic];
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   void init (ScalorType k,
 	     ScalorType theta0);
 };
+
 
 namespace AngleHarmonic {
     typedef enum paramIndex{
@@ -442,8 +437,6 @@ __device__ void angleForcePoten1 (const InteractionType ftype,
 				      f1x, f1y, f1z);
   }
 }
-
-
 
 
 

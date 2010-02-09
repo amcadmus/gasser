@@ -42,6 +42,8 @@ public:
   DeviceMDData & deviceData () {return ddata;}
   const DeviceMDData & deviceData () const {return ddata;}
 public:
+  virtual void reshuffle (const IndexType * indexTable);
+public:
   /** 
    * Initialize system configuration from a .gro file.
    * 

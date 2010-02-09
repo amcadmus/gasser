@@ -4,7 +4,7 @@
 #include "common.h"
 #include <math.h>
 #include "Interaction.h"
-
+#include <vector>
 
 enum mdNBInteractionNParam {
   mdForceNParamNBNull			= 1,
@@ -12,14 +12,6 @@ enum mdNBInteractionNParam {
   mdForceNParamLennardJones6_12_cap	= 7,
   mdForceNParamCosTail			= 6,
   mdForceNParamCosTail_cap		= 9
-};
-
-class NonBondedInteractionParameter : public InteractionParamter
-{
-public:
-  bool same (const NonBondedInteractionParameter & f1) const ;
-  bool operator == (const NonBondedInteractionParameter & f1) const;
-  virtual ScalorType rcut () const = 0;
 };
 
 class LennardJones6_12Parameter : public NonBondedInteractionParameter
@@ -33,6 +25,7 @@ public:
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   virtual ScalorType rcut () const ;
 };
@@ -49,6 +42,7 @@ public:
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   virtual ScalorType rcut () const ;
 };
@@ -63,6 +57,7 @@ public:
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   virtual ScalorType rcut () const ;
 };
@@ -78,12 +73,12 @@ public:
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   virtual ScalorType rcut () const ;
 };
 
 
-#include <vector>
 class SystemNonBondedInteraction
 {
 public:
@@ -122,8 +117,6 @@ public:
 	    const NonBondedInteractionParameter & param);
   void build ();
 };
-
-
 
 
 namespace AtomNBForceTable{

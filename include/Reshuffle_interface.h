@@ -7,6 +7,26 @@
 #include "BondList_interface.h"
 #include "MDTimer.h"
 
+class Reshufflable 
+{
+  virtual void reshuffle (const IndexType * indexTable) = 0;
+};
+
+template<typename TYPE>
+__global__ void
+Reshuffle_reshuffleArray (const TYPE * bkbuff,
+			  const IndexType numAtom,
+			  const IndexType * idxTable,
+			  TYPE * buff)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    buff[idxTable[ii]] = bkbuff[ii];
+  }
+}
+
+
 class Reshuffle
 {
   IndexType * posiBuff;

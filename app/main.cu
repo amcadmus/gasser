@@ -14,6 +14,7 @@
 
 #include "MDSystem_interface.h"
 #include "MDException.h"
+#include "Topology.h"
 
 //#include "cutil.h"
 
@@ -22,6 +23,11 @@
 int main(int argc, char * argv[])
 {
 
+  // Topology::Atom lja (1.0, 0., 0);
+  
+  // return 0;
+  
+  
   LennardJones6_12Parameter lp;
   lp.init (1, 1, 1, 2.5);
   LennardJones6_12Parameter lp1;
