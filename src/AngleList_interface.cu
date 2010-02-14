@@ -529,7 +529,13 @@ c_ptr ()
 }
 
 void AngleHarmonicParameter::
-init (ScalorType k, ScalorType theta0)
+reinit (ScalorType k, ScalorType theta0)
+{
+  AngleHarmonic::initParameter (param, k, theta0);
+}
+
+AngleHarmonicParameter::
+AngleHarmonicParameter (ScalorType k, ScalorType theta0)
 {
   AngleHarmonic::initParameter (param, k, theta0);
 }

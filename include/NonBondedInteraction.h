@@ -18,10 +18,15 @@ class LennardJones6_12Parameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12];
 public:
-  void init (ScalorType epsilon,
-	     ScalorType sigma,
-	     ScalorType shift,
-	     ScalorType rcut);
+  LennardJones6_12Parameter () {}
+  LennardJones6_12Parameter (ScalorType epsilon,
+			     ScalorType sigma,
+			     ScalorType shift,
+			     ScalorType rcut);
+  void reinit (ScalorType epsilon,
+	       ScalorType sigma,
+	       ScalorType shift,
+	       ScalorType rcut);
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
@@ -34,11 +39,17 @@ class LennardJones6_12CapParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12_cap];
 public:
-  void init (ScalorType epsilon,
-	     ScalorType sigma,
-	     ScalorType shift,
-	     ScalorType rcut,
-	     ScalorType cap);
+  LennardJones6_12CapParameter () {}
+  LennardJones6_12CapParameter (ScalorType epsilon,
+				ScalorType sigma,
+				ScalorType shift,
+				ScalorType rcut,
+				ScalorType cap);
+  void reinit (ScalorType epsilon,
+	       ScalorType sigma,
+	       ScalorType shift,
+	       ScalorType rcut,
+	       ScalorType cap);
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
@@ -51,9 +62,13 @@ class CosTailParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamCosTail];
 public:
-  void init (ScalorType epsilon,
-	     ScalorType b,
-	     ScalorType wc);
+  CosTailParameter () {}
+  CosTailParameter (ScalorType epsilon,
+		    ScalorType b,
+		    ScalorType wc);
+  void reinit (ScalorType epsilon,
+	       ScalorType b,
+	       ScalorType wc);
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
@@ -66,10 +81,15 @@ class CosTailCapParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamCosTail_cap];
 public:
-  void init (ScalorType epsilon,
-	     ScalorType b,
-	     ScalorType wc,
-	     ScalorType cap);
+  CosTailCapParameter () {}
+  CosTailCapParameter (ScalorType epsilon,
+		       ScalorType b,
+		       ScalorType wc,
+		       ScalorType cap);
+  void reinit (ScalorType epsilon,
+	       ScalorType b,
+	       ScalorType wc,
+	       ScalorType cap);
 public:
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
@@ -82,7 +102,6 @@ public:
 class SystemNonBondedInteraction
 {
 public:
-  IndexType numAtomTypes;
 private:  
   std::vector<std::vector<std::vector<ScalorType> > > paramMat;
   std::vector<std::vector<InteractionType > > typeMat;
@@ -90,6 +109,7 @@ private:
   void resizeMem (IndexType size);
   bool checkIntegrity ();
 public:
+  IndexType numAtomTypes;
   bool isBuilt;
   InteractionType * types;
   ScalorType * parameters;

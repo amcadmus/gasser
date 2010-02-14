@@ -53,10 +53,19 @@ rcut() const
 }
 
 void LennardJones6_12Parameter::
-init (ScalorType epsilon,
-      ScalorType sigma,
-      ScalorType shift,
-      ScalorType rcut)
+reinit (ScalorType epsilon,
+	ScalorType sigma,
+	ScalorType shift,
+	ScalorType rcut)
+{
+  LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
+}
+
+LennardJones6_12Parameter::
+LennardJones6_12Parameter (ScalorType epsilon,
+			   ScalorType sigma,
+			   ScalorType shift,
+			   ScalorType rcut)
 {
   LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
 }
@@ -92,11 +101,22 @@ rcut () const
 }
 
 void LennardJones6_12CapParameter::
-init (ScalorType epsilon,
+reinit (ScalorType epsilon,
       ScalorType sigma,
       ScalorType shift,
       ScalorType rcut,
       ScalorType cap)
+{
+  LennardJones6_12_cap::initParameter
+      (param, epsilon, sigma, shift, rcut, cap);
+}
+
+LennardJones6_12CapParameter::
+LennardJones6_12CapParameter (ScalorType epsilon,
+			      ScalorType sigma,
+			      ScalorType shift,
+			      ScalorType rcut,
+			      ScalorType cap)
 {
   LennardJones6_12_cap::initParameter
       (param, epsilon, sigma, shift, rcut, cap);
@@ -133,9 +153,17 @@ rcut () const
 }
 
 void  CosTailParameter::
-init (ScalorType epsilon,
-      ScalorType b,
-      ScalorType wc)
+reinit (ScalorType epsilon,
+	ScalorType b,
+	ScalorType wc)
+{
+  CosTail::initParameter (param, epsilon, b, wc);
+}
+
+CosTailParameter::
+CosTailParameter (ScalorType epsilon,
+		  ScalorType b,
+		  ScalorType wc)
 {
   CosTail::initParameter (param, epsilon, b, wc);
 }
@@ -172,16 +200,22 @@ rcut () const
 }
 
 void  CosTailCapParameter::
-init (ScalorType epsilon,
-      ScalorType b,
-      ScalorType wc,
-      ScalorType cap)
+reinit (ScalorType epsilon,
+	ScalorType b,
+	ScalorType wc,
+	ScalorType cap)
 {
   CosTail_cap::initParameter (param, epsilon, b, wc, cap);
 }
 
-
-
+CosTailCapParameter::
+CosTailCapParameter (ScalorType epsilon,
+		     ScalorType b,
+		     ScalorType wc,
+		     ScalorType cap)
+{
+  CosTail_cap::initParameter (param, epsilon, b, wc, cap);
+}
 
 void SystemNonBondedInteraction::
 resizeMem (IndexType size)
@@ -284,6 +318,7 @@ interactionTableItem (TypeType atom0, TypeType atom1)
       (i = IndexType(atom1), j = IndexType(atom0)) ;
   return &interactionTable[i * numAtomTypes + j - ((i*(i+1)) >> 1)];
 }
+
 IndexType * SystemNonBondedInteraction::
 interactionTableItem (IndexType atom0, IndexType atom1)
 {

@@ -420,7 +420,13 @@ c_ptr ()
 }
 
 void HarmonicSpringParameter::
-init (ScalorType k, ScalorType r0)
+reinit (ScalorType k, ScalorType r0)
+{
+  HarmonicSpring::initParameter (param, k, r0);
+}
+
+HarmonicSpringParameter::
+HarmonicSpringParameter (ScalorType k, ScalorType r0)
 {
   HarmonicSpring::initParameter (param, k, r0);
 }
@@ -451,7 +457,14 @@ c_ptr ()
 }
 
 void FENEParameter::
-init (ScalorType k, ScalorType rinf)
+reinit (ScalorType k, ScalorType rinf)
+{
+  FENE::initParameter (param, k, rinf);
+}
+
+
+FENEParameter::
+FENEParameter (ScalorType k, ScalorType rinf)
 {
   FENE::initParameter (param, k, rinf);
 }

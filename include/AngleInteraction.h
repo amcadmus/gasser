@@ -12,12 +12,15 @@ class AngleHarmonicParameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamAngleHarmonic];
 public:
+  AngleHarmonicParameter () {}
+  AngleHarmonicParameter (ScalorType k,
+			  ScalorType theta0);
+  void reinit (ScalorType k,
+	       ScalorType theta0);
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
-  void init (ScalorType k,
-	     ScalorType theta0);
 };
 
 

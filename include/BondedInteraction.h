@@ -14,24 +14,30 @@ class HarmonicSpringParameter : public BondInteractionParameter
 {
   ScalorType param [mdForceNParamHarmonicSpring];
 public:
+  HarmonicSpringParameter () {}
+  HarmonicSpringParameter (ScalorType k,
+			   ScalorType r0);
+  void reinit (ScalorType k,
+	       ScalorType r0);
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
-  void init (ScalorType k,
-	     ScalorType r0);
 };
 
 class FENEParameter : public BondInteractionParameter
 {
   ScalorType param [mdForceNParamFENE];
 public:
+  FENEParameter () {}
+  FENEParameter (ScalorType k,
+		 ScalorType rinf);
+  void reinit (ScalorType k,
+	       ScalorType rinf);
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
-  void init (ScalorType k,
-	     ScalorType rinf);
 };
 
 
