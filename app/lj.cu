@@ -20,7 +20,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
+#define NThreadsPerBlockCell	32
 #define NThreadsPerBlockAtom	16
 
 int main(int argc, char * argv[])
@@ -39,49 +39,31 @@ int main(int argc, char * argv[])
   printf ("# setting device to %d\n", atoi(argv[3]));
   cudaSetDevice (atoi(argv[3]));
   checkCUDAError ("set device");
-  
+
   MDSystem sys;
   sys.initConfig(filename);
-  
+
   Topology::System sysTop;
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
-  HarmonicSpringParameter hsparam;
-  FENEParameter feneparam;
-  hsparam.reinit (10.f, 4.f);
-  feneparam.reinit (30.f, 1.5f);
-  mol.addBond (Topology::Bond (0, 1, feneparam));
-  mol.addBond (Topology::Bond (1, 2, feneparam));
-  mol.addBond (Topology::Bond (0, 2, hsparam));
-  sysTop.addMolecules (mol, sys.hdata.numAtom/3);
+  sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);
   sys.initDeviceData ();
-  
-  SystemBondedInteraction sysBdInter;
-  sysBdInter.reinit (sysTop);
-
-  BondedInteractionList bdInterList;
-  bdInterList.reinit (sys, sysTop, sysBdInter);
 
   SystemNonBondedInteraction sysNbInter;
-  CosTailParameter cosparam;
-  cosparam.reinit (1.f, 0.95f, 0.f);
-  sysNbInter.add (0, 0, cosparam);
-  cosparam.reinit (1.f, 0.975f, 0.f);
-  sysNbInter.add (0, 1, cosparam);
-  cosparam.reinit (1.f, 1.f, 1.6f);
-  sysNbInter.add (1, 1, cosparam);
+  LennardJones6_12Parameter ljparam;
+  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  sysNbInter.add (0, 0, ljparam);
   sysNbInter.build ();
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.5;
+  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 40,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
-		      RectangularBoxGeometry::mdRectBoxDirectionY);
+		      RectangularBoxGeometry::mdRectBoxDirectionY |
+		      RectangularBoxGeometry::mdRectBoxDirectionZ);
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
@@ -90,11 +72,10 @@ int main(int argc, char * argv[])
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
-  inter.registBondedInteraction    (sysBdInter);
 
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.005;
+  ScalorType dt = 0.001;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
   
@@ -108,18 +89,11 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      // if (i%1 == 0){
-      //   if (i == 0) nlist.build (sys);
-      //   else nlist.reBuild (sys);
-      //   // resh.shuffleSystem (sys, nlist);
-      // }   
-	  
       if ((i+1) % 1 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-	inter.applyBondedInteraction (sys, bdInterList, st, &timer);
 	inte_vv.step2 (sys, dt, st, &timer);
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
@@ -141,17 +115,9 @@ int main(int argc, char * argv[])
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteraction (sys, nlist, &timer);
-	inter.applyBondedInteraction (sys, bdInterList, &timer);
 	inte_vv.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	// nlistExten = 0.2;
-	// rlist = maxrcut + nlistExten;
-	// nlist.reinit (sys, rlist, NThreadsPerBlockCell, 40,
-	// 	      RectangularBoxGeometry::mdRectBoxDirectionX |
-	// 	      RectangularBoxGeometry::mdRectBoxDirectionY);
-	// printf ("# at step %d, ncelllx %d\n", i+1, nlist.dclist.NCell.x);
-	// nlist.build(sys);
 	printf ("# Rebuild at step %09i ... ", i+1);
 	fflush(stdout);
 	nlist.reBuild(sys, &timer);
@@ -184,10 +150,9 @@ int main(int argc, char * argv[])
     fprintf (stderr, "%s\n", e.what());
     return 1;
   }
-
-
   
   
   return 0;
 }
 
+  

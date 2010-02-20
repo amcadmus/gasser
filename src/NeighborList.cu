@@ -5,7 +5,7 @@
 
 // extern texture<float, 1, cudaReadModeElementType> texRef;
 
-__global__ void prepare_naivlyBuildDeviceCellList (DeviceCellList clist)
+__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   clist.data[bid * clist.stride + threadIdx.x] = MaxIndexValue;
@@ -14,7 +14,7 @@ __global__ void prepare_naivlyBuildDeviceCellList (DeviceCellList clist)
 
 
 #ifndef COORD_IN_ONE_VEC
-__global__ void naivlyBuildDeviceCellList (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
 					   ScalorType * coordx,
 					   ScalorType * coordy,
 					   ScalorType * coordz,
@@ -75,7 +75,7 @@ __global__ void naivlyBuildDeviceCellList (IndexType numAtom,
 }
 
 
-__global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 					    ScalorType * coordx,
 					    ScalorType * coordy,
 					    ScalorType * coordz,
@@ -281,7 +281,7 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 // coord in one vec
 //////////////////////////////////////////////////
 #else
-__global__ void naivlyBuildDeviceCellList (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
 					   CoordType * coord,
 					   RectangularBox box,
 					   DeviceCellList clist,
@@ -340,7 +340,7 @@ __global__ void naivlyBuildDeviceCellList (IndexType numAtom,
 }
 
 
-__global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 					    CoordType * coord,
 					    IntScalorType * coordNoix,
 					    IntScalorType * coordNoiy,

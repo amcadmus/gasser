@@ -81,22 +81,9 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
  * 
  * @param clist the cell list
  */
-__global__ void prepare_naivlyBuildDeviceCellList (DeviceCellList  clist);
+__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList  clist);
 // needs ceil(numAtom/blockDim.x) blocks
-__global__ void naivlyBuildDeviceCellList (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					   ScalorType * coordx,
-					   ScalorType * coordy,
-					   ScalorType * coordz,
-#else
-					   CoordType * coord,
-#endif
-					   RectangularBox box,
-					   DeviceCellList clist,
-					   mdError_t * ptr_de = NULL,
-					   IndexType * erridx = NULL,
-					   ScalorType * errsrc = NULL);
-__global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
 #ifndef COORD_IN_ONE_VEC
 					    ScalorType * coordx,
 					    ScalorType * coordy,
@@ -104,14 +91,27 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
 #else
 					    CoordType * coord,
 #endif
-					    IntScalorType * coordNoix,
-					    IntScalorType * coordNoiy,
-					    IntScalorType * coordNoiz,
 					    RectangularBox box,
 					    DeviceCellList clist,
 					    mdError_t * ptr_de = NULL,
 					    IndexType * erridx = NULL,
 					    ScalorType * errsrc = NULL);
+__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
+					     ScalorType * coordx,
+					     ScalorType * coordy,
+					     ScalorType * coordz,
+#else
+					     CoordType * coord,
+#endif
+					     IntScalorType * coordNoix,
+					     IntScalorType * coordNoiy,
+					     IntScalorType * coordNoiz,
+					     RectangularBox box,
+					     DeviceCellList clist,
+					     mdError_t * ptr_de = NULL,
+					     IndexType * erridx = NULL,
+					     ScalorType * errsrc = NULL);
 
 // needs NCell blocks
 __global__ void buildDeviceCellList_initBuff (IndexType * sendBuff,
