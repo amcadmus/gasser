@@ -19,9 +19,15 @@
 #include "InteractionEngine_interface.h"
 #include "tmp.h"
 #include "Reshuffle_interface.h"
-#include "BondList_interface.h"
 
 #include "MDSystem_interface.h"
+
+#include "Topology.h"
+#include "SystemBondedInteraction.h"
+
+#include "BondInteraction.h"
+#include "NonBondedInteraction.h"
+
 
 #define NThreadsPerBlockCell	16
 #define NThreadsPerBlockAtom	16
@@ -44,88 +50,56 @@ int main(int argc, char * argv[])
   checkCUDAError ("set device");
   
   MDSystem sys;
-  sys.initConfig(filename, "lipid.map");
+  sys.initConfig(filename);
   
-  // CosTailCapParameter cosparam;
-  // cosparam.init (1.f, 0.95f, 0.f, 100);
-  // sys.addNonBondedInteraction (0, 0, cosparam);
-  // cosparam.init (1.f, 0.975f, 0.f, 100);
-  // sys.addNonBondedInteraction (0, 1, cosparam);
-  // cosparam.init (1.f, 1.f, 1.6f, 100);
-  // sys.addNonBondedInteraction (1, 1, cosparam);
-  // sys.buildNonBondedInteraction ();
-
-  CosTailParameter cosparam;
-  cosparam.init (1.f, 0.95f, 0.f);
-  sys.addNonBondedInteraction (0, 0, cosparam);
-  cosparam.init (1.f, 0.975f, 0.f);
-  sys.addNonBondedInteraction (0, 1, cosparam);
-  cosparam.init (1.f, 1.f, 1.6f);
-  sys.addNonBondedInteraction (1, 1, cosparam);
-  sys.buildNonBondedInteraction ();
-  
-//   ScalorType cap = 100;
-//   ScalorType cosparam[mdForceNParamCosTail_cap];  
-//   CosTail_cap::initParameter (cosparam, 1.f, 0.95f, 0.f, cap);
-//   sys.addNBForce (0, 0, mdForceCosTail_cap, cosparam);
-//   CosTail_cap::initParameter (cosparam, 1.f, 0.975f, 0.f, cap);
-//   sys.addNBForce (0, 1, mdForceCosTail_cap, cosparam);
-//   CosTail_cap::initParameter (cosparam, 1.f, 1.0f, 1.6f, cap);
-//   sys.addNBForce (1, 1, mdForceCosTail_cap, cosparam);
-  
-  sys.initBond ();
+  Topology::System sysTop;
+  Topology::Molecule mol;
+  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
+  mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
   HarmonicSpringParameter hsparam;
-  hsparam.init (10.f, 4.f);
   FENEParameter feneparam;
-  feneparam.init (30.f, 1.5f);
-  for (unsigned i = 0; i < sys.hdata.numAtom; i+=3){
-    sys.addBond (i, i+1, feneparam);
-    sys.addBond (i+2, i+1, feneparam);
-    sys.addBond (i, i+2, hsparam);
-  }   
-  sys.buildBond();
+  hsparam.reinit (10.f, 4.f);
+  feneparam.reinit (30.f, 1.5f);
+  mol.addBond (Topology::Bond (0, 1, feneparam));
+  mol.addBond (Topology::Bond (1, 2, feneparam));
+  mol.addBond (Topology::Bond (0, 2, hsparam));
+  sysTop.addMolecules (mol, sys.hdata.numAtom/3);
 
-  // sys.initAngle();
-  // sys.buildAngle();
+  sys.initTopology (sysTop);
+  sys.initDeviceData ();
   
-  ScalorType tmpsum = 0.;
-  for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
-    tmpsum += 0.5 * (sys.hdata.velox[i] * sys.hdata.velox[i] +
-		     sys.hdata.veloy[i] * sys.hdata.veloy[i] +
-		     sys.hdata.veloz[i] * sys.hdata.veloz[i] );
-  }
-  printf ("# tmpsum is %f\n", tmpsum);
+  SystemBondedInteraction sysBdInter;
+  sysBdInter.reinit (sysTop);
 
-  ScalorType maxrcut = sys.calMaxNBRcut ();
-  printf ("# max rcut is %f\n", maxrcut);
-  ScalorType nlistExten = 0.5f;
+  BondedInteractionList bdInterList;
+  bdInterList.reinit (sys, sysTop, sysBdInter);
+
+  SystemNonBondedInteraction sysNbInter;
+  CosTailParameter cosparam;
+  cosparam.reinit (1.f, 0.95f, 0.f);
+  sysNbInter.add (0, 0, cosparam);
+  cosparam.reinit (1.f, 0.975f, 0.f);
+  sysNbInter.add (0, 1, cosparam);
+  cosparam.reinit (1.f, 1.f, 1.6f);
+  sysNbInter.add (1, 1, cosparam);
+  sysNbInter.build ();
+  
+  ScalorType maxrcut = sysNbInter.maxRcut();
+  ScalorType nlistExten = 0.5;
   ScalorType rlist = maxrcut + nlistExten;
-  // NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 20,
-  // 		     RectangularBoxGeometry::mdRectBoxDirectionX |
-  // 		     RectangularBoxGeometry::mdRectBoxDirectionY |
-  // 		     RectangularBoxGeometry::mdRectBoxDirectionZ);;
-  NeighborList nlist(sys, rlist, NThreadsPerBlockCell, 40,
-  		     RectangularBoxGeometry::mdRectBoxDirectionX |
-  		     RectangularBoxGeometry::mdRectBoxDirectionY);
-  // printf ("# at step %d, ncelllx %d\n", 0, nlist.dclist.NCell.x);
-  nlist.build (sys);
-  
-  Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
-  resh.shuffleSystem ( sys, nlist);
-
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 40,
+		      RectangularBoxGeometry::mdRectBoxDirectionX |
+		      RectangularBoxGeometry::mdRectBoxDirectionY);
+  nlist.build(sys);
   MDStatistic st(sys);
-
-  VelocityVerlet inte (sys, NThreadsPerBlockAtom);;
-
+  VelocityVerlet inte (sys, NThreadsPerBlockAtom);
   ScalorType refT = 0.9977411970749;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
-// // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
-  // inte.removeTranslationalFreedom (ddata);
-  // // printf ("%f %f\n", ddata.velox[0], ddata.velox[1]);
-
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
-
-  InteractionEngine_interface interaction(sys, NThreadsPerBlockAtom);;
+  InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
+  inter.registNonBondedInteraction (sysNbInter);
+  inter.registBondedInteraction    (sysBdInter);
 
   MDTimer timer;
   unsigned i;
@@ -134,13 +108,12 @@ int main(int argc, char * argv[])
   RandomGenerator_MT19937::init_genrand (seed);
   
   printf ("# prepare ok, start to run\n");
-
   sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
     timer.tic(mdTimeTotal);
     sys.initWriteXtc ("traj.xtc");
     sys.writeHostDataXtc (0, 0*dt, &timer);
-    for (i = 0; i < nstep; ++i){ 
+    for (i = 0; i < nstep; ++i){
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
@@ -150,13 +123,15 @@ int main(int argc, char * argv[])
       //   // resh.shuffleSystem (sys, nlist);
       // }   
 	  
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 1 == 0){
 	st.clearDevice();
 	inte.step1 (sys, dt, &timer);
-	interaction.applyInteraction (sys, nlist, st, &timer);
+	inter.clearInteraction (sys);
+	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	inter.applyBondedInteraction (sys, bdInterList, st, &timer);
 	inte.step2 (sys, dt, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
@@ -165,9 +140,6 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
-		st.getStatistic(mdStatisticVirialXX)*0.5,
-		st.getStatistic(mdStatisticVirialYY)*0.5,
-		st.getStatistic(mdStatisticVirialZZ)*0.5,
 		st.pressureXX(),
 		st.pressureYY(),
 		st.pressureZZ(),
@@ -176,7 +148,9 @@ int main(int argc, char * argv[])
       }
       else {
 	inte.step1 (sys, dt, &timer);
-	interaction.applyInteraction (sys, nlist, &timer);
+	inter.clearInteraction (sys);
+	inter.applyNonBondedInteraction (sys, nlist, &timer);
+	inter.applyBondedInteraction (sys, bdInterList, &timer);
 	inte.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
@@ -195,21 +169,21 @@ int main(int argc, char * argv[])
       }
       if ((i+1) % 1000 == 0){
 	// sys.updateHost(&timer);
-	resh.recoverMDDataToHost (sys, &timer);
+	// resh.recoverMDDataToHost (sys, &timer);
 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
       if ((i+1) % 100 == 0){
-	resh.shuffleSystem (sys, nlist, &timer);
+	// resh.shuffleSystem (sys, nlist, &timer);
       }
     }
     sys.endWriteXtc();
-    resh.recoverMDDataToHost (sys, &timer);
+    // resh.recoverMDDataToHost (sys, &timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
   catch (MDExcptCuda & e){
-    resh.recoverMDDataToHost (sys, &timer);
+    // resh.recoverMDDataToHost (sys, &timer);
     sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
@@ -220,131 +194,9 @@ int main(int argc, char * argv[])
     return 1;
   }
 
+
+  
+  
   return 0;
 }
 
-
-// typedef enum paramIndex {
-//   epsilon		= 0,
-//   bv		= 1,
-//   rc		= 2,
-//   wc		= 3,
-//   wci		= 4,
-//   rcut		= 5,
-//   cap		= 6,
-//   capR		= 7,
-//   pcapR		= 8
-// } paramIndex_t;
-
-
-
-
-// void
-// force (const ScalorType * param,
-// 		    ScalorType diffx,
-// 		    ScalorType diffy,
-// 		    ScalorType diffz,
-// 		    ScalorType *fx, 
-// 		    ScalorType *fy, 
-// 		    ScalorType *fz)
-// {
-//   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-//   ScalorType fscalor = 0.f;
-//   ScalorType ri = 1.f / sqrtf (dr2);
-
-//   if (dr2 == 0.f){
-//     *fx = - param[cap];
-//     *fy = 0.f;
-//     *fz = 0.f;
-//     return;
-//   }
-//   else if (dr2 < param[capR]*param[capR]){
-//     ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
-//     fscalor = -s * param[cap];
-//   }
-//   else if (dr2 <= param[rc] * param[rc]){
-//     ScalorType sri = param[bv] * ri;
-//     ScalorType sri2 = sri * sri;
-//     ScalorType sri6 = sri2*sri2*sri2;
-//     fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
-//   }
-//   else if (dr2 < param[rcut] * param[rcut]) {
-//     ScalorType tmp = M_PIF * param[wci];
-//     ScalorType term = 0.5f *  (dr2 * ri - param[rc]) * tmp;
-//     fscalor = param[epsilon] * tmp *
-//     	cosf(term) * sinf(term) * ri;
-//   }
-
-//   *fx = diffx * fscalor;
-//   *fy = diffy * fscalor;
-//   *fz = diffz * fscalor;
-// }
-
-
-// ScalorType
-// forcePoten (const ScalorType * param,
-// 			 ScalorType diffx,
-// 			 ScalorType diffy,
-// 			 ScalorType diffz,
-// 			 ScalorType *fx, 
-// 			 ScalorType *fy, 
-// 			 ScalorType *fz)
-// {
-//   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-//   ScalorType rvalue = 0.f;
-//   ScalorType fscalor = 0.f;
-//   ScalorType ri = 1.f / sqrtf (dr2);
-
-// //   printf ("capR pcarR is %f %f\n", param[capR], param[pcapR]);
-
-//   if (dr2 == 0.f){
-//     *fy = 0.f;
-//     *fz = 0.f;
-//     return 0.f;
-//   }
-//   else if (dr2 < param[capR]*param[capR]){
-//     ScalorType s = 1.f / sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
-//     fscalor = -s * param[cap];
-//     rvalue = -param[cap] * (sqrtf(dr2) - param[capR]) + param[pcapR] ;
-//   }
-//   else if (dr2 <= param[rc] * param[rc]){
-//     ScalorType sri = param[bv] * ri;
-//     ScalorType sri2 = sri * sri;
-//     ScalorType sri6 = sri2*sri2*sri2;
-//     fscalor = - 24.f * param[epsilon] * (2.f * sri6*sri6 - sri6) * ri * ri;
-//     rvalue = 4.f * param[epsilon] * (sri6*sri6 - sri6);
-//     if (param[wc] == 0.f) rvalue += param[epsilon];
-//     else rvalue += 0.f;
-//   }
-//   else if (dr2 < param[rcut] * param[rcut]) {
-//     ScalorType term = 0.5f * M_PIF * (dr2 * ri - param[rc]) * param[wci];
-//     ScalorType cost = cosf(term);
-//     fscalor = param[epsilon] * M_PIF * param[wci] *
-// 	cost * sinf(term) * ri;
-//     rvalue = - param[epsilon] * cost * cost;
-//   }
-
-//   *fx = diffx * fscalor;
-//   *fy = diffy * fscalor;
-//   *fz = diffz * fscalor;
-
-//   return rvalue;
-// }
-
-// void printfF (ScalorType * param, const char * name)
-// {
-//   FILE * fp = fopen (name, "w");
-//   ScalorType fx, fy, fz;
-//   ScalorType x;
-//   ScalorType lower = 0.8, upper = 3;
-//   IndexType N = 1000;
-//   ScalorType h = (upper - lower) / N;
-
-//   for (unsigned i = 0; i <= N; ++i){
-//     x = lower + i * h;
-//     ScalorType p ;
-//     p = forcePoten (param, x, 0., 0., &fx, &fy, &fz);
-//     fprintf (fp, "%f\t%f\t%f\n", x, p, fx);
-//   }
-//   fclose (fp);
-// }	     

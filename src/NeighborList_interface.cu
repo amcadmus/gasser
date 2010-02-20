@@ -11,6 +11,7 @@
 #include "Auxiliary.h"
 #include "NeighborList.h"
 #include <stdio.h>
+#include "NonBondedInteraction.h"
 
 /** 
  * these are textures for a fast reference of particle position.
@@ -298,15 +299,17 @@ static IndexType hroundUp4 (IndexType x)
 }
 
 void NeighborList::
-initNonBondedInteraction (const MDSystem & sys)
+initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 {
-  if (! sys.nbInter.isBuilt) {
+  if (! sysNbInter.beBuilt()) {
     throw MDExcptUnbuiltNonBondedInteraction ("NeighborList");
   }
-  NatomType = sys.nbInter.numAtomTypes;
-  nbForceTableLength = sys.nbInter.interactionTableLength;
-  cudaMalloc ((void**)&nbForceTable, nbForceTableLength * sizeof(ForceIndexType));
-  cudaMemcpy (nbForceTable, sys.nbInter.interactionTable,
+  NatomType = sysNbInter.numberOfAtomTypes();
+  nbForceTableLength = sysNbInter.interactionTableSize();
+  cudaMalloc ((void**)&nbForceTable,
+	      nbForceTableLength * sizeof(ForceIndexType));
+  cudaMemcpy (nbForceTable,
+	      sysNbInter.interactionTable(),
 	      nbForceTableLength * sizeof(ForceIndexType),
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("AtomNBForceTable::deviceInitTable");
@@ -375,7 +378,8 @@ mallocJudgeStuff(const MDSystem & sys)
 
 
 void NeighborList::
-init (const MDSystem & sys,
+init (const SystemNonBondedInteraction & sysNbInter,
+      const MDSystem & sys,
       const ScalorType & rlist,
       const IndexType & NTread,
       const IndexType & DeviceNeighborListExpansion,
@@ -406,7 +410,7 @@ init (const MDSystem & sys,
   mallocDeviceNeighborList (sys, DeviceNeighborListExpansion);
   
   // // nonbonded interaction
-  initNonBondedInteraction (sys);
+  initNonBondedInteraction (sysNbInter);
   
   // bind texture
   bindGlobalTexture (sys);

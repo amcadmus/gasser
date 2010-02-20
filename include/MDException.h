@@ -23,6 +23,8 @@ class MDExcptUndefinedAtomType;
 class MDExcptUndefinedNBForceType;
 class MDExcpt0AtomType;
 class MDExcptUnbuiltNonBondedInteraction;
+class MDExcptWrongNumberAtomDataTopology;
+
 
 // char delimitor[3] = {':', ' ', '\0'};
 
@@ -232,6 +234,14 @@ public:
       }
 };
   
+class MDExcptWrongNumberAtomDataTopology : public MDException
+{
+public:
+  virtual const char * what () const throw ()
+      {
+	return "Number of Atoms in topology and in data are not consistent";
+      }
+};
   
 
 

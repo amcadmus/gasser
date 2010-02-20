@@ -475,413 +475,413 @@ BerendsenLeapFrog::addPcoupleGroup (const PCoupleDirection_t & direction,
   NPCoupleGroup ++;
 }
 
-void
-BerendsenLeapFrog::firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
-{
-  myst.clearDevice ();
-  ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
-  lpfrog.step (sys, dt, myst, timer);
-  if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-    // printf("# rebuild at step %d\n", nstep);
-    // fflush(stdout);
-    ptr_nlist->reBuild(sys, timer);
-  }
-  ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-  st.deviceAdd (myst);
-  nstep ++;
-}
+// void
+// BerendsenLeapFrog::firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
+// {
+//   myst.clearDevice ();
+//   ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
+//   lpfrog.step (sys, dt, myst, timer);
+//   if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//     // printf("# rebuild at step %d\n", nstep);
+//     // fflush(stdout);
+//     ptr_nlist->reBuild(sys, timer);
+//   }
+//   ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//   st.deviceAdd (myst);
+//   nstep ++;
+// }
 
-void
-BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
-{
-  myst.clearDevice ();
-  ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
-  lpfrog.step (sys, dt, myst, timer);
-  if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-    // printf("# rebuild at step %d\n", nstep);
-    // fflush(stdout);
-    ptr_nlist->reBuild(sys, timer);
-  }
-  ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-  nstep ++;
-}
+// void
+// BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
+// {
+//   myst.clearDevice ();
+//   ptr_inter->applyInteraction (sys, *ptr_nlist, timer);
+//   lpfrog.step (sys, dt, myst, timer);
+//   if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//     // printf("# rebuild at step %d\n", nstep);
+//     // fflush(stdout);
+//     ptr_nlist->reBuild(sys, timer);
+//   }
+//   ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//   nstep ++;
+// }
 
 
-#ifndef COORD_IN_ONE_VEC
-void
-BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
-{
-  ScalorType nowT, lambda;
-  ScalorType nowP[3], mu[3];
-  IndexType nDir[3];
+// #ifndef COORD_IN_ONE_VEC
+// void
+// BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
+// {
+//   ScalorType nowT, lambda;
+//   ScalorType nowP[3], mu[3];
+//   IndexType nDir[3];
   
-  if (timer != NULL) timer->tic (mdTimeIntegrator);
-  if (nstep != 0) {
-    myst.updateHost();
-    if (TCoupleOn){
-      nowT = myst.kineticEnergy();
-      nowT *= 2.f / (sys.ddata.NFreedom - 3);
-      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
-    }
-    if (PCoupleOn){
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	nowP[i] = 0;
-	nDir[i] = 0;
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
-	  nDir[i] ++;
-	}
-	nowP[i] /= ScalorType(nDir[i]);
-	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-      }
-    }
+//   if (timer != NULL) timer->tic (mdTimeIntegrator);
+//   if (nstep != 0) {
+//     myst.updateHost();
+//     if (TCoupleOn){
+//       nowT = myst.kineticEnergy();
+//       nowT *= 2.f / (sys.ddata.NFreedom - 3);
+//       lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+//     }
+//     if (PCoupleOn){
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	nowP[i] = 0;
+// 	nDir[i] = 0;
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  nowP[i] += myst.pressureXX();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  nowP[i] += myst.pressureYY();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  nowP[i] += myst.pressureZZ();
+// 	  nDir[i] ++;
+// 	}
+// 	nowP[i] /= ScalorType(nDir[i]);
+// 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+//       }
+//     }
   
-    myst.clearDevice();
-    lpfrog.stepV (sys, dt, myst);
-    if (TCoupleOn){
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.velox, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloy, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloz, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<1, 3>>>(
-	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
-	  lambda * lambda);
-    }
-    lpfrog.stepX (sys, dt);
-    if (PCoupleOn){
-      ScalorType newBoxX(sys.box.size.x);
-      ScalorType newBoxY(sys.box.size.y);
-      ScalorType newBoxZ(sys.box.size.z);
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordx, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxX *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordy, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxY *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordz, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxZ *= mu[i];
-	}
-	sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-      }
-    }
-    nstep ++;
-    if (timer != NULL) timer->toc (mdTimeIntegrator);
-    if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
-      // fflush(stdout);
-      ptr_nlist->reBuild(sys, timer);
-    }
-    ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-  }
-  else {
-    firstStep (sys, timer);
-  }
-}
-void
-BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
-{
-  ScalorType nowT, lambda;
-  ScalorType nowP[3], mu[3];
-  IndexType nDir[3];
+//     myst.clearDevice();
+//     lpfrog.stepV (sys, dt, myst);
+//     if (TCoupleOn){
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.velox, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloy, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloz, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<1, 3>>>(
+// 	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
+// 	  lambda * lambda);
+//     }
+//     lpfrog.stepX (sys, dt);
+//     if (PCoupleOn){
+//       ScalorType newBoxX(sys.box.size.x);
+//       ScalorType newBoxY(sys.box.size.y);
+//       ScalorType newBoxZ(sys.box.size.z);
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordx, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxX *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordy, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxY *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordz, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxZ *= mu[i];
+// 	}
+// 	sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+//       }
+//     }
+//     nstep ++;
+//     if (timer != NULL) timer->toc (mdTimeIntegrator);
+//     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//       // printf("# rebuild at step %d\n", nstep);
+//       // fflush(stdout);
+//       ptr_nlist->reBuild(sys, timer);
+//     }
+//     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//   }
+//   else {
+//     firstStep (sys, timer);
+//   }
+// }
+// void
+// BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
+// {
+//   ScalorType nowT, lambda;
+//   ScalorType nowP[3], mu[3];
+//   IndexType nDir[3];
   
-  if (timer != NULL) timer->tic (mdTimeIntegrator);
-  if (nstep != 0) {
-    myst.updateHost();
-    if (TCoupleOn){
-      nowT = myst.kineticEnergy();
-      nowT *= 2.f / (sys.ddata.NFreedom - 3);
-      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
-    }
-    if (PCoupleOn){
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	nowP[i] = 0;
-	nDir[i] = 0;
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
-	  nDir[i] ++;
-	}
-	nowP[i] /= ScalorType(nDir[i]);
-	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-      }
-    }
+//   if (timer != NULL) timer->tic (mdTimeIntegrator);
+//   if (nstep != 0) {
+//     myst.updateHost();
+//     if (TCoupleOn){
+//       nowT = myst.kineticEnergy();
+//       nowT *= 2.f / (sys.ddata.NFreedom - 3);
+//       lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+//     }
+//     if (PCoupleOn){
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	nowP[i] = 0;
+// 	nDir[i] = 0;
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  nowP[i] += myst.pressureXX();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  nowP[i] += myst.pressureYY();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  nowP[i] += myst.pressureZZ();
+// 	  nDir[i] ++;
+// 	}
+// 	nowP[i] /= ScalorType(nDir[i]);
+// 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+//       }
+//     }
   
-    myst.clearDevice();
-    lpfrog.stepV (sys, dt, myst);
-    if (TCoupleOn){
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.velox, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloy, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloz, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<1, 3>>>(
-	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
-	  lambda * lambda);
-    }
-    lpfrog.stepX (sys, dt);
-    if (PCoupleOn){
-      ScalorType newBoxX(sys.box.size.x);
-      ScalorType newBoxY(sys.box.size.y);
-      ScalorType newBoxZ(sys.box.size.z);
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordx, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxX *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordy, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxY *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
-	      sys.ddata.coordz, sys.ddata.numAtom,
-	      mu[i]);
-	  newBoxZ *= mu[i];
-	}
-	sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-      }
-    }
-    nstep ++;
-    if (timer != NULL) timer->toc (mdTimeIntegrator);
-    if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
-      // fflush(stdout);
-      ptr_nlist->reBuild(sys, timer);
-    }
-    ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-    st.deviceAdd (myst);
-  }
-  else {
-    firstStep (sys, st, timer);
-  }
-}
-#else
-void
-BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
-{
-  ScalorType nowT, lambda;
-  ScalorType nowP[3], mu[3];
-  IndexType nDir[3];
+//     myst.clearDevice();
+//     lpfrog.stepV (sys, dt, myst);
+//     if (TCoupleOn){
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.velox, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloy, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloz, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<1, 3>>>(
+// 	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
+// 	  lambda * lambda);
+//     }
+//     lpfrog.stepX (sys, dt);
+//     if (PCoupleOn){
+//       ScalorType newBoxX(sys.box.size.x);
+//       ScalorType newBoxY(sys.box.size.y);
+//       ScalorType newBoxZ(sys.box.size.z);
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordx, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxX *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordy, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxY *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  rescaleProperty <<<atomGridDim, myBlockDim>>> (
+// 	      sys.ddata.coordz, sys.ddata.numAtom,
+// 	      mu[i]);
+// 	  newBoxZ *= mu[i];
+// 	}
+// 	sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+//       }
+//     }
+//     nstep ++;
+//     if (timer != NULL) timer->toc (mdTimeIntegrator);
+//     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//       // printf("# rebuild at step %d\n", nstep);
+//       // fflush(stdout);
+//       ptr_nlist->reBuild(sys, timer);
+//     }
+//     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//     st.deviceAdd (myst);
+//   }
+//   else {
+//     firstStep (sys, st, timer);
+//   }
+// }
+// #else
+// void
+// BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
+// {
+//   ScalorType nowT, lambda;
+//   ScalorType nowP[3], mu[3];
+//   IndexType nDir[3];
   
-  if (timer != NULL) timer->tic (mdTimeIntegrator);
-  if (nstep != 0) {
-    myst.updateHost();
-    if (TCoupleOn){
-      nowT = myst.kineticEnergy();
-      nowT *= 2.f / (sys.ddata.NFreedom - 3);
-      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
-    }
-    if (PCoupleOn){
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	nowP[i] = 0;
-	nDir[i] = 0;
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
-	  nDir[i] ++;
-	}
-	nowP[i] /= ScalorType(nDir[i]);
-	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-      }
-    }
+//   if (timer != NULL) timer->tic (mdTimeIntegrator);
+//   if (nstep != 0) {
+//     myst.updateHost();
+//     if (TCoupleOn){
+//       nowT = myst.kineticEnergy();
+//       nowT *= 2.f / (sys.ddata.NFreedom - 3);
+//       lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+//     }
+//     if (PCoupleOn){
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	nowP[i] = 0;
+// 	nDir[i] = 0;
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  nowP[i] += myst.pressureXX();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  nowP[i] += myst.pressureYY();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  nowP[i] += myst.pressureZZ();
+// 	  nDir[i] ++;
+// 	}
+// 	nowP[i] /= ScalorType(nDir[i]);
+// 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+//       }
+//     }
   
-    myst.clearDevice();
-    lpfrog.stepV (sys, dt, myst);
-    if (TCoupleOn){
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.velox, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloy, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloz, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<1, 3>>>(
-	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
-	  lambda * lambda);
-    }
-    lpfrog.stepX (sys, dt);
-    if (PCoupleOn){
-      ScalorType newBoxX(sys.box.size.x);
-      ScalorType newBoxY(sys.box.size.y);
-      ScalorType newBoxZ(sys.box.size.z);
-      CoordType coordScalor ;
-      coordScalor.x = 1.f;
-      coordScalor.y = 1.f;
-      coordScalor.z = 1.f;
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  coordScalor.x *= mu[i];
-	  newBoxX *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  coordScalor.y *= mu[i];
-	  newBoxY *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  coordScalor.z *= mu[i];
-	  newBoxZ *= mu[i];
-	}
-      }
-      rescaleCoord <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.coord, sys.ddata.numAtom,
-	  coordScalor);
-      sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    }
-    nstep ++;
-    if (timer != NULL) timer->toc (mdTimeIntegrator);
-    if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
-      // fflush(stdout);
-      ptr_nlist->reBuild(sys, timer);
-    }
-    ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-  }
-  else {
-    firstStep (sys, timer);
-  }
-}
+//     myst.clearDevice();
+//     lpfrog.stepV (sys, dt, myst);
+//     if (TCoupleOn){
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.velox, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloy, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloz, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<1, 3>>>(
+// 	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
+// 	  lambda * lambda);
+//     }
+//     lpfrog.stepX (sys, dt);
+//     if (PCoupleOn){
+//       ScalorType newBoxX(sys.box.size.x);
+//       ScalorType newBoxY(sys.box.size.y);
+//       ScalorType newBoxZ(sys.box.size.z);
+//       CoordType coordScalor ;
+//       coordScalor.x = 1.f;
+//       coordScalor.y = 1.f;
+//       coordScalor.z = 1.f;
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  coordScalor.x *= mu[i];
+// 	  newBoxX *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  coordScalor.y *= mu[i];
+// 	  newBoxY *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  coordScalor.z *= mu[i];
+// 	  newBoxZ *= mu[i];
+// 	}
+//       }
+//       rescaleCoord <<<atomGridDim, myBlockDim>>> (
+// 	  sys.ddata.coord, sys.ddata.numAtom,
+// 	  coordScalor);
+//       sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+//     }
+//     nstep ++;
+//     if (timer != NULL) timer->toc (mdTimeIntegrator);
+//     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//       // printf("# rebuild at step %d\n", nstep);
+//       // fflush(stdout);
+//       ptr_nlist->reBuild(sys, timer);
+//     }
+//     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//   }
+//   else {
+//     firstStep (sys, timer);
+//   }
+// }
 
-void
-BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
-{
-  ScalorType nowT, lambda;
-  ScalorType nowP[3], mu[3];
-  IndexType nDir[3];
+// void
+// BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
+// {
+//   ScalorType nowT, lambda;
+//   ScalorType nowP[3], mu[3];
+//   IndexType nDir[3];
   
-  if (timer != NULL) timer->tic (mdTimeIntegrator);
-  if (nstep != 0) {
-    myst.updateHost();
-    if (TCoupleOn){
-      nowT = myst.kineticEnergy();
-      nowT *= 2.f / (sys.ddata.NFreedom - 3);
-      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
-    }
-    if (PCoupleOn){
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	nowP[i] = 0;
-	nDir[i] = 0;
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
-	  nDir[i] ++;
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
-	  nDir[i] ++;
-	}
-	nowP[i] /= ScalorType(nDir[i]);
-	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-      }
-    }
+//   if (timer != NULL) timer->tic (mdTimeIntegrator);
+//   if (nstep != 0) {
+//     myst.updateHost();
+//     if (TCoupleOn){
+//       nowT = myst.kineticEnergy();
+//       nowT *= 2.f / (sys.ddata.NFreedom - 3);
+//       lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+//     }
+//     if (PCoupleOn){
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	nowP[i] = 0;
+// 	nDir[i] = 0;
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  nowP[i] += myst.pressureXX();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  nowP[i] += myst.pressureYY();
+// 	  nDir[i] ++;
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  nowP[i] += myst.pressureZZ();
+// 	  nDir[i] ++;
+// 	}
+// 	nowP[i] /= ScalorType(nDir[i]);
+// 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+//       }
+//     }
   
-    myst.clearDevice();
-    lpfrog.stepV (sys, dt, myst);
-    if (TCoupleOn){
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.velox, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloy, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.veloz, sys.ddata.numAtom,
-	  lambda);
-      rescaleProperty <<<1, 3>>>(
-	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
-	  lambda * lambda);
-    }
-    lpfrog.stepX (sys, dt);
-    if (PCoupleOn){
-      ScalorType newBoxX(sys.box.size.x);
-      ScalorType newBoxY(sys.box.size.y);
-      ScalorType newBoxZ(sys.box.size.z);
-      CoordType coordScalor ;
-      coordScalor.x = 1.f;
-      coordScalor.y = 1.f;
-      coordScalor.z = 1.f;
-      for (IndexType i = 0; i < NPCoupleGroup; ++i){
-	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  coordScalor.x *= mu[i];
-	  newBoxX *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  coordScalor.y *= mu[i];
-	  newBoxY *= mu[i];
-	}
-	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  coordScalor.z *= mu[i];
-	  newBoxZ *= mu[i];
-	}
-      }
-      rescaleCoord <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.coord, sys.ddata.numAtom,
-	  coordScalor);
-      sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    }
-    nstep ++;
-    if (timer != NULL) timer->toc (mdTimeIntegrator);
-    if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
-      // fflush(stdout);
-      ptr_nlist->reBuild(sys, timer);
-    }
-    ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
-    st.deviceAdd (myst);
-  }
-  else {
-    firstStep (sys, st, timer);
-  }
-}
-#endif
+//     myst.clearDevice();
+//     lpfrog.stepV (sys, dt, myst);
+//     if (TCoupleOn){
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.velox, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloy, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<atomGridDim, myBlockDim>>>(
+// 	  sys.ddata.veloz, sys.ddata.numAtom,
+// 	  lambda);
+//       rescaleProperty <<<1, 3>>>(
+// 	  &myst.ddata[mdStatisticKineticEnergyXX], 3,
+// 	  lambda * lambda);
+//     }
+//     lpfrog.stepX (sys, dt);
+//     if (PCoupleOn){
+//       ScalorType newBoxX(sys.box.size.x);
+//       ScalorType newBoxY(sys.box.size.y);
+//       ScalorType newBoxZ(sys.box.size.z);
+//       CoordType coordScalor ;
+//       coordScalor.x = 1.f;
+//       coordScalor.y = 1.f;
+//       coordScalor.z = 1.f;
+//       for (IndexType i = 0; i < NPCoupleGroup; ++i){
+// 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+// 	  coordScalor.x *= mu[i];
+// 	  newBoxX *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+// 	  coordScalor.y *= mu[i];
+// 	  newBoxY *= mu[i];
+// 	}
+// 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+// 	  coordScalor.z *= mu[i];
+// 	  newBoxZ *= mu[i];
+// 	}
+//       }
+//       rescaleCoord <<<atomGridDim, myBlockDim>>> (
+// 	  sys.ddata.coord, sys.ddata.numAtom,
+// 	  coordScalor);
+//       sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+//     }
+//     nstep ++;
+//     if (timer != NULL) timer->toc (mdTimeIntegrator);
+//     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
+//       // printf("# rebuild at step %d\n", nstep);
+//       // fflush(stdout);
+//       ptr_nlist->reBuild(sys, timer);
+//     }
+//     ptr_inter->applyInteraction (sys, *ptr_nlist, myst, timer);
+//     st.deviceAdd (myst);
+//   }
+//   else {
+//     firstStep (sys, st, timer);
+//   }
+// }
+// #endif
 
 

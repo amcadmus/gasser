@@ -5,6 +5,9 @@
 #include "NeighborList_interface.h"
 #include "Statistic_interface.h"
 #include "MDSystem_interface.h"
+#include "SystemNonBondedInteraction.h"
+#include "SystemBondedInteraction.h"
+#include "BondedInteractionList.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -14,6 +17,8 @@ class InteractionEngine_interface
   dim3 myBlockDim;
   IndexType calBondInteraction_sbuffSize;
   IndexType calAngleInteraction_sbuffSize;
+  bool hasBond;
+  bool hasAngle;
   // ScalorType * statistic_nb_buff0;
   // ScalorType * statistic_nb_buff1;
   // ScalorType * statistic_nb_buff2;
@@ -42,14 +47,24 @@ public:
   ~InteractionEngine_interface();
   void init (const MDSystem  & sys, 
 	     const IndexType & NThread);
-  void applyInteraction (MDSystem & sys,
-			 const NeighborList & nlist,
-			 MDTimer *timer = NULL);
-  void applyInteraction (MDSystem &sys,
-			 const NeighborList & nlist,
-			 MDStatistic & st,
-			 MDTimer *timer = NULL);
+  void registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
+  void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
+public:
   void clearInteraction (MDSystem & sys);
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const NeighborList & nlist,
+				  MDTimer *timer = NULL);
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const NeighborList & nlist,
+				  MDStatistic & st,
+				  MDTimer *timer = NULL);
+  void applyBondedInteraction (MDSystem & sys,
+			       const BondedInteractionList & bdlist,
+			       MDTimer *timer = NULL);
+  void applyBondedInteraction (MDSystem & sys,
+			       const BondedInteractionList & bdlist,
+			       MDStatistic & st,
+			       MDTimer *timer = NULL);
 }
     ;
 

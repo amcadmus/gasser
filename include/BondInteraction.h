@@ -1,5 +1,5 @@
-#ifndef __BondedInteraction_h_wanghan__
-#define __BondedInteraction_h_wanghan__
+#ifndef __BondInteraction_h_wanghan__
+#define __BondInteraction_h_wanghan__
 
 #include "common.h"
 #include "Interaction.h"
@@ -141,24 +141,6 @@ bondForcePoten (const InteractionType ftype,
   //     return 0.f;
   // }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

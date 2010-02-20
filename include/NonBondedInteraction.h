@@ -99,45 +99,6 @@ public:
 };
 
 
-class SystemNonBondedInteraction
-{
-public:
-private:  
-  std::vector<std::vector<std::vector<ScalorType> > > paramMat;
-  std::vector<std::vector<InteractionType > > typeMat;
-private:
-  void resizeMem (IndexType size);
-  bool checkIntegrity ();
-public:
-  IndexType numAtomTypes;
-  bool isBuilt;
-  InteractionType * types;
-  ScalorType * parameters;
-  IndexType * positions;
-  IndexType numParameters;
-  IndexType numInteractionItems;
-  IndexType * interactionTable;
-  IndexType interactionTableLength;
-private:
-  ScalorType maxrc;
-public:
-  void freeBuilt ();
-  IndexType * interactionTableItem (TypeType atom0,
-				    TypeType atom1);
-  IndexType * interactionTableItem (IndexType atom0,
-				    IndexType atom1);
-  void calInteractionTableLength ();
-public:
-  SystemNonBondedInteraction();
-  ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
-  void clear ();
-  ScalorType maxRcut() {return maxrc;}
-  void add (const TypeType &i,
-	    const TypeType &j,
-	    const NonBondedInteractionParameter & param);
-  void build ();
-};
-
 
 namespace AtomNBForceTable{
     __host__ IndexType calDataLength (const IndexType Ntype);

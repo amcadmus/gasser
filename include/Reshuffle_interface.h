@@ -4,7 +4,6 @@
 #include "common.h"
 #include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
-#include "BondList_interface.h"
 #include "MDTimer.h"
 
 class Reshufflable 

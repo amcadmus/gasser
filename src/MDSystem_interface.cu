@@ -10,14 +10,13 @@ MDSystem::MDSystem()
   xdfile = NULL;
   xdx = NULL;
   tmpNAtomType = 0;
-  hasBond = false;
-  hasAngle = false;
   // setNULL (&hdata);
   // setNULL (&ddata);
 }
 
 
-void MDSystem::initConfig (const char * configfile, const char * mapfile,
+void MDSystem::initConfig (const char * configfile,
+			   // const char * mapfile,
 			   const IndexType & maxNumAtom)
 {
   FILE * fpc = fopen (configfile, "r");
@@ -73,9 +72,9 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
   freeAPointer ((void**)&tmpatomIndex);
   RectangularBoxGeometry::setBoxSize (bx, by, bz, &box);
   
-  tmpNAtomType = readAtomNameMapFile (mapfile, hdata.numAtom, hdata.atomName,
-				      hdata.type, hdata.mass, hdata.charge) ;
-  initMass (&hdata);
+  // tmpNAtomType = readAtomNameMapFile (mapfile, hdata.numAtom, hdata.atomName,
+  // 				      hdata.type, hdata.mass, hdata.charge) ;
+  // initMass (&hdata);
 
   printf ("# total %d atoms found, %d types are presented in mapping file\n",
 	  hdata.numAtom, tmpNAtomType);
@@ -88,12 +87,36 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
   
   hdata.NFreedom = hdata.numAtom * 3;
 
-  fclose (fpc);
-  
+  fclose (fpc);  
+}
+
+
+void MDSystem::
+initTopology (const Topology::System & sysTop)
+{
+  if (hdata.numAtom != sysTop.indexShift.back()){
+    throw MDExcptWrongNumberAtomDataTopology ();
+  }
+  unsigned shift = 0;
+  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+    for (unsigned j = 0; j < sysTop.numbers[i]; ++j){
+      for (unsigned k = 0; k < sysTop.molecules[i].size(); ++k){
+	hdata.mass[shift] = sysTop.molecules[i].atoms[k].mass;
+	hdata.charge[shift] = sysTop.molecules[i].atoms[k].charge;
+	hdata.type[shift] = sysTop.molecules[i].atoms[k].type;
+	shift++;
+      }
+    }
+  }
+  initMass (&hdata);
+}	       
+
+void MDSystem::
+initDeviceData ()
+{ 
   ////////////////////////////////////////////////////////////
   // init device system
   ////////////////////////////////////////////////////////////
-
   initDeviceMDData (&hdata, &ddata);
   initDeviceMDData (&hdata, &recoveredDdata);
 }
@@ -141,72 +164,12 @@ void MDSystem::writeHostDataGro (const char * filename,
   if (timer != NULL) timer->toc(mdTimeDataIO);
 }
 
-
-ScalorType MDSystem::
-calMaxNBRcut()
-{
-  return nbInter.maxRcut();
-}
-
-void MDSystem::
-addNonBondedInteraction(const TypeType &i,
-				const TypeType &j,
-			const NonBondedInteractionParameter & param)
-{
-  nbInter.add (i, j, param);
-}
-
-void MDSystem::
-buildNonBondedInteraction ()
-{
-  nbInter.build();
-}
-
-
-
 MDSystem::~MDSystem()
 {
   freeAPointer ((void **)&xdx);
 }
 
   
-void MDSystem::initBond ()
-{
-  hasBond = true;
-  bdlist.init (ddata);
-}
-
-void MDSystem::addBond (const IndexType & ii,
-			const IndexType & jj,
-			const BondInteractionParameter & param)
-{
-  bdlist.addBond(ii, jj, param);
-}
-
-void MDSystem::buildBond ()
-{
-  bdlist.build();
-}
-
-void MDSystem::initAngle ()
-{
-  hasAngle = true;
-  anglelist.init (ddata);
-}
-
-void MDSystem::addAngle (const IndexType & ii,
-			 const IndexType & jj,
-			 const IndexType & kk,
-			 const AngleInteractionParameter & param)
-{
-  anglelist.addAngle(ii, jj, kk, param);
-}
-
-void MDSystem::buildAngle ()
-{
-  anglelist.build();
-}
-
 void MDSystem::updateHost(MDTimer *timer)
 {
   if (timer != NULL) timer->tic(mdTimeDataTransfer);

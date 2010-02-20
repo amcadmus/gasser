@@ -2,11 +2,10 @@
 #define __MDSystem_interface_h_wanghan__
 
 #include "MDSystem.h"
-#include "BondList_interface.h"
-#include "AngleList_interface.h"
 #include "BoxGeometry.h"
-#include "NonBondedInteraction.h"
 #include "MDTimer_interface.h"
+#include "Interaction.h"
+#include "Topology.h"
 
 #include "xdrfile/xdrfile.h"
 #include "xdrfile/xdrfile_xtc.h"
@@ -28,11 +27,6 @@ public:
 				 * data recovered from the reshuffled
 				 * system */
   RectangularBox box;		/**< box geometry */
-  bool				hasBond;
-  BondList			bdlist;		/**< bond list of the system */
-  bool				hasAngle;
-  AngleList			anglelist;	/**< angle list of the system */
-  SystemNonBondedInteraction	nbInter;
 public:
   MDSystem () ;
   ~MDSystem () ;
@@ -55,28 +49,13 @@ public:
    * atoms in the configuration file.
    */
   void initConfig (const char * configfile,
-		   const char * mapfile,
+		   // const char * mapfile,
 		   const IndexType & maxNumAtom = 0);
+  void initTopology (const Topology::System & sysTop);
+  void initDeviceData ();
   void setBoxSize (const ScalorType & x, const ScalorType & y, const ScalorType & z)
       {RectangularBoxGeometry::setBoxSize (x, y, z, &box);}
 
-  void addNonBondedInteraction (const TypeType &i,
-				const TypeType &j,
-				const NonBondedInteractionParameter & param);
-  void buildNonBondedInteraction ();
-  ScalorType calMaxNBRcut ();
-  void initBond ();
-  void addBond (const IndexType & ii,
-		const IndexType & jj,
-		const BondInteractionParameter & param);
-  void buildBond ();
-
-  void initAngle ();
-  void addAngle (const IndexType & ii,
-		 const IndexType & jj,
-		 const IndexType & kk,
-		 const AngleInteractionParameter & param);
-  void buildAngle ();
 public:
   /** 
    * Update host data from device.

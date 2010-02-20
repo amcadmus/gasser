@@ -8,6 +8,7 @@
 #include "MDError_interface.h"
 #include "MDTimer_interface.h"
 #include "MDSystem_interface.h"
+#include "SystemNonBondedInteraction.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -54,7 +55,7 @@ private:
 				 const IndexType & DeviceNeighborListExpansion);
   void bindGlobalTexture (const MDSystem & sys);
   void mallocJudgeStuff(const MDSystem & sys);
-  void initNonBondedInteraction (const MDSystem & sys);
+  void initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
 private:
   void normalizeMDSystem (const MDSystem & sys);
   void backupJudgeCoord (const MDSystem & sys);
@@ -100,7 +101,8 @@ public:
    * @param bdir Denotes which direction of box will be cell devided. User
    * should validate this parameter.
    */
-  NeighborList (const MDSystem & sys,
+  NeighborList (const SystemNonBondedInteraction & sysNbInter,
+		const MDSystem & sys,
 		const ScalorType & rlist, const IndexType & NTread,
 		const IndexType & DeviceNeighborListExpansion = 5,
 		const RectangularBoxGeometry::BoxDirection_t & bdir = 7)
@@ -108,7 +110,7 @@ public:
 	mallocedJudgeStuff (false), initedGlobalTexture (false),
 	mallocedNonBondedForceTable (false),
 	mode (NullMode)
-      {init (sys, rlist, NTread, DeviceNeighborListExpansion, bdir);}
+      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir);}
   /** 
    * Destructor
    * 
@@ -129,7 +131,8 @@ public:
    * @param bdir Denotes which direction of box will be cell devided. User
    * should validate this parameter.
    */
-  void init (const MDSystem & sys,
+  void init (const SystemNonBondedInteraction & sysNbInter,
+	     const MDSystem & sys,
 	     const ScalorType & rlist, const IndexType & NTread,
 	     const IndexType & DeviceNeighborListExpansion = 5,
 	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
