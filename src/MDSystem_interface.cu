@@ -117,7 +117,7 @@ init_backMapTable (const IndexType numAtom,
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
-  if (ii <   numAtom){
+  if (ii < numAtom){
     backMapTable[ii] = ii;
   }
 }
@@ -353,7 +353,6 @@ reshuffle (const IndexType * indexTable,
     nob = ddata.numAtom / myBlockDim.x + 1;
   }
   dim3 atomGridDim = toGridDim (nob);
-
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
       (bkDdata.coord, ddata.numAtom, indexTable, ddata.coord);
@@ -397,6 +396,8 @@ reshuffle (const IndexType * indexTable,
       <<<atomGridDim, myBlockDim>>>
       (bkDdata.charge, ddata.numAtom, indexTable, ddata.charge);  
 
+  cudaMemcpy (backMapTableBuff, backMapTable, sizeof(IndexType) * ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
   Reshuffle_calBackMapTable
       <<<atomGridDim, myBlockDim>>> (
 	  ddata.numAtom,

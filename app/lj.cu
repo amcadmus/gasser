@@ -85,6 +85,9 @@ int main(int argc, char * argv[])
   nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
   
   printf ("# prepare ok, start to run\n");
+
+  sys.recoverDeviceData (&timer);
+  sys.updateHostFromRecovered (&timer);
   sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
     timer.tic(mdTimeTotal);
@@ -143,7 +146,8 @@ int main(int argc, char * argv[])
       }
     }
     sys.endWriteXtc();
-    // resh.recoverMDDataToHost (sys, &timer);
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
