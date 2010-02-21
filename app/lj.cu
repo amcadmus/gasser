@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	32
-#define NThreadsPerBlockAtom	16
+#define NThreadsPerBlockCell	64
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 40,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ);
@@ -80,26 +80,26 @@ int main(int argc, char * argv[])
   RandomGenerator_MT19937::init_genrand (seed);
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
+
+  timer.tic(mdTimeTotal);
   resh.calIndexTable (nlist, &timer);
   sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
   nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
   
   printf ("# prepare ok, start to run\n");
-
-  sys.recoverDeviceData (&timer);
-  sys.updateHostFromRecovered (&timer);
-  sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
+  // sys.recoverDeviceData (&timer);
+  // sys.updateHostFromRecovered (&timer);
+  // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
-    timer.tic(mdTimeTotal);
-    sys.initWriteXtc ("traj.xtc");
-    sys.recoverDeviceData (&timer);
-    sys.updateHostFromRecovered (&timer);
-    sys.writeHostDataXtc (0, 0*dt, &timer);
+    // sys.initWriteXtc ("traj.xtc");
+    // sys.recoverDeviceData (&timer);
+    // sys.updateHostFromRecovered (&timer);
+    // sys.writeHostDataXtc (0, 0*dt, &timer);
     for (i = 0; i < nstep; ++i){
-      if (i%10 == 0){
+      if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
@@ -128,33 +128,33 @@ int main(int argc, char * argv[])
 	inte_vv.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	printf ("# Rebuild at step %09i ... ", i+1);
-	fflush(stdout);
+	// printf ("# Rebuild at step %09i ... ", i+1);
+	// fflush(stdout);
 	nlist.reBuild(sys, &timer);
-	printf ("done\n");
+	// printf ("done\n");
 	fflush(stdout);
       }
-      if ((i+1) % 1000 == 0){
-	sys.recoverDeviceData (&timer);
-	sys.updateHostFromRecovered (&timer);
-	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
-      }
-      if ((i+1) % 10 == 0){
+      // if ((i+1) % 1000 == 0){
+      // 	sys.recoverDeviceData (&timer);
+      // 	sys.updateHostFromRecovered (&timer);
+      // 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      // }
+      if ((i+1) % 100 == 0){
 	resh.calIndexTable (nlist, &timer);
 	sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
 	nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
       }
     }
-    sys.endWriteXtc();
-    sys.recoverDeviceData (&timer);
-    sys.updateHostFromRecovered (&timer);
-    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
+    // sys.endWriteXtc();
+    // sys.recoverDeviceData (&timer);
+    // sys.updateHostFromRecovered (&timer);
+    // sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
   catch (MDExcptCuda & e){
     // resh.recoverMDDataToHost (sys, &timer);
-    sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+    // sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
     return 1;

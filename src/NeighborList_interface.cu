@@ -605,7 +605,7 @@ void NeighborList::reBuild (const MDSystem & sys,
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
   DecideNeighboringMethod (sys, myrlist, mybdir, tmpMode, tmpNCell);
 
-  printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
+  // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
   if (tmpMode == mode) {
     if (mode == AllPairBuilt){
