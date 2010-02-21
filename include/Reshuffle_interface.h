@@ -4,15 +4,10 @@
 #include "common.h"
 #include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
-#include "MDTimer.h"
-
-class Reshufflable 
-{
-  virtual void reshuffle (const IndexType * indexTable) = 0;
-};
+// #include "MDTimer.h"
 
 template<typename TYPE>
-__global__ void
+static __global__ void
 Reshuffle_reshuffleArray (const TYPE * bkbuff,
 			  const IndexType numAtom,
 			  const IndexType * idxTable,
@@ -29,52 +24,74 @@ Reshuffle_reshuffleArray (const TYPE * bkbuff,
 class Reshuffle
 {
   IndexType * posiBuff;
-  IndexType * idxTable;
-  DeviceMDData imageSystem;
-  IndexType * bknlistData;
-  ForceIndexType * bkNBForceIndex;
-  IndexType * bkNneighbor;
-  IndexType * backMapTable;
-  IndexType * backMapTableBuff;
-  // bk bond list
-  IndexType * bkBondListData;
-  ForceIndexType * bkBondListBondIndex;
-  IndexType * bkBondListNumB;
-  // bk angle list
-  IndexType * bkAngleListNei;
-  IndexType * bkAngleListPosi;
-  ForceIndexType * bkAngleListAngleIndex;
-  IndexType * bkAngleListNangle;
-#ifndef COORD_IN_ONE_VEC
-  ScalorType * bkNlistJudgeBuffx;
-  ScalorType * bkNlistJudgeBuffy;
-  ScalorType * bkNlistJudgeBuffz;
-#else
-  CoordType * bkNlistJudgeBuff;
-#endif
+  IndexType * indexTable;
   dim3 cellGridDim;
-  dim3 atomGridDim;
   dim3 myBlockDim;
-  void recoverMDData (const DeviceMDData & currentData,
-		      DeviceMDData & recoveredData,
-		      MDTimer * timer);
-  bool hasBond ;
-  bool hasAngle;
+  IndexType nob;
 public:
   Reshuffle (const MDSystem & sys,
 	     const NeighborList & nlist, 
 	     const IndexType & NTread) 
       {init (sys, nlist, NTread);}
+  ~Reshuffle ();
   void init (const MDSystem & sys,
 	     const NeighborList & nlist,
 	     const IndexType & NTread);
-  ~Reshuffle ();
-  void shuffleSystem (MDSystem & sys,
-		      NeighborList & nlist,
-		      MDTimer *timer=NULL);
-  void recoverMDDataToHost (MDSystem & sys,
-			    MDTimer *timer=NULL);  
+  void calIndexTable (const NeighborList & nlist,
+		      MDTimer * timer = NULL);
+  const IndexType * getIndexTable () const {return indexTable;}
 };
+
+
+// class Reshuffle
+// {
+//   IndexType * posiBuff;
+//   IndexType * idxTable;
+//   DeviceMDData imageSystem;
+//   IndexType * bknlistData;
+//   ForceIndexType * bkNBForceIndex;
+//   IndexType * bkNneighbor;
+//   IndexType * backMapTable;
+//   IndexType * backMapTableBuff;
+//   // bk bond list
+//   IndexType * bkBondListData;
+//   ForceIndexType * bkBondListBondIndex;
+//   IndexType * bkBondListNumB;
+//   // bk angle list
+//   IndexType * bkAngleListNei;
+//   IndexType * bkAngleListPosi;
+//   ForceIndexType * bkAngleListAngleIndex;
+//   IndexType * bkAngleListNangle;
+// #ifndef COORD_IN_ONE_VEC
+//   ScalorType * bkNlistJudgeBuffx;
+//   ScalorType * bkNlistJudgeBuffy;
+//   ScalorType * bkNlistJudgeBuffz;
+// #else
+//   CoordType * bkNlistJudgeBuff;
+// #endif
+//   dim3 cellGridDim;
+//   dim3 atomGridDim;
+//   dim3 myBlockDim;
+//   void recoverMDData (const DeviceMDData & currentData,
+// 		      DeviceMDData & recoveredData,
+// 		      MDTimer * timer);
+//   bool hasBond ;
+//   bool hasAngle;
+// public:
+//   Reshuffle (const MDSystem & sys,
+// 	     const NeighborList & nlist, 
+// 	     const IndexType & NTread) 
+//       {init (sys, nlist, NTread);}
+//   void init (const MDSystem & sys,
+// 	     const NeighborList & nlist,
+// 	     const IndexType & NTread);
+//   ~Reshuffle ();
+//   void shuffleSystem (MDSystem & sys,
+// 		      NeighborList & nlist,
+// 		      MDTimer *timer=NULL);
+//   void recoverMDDataToHost (MDSystem & sys,
+// 			    MDTimer *timer=NULL);  
+// };
 
 
 

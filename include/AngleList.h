@@ -46,6 +46,8 @@ void mallocDeviceAngleList (const HostAngleList & hbdlist,
 			    DeviceAngleList & dbdlist);
 void copyDeviceAngleList (const HostAngleList & hbdlist,
 			  DeviceAngleList & dbdlist);
+void copyDeviceAngleList (const DeviceAngleList & dbdlist1,
+			  DeviceAngleList & dbdlist);
 void destroyDeviceAngleList (DeviceAngleList & dbdlist) ;
 
 

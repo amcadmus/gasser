@@ -1,14 +1,18 @@
+class NeighborList;
+
 #ifndef __NeighborList_interface_h_wanghan__
 #define __NeighborList_interface_h_wanghan__
 
 #include "common.h"
 #include "BoxGeometry.h"
+#include "Reshufflable.h"
 #include "MDSystem.h"
+#include "MDSystem_interface.h"
 #include "NeighborList.h"
 #include "MDError_interface.h"
 #include "MDTimer_interface.h"
-#include "MDSystem_interface.h"
 #include "SystemNonBondedInteraction.h"
+
 
 using namespace RectangularBoxGeometry;
 
@@ -20,7 +24,7 @@ typedef enum {
 
 class WrongBuildMethod {};
 
-class NeighborList
+class NeighborList : public Reshufflable
 {
   IndexType * mySendBuff;
   IndexType * myTargetBuff;
@@ -78,13 +82,12 @@ public:
   dim3 atomGridDim;
   dim3 myBlockDim;
 public:
-#ifndef COORD_IN_ONE_VEC
-  ScalorType * backupCoordx;
-  ScalorType * backupCoordy;
-  ScalorType * backupCoordz;
-#else
   CoordType * backupCoord;
-#endif
+private: // reshuffle backup
+  IndexType * bkdnlistData;
+  IndexType * bkdnlistNneighbor;
+  IndexType * bkdnlistForceIndex;
+  CoordType * bkbackupCoord;
 public:
   /** 
    * Constructure
@@ -170,6 +173,9 @@ public:
   bool judgeRebuild (const MDSystem & sys,
 		     const ScalorType &diffTol,
 		     MDTimer *timer=NULL);
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer *timer=NULL);
 };
 
 	     

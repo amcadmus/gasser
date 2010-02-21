@@ -1,5 +1,5 @@
-#ifndef __NonBondedInteraction1_h_wanghan__
-#define __NonBondedInteraction1_h_wanghan__
+#ifndef __tmp_h_wanghan__
+#define __tmp_h_wanghan__
 
 #include "common.h"
 #include <math.h>

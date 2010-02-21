@@ -198,7 +198,8 @@ __host__ void destroyHostMDData (HostMDData * hdata)
 
 
 
-__host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hdata)
+__host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata,
+				     HostMDData * hdata)
 {
   size_t sizef = ddata->numAtom * sizeof(ScalorType);
   size_t sizei = ddata->numAtom * sizeof(IntScalorType);
@@ -208,6 +209,7 @@ __host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hd
   hdata->numAtom = ddata->numAtom;
   hdata->totalMass = ddata->totalMass;
   hdata->totalMassi = ddata->totalMassi;
+  hdata->NFreedom = ddata->NFreedom;
 
 #ifndef COORD_IN_ONE_VEC
   cudaMemcpy (hdata->coordx, ddata->coordx, sizef, cudaMemcpyDeviceToHost);
@@ -240,7 +242,6 @@ __host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hd
   checkCUDAError ("cpyDeviceMDDataToHost other");
 }
 
-
 __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * ddata)
 {
   size_t sizef = hdata->numAtom * sizeof(ScalorType);
@@ -251,6 +252,7 @@ __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * dd
   ddata->numAtom = hdata->numAtom;
   ddata->totalMass = hdata->totalMass;
   ddata->totalMassi = hdata->totalMassi;
+  ddata->NFreedom = hdata->NFreedom;
   
 #ifndef COORD_IN_ONE_VEC
   cudaMemcpy (ddata->coordx, hdata->coordx, sizef, cudaMemcpyHostToDevice);
@@ -283,6 +285,52 @@ __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * dd
   checkCUDAError ("cpyHostMDDataToDevice other");
 }
 
+__host__ void cpyDeviceMDDataToDevice (const DeviceMDData * hdata,
+				       DeviceMDData * ddata)
+{
+  size_t sizef = hdata->numAtom * sizeof(ScalorType);
+  size_t sizei = hdata->numAtom * sizeof(IntScalorType);
+#ifdef COORD_IN_ONE_VEC
+  size_t sizecoord =hdata->numMem * sizeof(CoordType);
+#endif
+  ddata->numAtom = hdata->numAtom;
+  ddata->totalMass = hdata->totalMass;
+  ddata->totalMassi = hdata->totalMassi;
+  ddata->NFreedom = hdata->NFreedom;
+  
+#ifndef COORD_IN_ONE_VEC
+  cudaMemcpy (ddata->coordx, hdata->coordx, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->coordy, hdata->coordy, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->coordz, hdata->coordz, sizef, cudaMemcpyDeviceToDevice);
+#else
+  cudaMemcpy (ddata->coord, hdata->coord, sizecoord, cudaMemcpyDeviceToDevice);
+#endif
+  checkCUDAError ("cpyDeviceMDDataToDevice coord");
+
+  cudaMemcpy (ddata->coordNoix, hdata->coordNoix, sizei, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->coordNoiy, hdata->coordNoiy, sizei, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->coordNoiz, hdata->coordNoiz, sizei, cudaMemcpyDeviceToDevice);
+  checkCUDAError ("cpyDeviceMDDataToDevice coordNoi");
+  
+  cudaMemcpy (ddata->velox, hdata->velox, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->veloy, hdata->veloy, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->veloz, hdata->veloz, sizef, cudaMemcpyDeviceToDevice);
+  checkCUDAError ("cpyDeviceMDDataToDevice velo");
+
+  cudaMemcpy (ddata->forcx, hdata->forcx, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->forcy, hdata->forcy, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->forcz, hdata->forcz, sizef, cudaMemcpyDeviceToDevice);
+  checkCUDAError ("cpyDeviceMDDataToDevice forc");
+
+  cudaMemcpy (ddata->type, hdata->type, ddata->numAtom * sizeof(TypeType),
+	      cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->mass, hdata->mass, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->massi, hdata->massi, sizef, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->charge, hdata->charge, sizef, cudaMemcpyDeviceToDevice);   
+  checkCUDAError ("cpyDeviceMDDataToDevice other");
+}
+
+
 #ifdef COORD_IN_ONE_VEC
 __global__ void deviceCpyTypeToCoordW (CoordType * coord,
 				       const TypeType * type,
@@ -294,7 +342,8 @@ __global__ void deviceCpyTypeToCoordW (CoordType * coord,
 }
 #endif
 
-__host__ void initDeviceMDData (const HostMDData * hdata, DeviceMDData * ddata)
+__host__ void initDeviceMDData (const HostMDData * hdata,
+				DeviceMDData * ddata)
 {
   size_t sizef = hdata->numMem * sizeof(ScalorType);
   size_t sizei = hdata->numMem * sizeof(IntScalorType);

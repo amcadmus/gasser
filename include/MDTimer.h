@@ -27,7 +27,4 @@ enum mdTimeItem {
 
 typedef enum mdTimeItem mdTimeItem_t;
 
-
-
-
 #endif

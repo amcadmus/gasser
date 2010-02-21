@@ -87,13 +87,133 @@ reinit (const MDSystem & sysData,
   }
   
   destroyDeviceBondList (dbondlist);
+  destroyDeviceBondList (bkdbondlist);
   initDeviceBondList (dbondlist);
+  initDeviceBondList (bkdbondlist);
   mallocDeviceBondList (hbondlist, dbondlist);
+  mallocDeviceBondList (hbondlist, bkdbondlist);
   copyDeviceBondList (hbondlist, dbondlist);
+
   destroyDeviceAngleList (danglelist);
+  destroyDeviceAngleList (bkdanglelist);
   initDeviceAngleList (danglelist);
+  initDeviceAngleList (bkdanglelist);
   mallocDeviceAngleList (hanglelist, danglelist);
+  mallocDeviceAngleList (hanglelist, bkdanglelist);
   copyDeviceAngleList (hanglelist, danglelist);
 }
 
-	
+
+static __global__ void
+Reshuffle_reshuffleBondList (const IndexType numAtom,
+			     const IndexType * bdlistData2,
+			     const IndexType * bdlistBondIndex2,
+			     const IndexType * bdlistNumB2,
+			     const IndexType stride,
+			     const IndexType listLength,
+			     const IndexType * idxTable,
+			     IndexType * bdlistData,
+			     IndexType * bdlistBondIndex,
+			     IndexType * bdlistNumB)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < numAtom){
+    IndexType toid = idxTable[ii];
+    bdlistNumB[toid] = bdlistNumB2[ii];
+    for (IndexType jj = 0; jj < bdlistNumB2[ii]; ++jj){
+      bdlistData    [jj * stride + toid] = 
+	  idxTable[bdlistData2[jj * stride + ii]];
+      bdlistBondIndex[jj * stride + toid] = 
+	  bdlistBondIndex2[jj * stride + ii];
+    }
+  }
+}
+
+static __global__ void
+Reshuffle_reshuffleAngleList (const IndexType numAtom,
+			      const IndexType * bkAngleListNei,
+			      const IndexType * bkAngleListPosi,
+			      const IndexType * bkAngleListAngleIndex,
+			      const IndexType * bkAngleListNangle,
+			      const IndexType stride,
+			      const IndexType listLength,
+			      const IndexType * idxTable,
+			      IndexType * angleListNei,
+			      IndexType * angleListPosi,
+			      IndexType * angleListAngleIndex,
+			      IndexType * angleListNangle)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < numAtom){
+    IndexType toid = idxTable[ii];
+    angleListNangle[toid] = bkAngleListNangle[ii];
+    for (IndexType jj = 0; jj < bkAngleListNangle[ii]; ++ jj){
+      angleListNei[((jj<<1)+0)*stride + toid] =
+	  idxTable[bkAngleListNei[((jj<<1)+0)*stride + ii]];
+      angleListNei[((jj<<1)+1)*stride + toid] =
+	  idxTable[bkAngleListNei[((jj<<1)+1)*stride + ii]];
+      angleListPosi[jj * stride + toid] = bkAngleListPosi[jj * stride + ii];
+      angleListAngleIndex[jj * stride + toid] =
+	  bkAngleListAngleIndex[jj * stride + ii];
+    }
+  }
+}
+
+void BondedInteractionList::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer) 
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+
+  copyDeviceBondList (dbondlist, bkdbondlist);
+  copyDeviceAngleList (danglelist, bkdanglelist);
+
+  dim3 myBlockDim, atomGridDim;
+  myBlockDim.y = 1;
+  myBlockDim.z = 1;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  IndexType nob;
+  if (numAtom % myBlockDim.x == 0){
+    nob = numAtom / myBlockDim.x;
+  } else {
+    nob = numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
+  
+  Reshuffle_reshuffleBondList
+      <<<atomGridDim,myBlockDim>>> (
+  	  numAtom,
+  	  bkdbondlist.bondNeighborIndex, 
+	  bkdbondlist.bondIndex, 
+	  bkdbondlist.numBond,
+  	  dbondlist.stride,
+	  dbondlist.maxNumBond, 
+  	  indexTable,
+  	  dbondlist.bondNeighborIndex, 
+	  dbondlist.bondIndex, 
+	  dbondlist.numBond);
+  checkCUDAError ("BondedInteractionList::reshuffle, reshuffle bond list");
+  Reshuffle_reshuffleAngleList
+      <<<atomGridDim,myBlockDim>>> (
+	  numAtom,
+	  bkdanglelist.angleNeighborIndex,
+	  bkdanglelist.anglePosi,
+	  bkdanglelist.angleIndex,
+	  bkdanglelist.numAngle,
+  	  danglelist.stride,
+	  danglelist.maxNumAngle, 
+  	  indexTable,
+	  danglelist.angleNeighborIndex,
+	  danglelist.anglePosi,
+	  danglelist.angleIndex,
+	  danglelist.numAngle);
+  checkCUDAError ("BondedInteractionList::reshuffle, reshuffle angle list");
+
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+

@@ -4,14 +4,13 @@
 #include "MDSystem.h"
 #include "RandomGenerator.h"
 #include "Auxiliary.h"
+#include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
-#include"Statistic.h"
+#include "Statistic.h"
 #include "Integrator_interface.h"
 #include "InteractionEngine_interface.h"
 #include "tmp.h"
 #include "Reshuffle_interface.h"
-
-#include "MDSystem_interface.h"
 
 #include "Topology.h"
 #include "SystemBondedInteraction.h"

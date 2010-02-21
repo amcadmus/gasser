@@ -8,14 +8,17 @@
 #include "Topology.h"
 #include "MDSystem_interface.h"
 #include "MDException.h"
+#include "Reshuffle_interface.h"
 
-
-class BondedInteractionList
+class BondedInteractionList : public Reshufflable
 {
   HostBondList   hbondlist;
   DeviceBondList dbondlist;
   HostAngleList   hanglelist;
   DeviceAngleList danglelist;
+private: // reshuffle backup things
+  DeviceBondList  bkdbondlist;
+  DeviceAngleList bkdanglelist;
 public:
   BondedInteractionList (); 
   ~BondedInteractionList ();
@@ -27,6 +30,9 @@ public:
       {return dbondlist;}
   const DeviceAngleList & deviceAngleList () const
       {return danglelist;}
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer * timer = NULL) ;
 };
 
 

@@ -11,6 +11,7 @@ typedef int		TypeType;
 
 #define MaxThreadsPerBlock			512
 #define NThreadForSum				64
+#define DefaultNThreadPerBlock			64
 #define MinThreadsPerBlock			16
 #define MaxIndexValue				UINT_MAX
 #define MaxForceIndexValue			UINT_MAX

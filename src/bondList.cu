@@ -60,6 +60,25 @@ void copyDeviceBondList (const HostBondList & hbdlist,
   }
 }
 
+void copyDeviceBondList (const DeviceBondList & dbdlist1,
+			 DeviceBondList & dbdlist)
+{
+  if (dbdlist.malloced && dbdlist1.malloced){
+    cudaMemcpy (dbdlist.bondNeighborIndex, dbdlist1.bondNeighborIndex,
+		sizeof(IndexType) * dbdlist1.stride * dbdlist1.maxNumBond,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceBondList cpy device bondNeighborIndex to device");
+    cudaMemcpy (dbdlist.bondIndex, dbdlist1.bondIndex,
+		sizeof(IndexType) * dbdlist1.stride * dbdlist1.maxNumBond,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceBondList cpy device bondIndex to device");
+    cudaMemcpy (dbdlist.numBond, dbdlist1.numBond,
+		sizeof(IndexType) * dbdlist1.stride,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceBondList cpy device numBond to device");
+  }
+}
+  
 
 HostBondList::HostBondList ()
 {

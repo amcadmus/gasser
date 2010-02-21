@@ -1,6 +1,7 @@
 #ifndef __Integrator_interface_h_wanghan__
 #define __Integrator_interface_h_wanghan__
 
+#include "MDSystem_interface.h"
 #include "Integrator.h"
 #include "MDSystem.h"
 #include "Statistic_interface.h"

@@ -111,6 +111,17 @@ initTopology (const Topology::System & sysTop)
   initMass (&hdata);
 }	       
 
+static __global__ void
+init_backMapTable (const IndexType numAtom,
+		   IndexType * backMapTable)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii <   numAtom){
+    backMapTable[ii] = ii;
+  }
+}
+
 void MDSystem::
 initDeviceData ()
 { 
@@ -119,6 +130,23 @@ initDeviceData ()
   ////////////////////////////////////////////////////////////
   initDeviceMDData (&hdata, &ddata);
   initDeviceMDData (&hdata, &recoveredDdata);
+  initDeviceMDData (&hdata, &bkDdata);
+  cudaMalloc ((void**)&backMapTable, sizeof(IndexType) * hdata.numAtom);
+  cudaMalloc ((void**)&backMapTableBuff, sizeof(IndexType) * hdata.numAtom);
+  checkCUDAError ("MDSystem::initDeviceMDData, malloc back map table");
+  
+  dim3 myBlockDim, atomGridDim;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  IndexType nob;
+  if (hdata.numAtom % myBlockDim.x == 0){
+    nob = hdata.numAtom / myBlockDim.x;
+  } else {
+    nob = hdata.numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
+  init_backMapTable
+      <<<atomGridDim, myBlockDim>>> (
+	  bkDdata.numAtom, backMapTable);
 }
 
 
@@ -170,10 +198,17 @@ MDSystem::~MDSystem()
 }
 
   
-void MDSystem::updateHost(MDTimer *timer)
+void MDSystem::updateHostFromDevice (MDTimer *timer)
 {
   if (timer != NULL) timer->tic(mdTimeDataTransfer);
   cpyDeviceMDDataToHost (&ddata, &hdata);
+  if (timer != NULL) timer->toc(mdTimeDataTransfer);
+}
+
+void MDSystem::updateHostFromRecovered (MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
+  cpyDeviceMDDataToHost (&recoveredDdata, &hdata);
   if (timer != NULL) timer->toc(mdTimeDataTransfer);
 }
 
@@ -227,64 +262,91 @@ void MDSystem::endWriteXtc()
 
 
 void MDSystem::
-reshuffle (const IndexType * indexTable)
+recoverDeviceData (MDTimer * timer)
 {
-  CoordType * coord;
-  IntScalorType * coordNoix, *coordNoiy, *coordNoiz;
-  ScalorType *velox, *veloy, *veloz;
-  ScalorType *forcx, *forcy, *forcz;
-  TypeType *type;
-  ScalorType *mass, *massi;
-  ScalorType *charge;
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
 
-  cudaMalloc ((void**)&coord, sizeof(CoordType)*ddata.numAtom);
-  cudaMalloc ((void**)&coordNoix, sizeof(IntScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&coordNoiy, sizeof(IntScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&coordNoiz, sizeof(IntScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&velox, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&veloy, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&veloz, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&forcx, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&forcy, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&forcz, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&type, sizeof(TypeType)*ddata.numAtom);
-  cudaMalloc ((void**)&mass, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&massi, sizeof(ScalorType)*ddata.numAtom);
-  cudaMalloc ((void**)&charge, sizeof(ScalorType)*ddata.numAtom);
+  dim3 myBlockDim, atomGridDim;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  IndexType nob;
+  if (hdata.numAtom % myBlockDim.x == 0){
+    nob = hdata.numAtom / myBlockDim.x;
+  } else {
+    nob = hdata.numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
 
-  cudaMemcpy (coord, ddata.coord, sizeof(CoordType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (coordNoix, ddata.coordNoix, sizeof(IntScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (coordNoiy, ddata.coordNoiy, sizeof(IntScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (coordNoiz, ddata.coordNoiz, sizeof(IntScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (velox, ddata.velox, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (veloy, ddata.veloy, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (veloz, ddata.veloz, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (forcx, ddata.forcx, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (forcy, ddata.forcy, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (forcz, ddata.forcz, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (type, ddata.type, sizeof(TypeType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (mass, ddata.mass, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (massi, ddata.massi, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
-  cudaMemcpy (charge, ddata.charge, sizeof(ScalorType)*ddata.numAtom,
-	      cudaMemcpyDeviceToDevice);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coord, ddata.numAtom, backMapTable, recoveredDdata.coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoix, ddata.numAtom, backMapTable, recoveredDdata.coordNoix);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoiy, ddata.numAtom, backMapTable, recoveredDdata.coordNoiy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoiz, ddata.numAtom, backMapTable, recoveredDdata.coordNoiz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.velox, ddata.numAtom, backMapTable, recoveredDdata.velox);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.veloy, ddata.numAtom, backMapTable, recoveredDdata.veloy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.veloz, ddata.numAtom, backMapTable, recoveredDdata.veloz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcx, ddata.numAtom, backMapTable, recoveredDdata.forcx);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcy, ddata.numAtom, backMapTable, recoveredDdata.forcy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcz, ddata.numAtom, backMapTable, recoveredDdata.forcz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.type, ddata.numAtom, backMapTable, recoveredDdata.type);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.mass, ddata.numAtom, backMapTable, recoveredDdata.mass);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.massi, ddata.numAtom, backMapTable, recoveredDdata.massi);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.charge, ddata.numAtom, backMapTable, recoveredDdata.charge);  
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
+}
 
+
+static __global__ void
+Reshuffle_calBackMapTable (const IndexType numAtom,
+			   const IndexType * backMapTableBuff,
+			   const IndexType * idxTable,
+			   IndexType *backMapTable)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    backMapTable[idxTable[ii]] = backMapTableBuff[ii];
+  }
+}
+
+void MDSystem::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer)
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+
+  cpyDeviceMDDataToDevice (&ddata, &bkDdata);
+  
   IndexType nob;
   dim3 myBlockDim;
-  myBlockDim.x = 128;
-  
+  myBlockDim.x = DefaultNThreadPerBlock;
   if (ddata.numAtom % myBlockDim.x == 0){
     nob = ddata.numAtom / myBlockDim.x;
   } else {
@@ -294,60 +356,54 @@ reshuffle (const IndexType * indexTable)
 
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (coord, ddata.numAtom, indexTable, ddata.coord);
+      (bkDdata.coord, ddata.numAtom, indexTable, ddata.coord);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (coordNoix, ddata.numAtom, indexTable, ddata.coordNoix);
+      (bkDdata.coordNoix, ddata.numAtom, indexTable, ddata.coordNoix);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (coordNoiy, ddata.numAtom, indexTable, ddata.coordNoiy);
+      (bkDdata.coordNoiy, ddata.numAtom, indexTable, ddata.coordNoiy);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (coordNoiz, ddata.numAtom, indexTable, ddata.coordNoiz);
+      (bkDdata.coordNoiz, ddata.numAtom, indexTable, ddata.coordNoiz);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (velox, ddata.numAtom, indexTable, ddata.velox);
+      (bkDdata.velox, ddata.numAtom, indexTable, ddata.velox);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (veloy, ddata.numAtom, indexTable, ddata.veloy);
+      (bkDdata.veloy, ddata.numAtom, indexTable, ddata.veloy);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (veloz, ddata.numAtom, indexTable, ddata.veloz);
+      (bkDdata.veloz, ddata.numAtom, indexTable, ddata.veloz);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (forcx, ddata.numAtom, indexTable, ddata.forcx);
+      (bkDdata.forcx, ddata.numAtom, indexTable, ddata.forcx);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (forcy, ddata.numAtom, indexTable, ddata.forcy);
+      (bkDdata.forcy, ddata.numAtom, indexTable, ddata.forcy);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (forcz, ddata.numAtom, indexTable, ddata.forcz);
+      (bkDdata.forcz, ddata.numAtom, indexTable, ddata.forcz);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (type, ddata.numAtom, indexTable, ddata.type);
+      (bkDdata.type, ddata.numAtom, indexTable, ddata.type);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (mass, ddata.numAtom, indexTable, ddata.mass);
+      (bkDdata.mass, ddata.numAtom, indexTable, ddata.mass);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (massi, ddata.numAtom, indexTable, ddata.massi);
+      (bkDdata.massi, ddata.numAtom, indexTable, ddata.massi);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
-      (charge, ddata.numAtom, indexTable, ddata.charge);
-  
-  cudaFree (coord);
-  cudaFree (coordNoix);
-  cudaFree (coordNoiy);
-  cudaFree (coordNoiz);
-  cudaFree (velox);
-  cudaFree (veloy);
-  cudaFree (veloz);
-  cudaFree (forcx);
-  cudaFree (forcy);
-  cudaFree (forcz); 
-  cudaFree (type); 
-  cudaFree (mass); 
-  cudaFree (massi); 
-  cudaFree (charge); 
+      (bkDdata.charge, ddata.numAtom, indexTable, ddata.charge);  
+
+  Reshuffle_calBackMapTable
+      <<<atomGridDim, myBlockDim>>> (
+	  ddata.numAtom,
+	  backMapTableBuff,
+	  indexTable,
+	  backMapTable);
+
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
 }
 

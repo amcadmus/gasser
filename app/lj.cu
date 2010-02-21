@@ -72,18 +72,25 @@ int main(int argc, char * argv[])
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
-
+  
   MDTimer timer;
   unsigned i;
   ScalorType dt = 0.001;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
+
+  Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
+  resh.calIndexTable (nlist, &timer);
+  sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
   
   printf ("# prepare ok, start to run\n");
   sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
     timer.tic(mdTimeTotal);
     sys.initWriteXtc ("traj.xtc");
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
     sys.writeHostDataXtc (0, 0*dt, &timer);
     for (i = 0; i < nstep; ++i){
       if (i%10 == 0){
@@ -125,12 +132,14 @@ int main(int argc, char * argv[])
 	fflush(stdout);
       }
       if ((i+1) % 1000 == 0){
-	// sys.updateHost(&timer);
-	// resh.recoverMDDataToHost (sys, &timer);
+	sys.recoverDeviceData (&timer);
+	sys.updateHostFromRecovered (&timer);
 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
-      if ((i+1) % 100 == 0){
-	// resh.shuffleSystem (sys, nlist, &timer);
+      if ((i+1) % 10 == 0){
+	resh.calIndexTable (nlist, &timer);
+	sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
       }
     }
     sys.endWriteXtc();

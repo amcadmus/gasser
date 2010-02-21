@@ -40,8 +40,8 @@ void mallocDeviceBondList (const HostBondList & hbdlist,
 			   DeviceBondList & dbdlist);
 void copyDeviceBondList (const HostBondList & hbdlist,
 			 DeviceBondList & dbdlist);
+void copyDeviceBondList (const DeviceBondList & dbdlist1,
+			 DeviceBondList & dbdlist);
 void destroyDeviceBondList (DeviceBondList & dbdlist) ;
-
-
 
 #endif

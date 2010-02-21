@@ -68,6 +68,29 @@ void copyDeviceAngleList (const HostAngleList & hbdlist,
   }
 }
 
+void copyDeviceAngleList (const DeviceAngleList & dbdlist1,
+			  DeviceAngleList & dbdlist)
+{
+  if (dbdlist.malloced && dbdlist1.malloced){
+    cudaMemcpy (dbdlist.angleNeighborIndex, dbdlist1.angleNeighborIndex,
+		sizeof(IndexType) * dbdlist1.stride * dbdlist1.maxNumAngle,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceAngleList cpy device angleNeighborIndex to device");
+    cudaMemcpy (dbdlist.angleIndex, dbdlist1.angleIndex,
+		sizeof(ForceIndexType) * dbdlist1.stride * dbdlist1.maxNumAngle,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceAngleList cpy device angleIndex to device");
+    cudaMemcpy (dbdlist.anglePosi, dbdlist1.anglePosi,
+		sizeof(ForceIndexType) * dbdlist1.stride * dbdlist1.maxNumAngle,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceAngleList cpy device anglePosi to device");
+    cudaMemcpy (dbdlist.numAngle, dbdlist1.numAngle,
+		sizeof(IndexType) * dbdlist1.stride,
+		cudaMemcpyDeviceToDevice);
+    checkCUDAError ("buildDeviceAngleList cpy device numAngle to device");
+  }
+}
+
 
 HostAngleList::HostAngleList ()
 {

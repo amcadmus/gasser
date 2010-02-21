@@ -12,6 +12,7 @@
 #include "NeighborList.h"
 #include <stdio.h>
 #include "NonBondedInteraction.h"
+#include "Reshuffle_interface.h"
 
 /** 
  * these are textures for a fast reference of particle position.
@@ -331,7 +332,11 @@ mallocDeviceNeighborList (const MDSystem & sys,
   }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
-  cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);  
+  cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
+  // reshuffle backup things
+  cudaMalloc ((void**)&(bkdnlistData), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
+  cudaMalloc ((void**)&(bkdnlistNneighbor), sizeof(IndexType) * sys.ddata.numAtom);
+  cudaMalloc ((void**)&(bkdnlistForceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
   checkCUDAError ("NeighborList::mallocDeviceNeighborList");
   mallocedDeviceNeighborList = true;
 }
@@ -363,13 +368,9 @@ mallocJudgeStuff(const MDSystem & sys)
   } else {
     nob = sys.ddata.numAtom / myBlockDim.x + 1;
   }
-#ifndef COORD_IN_ONE_VEC
-  cudaMalloc ((void **)& backupCoordx, sizeof(ScalorType)*sys.ddata.numAtom);
-  cudaMalloc ((void **)& backupCoordy, sizeof(ScalorType)*sys.ddata.numAtom);
-  cudaMalloc ((void **)& backupCoordz, sizeof(ScalorType)*sys.ddata.numAtom);
-#else
   cudaMalloc ((void **)& backupCoord,  sizeof(CoordType) *sys.ddata.numAtom);
-#endif
+  // reshuffle backup
+  cudaMalloc ((void **)& bkbackupCoord,sizeof(CoordType) *sys.ddata.numAtom);
   cudaMalloc ((void **)& judgeRebuild_tag,  sizeof(IndexType));
   sum_judge.reinit (nob, NThreadForSum);
   checkCUDAError ("NeighborList::init judge build allocations");
@@ -711,7 +712,50 @@ bool NeighborList::judgeRebuild (const MDSystem & sys,
   }
 }
 
-    
+
+void NeighborList::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+
+  Reshuffle_reshuffleDeviceCellList
+      <<<cellGridDim, myBlockDim>>> (
+	  dclist.data, indexTable);
+  cudaMemcpy (bkbackupCoord, backupCoord,
+	      sizeof (CoordType) * numAtom,
+	      cudaMemcpyDeviceToDevice);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>> 
+      (bkbackupCoord, numAtom, indexTable, backupCoord);
+  Reshuffle_backupDeviceNeighborList
+      <<<atomGridDim, myBlockDim,
+      2 * myBlockDim.x * sizeof(IndexType)>>> (
+	  numAtom,
+	  dnlist.data,
+	  dnlist.forceIndex,
+	  dnlist.stride,
+	  dnlist.Nneighbor,
+	  bkdnlistData,
+	  bkdnlistForceIndex,
+	  bkdnlistNneighbor);
+  Reshuffle_reshuffleDeviceNeighborList
+      <<<atomGridDim, myBlockDim,
+      2 * myBlockDim.x * sizeof(IndexType)>>> (
+	  numAtom,
+	  bkdnlistData,
+	  bkdnlistForceIndex,
+	  dnlist.stride,
+	  bkdnlistNneighbor,
+	  indexTable,
+	  dnlist.data,
+	  dnlist.forceIndex,
+	  dnlist.Nneighbor);
+  checkCUDAError ("NeighborList::reshuffle");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+
 
 
 ////////////////////////////////////////////////////////////
@@ -815,7 +859,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
-  #pragma unroll 3
+#pragma unroll 3
   for (int di = lowerx; di <= upperx; ++di){
     for (int dj = lowery; dj <= uppery; ++dj){
       for (int dk = lowerz; dk <= upperz; ++dk){
@@ -864,10 +908,10 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 		    nbForceTable, NatomType, reftype, targettype[jj]);
 	      }
 	      // if (fidx != mdForceNULL) {
-		IndexType listIdx = Nneighbor * nlist.stride + ii;
-		nlist.data[listIdx] = targetIndexes[jj];
-		nlist.forceIndex[listIdx] = fidx;
-		Nneighbor ++;
+	      IndexType listIdx = Nneighbor * nlist.stride + ii;
+	      nlist.data[listIdx] = targetIndexes[jj];
+	      nlist.forceIndex[listIdx] = fidx;
+	      Nneighbor ++;
 	      // }
 	    }
 	  }

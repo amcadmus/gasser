@@ -29,7 +29,7 @@ struct DeviceNeighborList
 				 * indexes of neigbors of i-th atom*/
   IndexType * Nneighbor;	/**< vector stores the number of neigbors of
 				 * each atom*/
-  ForceIndexType * forceIndex;	/**< matrix stores the index of
+  IndexType * forceIndex;	/**< matrix stores the index of
 				 * non-bonded interaction, whose type
 				 * and parameters are keeped by the
 				 * interaction engine. */
@@ -161,7 +161,7 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 						  TypeType * type,
 						  RectangularBox box,
 						  DeviceNeighborList nlist,
-						  ForceIndexType * nbForceTable,
+						  IndexType * nbForceTable,
 						  IndexType NatomType,
 						  bool sharednbForceTable,
 						  mdError_t * ptr_de = NULL);
@@ -178,7 +178,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (IndexType numAtom,
 							RectangularBox box,
 							DeviceCellList clist,
 							DeviceNeighborList nlist,
-							ForceIndexType * nbForceTable,
+							IndexType * nbForceTable,
 							IndexType NatomType,
 							bool sharednbForceTable,
 							mdError_t * ptr_de = NULL);
@@ -218,6 +218,32 @@ __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
 #endif
 					       const ScalorType diffTol2,
 					       IndexType * judgeRebuild_buff);
+
+//////////////////////////////////////////////////
+// reshuffle functions
+//////////////////////////////////////////////////
+__global__ void
+Reshuffle_reshuffleDeviceCellList (IndexType * clistData,
+				   const IndexType * idxTable);
+__global__ void
+Reshuffle_backupDeviceNeighborList (const IndexType numAtom,
+				    const IndexType * nlistData1,
+				    const IndexType * nbForceIndex1,
+				    const IndexType stride,
+				    const IndexType * Nneighbor1,
+				    IndexType * nlistData2,
+				    IndexType * nbForceIndex2,
+				    IndexType * Nneighbor2);
+__global__ void
+Reshuffle_reshuffleDeviceNeighborList (const IndexType numAtom,
+				       const IndexType * nlistData2,
+				       const IndexType * nbForceIndex2,
+				       const IndexType stride,
+				       const IndexType * Nneighbor2,
+				       const IndexType * idxTable,
+				       IndexType * nlistData1,
+				       IndexType * Nneighbor1,
+				       IndexType * nbForceIndex1);
 
 
 ////////////////////////////////////////////////////////////

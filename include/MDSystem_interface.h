@@ -1,3 +1,5 @@
+class MDSystem;
+
 #ifndef __MDSystem_interface_h_wanghan__
 #define __MDSystem_interface_h_wanghan__
 
@@ -6,13 +8,14 @@
 #include "MDTimer_interface.h"
 #include "Interaction.h"
 #include "Topology.h"
+#include "Reshufflable.h"
 
 #include "xdrfile/xdrfile.h"
 #include "xdrfile/xdrfile_xtc.h"
 
 using namespace RectangularBoxGeometry;
 
-class MDSystem
+class MDSystem : public Reshufflable
 {
   IndexType tmpNAtomType;
   // xdr variables
@@ -23,9 +26,12 @@ class MDSystem
 public:
   HostMDData   hdata;		/**< MD data on host */
   DeviceMDData ddata;		/**< MD data on device */
-  DeviceMDData recoveredDdata;	/**< MD data on host. Used to hold the
+  IndexType * backMapTable;
+  IndexType * backMapTableBuff;
+  DeviceMDData recoveredDdata;	/**< MD data on device. Used to hold the
 				 * data recovered from the reshuffled
 				 * system */
+  DeviceMDData bkDdata;		/**< MD data on device for reshuffle backup*/
   RectangularBox box;		/**< box geometry */
 public:
   MDSystem () ;
@@ -36,7 +42,10 @@ public:
   DeviceMDData & deviceData () {return ddata;}
   const DeviceMDData & deviceData () const {return ddata;}
 public:
-  virtual void reshuffle (const IndexType * indexTable);
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer * timer = NULL);
+  void recoverDeviceData (MDTimer * timer = NULL);
 public:
   /** 
    * Initialize system configuration from a .gro file.
@@ -62,7 +71,8 @@ public:
    * 
    * @param timer A timer monitors the time consumption.
    */
-  void updateHost (MDTimer *timer=NULL);
+  void updateHostFromDevice    (MDTimer *timer=NULL);
+  void updateHostFromRecovered (MDTimer *timer=NULL);
   /** 
    * Initialize .xtc file output.
    * 

@@ -80,22 +80,33 @@ public:
     ;
 
 
-__host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * ddata);
-__host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata, HostMDData * hdata);
+void cpyHostMDDataToDevice (const HostMDData * hdata,
+			    DeviceMDData * ddata);
+void cpyDeviceMDDataToHost (const DeviceMDData * ddata,
+			    HostMDData * hdata);
+void cpyDeviceMDDataToDevice (const DeviceMDData * ddata1,
+			      DeviceMDData * ddata);
+
 #ifdef COORD_IN_ONE_VEC
 __global__ void deviceCpyTypeToCoordW (CoordType * coord,
 				       const TypeType * type,
 				       const IndexType N);
 #endif
 
-__host__ void mallocHostMDData (IndexType numAtom, IndexType expectedMaxNumAtom,
+__host__ void mallocHostMDData (IndexType numAtom,
+				IndexType expectedMaxNumAtom,
 				HostMDData * hdata);
 __host__ void lazyInitHostMDData (HostMDData * hdata);
 __host__ void initMass (HostMDData * hdata);
 __host__ void destroyHostMDData (HostMDData * hdata);
 
-__host__ void initDeviceMDData (const HostMDData * hdata, DeviceMDData * ddata);
+__host__ void initDeviceMDData (const HostMDData * hdata,
+				DeviceMDData * ddata);
 __host__ void destroyDeviceMDData (DeviceMDData * ddata);
+
+
+
+
 // __host__ void bindTextureOnDeviceMDData (DeviceMDData * data);
 
 __device__ void cpyDeviceMDDataElement (const DeviceMDData * ddata1,
