@@ -5,6 +5,8 @@ BondedInteractionList ()
 {
   initDeviceBondList (dbondlist);
   initDeviceAngleList (danglelist);
+  initDeviceBondList (bkdbondlist);
+  initDeviceAngleList (bkdanglelist);
 }
 
 BondedInteractionList::

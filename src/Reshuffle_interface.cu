@@ -57,10 +57,12 @@ Reshuffle_calIndexTable (const IndexType * clistData,
   }
 }
 
-void Reshuffle::
+bool Reshuffle::
 calIndexTable (const NeighborList & nlist,
 	       MDTimer * timer)
 {
+  if (nlist.mode != CellListBuilt) return false;
+
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
   Reshuffle_calPosiList
       <<<1, 1>>> (
@@ -71,6 +73,7 @@ calIndexTable (const NeighborList & nlist,
    	  nlist.dclist.data, posiBuff, indexTable);
   checkCUDAError ("Reshuffle::calIndexTable, cal idxTable");
   if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+  return true;
 }
 
 

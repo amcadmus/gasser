@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
   RandomGenerator_MT19937::init_genrand (seed);
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
-
+  
   timer.tic(mdTimeTotal);
   resh.calIndexTable (nlist, &timer);
   sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);

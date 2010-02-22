@@ -37,7 +37,7 @@ public:
   void init (const MDSystem & sys,
 	     const NeighborList & nlist,
 	     const IndexType & NTread);
-  void calIndexTable (const NeighborList & nlist,
+  bool calIndexTable (const NeighborList & nlist,
 		      MDTimer * timer = NULL);
   const IndexType * getIndexTable () const {return indexTable;}
 };

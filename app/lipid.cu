@@ -19,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
+#define NThreadsPerBlockCell	128
 #define NThreadsPerBlockAtom	16
 
 int main(int argc, char * argv[])
@@ -78,7 +78,7 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.5;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 40,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 200,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY);
   nlist.build(sys);
@@ -96,15 +96,25 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.005;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
+
+  Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
+
+  timer.tic(mdTimeTotal);
+  if (resh.calIndexTable (nlist, &timer)){
+    sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+    nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+    bdInterList.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+  }
   
   printf ("# prepare ok, start to run\n");
-  sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   try{
     timer.tic(mdTimeTotal);
     sys.initWriteXtc ("traj.xtc");
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
     sys.writeHostDataXtc (0, 0*dt, &timer);
     for (i = 0; i < nstep; ++i){
-      if (i%10 == 0){
+      if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
       // if (i%1 == 0){
@@ -158,16 +168,22 @@ int main(int argc, char * argv[])
 	fflush(stdout);
       }
       if ((i+1) % 1000 == 0){
-	// sys.updateHost(&timer);
-	// resh.recoverMDDataToHost (sys, &timer);
-	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      	sys.recoverDeviceData (&timer);
+      	sys.updateHostFromRecovered (&timer);
+      	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
       if ((i+1) % 100 == 0){
+	if (resh.calIndexTable (nlist, &timer)){
+	  sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	  bdInterList.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	}
 	// resh.shuffleSystem (sys, nlist, &timer);
       }
     }
     sys.endWriteXtc();
-    // resh.recoverMDDataToHost (sys, &timer);
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);

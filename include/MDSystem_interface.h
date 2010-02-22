@@ -23,15 +23,15 @@ class MDSystem : public Reshufflable
   matrix xdbox;
   rvec *xdx;
   float xdprec;
-public:
-  HostMDData   hdata;		/**< MD data on host */
-  DeviceMDData ddata;		/**< MD data on device */
   IndexType * backMapTable;
   IndexType * backMapTableBuff;
   DeviceMDData recoveredDdata;	/**< MD data on device. Used to hold the
 				 * data recovered from the reshuffled
 				 * system */
   DeviceMDData bkDdata;		/**< MD data on device for reshuffle backup*/
+public:
+  HostMDData   hdata;		/**< MD data on host */
+  DeviceMDData ddata;		/**< MD data on device */
   RectangularBox box;		/**< box geometry */
 public:
   MDSystem () ;
@@ -52,7 +52,6 @@ public:
    * 
    * @param configfile The name of the configuration file. It should be a .gro
    * file.
-   * @param mapfile The atom name -> type mapping file.n
    * @param maxNumAtom Possible maximum number of atoms in the system. If value
    * 0 is given, then this value is supposed to be the same as the number of
    * atoms in the configuration file.
