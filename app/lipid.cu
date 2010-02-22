@@ -19,8 +19,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	128
-#define NThreadsPerBlockAtom	16
+#define NThreadsPerBlockCell	192
+#define NThreadsPerBlockAtom	128
 
 int main(int argc, char * argv[])
 {
@@ -116,20 +116,14 @@ int main(int argc, char * argv[])
     for (i = 0; i < nstep; ++i){
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
-      }
-      // if (i%1 == 0){
-      //   if (i == 0) nlist.build (sys);
-      //   else nlist.reBuild (sys);
-      //   // resh.shuffleSystem (sys, nlist);
-      // }   
-	  
-      if ((i+1) % 1 == 0){
+      }	  
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
-	inte_vv.step1 (sys, dt, &timer);
+	inte_vr.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
 	inter.applyBondedInteraction (sys, bdInterList, st, &timer);
-	inte_vv.step2 (sys, dt, st, &timer);
+	inte_vr.step2 (sys, dt, st, &timer);
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
@@ -147,25 +141,25 @@ int main(int argc, char * argv[])
 	fflush(stdout);
       }
       else {
-	inte_vv.step1 (sys, dt, &timer);
+	inte_vr.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteraction (sys, nlist, &timer);
 	inter.applyBondedInteraction (sys, bdInterList, &timer);
-	inte_vv.step2 (sys, dt, &timer);
+	inte_vr.step2 (sys, dt, &timer);
       }
       if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	// nlistExten = 0.2;
-	// rlist = maxrcut + nlistExten;
-	// nlist.reinit (sys, rlist, NThreadsPerBlockCell, 40,
-	// 	      RectangularBoxGeometry::mdRectBoxDirectionX |
-	// 	      RectangularBoxGeometry::mdRectBoxDirectionY);
-	// printf ("# at step %d, ncelllx %d\n", i+1, nlist.dclist.NCell.x);
-	// nlist.build(sys);
-	printf ("# Rebuild at step %09i ... ", i+1);
-	fflush(stdout);
+	// // nlistExten = 0.2;
+	// // rlist = maxrcut + nlistExten;
+	// // nlist.reinit (sys, rlist, NThreadsPerBlockCell, 40,
+	// // 	      RectangularBoxGeometry::mdRectBoxDirectionX |
+	// // 	      RectangularBoxGeometry::mdRectBoxDirectionY);
+	// // printf ("# at step %d, ncelllx %d\n", i+1, nlist.dclist.NCell.x);
+	// // nlist.build(sys);
+	// printf ("# Rebuild at step %09i ... ", i+1);
+	// fflush(stdout);
 	nlist.reBuild(sys, &timer);
-	printf ("done\n");
-	fflush(stdout);
+	// printf ("done\n");
+	// fflush(stdout);
       }
       if ((i+1) % 1000 == 0){
       	sys.recoverDeviceData (&timer);
@@ -178,7 +172,6 @@ int main(int argc, char * argv[])
 	  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
 	  bdInterList.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
 	}
-	// resh.shuffleSystem (sys, nlist, &timer);
       }
     }
     sys.endWriteXtc();
@@ -189,7 +182,6 @@ int main(int argc, char * argv[])
     timer.printRecord (stderr);
   }
   catch (MDExcptCuda & e){
-    // resh.recoverMDDataToHost (sys, &timer);
     sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
