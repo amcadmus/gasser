@@ -167,6 +167,7 @@ private:
   LeapFrog lpfrog;
   InteractionEngine_interface * ptr_inter;
   NeighborList * ptr_nlist;
+  BondedInteractionList * ptr_bdInterList;
   ScalorType rebuildThreshold;
 private:
   void firstStep (MDSystem & sys, MDTimer * timer);
@@ -177,16 +178,18 @@ public:
 	     const ScalorType & dt,
 	     InteractionEngine_interface &inter,
 	     NeighborList & nlist,
-	     const ScalorType & rebuildThreshold) ;
+	     const ScalorType & rebuildThreshold,
+	     BondedInteractionList * ptr_bdInterList = NULL) ;
   BerendsenLeapFrog ();
   BerendsenLeapFrog (const MDSystem &sys,
 		     const IndexType & NThread,
 		     const ScalorType & dt,
 		     InteractionEngine_interface &inter,
 		     NeighborList & nlist,
-		     const ScalorType & rebuildThreshold)
+		     const ScalorType & rebuildThreshold,
+		     BondedInteractionList * ptr_bdInterList = NULL)
       : myst(sys), lpfrog(sys, NThread)
-      { init (sys, NThread, dt, inter, nlist, rebuildThreshold); }
+      { init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
   ~BerendsenLeapFrog () {};
 public:
   void TCouple (const ScalorType & refT,
