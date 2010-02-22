@@ -64,6 +64,11 @@ calIndexTable (const NeighborList & nlist,
   if (nlist.mode != CellListBuilt) return false;
 
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  cellGridDim = nlist.cellGridDim;
+  IndexType nob = cellGridDim.x * cellGridDim.y;
+  cudaFree(posiBuff);
+  cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);  
+
   Reshuffle_calPosiList
       <<<1, 1>>> (
    	  nlist.dclist.numbers, nob, posiBuff);
