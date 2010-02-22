@@ -327,8 +327,8 @@ mallocDeviceNeighborList (const MDSystem & sys,
   IndexType expectedNumberInList 
       = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
   dnlist.listLength = expectedNumberInList * DeviceNeighborListExpansion;
-  if (dnlist.listLength < 10){
-    dnlist.listLength = 10;
+  if (dnlist.listLength < 20){
+    dnlist.listLength = 20;
   }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);

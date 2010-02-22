@@ -25,6 +25,22 @@ namespace Topology {
       void copy (const Atom & a);
     };
 
+    struct NonBondedInteraction
+    {
+      TypeType atomType0;
+      TypeType atomType1;
+      InteractionType type;
+      std::vector<ScalorType > paramArray;
+      ScalorType rcut;
+  public:
+      NonBondedInteraction (const TypeType & atomType0,
+			    const TypeType & atomType1,
+			    const NonBondedInteractionParameter & p);
+      void specifyInteraction (const TypeType & atomType0,
+			       const TypeType & atomType1,
+			       const NonBondedInteractionParameter & p);
+    };
+    
     struct Bond
     {
       IndexType atom0;
@@ -62,6 +78,7 @@ namespace Topology {
     {
       char name[8];
       std::vector<Atom > atoms;
+      std::vector<NonBondedInteraction > nonBondedInteractions;
       std::vector<Bond > bonds;
       std::vector<Angle > angles;
   public:
@@ -73,6 +90,7 @@ namespace Topology {
       const Atom & operator [] (const IndexType & i) const {return atoms[i];}
       void addBond (const Bond & bd);
       void addAngle (const Angle & ag);
+      void addNonBondedInteraction (const NonBondedInteraction & nb);
     };
 
 

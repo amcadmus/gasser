@@ -47,16 +47,16 @@ int main(int argc, char * argv[])
   Topology::System sysTop;
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  LennardJones6_12Parameter ljparam;
+  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);
   sys.initDeviceData ();
 
   SystemNonBondedInteraction sysNbInter;
-  LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
-  sysNbInter.add (0, 0, ljparam);
-  sysNbInter.build ();
+  sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;

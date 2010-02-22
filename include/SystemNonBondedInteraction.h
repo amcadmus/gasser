@@ -4,6 +4,7 @@
 #include "common.h"
 #include <vector>
 #include "Interaction.h"
+#include "Topology.h"
 
 class SystemNonBondedInteraction
 {
@@ -33,15 +34,21 @@ private:
   IndexType * interactionTableItem (IndexType atom0,
 				    IndexType atom1);
   void calInteractionTableLength ();
+  void add (const TypeType &i,
+  	    const TypeType &j,
+  	    const NonBondedInteractionParameter & param);
+  void add (const TypeType &i,
+  	    const TypeType &j,
+  	    const InteractionType & type,
+	    const std::vector<ScalorType > & paramArray,
+	    const ScalorType & rcut);
+  void build ();
 public:
   SystemNonBondedInteraction();
   ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
+  void reinit (const Topology::System & sysTop);
   void clear ();
   ScalorType maxRcut() {return maxrc;}
-  void add (const TypeType &i,
-	    const TypeType &j,
-	    const NonBondedInteractionParameter & param);
-  void build ();
 public:
   bool beBuilt () const {return isBuilt;}
   IndexType numberOfAtomTypes () const

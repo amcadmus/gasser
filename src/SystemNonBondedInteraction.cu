@@ -93,6 +93,60 @@ add (const TypeType &i,
   }
 }
 
+void SystemNonBondedInteraction::
+reinit (const Topology::System & sysTop)
+{
+  clear();
+  TypeType maxType = 0;
+  // first, cal max type
+  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+    for (unsigned j = 0; j < sysTop.molecules[i].size(); ++j){
+      if (sysTop.molecules[i].atoms[j].type > maxType){
+	maxType = sysTop.molecules[i].atoms[j].type;
+      }
+    }
+  }
+  std::vector<ScalorType > empty;
+  add (maxType, maxType, mdForceNULL, empty, 0);
+  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+    for (unsigned j = 0; j < sysTop.molecules[i].nonBondedInteractions.size(); ++j){
+      add (sysTop.molecules[i].nonBondedInteractions[j].atomType0,
+	   sysTop.molecules[i].nonBondedInteractions[j].atomType1,
+	   sysTop.molecules[i].nonBondedInteractions[j].type,
+	   sysTop.molecules[i].nonBondedInteractions[j].paramArray,
+	   sysTop.molecules[i].nonBondedInteractions[j].rcut);
+    }
+  }
+  build ();
+}	   
+	   
+void SystemNonBondedInteraction::
+add (const TypeType &i,
+     const TypeType &j,
+     const InteractionType & type,
+     const std::vector<ScalorType > & paramArray,
+     const ScalorType & rcut)
+{
+  IndexType ii, jj;
+  (i < j) ?
+      (ii = IndexType(i), jj = IndexType(j)) :
+      (ii = IndexType(j), jj = IndexType(i)) ;
+  if (jj+1 > numAtomTypes){
+    numAtomTypes = jj+1;
+    resizeMem (numAtomTypes);
+  }
+  if (typeMat[ii][jj] != mdForceNULL){
+    printf ("## warning: SystemNonBondedInteraction::add: atome type %d and %d, overwriting existing non-bonded interaction\n", ii, jj);
+  }
+  typeMat[ii][jj] = type;
+  paramMat[ii][jj] = paramArray;
+
+  if (rcut > maxrc){
+    maxrc = rcut;
+  }
+}
+
+
 IndexType * SystemNonBondedInteraction::
 interactionTableItem (TypeType atom0, TypeType atom1)
 {

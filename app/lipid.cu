@@ -47,6 +47,15 @@ int main(int argc, char * argv[])
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
+  // nonbonded interactions
+  CosTailParameter cosparam;
+  cosparam.reinit (1.f, 0.95f, 0.f);
+  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, cosparam));  
+  cosparam.reinit (1.f, 0.975f, 0.f);
+  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 1, cosparam));  
+  cosparam.reinit (1.f, 1.f, 1.6f);
+  mol.addNonBondedInteraction (Topology::NonBondedInteraction(1, 1, cosparam));
+  // bonded interactions
   HarmonicSpringParameter hsparam;
   FENEParameter feneparam;
   hsparam.reinit (10.f, 4.f);
@@ -66,14 +75,7 @@ int main(int argc, char * argv[])
   bdInterList.reinit (sys, sysTop, sysBdInter);
 
   SystemNonBondedInteraction sysNbInter;
-  CosTailParameter cosparam;
-  cosparam.reinit (1.f, 0.95f, 0.f);
-  sysNbInter.add (0, 0, cosparam);
-  cosparam.reinit (1.f, 0.975f, 0.f);
-  sysNbInter.add (0, 1, cosparam);
-  cosparam.reinit (1.f, 1.f, 1.6f);
-  sysNbInter.add (1, 1, cosparam);
-  sysNbInter.build ();
+  sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.5;

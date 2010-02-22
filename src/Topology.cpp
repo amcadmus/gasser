@@ -61,6 +61,32 @@ setProperty  (const ScalorType & mass_,
   type = type_;
 }
 
+Topology::NonBondedInteraction::
+NonBondedInteraction (const TypeType & atomType0_,
+		      const TypeType & atomType1_,
+		      const NonBondedInteractionParameter & p)
+    : atomType0(atomType0_), atomType1(atomType1_), type(p.type())
+{
+  for (unsigned i = 0; i < p.numParam(); ++i){
+    paramArray.push_back( p.c_ptr()[i] );
+  }
+  rcut = p.rcut();
+}
+
+void Topology::NonBondedInteraction::
+specifyInteraction(const TypeType & atomType0_,
+		   const TypeType & atomType1_,
+		   const NonBondedInteractionParameter & p)
+{
+  atomType0 = atomType0_;
+  atomType1 = atomType1_;
+  type = p.type();
+  paramArray.clear();
+  for (unsigned i = 0; i < p.numParam(); ++i){
+    paramArray.push_back( p.c_ptr()[i] );
+  }
+  rcut = p.rcut();
+}
 
 
 Topology::Bond::
@@ -128,6 +154,12 @@ void Topology::Molecule::
 pushAtom (const Atom & a)
 {
   atoms.push_back(a);
+}
+
+void Topology::Molecule::
+addNonBondedInteraction (const NonBondedInteraction & nb)
+{
+  nonBondedInteractions.push_back(nb);
 }
 
 void Topology::Molecule::
