@@ -498,10 +498,10 @@ BerendsenLeapFrog::firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
   }
   ptr_inter->clearInteraction (sys);
   if (ptr_nlist != NULL){
-    ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, timer);
+    ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
   }
   if (ptr_bdInterList != NULL){
-    ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
+    ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
   }
   st.deviceAdd (myst);
   nstep ++;
@@ -526,10 +526,10 @@ BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
   }
   ptr_inter->clearInteraction (sys);
   if (ptr_nlist != NULL){
-    ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, timer);
+    ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
   }
   if (ptr_bdInterList != NULL){
-    ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
+    ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
   }
   nstep ++;
 }
@@ -624,10 +624,10 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
     }
     ptr_inter->clearInteraction (sys);
     if (ptr_nlist != NULL){
-      ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, timer);
+      ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
     }
     if (ptr_bdInterList != NULL){
-      ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
+      ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
     }
   }
   else {
@@ -724,10 +724,10 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
     }
     ptr_inter->clearInteraction (sys);
     if (ptr_nlist != NULL){
-      ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, timer);
+      ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
     }
     if (ptr_bdInterList != NULL){
-      ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
+      ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
     }
     st.deviceAdd (myst);
   }
