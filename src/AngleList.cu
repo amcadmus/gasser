@@ -30,7 +30,7 @@ void mallocDeviceAngleList (const HostAngleList & hbdlist,
   dbdlist.maxNumAngle = hbdlist.maxNumAngle;
   
   cudaMalloc ((void**)&(dbdlist.angleNeighborIndex), 
-	      sizeof(IndexType) * hbdlist.stride * hbdlist.maxNumAngle);
+	      sizeof(IndexType) * hbdlist.stride * hbdlist.maxNumAngle * 2);
   checkCUDAError ("buildDeviceAngleList malloc angleNeighborIndex");
   cudaMalloc ((void**)&(dbdlist.angleIndex),
 	      sizeof(TypeType) * hbdlist.stride * hbdlist.maxNumAngle);
@@ -50,7 +50,7 @@ void copyDeviceAngleList (const HostAngleList & hbdlist,
 {
   if (dbdlist.malloced){
     cudaMemcpy (dbdlist.angleNeighborIndex, hbdlist.angleNeighborIndex,
-		sizeof(IndexType) * hbdlist.stride * hbdlist.maxNumAngle,
+		sizeof(IndexType) * hbdlist.stride * hbdlist.maxNumAngle * 2,
 		cudaMemcpyHostToDevice);
     checkCUDAError ("buildDeviceAngleList cpy host angleNeighborIndex to device");
     cudaMemcpy (dbdlist.angleIndex, hbdlist.angleIndex,
@@ -73,7 +73,7 @@ void copyDeviceAngleList (const DeviceAngleList & dbdlist1,
 {
   if (dbdlist.malloced && dbdlist1.malloced){
     cudaMemcpy (dbdlist.angleNeighborIndex, dbdlist1.angleNeighborIndex,
-		sizeof(IndexType) * dbdlist1.stride * dbdlist1.maxNumAngle,
+		sizeof(IndexType) * dbdlist1.stride * dbdlist1.maxNumAngle * 2,
 		cudaMemcpyDeviceToDevice);
     checkCUDAError ("buildDeviceAngleList cpy device angleNeighborIndex to device");
     cudaMemcpy (dbdlist.angleIndex, dbdlist1.angleIndex,
@@ -135,7 +135,7 @@ clearAngle ()
 
 
 void HostAngleList::reinit (const IndexType & stride_,
-			   const IndexType & maxNumAngle_)
+			    const IndexType & maxNumAngle_)
 {
   clearMem();
   
