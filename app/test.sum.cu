@@ -20,6 +20,16 @@ __global__ void sum32 (ScalorType * a, ScalorType * result)
   if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
 }
 
+__global__ void sum64 (ScalorType * a, ScalorType * result)
+{
+  if (blockDim.x != 64) return ;
+  __shared__ ScalorType buff[64];
+  buff[threadIdx.x] = a[threadIdx.x];
+  SumBlock::sum64_1bsize (buff);
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
+}
+
+
 __global__ void sum32_2b (ScalorType * a, ScalorType * result)
 {
   if (blockDim.x != 32) return ;
