@@ -17,15 +17,31 @@ __global__ void sum32 (ScalorType * a, ScalorType * result)
   __shared__ ScalorType buff[32];
   buff[threadIdx.x] = a[threadIdx.x];
   SumBlock::sum32_1bsize (buff);
-  if (threadIdx.x == 0) *result = buff[0];
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
+}
+
+__global__ void sum32_2b (ScalorType * a, ScalorType * result)
+{
+  if (blockDim.x != 32) return ;
+  __shared__ ScalorType buff[32*2];
+  buff[threadIdx.x] = a[threadIdx.x];
+  SumBlock::sum32_2bsize (buff);
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
 }
 
 
 #define N 32
-
+#define NBlock 300
+#define NTime 100
 
 int main(int argc, char * argv[])
 {
+  int deviceNum = 1;
+  printf ("# setting device to %d\n", deviceNum);
+  cudaSetDevice (deviceNum);
+  checkCUDAError ("set device");
+
+  
   ScalorType hdata [N];
   for (IndexType i = 0; i < N; ++i){
     hdata[i] = i;
@@ -43,8 +59,8 @@ int main(int argc, char * argv[])
   cudaEventCreate (&start);
   cudaEventCreate (&stop );
   cudaEventRecord(start, 0);
-  for (unsigned i = 0; i < 1; ++i){
-    sum32 <<<1, N>>> (ddata, dresult);
+  for (unsigned i = 0; i < NTime; ++i){
+    sum32_2b <<<NBlock, N>>> (ddata, dresult);
   }
   cudaEventRecord(stop, 0);
   cudaEventSynchronize (stop);

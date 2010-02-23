@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }	  
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();

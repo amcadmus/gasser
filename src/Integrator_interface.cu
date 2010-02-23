@@ -723,8 +723,8 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      printf("# rebuild at step %d\n", nstep);
-      fflush(stdout);
+      // printf("# rebuild at step %d\n", nstep);
+      // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
     ptr_inter->clearInteraction (sys);
