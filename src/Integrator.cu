@@ -307,18 +307,36 @@ __global__ void prepareRemoveTranslationalFreedom (IndexType numAtom,
 						   ScalorType * veloz,
 						   ScalorType * buffx,
 						   ScalorType * buffy,
-						   ScalorType * buffz,
-						   ScalorType * sums)
+						   ScalorType * buffz)
 {
-  sumVectorMomentum(mass, velox, numAtom,
-		    buffx, &integrator_counter_prepare_x,
-		    &sums[0]);
-  sumVectorMomentum(mass, veloy, numAtom,
-		    buffy, &integrator_counter_prepare_y,
-		    &sums[1]);
-  sumVectorMomentum(mass, veloz, numAtom,
-		    buffz, &integrator_counter_prepare_z,
-		    &sums[2]);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  extern __shared__ volatile ScalorType buff[];
+  buff[tid] = 0.f;
+  buff[tid+blockDim.x] = 0.f;
+  __syncthreads();
+  if (ii < numAtom){
+    buff[tid] = mass[ii] * velox[ii];
+  }
+  __syncthreads();
+  sumVectorBlockBuffer (buff, blockDim.x);
+  if (tid == 0) buffx[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[tid] = mass[ii] * veloy[ii];
+  }
+  __syncthreads();
+  sumVectorBlockBuffer (buff, blockDim.x);
+  if (tid == 0) buffy[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[tid] = mass[ii] * veloz[ii];
+  }
+  __syncthreads();
+  sumVectorBlockBuffer (buff, blockDim.x);
+  if (tid == 0) buffz[bid] = buff[0];
 }
 
 __global__ void removeFreedom (IndexType numAtom,
@@ -329,12 +347,12 @@ __global__ void removeFreedom (IndexType numAtom,
 			       ScalorType * sums)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-  IndexType tid = threadIdx.x;
-  IndexType ii = tid + bid * blockDim.x;
-  if (ii >= numAtom) return;
-  velox[ii] -= sums[0] * totalMassi;
-  veloy[ii] -= sums[1] * totalMassi;
-  veloz[ii] -= sums[2] * totalMassi;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom) {
+    velox[ii] -= sums[0] * totalMassi;
+    veloy[ii] -= sums[1] * totalMassi;
+    veloz[ii] -= sums[2] * totalMassi;
+  }
 }
 
 

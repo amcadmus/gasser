@@ -15,7 +15,10 @@ class TranslationalFreedomRemover
   dim3 atomGridDim;
   dim3 myBlockDim;
   ScalorType * sums;
-  ScalorType * buffx, * buffy, * buffz;
+  IndexType sharedBuffSize;
+  SumVector<ScalorType > sum_x;
+  SumVector<ScalorType > sum_y;
+  SumVector<ScalorType > sum_z;
 public:
   TranslationalFreedomRemover (const MDSystem & sys, 
 			       const IndexType & NThread)

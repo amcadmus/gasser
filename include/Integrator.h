@@ -16,8 +16,7 @@ __global__ void prepareRemoveTranslationalFreedom (IndexType numAtom,
 						   ScalorType * veloz,
 						   ScalorType * buffx,
 						   ScalorType * buffy,
-						   ScalorType * buffz,
-						   ScalorType * sums);
+						   ScalorType * buffz);
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void removeFreedom (IndexType numAtom,
 			       ScalorType * velox, 

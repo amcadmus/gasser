@@ -11,9 +11,6 @@ __global__ void fillSums0 (ScalorType* sums)
 TranslationalFreedomRemover::~TranslationalFreedomRemover ()
 {
   cudaFree (sums);
-  cudaFree (buffx);
-  cudaFree (buffy);
-  cudaFree (buffz);
 }
 
 void TranslationalFreedomRemover::init (const MDSystem &sys,
@@ -30,16 +27,12 @@ void TranslationalFreedomRemover::init (const MDSystem &sys,
   }
   atomGridDim = toGridDim (nob);
 
-  IndexType buffsize = nob * sizeof(ScalorType);
-  cudaMalloc ((void**)&buffx, buffsize);
-  cudaMalloc ((void**)&buffy, buffsize);
-  cudaMalloc ((void**)&buffz, buffsize);
+  sharedBuffSize = NThread * 2 * sizeof(ScalorType);
+  sum_x.reinit (nob, NThreadForSum);
+  sum_y.reinit (nob, NThreadForSum);
+  sum_z.reinit (nob, NThreadForSum);
   cudaMalloc ((void**)&sums,  3 * sizeof(ScalorType));
-  checkCUDAError ("TranslationalFreedomRemover::init allocation");
-
   fillSums0 <<<1,1>>> (sums);
-  initRemoveTranslationalFreedom <<<1,1>>> ();
-  checkCUDAError ("TranslationalFreedomRemover::init");
 }
 
 void TranslationalFreedomRemover::remove (MDSystem & sys,
@@ -47,15 +40,27 @@ void TranslationalFreedomRemover::remove (MDSystem & sys,
 {
   if (timer != NULL) timer->tic(mdTimeRemoveTransFreedom);
   prepareRemoveTranslationalFreedom
-      <<<atomGridDim, myBlockDim>>>(
-	  sys.ddata.numAtom, sys.ddata.mass,
-	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
-	  buffx, buffy, buffz, sums);
+      <<<atomGridDim, myBlockDim, sharedBuffSize>>>(
+	  sys.ddata.numAtom,
+	  sys.ddata.mass,
+	  sys.ddata.velox,
+	  sys.ddata.veloy,
+	  sys.ddata.veloz,
+	  sum_x.getBuff(),
+	  sum_y.getBuff(),
+	  sum_z.getBuff());
   checkCUDAError("TranslationalFreedomRemover::remove, prepare");
+  sum_x.sumBuff (sums, 0);
+  sum_y.sumBuff (sums, 1);
+  sum_z.sumBuff (sums, 2);
   removeFreedom 
       <<<atomGridDim, myBlockDim>>>(
 	  sys.ddata.numAtom,
-	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz, sys.ddata.totalMassi, sums);
+	  sys.ddata.velox,
+	  sys.ddata.veloy,
+	  sys.ddata.veloz,
+	  sys.ddata.totalMassi,
+	  sums);
   checkCUDAError("TranslationalFreedomRemover::remove, remove");
   if (timer != NULL) timer->toc(mdTimeRemoveTransFreedom);
 }
