@@ -9,6 +9,27 @@
 
 #include "common.h"
 #include "SumBlock.h"
+#include "SumVector.h"
+
+#define N 128
+
+__global__ void compare1 (ScalorType * a, ScalorType * result)
+{
+  if (blockDim.x != N) return ;
+  __shared__ ScalorType buff[N*2];
+  buff[threadIdx.x] = a[threadIdx.x];
+  sumVectorBlockBuffer (buff, N);
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
+}
+
+__global__ void compare2 (ScalorType * a, ScalorType * result)
+{
+  if (blockDim.x != N) return ;
+  __shared__ ScalorType buff[N];
+  buff[threadIdx.x] = a[threadIdx.x];
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
+}
 
 
 __global__ void sum32 (ScalorType * a, ScalorType * result)
@@ -29,6 +50,15 @@ __global__ void sum64 (ScalorType * a, ScalorType * result)
   if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
 }
 
+__global__ void sum128 (ScalorType * a, ScalorType * result)
+{
+  if (blockDim.x != 128) return ;
+  __shared__ ScalorType buff[128];
+  buff[threadIdx.x] = a[threadIdx.x];
+  SumBlock::sum128_1bsize (buff);
+  if (threadIdx.x == 0 && blockIdx.x == 0) *result = buff[0];
+}
+
 
 __global__ void sum32_2b (ScalorType * a, ScalorType * result)
 {
@@ -40,8 +70,7 @@ __global__ void sum32_2b (ScalorType * a, ScalorType * result)
 }
 
 
-#define N 32
-#define NBlock 300
+#define NBlock 3000
 #define NTime 100
 
 int main(int argc, char * argv[])
@@ -70,7 +99,7 @@ int main(int argc, char * argv[])
   cudaEventCreate (&stop );
   cudaEventRecord(start, 0);
   for (unsigned i = 0; i < NTime; ++i){
-    sum32_2b <<<NBlock, N>>> (ddata, dresult);
+    sum128 <<<NBlock, N>>> (ddata, dresult);
   }
   cudaEventRecord(stop, 0);
   cudaEventSynchronize (stop);

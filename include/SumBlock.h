@@ -8,6 +8,8 @@ namespace SumBlock {
     __device__ TYPENAME sum32_2bsize (TYPENAME * buff);
     template <typename TYPENAME>
     __device__ TYPENAME sum64_1bsize (TYPENAME * buff);
+    template <typename TYPENAME>
+    __device__ TYPENAME sum128_1bsize (TYPENAME * buff);
 };
 
 
@@ -141,6 +143,88 @@ SumBlock::sum64_1bsize (TYPENAME * buff)
 
   return buff[0];
 }
+
+
+template <typename TYPENAME> __device__ TYPENAME
+SumBlock::sum128_1bsize (TYPENAME * buff)
+{
+  __syncthreads();
+  TYPENAME tmp;
+
+  // +1 cycle
+  if (threadIdx.x < (128-1)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+1];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +2 cycle
+  if (threadIdx.x < (128-2)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+2];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +4 cycle
+  if (threadIdx.x < (128-4)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+4];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +8 cycle
+  if (threadIdx.x < (128-8)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+8];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +16 cycle
+  if (threadIdx.x < (128-16)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+16];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +32 cycle
+  if (threadIdx.x < (128-32)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+32];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+  // +64 cycle
+  if (threadIdx.x < (128-64)){
+    tmp = buff[threadIdx.x] + buff[threadIdx.x+64];
+  }
+  else {
+    tmp = buff[threadIdx.x];
+  }
+  __syncthreads();
+  buff[threadIdx.x] = tmp;
+  __syncthreads();
+
+  return buff[0];
+}
+
 
 
 
