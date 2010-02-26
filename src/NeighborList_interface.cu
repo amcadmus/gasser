@@ -657,6 +657,90 @@ void NeighborList::reBuild (const MDSystem & sys,
   }
 }
 
+
+void NeighborList::buildCellList (const MDSystem & sys,
+				  MDTimer * timer)
+{
+  backupJudgeCoord (sys);
+  if (timer != NULL) timer->tic(mdTimeNormalizeSys);
+  normalizeMDSystem (sys);
+  if (timer != NULL) timer->toc(mdTimeNormalizeSys);
+  if (mode == AllPairBuilt){
+    if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+    buildDeviceNeighborListAllPair (sys);
+    if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+  }
+  else if (mode == CellListBuilt){
+    if (timer != NULL) timer->tic(mdTimeBuildCellList);
+    naivelyBuildDeviceCellList (sys);
+    if (timer != NULL) timer->toc(mdTimeBuildCellList);
+  }
+  else {
+    throw WrongBuildMethod();
+  }
+}
+
+
+
+void NeighborList::reBuildCellList (const MDSystem & sys,
+				    MDTimer * timer)
+{
+  if (timer != NULL) timer->tic(mdTimeNormalizeSys);
+  normalizeMDSystem (sys);
+  if (timer != NULL) timer->toc(mdTimeNormalizeSys);
+  NeighborListBuiltMode tmpMode;
+  IntVectorType tmpNCell;
+  if (timer != NULL) timer->tic(mdTimeBuildCellList);
+  DecideNeighboringMethod (sys, myrlist, mybdir, tmpMode, tmpNCell);
+
+  // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
+  
+  if (tmpMode == mode) {
+    if (mode == AllPairBuilt){
+      if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+      buildDeviceNeighborListAllPair (sys);
+      if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+    }
+    else if (mode == CellListBuilt){
+      if (timer != NULL) timer->tic(mdTimeBuildCellList);
+      if (tmpNCell.x != dclist.NCell.x ||
+	  tmpNCell.y != dclist.NCell.y ||
+	  tmpNCell.z != dclist.NCell.z ){
+	printf ("# box size change too much, rebuild cell list\n");
+	clearDeviceCellList ();
+	mallocDeviceCellList (tmpNCell, sys.box.size);
+	naivelyBuildDeviceCellList (sys);
+      }
+      else {
+	buildDeviceCellList (sys);
+      }
+      if (timer != NULL) timer->toc(mdTimeBuildCellList);
+    }
+    else {
+      throw WrongBuildMethod();
+    }    
+  }
+  else if (mode == AllPairBuilt && tmpMode == CellListBuilt){
+    mode = tmpMode;
+    if (timer != NULL) timer->tic(mdTimeBuildCellList);
+    mallocDeviceCellList (tmpNCell, sys.box.size);
+    naivelyBuildDeviceCellList (sys);
+    if (timer != NULL) timer->toc(mdTimeBuildCellList);
+  }
+  else if (mode == CellListBuilt && tmpMode == AllPairBuilt){
+    mode = tmpMode;
+    clearDeviceCellList();
+    if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+    buildDeviceNeighborListAllPair (sys);
+    if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+  }
+  else {
+    throw WrongBuildMethod();
+  }
+}
+
+
+
 bool NeighborList::judgeRebuild (const MDSystem & sys,
 				 const ScalorType &diffTol,
 				 MDTimer *timer)

@@ -36,7 +36,10 @@ struct DeviceNeighborList
   IndexType stride;             /**< stride of neighbor list, which is
 				 * the expected larger than or equal
 				 * to the number of Atoms */
+  // DeviceNeighborList ();
+  // ~DeviceNeighborList ();
 };
+
 
 /** 
  * An 3D index to 1D index mapping for cells.
@@ -303,14 +306,24 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
   return clist.data[cid * clist.stride + pid];
 }
 
-__device__ IndexType D3toD1 (const DeviceCellList & clist,
-			     const IndexType &ix, const IndexType &iy, const IndexType &iz)
+__device__ IndexType
+D3toD1 (const DeviceCellList & clist,
+	const IndexType &ix,
+	const IndexType &iy,
+	const IndexType &iz)
 {
-  return iz + clist.NCell.z * iy + clist.NCell.z * clist.NCell.y * ix;
+  return iz +
+      clist.NCell.z * iy +
+      clist.NCell.z * clist.NCell.y * ix;
   // return IndexType(clist.NCell.y) * (IndexType(clist.NCell.x) * ix + iy) + iz;
 }
-__device__ void D1toD3 (const DeviceCellList & clist, const IndexType &i, 
-			IndexType &x, IndexType &y, IndexType &z)
+
+__device__ void
+D1toD3 (const DeviceCellList & clist,
+	const IndexType &i, 
+	IndexType &x,
+	IndexType &y,
+	IndexType &z)
 {
   IndexType tmp = i;
   z = tmp % (clist.NCell.z);

@@ -74,7 +74,7 @@ public:
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
   IndexType NatomType;
-  ForceIndexType * nbForceTable;
+  IndexType * nbForceTable;
   IndexType nbForceTableLength;
   bool sharednbForceTable;
   IndexType bitDeepth;
@@ -136,11 +136,13 @@ public:
    */
   void init (const SystemNonBondedInteraction & sysNbInter,
 	     const MDSystem & sys,
-	     const ScalorType & rlist, const IndexType & NTread,
+	     const ScalorType & rlist,
+	     const IndexType & NTread,
 	     const IndexType & DeviceNeighborListExpansion = 5,
 	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
   void reinit (const MDSystem & sys,
-	       const ScalorType & rlist, const IndexType & NTread,
+	       const ScalorType & rlist,
+	       const IndexType & NTread,
 	       const IndexType & DeviceNeighborListExpansion = 5,
 	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
   /** 
@@ -176,6 +178,10 @@ public:
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
 			  MDTimer *timer=NULL);
+  void buildCellList (const MDSystem & sys,
+		      MDTimer * timer = NULL);
+  void reBuildCellList (const MDSystem & sys,
+			MDTimer * timer = NULL);
 };
 
 	     

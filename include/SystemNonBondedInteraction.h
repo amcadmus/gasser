@@ -70,5 +70,25 @@ public:
 };
 
 
+__device__ IndexType
+nonBondedInteractionTableItem (IndexType * interactionTable,
+			       IndexType numAtomType,
+			       TypeType atom0,
+			       TypeType atom1)
+{
+  IndexType i, j;
+  atom0 <= atom1 ?
+      (i = IndexType(atom0), j = IndexType(atom1)) :
+      (i = IndexType(atom1), j = IndexType(atom0)) ;
+  return interactionTable[i * numAtomType + j - ((i*(i+1)) >> 1)];
+}
+
+__device__ IndexType
+calNonBondedInteractionTableLength (IndexType numAtomType)
+{
+  return ((numAtomType * (numAtomType + 1)) >> 1);
+}
+
+
 #endif
 

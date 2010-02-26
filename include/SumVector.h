@@ -39,8 +39,9 @@ static IndexType roundUpDivide (IndexType v, IndexType bit)
   else return result + 1;
 }
 
-template<typename SCALORTYPE>
-static __global__ void sumVectorInitSetZero (SCALORTYPE * buff, IndexType length)
+template <typename SCALORTYPE>
+static __global__ void
+sumVectorInitSetZero (SCALORTYPE * buff, IndexType length)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   if (bid == 0){
