@@ -2,7 +2,7 @@
 #include "NonBondedInteraction.h"
 #include "BondInteraction.h"
 #include "AngleInteraction.h"
-#include "CellList_interface.h"
+// #include "CellList_interface.h"
 
 texture<CoordType,  1, cudaReadModeElementType> global_texRef_interaction_coord;
 texture<TypeType ,  1, cudaReadModeElementType> global_texRef_interaction_type;
@@ -1027,7 +1027,7 @@ __global__ void calNonBondedInteraction (
     reftype = type[ii];
 #else
     ref = tex1Dfetch (global_texRef_interaction_coord, ii);
-    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+    // reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
   ScalorType rlist = clist.rlist;
@@ -1044,70 +1044,79 @@ __global__ void calNonBondedInteraction (
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
   __syncthreads();
 
-  bool oneCellX(false), oneCellY(false), oneCellZ(false);
-  if (clist.NCell.x == 1) oneCellX = true;
-  if (clist.NCell.y == 1) oneCellY = true;
-  if (clist.NCell.z == 1) oneCellZ = true;
-  int upperx(1), lowerx(-1);
-  int uppery(1), lowery(-1);
-  int upperz(1), lowerz(-1);
-  if (oneCellX) {lowerx =  0; upperx = 0;}
-  if (oneCellY) {lowery =  0; uppery = 0;}
-  if (oneCellZ) {lowerz =  0; upperz = 0;}
+  // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  // if (clist.NCell.x == 1) oneCellX = true;
+  // if (clist.NCell.y == 1) oneCellY = true;
+  // if (clist.NCell.z == 1) oneCellZ = true;
+  // int upperx(1), lowerx(-1);
+  // int uppery(1), lowery(-1);
+  // int upperz(1), lowerz(-1);
+  // if (oneCellX) {lowerx =  0; upperx = 0;}
+  // if (oneCellY) {lowery =  0; uppery = 0;}
+  // if (oneCellZ) {lowerz =  0; upperz = 0;}
   ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
 #pragma unroll 3
-  for (int di = lowerx; di <= upperx; ++di){
-    for (int dj = lowery; dj <= uppery; ++dj){
-      for (int dk = lowerz; dk <= upperz; ++dk){
+  // for (int nci = bidx + lowerx; nci <= bidx + upperx; ++nci){
+  //   for (int ncj = bidy + lowery; ncj <= bidy + uppery; ++ncj){
+  //     for (int nck = bidz + lowerz; nck <= bidz + upperz; ++nck){
+  for (int nci = int(bidx) - 1; nci <= int(bidx) + 1; ++nci){
+    for (int ncj = int(bidy) - 1; ncj <= int(bidy) + 1; ++ncj){
+      for (int nck = int(bidz) - 1; nck <= int(bidz) + 1; ++nck){
+  // for (int di = lowerx; di <= upperx; ++di){
+  //   for (int dj = lowery; dj <= uppery; ++dj){
+  //     for (int dk = lowerz; dk <= upperz; ++dk){
 	__syncthreads();
 	// the shift value of a cell is pre-computed
 	ScalorType xshift, yshift, zshift;
-	int nci = di + bidx;
-	int ncj = dj + bidy;
-	int nck = dk + bidz;
+	// int nci = di + bidx;
+	// int ncj = dj + bidy;
+	// int nck = dk + bidz;
 	IndexType targetCellIdx = shiftedD3toD1 (clist, box, 
 						 nci, ncj, nck, 
 						 &xshift, &yshift, &zshift);
 	// load target index and coordinates form global memary
-	IndexType tmp = (targetIndexes[tid] = 
-			 getDeviceCellListData(clist, targetCellIdx, tid));
-	if (tmp != MaxIndexValue){
-#ifdef COMPILE_NO_TEX
-	  target[tid] = coord[tmp];
-	  targettype[tid] = type[tmp];
-#else
-	  target[tid] = tex1Dfetch(global_texRef_interaction_coord, tmp);
-	  targettype[tid] = tex1Dfetch(global_texRef_interaction_type, tmp);
-#endif
+	// IndexType tmp = (targetIndexes[tid] = 
+	// 		 getDeviceCellListData(clist, targetCellIdx, tid));
+	targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);
+	if (targetIndexes[tid] != MaxIndexValue){
+// #ifdef COMPILE_NO_TEX
+// 	  target[tid] = coord[tmp];
+// 	  // targettype[tid] = type[tmp];
+// #else
+	  target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+	  // targettype[tid] = tex1Dfetch(global_texRef_interaction_type, tmp);
+// #endif
 	}
 	__syncthreads();
 	// find neighbor
-	if (ii != MaxIndexValue){
-	  for (IndexType jj = 0; jj < blockDim.x; ++jj){
-	    if (targetIndexes[jj] == MaxIndexValue) break;
+	// if (ii != MaxIndexValue){
+	  for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	    // if (targetIndexes[jj] == MaxIndexValue) break;
 	    ScalorType diffx = target[jj].x - xshift - ref.x;
 	    ScalorType diffy = target[jj].y - yshift - ref.y;
 	    ScalorType diffz = target[jj].z - zshift - ref.z;
-	    if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	    if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	    if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
-	    //printf ("%d\t%d\t%f\t%f\n", ii, 
-	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
+	    // if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	    // if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	    // if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	    //printf ("%d\t%d\t%f\t%f\n", ii,
+	    ScalorType dr2;
+	    if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 		targetIndexes[jj] != ii){
-	      ForceIndexType fidx;
-	      fidx = AtomNBForceTable::calForceIndex (
-		  nonBondedInteractionTable,
-		  numAtomType[0],
-		  reftype,
-		  targettype[jj]);
+	      ForceIndexType fidx(0);
+	      // fidx = AtomNBForceTable::calForceIndex (
+	      // 	  nonBondedInteractionTable,
+	      // 	  numAtomType[0],
+	      // 	  reftype,
+	      // 	  targettype[jj]);
 	      // if (fidx != mdForceNULL) {
 	      ScalorType fx, fy, fz;
 	      nbForce (nonBondedInteractionType[fidx],
 		       &nonBondedInteractionParameter
 		       [nonBondedInteractionParameterPosition[fidx]],
-		       diffx, diffy, diffz, 
+		       diffx, diffy, diffz,
+		       dr2,
 		       &fx, &fy, &fz);
 	      fsumx += fx;
 	      fsumy += fy;
@@ -1115,7 +1124,7 @@ __global__ void calNonBondedInteraction (
 	      // }
 	    }
 	  }
-	}
+	// }
       }
     }
   }

@@ -19,6 +19,9 @@ struct DeviceCellList
 				 * in each cell */
   IndexType stride;		/**< stride of cell list, which should
 				 * be larger than thread per block */
+  IndexType * numNeighborCell;
+  IndexType * neighborCellIndex;
+  CoordType * neighborCellShift;
 };
 
 struct DeviceNeighborList

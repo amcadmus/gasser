@@ -21,7 +21,7 @@
 
 
 #define NThreadsPerBlockCell	64
-#define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockAtom	64
 
 int main(int argc, char * argv[])
 {
@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.0;
   ScalorType rlist = maxrcut + nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -99,7 +99,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
