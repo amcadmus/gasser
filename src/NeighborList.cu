@@ -206,32 +206,33 @@ buildCellNeighborhood (DeviceCellList clist,
 	  if (min < rlist2){
 	    if (myx < 0) {
 	      myx += clist.NCell.x;
-	      shift.x -= boxSize.x;
-	    }
-	    else if (myx > clist.NCell.x){
-	      myx -= clist.NCell.x;
 	      shift.x += boxSize.x;
+	    }
+	    else if (myx >= clist.NCell.x){
+	      myx -= clist.NCell.x;
+	      shift.x -= boxSize.x;
 	    }
 	    if (myy < 0) {
 	      myy += clist.NCell.y;
-	      shift.y -= boxSize.y;
-	    }
-	    else if (myy > clist.NCell.y){
-	      myy -= clist.NCell.y;
 	      shift.y += boxSize.y;
+	    }
+	    else if (myy >= clist.NCell.y){
+	      myy -= clist.NCell.y;
+	      shift.y -= boxSize.y;
 	    }
 	    if (myz < 0) {
 	      myz += clist.NCell.z;
-	      shift.z -= boxSize.z;
-	    }
-	    else if (myz > clist.NCell.z){
-	      myz -= clist.NCell.z;
 	      shift.z += boxSize.z;
 	    }
+	    else if (myz >= clist.NCell.z){
+	      myz -= clist.NCell.z;
+	      shift.z -= boxSize.z;
+	    }
 
-	    IndexType index = clist.numNeighborCell[bid] ++;
-	    clist.neighborCellIndex[index] = D3toD1 (clist.NCell, myx, myy, myz);
-	    clist.neighborCellShift[index] = shift;
+	    pushNeighborCell (clist,
+			      bid,
+			      D3toD1 (clist.NCell, myx, myy, myz),
+			      shift);
 	  }
 	}
       }

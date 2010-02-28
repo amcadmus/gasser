@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	64
-#define NThreadsPerBlockAtom	64
+#define NThreadsPerBlockCell	16
+#define NThreadsPerBlockAtom	32
 
 int main(int argc, char * argv[])
 {
@@ -64,10 +64,8 @@ int main(int argc, char * argv[])
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ,
-		      3);
+		      2);
   nlist.buildCellList(sys);
-
-  return 0;
 
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
@@ -103,7 +101,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);

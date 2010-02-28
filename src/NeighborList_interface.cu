@@ -108,6 +108,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
   checkCUDAError ("NeighborList::mallocedDeviceCellList cell list buff");
 
   IndexType maxNumNeighborCell = (2*mydevide+1) * (2*mydevide+1) * (2*mydevide+1);
+  dclist.maxNumNeighborCell = maxNumNeighborCell;
   cudaMalloc ((void**)&(dclist.numNeighborCell),
 	      sizeof(IndexType) * numCell);
   cudaMalloc ((void**)&(dclist.neighborCellIndex),
@@ -983,6 +984,12 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 	IndexType targetCellIdx = shiftedD3toD1 (clist, box, 
 						 nci, ncj, nck, 
 						 &xshift, &yshift, &zshift);
+
+	if (bid == 0 && tid == 0){
+	  printf ("%d ", targetCellIdx);
+	}
+	
+	
 	// load target index and coordinates form global memary
 	IndexType tmp = (targetIndexes[tid] = 
 			 getDeviceCellListData(clist, targetCellIdx, tid));
@@ -1030,6 +1037,10 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
       }
     }
   }
+	if (bid == 0 && tid == 0){
+	  printf ("\n");
+	}
+
   if (ii != MaxIndexValue) {
     if (Nneighbor > nlist.listLength && ptr_de != NULL){
       *ptr_de = mdErrorShortNeighborList;

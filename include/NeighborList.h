@@ -23,6 +23,7 @@ struct DeviceCellList
   IndexType * numNeighborCell;
   IndexType * neighborCellIndex;
   CoordType * neighborCellShift;
+  IndexType maxNumNeighborCell;
 };
 
 struct DeviceNeighborList
@@ -72,10 +73,24 @@ D1toD3 (const VEC & NCell,
 	T &z);
 
 
-__device__ IndexType
+__device__ IndexType &
 getDeviceCellListData (const DeviceCellList & clist, 
 		       const IndexType & cid,
 		       const IndexType & aid);
+__device__ IndexType &
+getNeighborCellIndex (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i);
+__device__ CoordType &
+getNeighborCellShift (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i);
+__device__ void
+pushNeighborCell (const DeviceCellList & clist,
+		  const IndexType & cid,
+		  const IndexType & neighborIndex,
+		  const CoordType & neighborShift);
+
 
 ////////////////////////////////////////////////////////////
 // cell list operations
@@ -308,11 +323,41 @@ Reshuffle_reshuffleDeviceNeighborList (const IndexType numAtom,
 // cell list operations
 ////////////////////////////////////////////////////////////
 
-__device__ IndexType getDeviceCellListData (const DeviceCellList & clist, 
-					    const IndexType & cid, const IndexType & pid)
+__device__ IndexType &
+getDeviceCellListData (const DeviceCellList & clist, 
+		       const IndexType & cid,
+		       const IndexType & pid)
 {
   return clist.data[cid * clist.stride + pid];
 }
+
+__device__ IndexType &
+getNeighborCellIndex (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i)
+{
+  return clist.neighborCellIndex[cid * clist.maxNumNeighborCell + i];
+}
+
+__device__ CoordType &
+getNeighborCellShift (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i)
+{
+  return clist.neighborCellShift[cid * clist.maxNumNeighborCell + i];
+}
+
+__device__ void 
+pushNeighborCell (const DeviceCellList & clist,
+		  const IndexType & cid,
+		  const IndexType & neighborIndex,
+		  const CoordType & neighborShift)
+{
+  IndexType index = clist.numNeighborCell[cid] ++;
+  getNeighborCellIndex (clist, cid, index) = neighborIndex;
+  getNeighborCellShift (clist, cid, index) = neighborShift;
+}
+
 
 // __device__ IndexType
 // D3toD1 (const DeviceCellList & clist,
@@ -341,33 +386,33 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
 // }
 
 
-template <typename VEC, typename T>
-__device__ T
-D3toD1 (const VEC & NCell,
-	const T &ix,
-	const T &iy,
-	const T &iz)
-{
-  return iz +
-      NCell.z * iy +
-      NCell.z * NCell.y * ix;
-  // return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
-}
+      template <typename VEC, typename T>
+      __device__ T
+      D3toD1 (const VEC & NCell,
+	      const T &ix,
+	      const T &iy,
+	      const T &iz)
+      {
+	return iz +
+	    NCell.z * iy +
+	    NCell.z * NCell.y * ix;
+	// return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
+      }
 
-template <typename VEC, typename T>
-__device__ void
-D1toD3 (const VEC & NCell,
-	const T &i, 
-	T &x,
-	T &y,
-	T &z)
-{
-  T tmp = i;
-  z = tmp % (NCell.z);
-  tmp = (tmp - z) / NCell.z;
-  y = tmp % (NCell.y);
-  x = (tmp - y) / NCell.y;
-}
+  template <typename VEC, typename T>
+      __device__ void
+      D1toD3 (const VEC & NCell,
+	      const T &i, 
+	      T &x,
+	      T &y,
+	      T &z)
+  {
+    T tmp = i;
+    z = tmp % (NCell.z);
+    tmp = (tmp - z) / NCell.z;
+    y = tmp % (NCell.y);
+    x = (tmp - y) / NCell.y;
+  }
 
 
 
@@ -401,63 +446,63 @@ D1toD3 (const VEC & NCell,
 
 
 
-__device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
-{
-  IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-  predbuff[tid] = getKthBit(sharedbuff[tid], k);
-  predbuff[tid+blockDim.x] = 0;
+  __device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
+  {
+    IndexType tid = threadIdx.x;
+    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+    predbuff[tid] = getKthBit(sharedbuff[tid], k);
+    predbuff[tid+blockDim.x] = 0;
 
-  __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-  IndexType target, mydata = sharedbuff[tid];
-  if (getKthBit(sharedbuff[tid], k)) {
-    target = blockDim.x - predbuff[tid];
+    __syncthreads();
+    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+    IndexType target, mydata = sharedbuff[tid];
+    if (getKthBit(sharedbuff[tid], k)) {
+      target = blockDim.x - predbuff[tid];
+    }
+    else {
+      // IndexType total0 = blockDim.x - total1;
+      // IndexType after0 = blockDim.x - tid - predbuff[tid];
+      // target = total0 - after0;
+      target = tid + predbuff[tid] - total1;
+    }
+    __syncthreads();
+    sharedbuff[target] = mydata;
+    __syncthreads();
   }
-  else {
-    // IndexType total0 = blockDim.x - total1;
-    // IndexType after0 = blockDim.x - tid - predbuff[tid];
-    // target = total0 - after0;
-    target = tid + predbuff[tid] - total1;
-  }
-  __syncthreads();
-  sharedbuff[target] = mydata;
-  __syncthreads();
-}
 
-__device__ IndexType headSort (volatile IndexType * sharedbuff,
-			       volatile IndexType * targetCell)
-{
-  IndexType k = NUintBit - 1;
-  IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-  predbuff[tid] = getKthBit(sharedbuff[tid], k);
-  predbuff[tid+blockDim.x] = 0;
+  __device__ IndexType headSort (volatile IndexType * sharedbuff,
+				 volatile IndexType * targetCell)
+  {
+    IndexType k = NUintBit - 1;
+    IndexType tid = threadIdx.x;
+    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+    predbuff[tid] = getKthBit(sharedbuff[tid], k);
+    predbuff[tid+blockDim.x] = 0;
 
-  __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-  IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
-  if (getKthBit(sharedbuff[tid], k)) {
-    target = blockDim.x - predbuff[tid];
+    __syncthreads();
+    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+    IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
+    if (getKthBit(sharedbuff[tid], k)) {
+      target = blockDim.x - predbuff[tid];
+    }
+    else {
+      target = tid + predbuff[tid] - total1;
+    }
+    __syncthreads();
+    sharedbuff[target] = mydata;
+    targetCell[target] = mycell;
+    __syncthreads();
+    return total1;
   }
-  else {
-    target = tid + predbuff[tid] - total1;
-  }
-  __syncthreads();
-  sharedbuff[target] = mydata;
-  targetCell[target] = mycell;
-  __syncthreads();
-  return total1;
-}
 
 
-__device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
-{
-  __syncthreads();
-  for (IndexType i = 0; i < bitDeepth; ++i){
-    kthSort(sharedbuff, i);
+  __device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
+  {
+    __syncthreads();
+    for (IndexType i = 0; i < bitDeepth; ++i){
+      kthSort(sharedbuff, i);
+    }
   }
-}
 
 
 
