@@ -101,34 +101,34 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
-	st.clearDevice();
-	inte_vv.step1 (sys, dt, &timer);
-	inter.clearInteraction (sys);
-	inter.applyNonBondedInteractionCell (sys, nlist, st, &timer);
-	inte_vv.step2 (sys, dt, st, &timer);
-	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
-		(i+1),  
-		(i+1) * dt, 
-		st.getStatistic(mdStatisticNonBondedPotential),
-		st.getStatistic(mdStatisticBondedPotential),
-		st.kineticEnergy(),
-		st.getStatistic(mdStatisticNonBondedPotential) +
-		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure());
-	fflush(stdout);
-      }
-      else {
+      // if ((i+1) % 10 == 0){
+      // 	st.clearDevice();
+      // 	inte_vv.step1 (sys, dt, &timer);
+      // 	inter.clearInteraction (sys);
+      // 	inter.applyNonBondedInteractionCell (sys, nlist, st, &timer);
+      // 	inte_vv.step2 (sys, dt, st, &timer);
+      // 	st.updateHost();
+      // 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+      // 		(i+1),  
+      // 		(i+1) * dt, 
+      // 		st.getStatistic(mdStatisticNonBondedPotential),
+      // 		st.getStatistic(mdStatisticBondedPotential),
+      // 		st.kineticEnergy(),
+      // 		st.getStatistic(mdStatisticNonBondedPotential) +
+      // 		st.getStatistic(mdStatisticBondedPotential) +
+      // 		st.kineticEnergy(),
+      // 		st.pressureXX(),
+      // 		st.pressureYY(),
+      // 		st.pressureZZ(),
+      // 		st.pressure());
+      // 	fflush(stdout);
+      // }
+      // else {
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteractionCell (sys, nlist, &timer);
 	inte_vv.step2 (sys, dt, &timer);
-      }
+      // }
       nlist.reBuildCellList(sys, &timer);
 
       // if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){

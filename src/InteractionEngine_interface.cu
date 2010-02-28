@@ -1343,7 +1343,7 @@ __global__ void calNonBondedInteraction (
     reftype = type[ii];
 #else
     ref = tex1Dfetch (global_texRef_interaction_coord, ii);
-    // reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
   ScalorType rlist = clist.rlist;
@@ -1378,6 +1378,7 @@ __global__ void calNonBondedInteraction (
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
     __syncthreads();
     // find neighbor
