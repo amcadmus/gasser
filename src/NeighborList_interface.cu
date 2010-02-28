@@ -826,6 +826,20 @@ bool NeighborList::judgeRebuild (const MDSystem & sys,
 
 
 void NeighborList::
+reshuffleCell (const IndexType * indexTable,
+	       const IndexType & numAtom,
+	       MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+
+  Reshuffle_reshuffleDeviceCellList
+      <<<cellGridDim, myBlockDim>>> (
+	  dclist.data, indexTable);
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+
+
+void NeighborList::
 reshuffle (const IndexType * indexTable,
 	   const IndexType & numAtom,
 	   MDTimer *timer)

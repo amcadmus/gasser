@@ -183,6 +183,9 @@ public:
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
 			  MDTimer *timer=NULL);
+  void reshuffleCell (const IndexType * indexTable,
+		      const IndexType & numAtom,
+		      MDTimer *timer=NULL);
   void buildCellList (const MDSystem & sys,
 		      MDTimer * timer = NULL);
   void reBuildCellList (const MDSystem & sys,
