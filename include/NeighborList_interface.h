@@ -51,6 +51,7 @@ private:
   void DecideNeighboringMethod (const MDSystem & sys,
 				const ScalorType & rlist,
 				const BoxDirection_t & bdir,
+				const IndexType & devide,
 				NeighborListBuiltMode & mode,
 				IntVectorType & NCell);
   void mallocDeviceCellList (const IntVectorType & NCell,
@@ -71,6 +72,7 @@ public:
   NeighborListBuiltMode mode;
   ScalorType myrlist;
   BoxDirection_t mybdir;
+  IndexType mydevide;
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
   IndexType NatomType;
@@ -108,12 +110,13 @@ public:
 		const MDSystem & sys,
 		const ScalorType & rlist, const IndexType & NTread,
 		const IndexType & DeviceNeighborListExpansion = 5,
-		const RectangularBoxGeometry::BoxDirection_t & bdir = 7)
+		const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+		const IndexType devide = 1)
       : mallocedDeviceCellList (false), mallocedDeviceNeighborList (false),
 	mallocedJudgeStuff (false), initedGlobalTexture (false),
 	mallocedNonBondedForceTable (false),
 	mode (NullMode)
-      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir);}
+      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir, devide);}
   /** 
    * Destructor
    * 
@@ -139,12 +142,14 @@ public:
 	     const ScalorType & rlist,
 	     const IndexType & NTread,
 	     const IndexType & DeviceNeighborListExpansion = 5,
-	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
+	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+	     const IndexType & cellListDevideLevel = 1);
   void reinit (const MDSystem & sys,
 	       const ScalorType & rlist,
 	       const IndexType & NTread,
 	       const IndexType & DeviceNeighborListExpansion = 5,
-	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
+	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+	       const IndexType & cellListDevideLevel = 1);
   /** 
    * Build neighbor list
    * 

@@ -32,6 +32,7 @@ void NeighborList::
 DecideNeighboringMethod (const MDSystem & sys,
 			 const ScalorType & rlist,
 			 const BoxDirection_t & bdir,
+			 const IndexType & devide,
 			 NeighborListBuiltMode & mode,
 			 IntVectorType & NCell)
 {
@@ -51,6 +52,12 @@ DecideNeighboringMethod (const MDSystem & sys,
   if (CellOnX && dclist.NCell.x < 4) mode = AllPairBuilt;
   if (CellOnY && dclist.NCell.y < 4) mode = AllPairBuilt;
   if (CellOnZ && dclist.NCell.z < 4) mode = AllPairBuilt;
+
+  if (mode == CellListBuilt){
+    if (CellOnX) NCell.x *= devide;
+    if (CellOnY) NCell.y *= devide;
+    if (CellOnZ) NCell.z *= devide;
+  } 
 }
 
 void NeighborList::
@@ -81,6 +88,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
 
   IndexType numCell = dclist.NCell.x * dclist.NCell.y * dclist.NCell.z;
   dclist.rlist = myrlist;
+  dclist.devide = mydevide;
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block
   dclist.stride = myBlockDim.x;
@@ -97,7 +105,16 @@ mallocDeviceCellList (const IntVectorType & NCell,
   mallocedDeviceCellList = true;
   buildDeviceCellList_initBuff<<<cellGridDim, myBlockDim>>> 
       (mySendBuff, myTargetBuff);
-  checkCUDAError ("NeighborList::init cell list buff");
+  checkCUDAError ("NeighborList::mallocedDeviceCellList cell list buff");
+
+  IndexType maxNumNeighborCell = (2*mydevide+1) * (2*mydevide+1) * (2*mydevide+1);
+  cudaMalloc ((void**)&(dclist.numNeighborCell),
+	      sizeof(IndexType) * numCell);
+  cudaMalloc ((void**)&(dclist.neighborCellIndex),
+	      sizeof(IndexType) * maxNumNeighborCell * numCell);
+  cudaMalloc ((void**)&(dclist.neighborCellShift),
+	      sizeof(CoordType) * maxNumNeighborCell * numCell);
+  checkCUDAError ("NeighborList::maxNumNeighborCell cell list buff");
 }
 
 
@@ -205,6 +222,12 @@ naivelyBuildDeviceCellList (const MDSystem & sys)
 	  err.ptr_dindex, err.ptr_dscalor);
   err.check ("NeighborList::naivelyBuildDeviceCellList");
   checkCUDAError ("NeighborList::naivelyBuildDeviceCellList");
+
+  buildCellNeighborhood
+      <<<cellGridDim, 1>>> (
+	  dclist,
+	  mydevide,
+	  sys.box.size);
 }
 
 void NeighborList::
@@ -384,14 +407,15 @@ init (const SystemNonBondedInteraction & sysNbInter,
       const ScalorType & rlist,
       const IndexType & NTread,
       const IndexType & DeviceNeighborListExpansion,
-      const BoxDirection_t & bdir)
+      const BoxDirection_t & bdir,
+      const IndexType & devide)
 {
   myBlockDim.y = 1;
   myBlockDim.z = 1;
   myBlockDim.x = NTread;
   bitDeepth = calDeepth(sys.ddata.numAtom);
   printf ("# the bit deepth is %d\n", bitDeepth);
-
+  
   IndexType nob;
   if (sys.ddata.numAtom % myBlockDim.x == 0){
     nob = sys.ddata.numAtom / myBlockDim.x;
@@ -402,7 +426,8 @@ init (const SystemNonBondedInteraction & sysNbInter,
   
   mybdir = bdir;
   myrlist = rlist;
-  DecideNeighboringMethod (sys, myrlist, mybdir, mode, dclist.NCell);
+  mydevide = devide;
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, mode, dclist.NCell);
   if (mode == CellListBuilt){
     mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
@@ -468,7 +493,8 @@ void NeighborList::reinit (const MDSystem & sys,
 			   const ScalorType & rlist,
 			   const IndexType & NTread,
 			   const IndexType & DeviceNeighborListExpansion,
-			   const BoxDirection_t & bdir)
+			   const BoxDirection_t & bdir,
+			   const IndexType & devide)
 {
   myBlockDim.y = 1;
   myBlockDim.z = 1;
@@ -487,8 +513,9 @@ void NeighborList::reinit (const MDSystem & sys,
   // init cell list
   mybdir = bdir;
   myrlist = rlist;
+  mydevide = devide;
   clearDeviceCellList ();
-  DecideNeighboringMethod (sys, myrlist, mybdir, mode, dclist.NCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, mode, dclist.NCell);
   if (mode == CellListBuilt){
     mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
@@ -603,7 +630,7 @@ void NeighborList::reBuild (const MDSystem & sys,
   NeighborListBuiltMode tmpMode;
   IntVectorType tmpNCell;
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
-  DecideNeighboringMethod (sys, myrlist, mybdir, tmpMode, tmpNCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, tmpMode, tmpNCell);
 
   // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
@@ -691,7 +718,7 @@ void NeighborList::reBuildCellList (const MDSystem & sys,
   NeighborListBuiltMode tmpMode;
   IntVectorType tmpNCell;
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
-  DecideNeighboringMethod (sys, myrlist, mybdir, tmpMode, tmpNCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, tmpMode, tmpNCell);
 
   // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
@@ -861,7 +888,7 @@ __device__ IndexType shiftedD3toD1 (
   *shifty = tmp * box.size.y;
   iz += (tmp = -int(floorf(iz * clist.NCelli.z))) * clist.NCell.z;
   *shiftz = tmp * box.size.z;
-  return D3toD1 (clist, ix, iy, iz);
+  return D3toD1 (clist.NCell, ix, iy, iz);
 }
 
 __global__ void buildDeviceNeighborList_DeviceCellList (
@@ -880,7 +907,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
   IndexType bidx, bidy, bidz;
-  D1toD3 (clist, bid, bidx, bidy, bidz);
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
   
   // set number of neighbor to 0
   IndexType Nneighbor = 0;
@@ -1068,7 +1095,7 @@ __global__ void buildDeviceCellList_step1 (IndexType numAtom,
       coord[thisid].z -= box.size.z;
       coordNoiz[thisid] ++;
     }
-    targetCellid[tid] = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
+    targetCellid[tid] = D3toD1 (clist.NCell, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
 	(targetCelli >= clist.NCell.x || 
 	 targetCellj >= clist.NCell.y || 
@@ -1250,3 +1277,4 @@ __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
   sumVectorBlockBuffer_2 (sbuff);
   if (threadIdx.x == 0) judgeRebuild_buff[bid] = (sbuff[0] != 0);
 }
+

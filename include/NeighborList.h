@@ -10,6 +10,7 @@ using namespace RectangularBoxGeometry;
 
 struct DeviceCellList 
 {
+  IndexType devide;
   ScalorType rlist;		/**< radius for list building */
   IntVectorType NCell;		/**< the number of cells on each direction */
   VectorType NCelli;		/**< inverse the NCell */
@@ -44,38 +45,37 @@ struct DeviceNeighborList
 };
 
 
-/** 
- * An 3D index to 1D index mapping for cells.
- * 
- * @param clist Reference to the cell list.
- * @param ix x component of cell 3D index.
- * @param iy y component of cell 3D index.
- * @param iz z component of cell 3D index.
- * 
- * @return 1D index of the corresponding cell
- */
-__device__ IndexType D3toD1 (const DeviceCellList &clist, 
-			     const IndexType &ix,
-			     const IndexType &iy,
-			     const IndexType &iz);
-/** 
- * An 1D index to 3D index mapping for cells.
- * 
- * @param clist Reference of the cell list
- * @param i 1D index of the cell
- * @param x x component of cell 3D index.
- * @param y y component of cell 3D index.
- * @param z z component of cell 3D index.
- */
-__device__ void D1toD3 (const DeviceCellList & clist,
-			const IndexType &i, 
-			IndexType &x,
-			IndexType &y,
-			IndexType &z);
+// __device__ IndexType
+// D3toD1 (const DeviceCellList &clist, 
+// 	const IndexType &ix,
+// 	const IndexType &iy,
+// 	const IndexType &iz);
+// __device__ void
+// D1toD3 (const DeviceCellList & clist,
+// 	const IndexType &i, 
+// 	IndexType &x,
+// 	IndexType &y,
+// 	IndexType &z);
 
-__device__ IndexType getDeviceCellListData (const DeviceCellList & clist, 
-					    const IndexType & cid,
-					    const IndexType & aid);
+template <typename VEC, typename T>
+__device__ T
+D3toD1 (const VEC & NCell,
+	const T &ix,
+	const T &iy,
+	const T &iz);
+template <typename VEC, typename T>
+__device__ void
+D1toD3 (const VEC & NCell,
+	const T &i, 
+	T &x,
+	T &y,
+	T &z);
+
+
+__device__ IndexType
+getDeviceCellListData (const DeviceCellList & clist, 
+		       const IndexType & cid,
+		       const IndexType & aid);
 
 ////////////////////////////////////////////////////////////
 // cell list operations
@@ -118,6 +118,11 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 					     mdError_t * ptr_de = NULL,
 					     IndexType * erridx = NULL,
 					     ScalorType * errsrc = NULL);
+__global__ void
+buildCellNeighborhood (DeviceCellList clist,
+		       const IndexType devide,
+		       const VectorType boxSize);
+
 
 // needs NCell blocks
 __global__ void buildDeviceCellList_initBuff (IndexType * sendBuff,
@@ -309,30 +314,59 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
   return clist.data[cid * clist.stride + pid];
 }
 
-__device__ IndexType
-D3toD1 (const DeviceCellList & clist,
-	const IndexType &ix,
-	const IndexType &iy,
-	const IndexType &iz)
+// __device__ IndexType
+// D3toD1 (const DeviceCellList & clist,
+// 	const IndexType &ix,
+// 	const IndexType &iy,
+// 	const IndexType &iz)
+// {
+//   return iz +
+//       clist.NCell.z * iy +
+//       clist.NCell.z * clist.NCell.y * ix;
+//   // return IndexType(clist.NCell.y) * (IndexType(clist.NCell.x) * ix + iy) + iz;
+// }
+
+// __device__ void
+// D1toD3 (const DeviceCellList & clist,
+// 	const IndexType &i, 
+// 	IndexType &x,
+// 	IndexType &y,
+// 	IndexType &z)
+// {
+//   IndexType tmp = i;
+//   z = tmp % (clist.NCell.z);
+//   tmp = (tmp - z) / clist.NCell.z;
+//   y = tmp % (clist.NCell.y);
+//   x = (tmp - y) / clist.NCell.y;
+// }
+
+
+template <typename VEC, typename T>
+__device__ T
+D3toD1 (const VEC & NCell,
+	const T &ix,
+	const T &iy,
+	const T &iz)
 {
   return iz +
-      clist.NCell.z * iy +
-      clist.NCell.z * clist.NCell.y * ix;
-  // return IndexType(clist.NCell.y) * (IndexType(clist.NCell.x) * ix + iy) + iz;
+      NCell.z * iy +
+      NCell.z * NCell.y * ix;
+  // return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
 }
 
+template <typename VEC, typename T>
 __device__ void
-D1toD3 (const DeviceCellList & clist,
-	const IndexType &i, 
-	IndexType &x,
-	IndexType &y,
-	IndexType &z)
+D1toD3 (const VEC & NCell,
+	const T &i, 
+	T &x,
+	T &y,
+	T &z)
 {
-  IndexType tmp = i;
-  z = tmp % (clist.NCell.z);
-  tmp = (tmp - z) / clist.NCell.z;
-  y = tmp % (clist.NCell.y);
-  x = (tmp - y) / clist.NCell.y;
+  T tmp = i;
+  z = tmp % (NCell.z);
+  tmp = (tmp - z) / NCell.z;
+  y = tmp % (NCell.y);
+  x = (tmp - y) / NCell.y;
 }
 
 

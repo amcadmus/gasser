@@ -995,7 +995,7 @@ static __device__ IndexType shiftedD3toD1 (
   *shifty = tmp * box.size.y;
   iz += (tmp = -int(floorf(iz * clist.NCelli.z))) * clist.NCell.z;
   *shiftz = tmp * box.size.z;
-  return D3toD1 (clist, ix, iy, iz);
+  return D3toD1 (clist.NCell, ix, iy, iz);
 }
 
 __global__ void calNonBondedInteraction (
@@ -1013,7 +1013,7 @@ __global__ void calNonBondedInteraction (
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
   IndexType bidx, bidy, bidz;
-  D1toD3 (clist, bid, bidx, bidy, bidz);
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
   
   // load index
   IndexType ii = getDeviceCellListData (clist, bid, tid);
@@ -1091,7 +1091,7 @@ __global__ void calNonBondedInteraction (
 	}
 	__syncthreads();
 	// find neighbor
-	// if (ii != MaxIndexValue){
+	if (ii != MaxIndexValue){
 	  for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
 	    // if (targetIndexes[jj] == MaxIndexValue) break;
 	    ScalorType diffx = target[jj].x - xshift - ref.x;
@@ -1124,7 +1124,7 @@ __global__ void calNonBondedInteraction (
 	      // }
 	    }
 	  }
-	// }
+	}
       }
     }
   }
@@ -1159,7 +1159,7 @@ __global__ void calNonBondedInteraction (
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
   IndexType bidx, bidy, bidz;
-  D1toD3 (clist, bid, bidx, bidy, bidz);
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
   
   // load index
   IndexType ii = getDeviceCellListData (clist, bid, tid);

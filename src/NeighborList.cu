@@ -17,13 +17,15 @@ __global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 //////////////////////////////////////////////////
 // coord in one vec
 //////////////////////////////////////////////////
-__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
-					   CoordType * coord,
-					   RectangularBox box,
-					   DeviceCellList clist,
-					   mdError_t * ptr_de,
-					   IndexType * erridx,
-					   ScalorType * errsrc)
+
+__global__ void
+naivelyBuildDeviceCellList (IndexType numAtom,
+			    CoordType * coord,
+			    RectangularBox box,
+			    DeviceCellList clist,
+			    mdError_t * ptr_de,
+			    IndexType * erridx,
+			    ScalorType * errsrc)
 {
   // normalizeSystem (box, numAtom, coordx, coordy, coordz, coordNoix, coordNoiy, coordNoiz);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -37,7 +39,7 @@ __global__ void naivelyBuildDeviceCellList (IndexType numAtom,
     targetCelli = IndexType(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
     targetCellj = IndexType(coord[ii].y * box.sizei.y * ScalorType (clist.NCell.y));
     targetCellk = IndexType(coord[ii].z * box.sizei.z * ScalorType (clist.NCell.z));
-    cellid = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
+    cellid = D3toD1 (clist.NCell, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
 	(targetCelli >= clist.NCell.x || 
 	 targetCellj >= clist.NCell.y || 
@@ -114,7 +116,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
       coord[ii].z -= box.size.z;
       coordNoiz[ii] ++;
     }
-    targetCellid[tid] = D3toD1 (clist, targetCelli, targetCellj, targetCellk);
+    targetCellid[tid] = D3toD1 (clist.NCell, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
 	(targetCelli >= clist.NCell.x || 
 	 targetCellj >= clist.NCell.y || 
@@ -157,6 +159,151 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
     }
   }
 }
+
+
+__global__ void
+buildCellNeighborhood (DeviceCellList clist,
+		       const IndexType devide,
+		       const VectorType boxSize)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  if (tid == 0) {
+    
+    ScalorType rlist2 = clist.rlist * clist.rlist;
+    clist.numNeighborCell[bid] = 0;
+    int centerx, centery, centerz;
+    D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
+    for (int ix = 0; ix < 2*devide + 1; ++ix){
+      for (int iy = 0; iy < 2*devide + 1; ++iy){
+	for (int iz = 0; iz < 2*devide + 1; ++iz){
+	  int myx = ix - clist.devide + int(centerx) ;
+	  int myy = iy - clist.devide + int(centery) ;
+	  int myz = iz - clist.devide + int(centerz) ;
+	  ScalorType scalorx = boxSize.x / clist.NCell.x ;
+	  ScalorType scalory = boxSize.y / clist.NCell.y ;
+	  ScalorType scalorz = boxSize.z / clist.NCell.z ;
+      
+	  ScalorType min = 1e9;
+#pragma unroll 27
+	  for (int dx = -1; dx <= 1; ++dx){
+	    for (int dy = -1; dy <= 1; ++dy){
+	      for (int dz = -1; dz <= 1; ++dz){
+		ScalorType diffx ((-centerx + myx + dx) * scalorx);
+		ScalorType diffy ((-centery + myy + dy) * scalory);
+		ScalorType diffz ((-centerz + myz + dz) * scalorz);
+		// shortestImage (box, &diffx, &diffy, &diffz);
+		ScalorType diff2 (diffx * diffx + diffy * diffy + diffz * diffz);
+		if (diff2 < min){
+		  min = diff2;
+		}
+	      }
+	    }
+	  }
+	  CoordType shift;
+	  shift.x = shift.y = shift.z = 0.f;
+	  if (min < rlist2){
+	    if (myx < 0) {
+	      myx += clist.NCell.x;
+	      shift.x -= boxSize.x;
+	    }
+	    else if (myx > clist.NCell.x){
+	      myx -= clist.NCell.x;
+	      shift.x += boxSize.x;
+	    }
+	    if (myy < 0) {
+	      myy += clist.NCell.y;
+	      shift.y -= boxSize.y;
+	    }
+	    else if (myy > clist.NCell.y){
+	      myy -= clist.NCell.y;
+	      shift.y += boxSize.y;
+	    }
+	    if (myz < 0) {
+	      myz += clist.NCell.z;
+	      shift.z -= boxSize.z;
+	    }
+	    else if (myz > clist.NCell.z){
+	      myz -= clist.NCell.z;
+	      shift.z += boxSize.z;
+	    }
+
+	    IndexType index = clist.numNeighborCell[bid] ++;
+	    clist.neighborCellIndex[index] = D3toD1 (clist.NCell, myx, myy, myz);
+	    clist.neighborCellShift[index] = shift;
+	  }
+	}
+      }
+    }
+  }
+}
+
+  
+  // if (tid == 0) clist.numNeighborCell[bid] = 0;
+  // __syncthreads();
+  
+  // int centerx, centery, centerz;
+  // D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
+  // IntVectorType thisCubic;
+  // thisCubic.z = thisCubic.y = thisCubic.x = 2 * clist.devide + 1;
+  // int myx, myy, myz;
+  // D1toD3 (thisCubic, int(tid), myx, myy, myz);
+  // myx += int(centerx) - clist.devide;
+  // myy += int(centery) - clist.devide ;
+  // myz += int(centerz) - clist.devide ;
+  // ScalorType scalorx = boxSize.x / clist.NCell.x / devide;
+  // ScalorType scalory = boxSize.y / clist.NCell.y / devide;
+  // ScalorType scalorz = boxSize.z / clist.NCell.z / devide;
+
+  // ScalorType rlist2 = clist.rlist * clist.rlist;
+  // ScalorType min = 1e9;
+  // for (int dx = -1; dx <= 1; ++dx){
+  //   for (int dy = -1; dy <= 1; ++dy){
+  //     for (int dz = -1; dz <= 1; ++dz){
+  // 	ScalorType diffx ((centerx - myx + dx) * scalorx);
+  // 	ScalorType diffy ((centery - myy + dy) * scalory);
+  // 	ScalorType diffz ((centerz - myz + dz) * scalorz);
+  // 	ScalorType diff2 (diffx * diffx + diffy * diffy + diffz * diffz);
+  // 	if (diff2 < min){
+  // 	  min = diff2;
+  // 	}
+  //     }
+  //   }
+  // }
+  // CoordType shift;
+  // shift.x = shift.y = shift.z = 0.f;
+  // if (min < rlist2){
+  //   IndexType index = atomicInc (&clist.numNeighborCell[bid], blockDim.x);
+  //   if (myx < 0) {
+  //     myx += clist.NCell.x;
+  //     shift.x -= boxSize.x;
+  //   }
+  //   else if (myx > clist.NCell.x){
+  //     myx -= clist.NCell.x;
+  //     shift.x += boxSize.x;
+  //   }
+  //   if (myy < 0) {
+  //     myy += clist.NCell.y;
+  //     shift.y -= boxSize.y;
+  //   }
+  //   else if (myy > clist.NCell.y){
+  //     myy -= clist.NCell.y;
+  //     shift.y += boxSize.y;
+  //   }
+  //   if (myz < 0) {
+  //     myz += clist.NCell.z;
+  //     shift.z -= boxSize.z;
+  //   }
+  //   else if (myz > clist.NCell.z){
+  //     myz -= clist.NCell.z;
+  //     shift.z += boxSize.z;
+  //   }
+
+  //   clist.neighborCellIndex[index] = D3toD1 (clist.NCell, myx, myy, myz);
+  //   clist.neighborCellShift[index] = shift;
+  // }
+// }  
 
 
 

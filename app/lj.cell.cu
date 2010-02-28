@@ -63,8 +63,12 @@ int main(int argc, char * argv[])
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
-		      RectangularBoxGeometry::mdRectBoxDirectionZ);
+		      RectangularBoxGeometry::mdRectBoxDirectionZ,
+		      3);
   nlist.buildCellList(sys);
+
+  return 0;
+
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
   ScalorType refT = 0.9977411970749;
@@ -99,7 +103,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 1 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
