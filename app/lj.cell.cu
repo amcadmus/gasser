@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
-#define NThreadsPerBlockAtom	32
+#define NThreadsPerBlockCell	64
+#define NThreadsPerBlockAtom	64
 
 int main(int argc, char * argv[])
 {
@@ -64,7 +64,7 @@ int main(int argc, char * argv[])
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ,
-		      2);
+		      1);
   nlist.buildCellList(sys);
 
   MDStatistic st(sys);

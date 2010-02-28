@@ -899,7 +899,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
     RectangularBox box,
     DeviceCellList clist,
     DeviceNeighborList nlist,
-    ForceIndexType *nbForceTable,
+    const IndexType *nbForceTable,
     IndexType NatomType,
     bool sharednbForceTable,
     mdError_t * ptr_de)
@@ -938,11 +938,11 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
       (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
   volatile TypeType * targettype =
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
-  volatile ForceIndexType * nbForceTableBuff = NULL;
+  IndexType * nbForceTableBuff = NULL;
 
   IndexType nbForceTableLength = AtomNBForceTable::dCalDataLength(NatomType);
   if (sharednbForceTable){
-    nbForceTableBuff = (volatile ForceIndexType *) &targettype[roundUp4(blockDim.x)];
+    nbForceTableBuff = (IndexType *) &targettype[roundUp4(blockDim.x)];
     cpyGlobalDataToSharedBuff (nbForceTable, nbForceTableBuff, nbForceTableLength);
   }
   __syncthreads();
@@ -984,11 +984,6 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 	IndexType targetCellIdx = shiftedD3toD1 (clist, box, 
 						 nci, ncj, nck, 
 						 &xshift, &yshift, &zshift);
-
-	if (bid == 0 && tid == 0){
-	  printf ("%d ", targetCellIdx);
-	}
-	
 	
 	// load target index and coordinates form global memary
 	IndexType tmp = (targetIndexes[tid] = 
@@ -1037,9 +1032,6 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
       }
     }
   }
-	if (bid == 0 && tid == 0){
-	  printf ("\n");
-	}
 
   if (ii != MaxIndexValue) {
     if (Nneighbor > nlist.listLength && ptr_de != NULL){

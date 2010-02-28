@@ -313,7 +313,7 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 						  TypeType * type,
 						  RectangularBox box,
 						  DeviceNeighborList nlist,
-						  ForceIndexType * nbForceTable,
+						  const IndexType * nbForceTable,
 						  IndexType NatomType,
 						  bool sharednbForceTable,
 						  mdError_t * ptr_de)
@@ -334,11 +334,11 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
       (volatile CoordType *) &targetIndexes[roundUp4(blockDim.x)];
   volatile TypeType * targettype =
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
-  volatile ForceIndexType * nbForceTableBuff = NULL;
+  IndexType * nbForceTableBuff = NULL;
 
   IndexType nbForceTableLength = AtomNBForceTable::dCalDataLength(NatomType);
   if (sharednbForceTable){
-    nbForceTableBuff = (volatile ForceIndexType *) &targettype[roundUp4(blockDim.x)];
+    nbForceTableBuff = (IndexType *) &targettype[roundUp4(blockDim.x)];
     cpyGlobalDataToSharedBuff (nbForceTable, nbForceTableBuff, nbForceTableLength);
   }
   __syncthreads();
@@ -380,7 +380,7 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 	  else {
 	    nlist.forceIndex[listIdx] 
 		= AtomNBForceTable::calForceIndex (
-		    nbForceTable, NatomType, reftype, targettype[kk]);
+		    nbForceTable, NatomType, reftype, TypeType(targettype[kk]));
 	  }	
 	  // if (nlist.forceIndex[listIdx] == 0){
 	  //   printf ("%d  %d  reftype:%d targettype:%d\n",

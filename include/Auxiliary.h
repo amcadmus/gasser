@@ -14,8 +14,10 @@ __device__ IndexType getKthBit (IndexType  a, IndexType k);
 // 				     IndexType * result);
 
 template <typename T>
-__device__ void cpyGlobalDataToSharedBuff (T * globalData, T * sharedBuff,
-					   IndexType length)
+__device__ void
+cpyGlobalDataToSharedBuff (const T * globalData,
+			   T * sharedBuff,
+			   IndexType length)
 {
   IndexType start = 0;
   do {
@@ -28,20 +30,23 @@ __device__ void cpyGlobalDataToSharedBuff (T * globalData, T * sharedBuff,
   __syncthreads();
 }
 
-template <typename T>
-__device__ void cpyGlobalDataToSharedBuff (T * globalData, volatile T * sharedBuff,
-					   IndexType length)
-{
-  IndexType start = 0;
-  do {
-    IndexType ii = threadIdx.x + start;
-    if (ii < length) {
-      sharedBuff[ii] = globalData[ii];
-    }
-    start += blockDim.x;
-  } while (start < length);
-  __syncthreads();
-}
+// template <typename T>
+// __device__ void
+// cpyGlobalDataToSharedBuff (const T * globalData,
+// 			   volatile T * sharedBuff,
+// 			   IndexType length)
+// {
+//   IndexType start = 0;
+//   do {
+//     IndexType ii = threadIdx.x + start;
+//     if (ii < length) {
+//       sharedBuff[ii] = globalData[ii];
+//     }
+//     start += blockDim.x;
+//   } while (start < length);
+//   __syncthreads();
+// }
+
 
 template <typename T>
 __device__ void setGlobalData (T * globalData, IndexType length, T value)

@@ -110,14 +110,14 @@ namespace AtomNBForceTable{
 				const TypeType atom0, 
 				const TypeType atom1,
 				const ForceIndexType forceType);
-    __device__ ForceIndexType calForceIndex (ForceIndexType * tableData, 
+    __device__ ForceIndexType calForceIndex (const IndexType * tableData, 
 					     const IndexType Ntype,
 					     const TypeType atom0, 
 					     const TypeType atom1);
-    __device__ ForceIndexType calForceIndex (volatile ForceIndexType * tableData, 
-					     const IndexType Ntype,
-					     const TypeType atom0, 
-					     const TypeType atom1);
+    // __device__ ForceIndexType calForceIndex (volatile IndexType * tableData, 
+    // 					     const IndexType Ntype,
+    // 					     const TypeType atom0, 
+    // 					     const TypeType atom1);
     __device__ IndexType dCalDataLength (const IndexType Ntype);
 };
 
@@ -427,7 +427,7 @@ nbForcePoten (const InteractionType ftype,
 
 
 
-__device__ ForceIndexType AtomNBForceTable::calForceIndex (ForceIndexType * table, 
+__device__ ForceIndexType AtomNBForceTable::calForceIndex (const IndexType * table, 
 							   const IndexType Ntype,
 							   const TypeType atom0, 
 							   const TypeType atom1)
@@ -437,16 +437,17 @@ __device__ ForceIndexType AtomNBForceTable::calForceIndex (ForceIndexType * tabl
   return table[i * Ntype + j - ((i*(i+1)) >> 1)];
   // return table[i * Ntype + j - i];
 }
-__device__ ForceIndexType AtomNBForceTable::calForceIndex (volatile ForceIndexType * table, 
-							   const IndexType Ntype,
-							   const TypeType atom0, 
-							   const TypeType atom1)
-{
-  IndexType i, j;
-  atom0 <= atom1 ? (i = atom0, j = atom1) : (i = atom1, j = atom0);
-  return table[i * Ntype + j - ((i*(i+1)) >> 1)];
-  // return table[i * Ntype + j - i];
-}
+
+// __device__ ForceIndexType AtomNBForceTable::calForceIndex (volatile ForceIndexType * table, 
+// 							   const IndexType Ntype,
+// 							   const TypeType atom0, 
+// 							   const TypeType atom1)
+// {
+//   IndexType i, j;
+//   atom0 <= atom1 ? (i = atom0, j = atom1) : (i = atom1, j = atom0);
+//   return table[i * Ntype + j - ((i*(i+1)) >> 1)];
+//   // return table[i * Ntype + j - i];
+// }
 
 
 inline __host__ IndexType AtomNBForceTable::calDataLength (const IndexType Ntype)
