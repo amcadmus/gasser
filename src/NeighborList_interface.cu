@@ -962,72 +962,46 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   if (clist.NCell.x == 1) oneCellX = true;
   if (clist.NCell.y == 1) oneCellY = true;
   if (clist.NCell.z == 1) oneCellZ = true;
-  int upperx(1), lowerx(-1);
-  int uppery(1), lowery(-1);
-  int upperz(1), lowerz(-1);
-  if (oneCellX) {lowerx =  0; upperx = 0;}
-  if (oneCellY) {lowery =  0; uppery = 0;}
-  if (oneCellZ) {lowerz =  0; upperz = 0;}
   ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
-#pragma unroll 3
-  for (int di = lowerx; di <= upperx; ++di){
-    for (int dj = lowery; dj <= uppery; ++dj){
-      for (int dk = lowerz; dk <= upperz; ++dk){
-	__syncthreads();
-	// the shift value of a cell is pre-computed
-	ScalorType xshift, yshift, zshift;
-	int nci = di + bidx;
-	int ncj = dj + bidy;
-	int nck = dk + bidz;
-	IndexType targetCellIdx = shiftedD3toD1 (clist, box, 
-						 nci, ncj, nck, 
-						 &xshift, &yshift, &zshift);
+  for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    __syncthreads();
+    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
+    CoordType shift         = getNeighborCellShift (clist, bid, i);
+    targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndexes[tid] != MaxIndexValue){
+      target[tid] = tex1Dfetch(global_texRef_neighbor_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_neighbor_type, targetIndexes[tid]);
+    }
+    __syncthreads();
 	
-	// load target index and coordinates form global memary
-	IndexType tmp = (targetIndexes[tid] = 
-			 getDeviceCellListData(clist, targetCellIdx, tid));
-	if (tmp != MaxIndexValue){
-#ifdef COMPILE_NO_TEX
-	  target[tid] = coord[tmp];
-	  targettype[tid] = type[tmp];
-#else
-	  target[tid] = tex1Dfetch(global_texRef_neighbor_coord, tmp);
-	  targettype[tid] = tex1Dfetch(global_texRef_neighbor_type, tmp);
-#endif
-	}
-	__syncthreads();
-	// find neighbor
-	if (ii != MaxIndexValue){
-	  for (IndexType jj = 0; jj < blockDim.x; ++jj){
-	    if (targetIndexes[jj] == MaxIndexValue) break;
-	    ScalorType diffx = target[jj].x - xshift - ref.x;
-	    ScalorType diffy = target[jj].y - yshift - ref.y;
-	    ScalorType diffz = target[jj].z - zshift - ref.z;
-	    if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	    if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	    if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
-	    //printf ("%d\t%d\t%f\t%f\n", ii, 
-	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
-		targetIndexes[jj] != ii){
-	      ForceIndexType fidx;
-	      if (sharednbForceTable){
-		fidx = AtomNBForceTable::calForceIndex (
-		    nbForceTableBuff, NatomType, reftype, targettype[jj]);
-	      }
-	      else {
-		fidx = AtomNBForceTable::calForceIndex (
-		    nbForceTable, NatomType, reftype, targettype[jj]);
-	      }
-	      // if (fidx != mdForceNULL) {
-	      IndexType listIdx = Nneighbor * nlist.stride + ii;
-	      nlist.data[listIdx] = targetIndexes[jj];
-	      nlist.forceIndex[listIdx] = fidx;
-	      Nneighbor ++;
-	      // }
-	    }
+    // find neighbor
+    if (ii != MaxIndexValue){
+      for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	ScalorType diffx = target[jj].x - shift.x - ref.x;
+	ScalorType diffy = target[jj].y - shift.y - ref.y;
+	ScalorType diffz = target[jj].z - shift.z - ref.z;
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
+	    targetIndexes[jj] != ii){
+	  ForceIndexType fidx;
+	  if (sharednbForceTable){
+	    fidx = AtomNBForceTable::calForceIndex (
+		nbForceTableBuff, NatomType, reftype, targettype[jj]);
 	  }
+	  else {
+	    fidx = AtomNBForceTable::calForceIndex (
+		nbForceTable, NatomType, reftype, targettype[jj]);
+	  }
+	  // if (fidx != mdForceNULL) {
+	  IndexType listIdx = Nneighbor * nlist.stride + ii;
+	  nlist.data[listIdx] = targetIndexes[jj];
+	  nlist.forceIndex[listIdx] = fidx;
+	  Nneighbor ++;
+	  // }
 	}
       }
     }

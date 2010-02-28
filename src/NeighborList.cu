@@ -169,15 +169,25 @@ buildCellNeighborhood (DeviceCellList clist,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
 
+  bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  if (clist.NCell.x == 1) oneCellX = true;
+  if (clist.NCell.y == 1) oneCellY = true;
+  if (clist.NCell.z == 1) oneCellZ = true;
+
+  IndexType upperX, upperY, upperZ;
+  oneCellX ? upperX = 1 : upperX = 2*devide+1;
+  oneCellY ? upperY = 1 : upperY = 2*devide+1;
+  oneCellZ ? upperZ = 1 : upperZ = 2*devide+1;
+  
+  
   if (tid == 0) {
-    
     ScalorType rlist2 = clist.rlist * clist.rlist;
     clist.numNeighborCell[bid] = 0;
     int centerx, centery, centerz;
     D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
-    for (int ix = 0; ix < 2*devide + 1; ++ix){
-      for (int iy = 0; iy < 2*devide + 1; ++iy){
-	for (int iz = 0; iz < 2*devide + 1; ++iz){
+    for (int ix = 0; ix < upperX; ++ix){
+      for (int iy = 0; iy < upperY; ++iy){
+	for (int iz = 0; iz < upperZ; ++iz){
 	  int myx = ix - clist.devide + int(centerx) ;
 	  int myy = iy - clist.devide + int(centery) ;
 	  int myz = iz - clist.devide + int(centerz) ;

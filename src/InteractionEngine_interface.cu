@@ -23,10 +23,8 @@ __constant__
 IndexType const_nonBondedInteractionTableLength[1];
 __constant__
 IndexType const_numAtomType[1];
-// __constant__
-// IndexType nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 __constant__
-bool const_sharedNonBondedInteractionTable[1];
+IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
 
 void InteractionEngine_interface::init (const MDSystem  & sys,
@@ -34,7 +32,6 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
 {
   hasBond = false;
   hasAngle = false;
-  sharedNonBondedInteractionTable = true;
   myBlockDim.y = 1;
   myBlockDim.z = 1;
   myBlockDim.x = NTread;
@@ -128,33 +125,16 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 		      &tmpNumAtomType,
 		      sizeof (IndexType));
   checkCUDAError ("InteractionEngine::init, const_numAtomType");
-  // cudaMemcpyToSymbol (nonBondedInteractionTable,
-  // 		      sysNbInter.interactionTable(),
-  // 		      sizeof (IndexType) * tableSize);
-  cudaMalloc ((void**)&nonBondedInteractionTable, sizeof(IndexType) * tableSize);
-  cudaMemcpy (nonBondedInteractionTable,
-	      sysNbInter.interactionTable(),
-	      sizeof (IndexType) * tableSize,
-	      cudaMemcpyHostToDevice);
-  checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
+  cudaMemcpyToSymbol (const_nonBondedInteractionTable,
+  		      sysNbInter.interactionTable(),
+  		      sizeof (IndexType) * tableSize);
+  checkCUDAError ("InteractionEngine::init, const_nonBondedInteractionTable");
 
   applyNonBondedInteraction_CellList_sbuffSize =
       sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
       sizeof(CoordType) * hroundUp4(myBlockDim.x) +
-      sizeof(TypeType)  *      hroundUp4(myBlockDim.x) +
-      sizeof(IndexType) * hroundUp4(tableSize);
-  if (applyNonBondedInteraction_CellList_sbuffSize >=
-      SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
-    sharedNonBondedInteractionTable = false;
-    applyNonBondedInteraction_CellList_sbuffSize =
-	sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
-	sizeof(ScalorType) * 3 * hroundUp4(myBlockDim.x) +
-	sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
-  }
-  cudaMemcpyToSymbol (const_sharedNonBondedInteractionTable,
-		      &sharedNonBondedInteractionTable,
-		      sizeof(bool));
-  checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable 2");
+      sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
+  checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
 }
 
 
@@ -252,7 +232,6 @@ applyNonBondedInteractionCell  (MDSystem & sys,
 	  sys.ddata.forcy,
 	  sys.ddata.forcz,
 	  sys.ddata.type, 
-	  nonBondedInteractionTable,
 	  sys.box,
 	  nlist.dclist,
 	  err.ptr_de);
@@ -1320,7 +1299,6 @@ __global__ void calNonBondedInteraction (
     ScalorType * forcy, 
     ScalorType * forcz,
     const TypeType * type,
-    const IndexType * nonBondedInteractionTable,
     const RectangularBox box,
     DeviceCellList clist,
     mdError_t * ptr_de)
@@ -1358,17 +1336,6 @@ __global__ void calNonBondedInteraction (
       (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
   volatile TypeType * targettype =
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
-  IndexType * nonBondedInteractionTableBuff = NULL;
-
-  IndexType nonBondedInteractionTableLength = AtomNBForceTable::dCalDataLength(const_numAtomType[0]);
-  if (const_sharedNonBondedInteractionTable){
-    nonBondedInteractionTableBuff = (IndexType *) &targettype[roundUp4(blockDim.x)];
-    cpyGlobalDataToSharedBuff (nonBondedInteractionTable,
-			       nonBondedInteractionTableBuff,
-			       const_nonBondedInteractionTableLength[0]);
-  }
-  __syncthreads();
-
   
   ScalorType rlist2 = rlist * rlist;
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
@@ -1396,25 +1363,11 @@ __global__ void calNonBondedInteraction (
 	if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
 	  ForceIndexType fidx(0);
-	  if (const_sharedNonBondedInteractionTable){
-	    fidx = AtomNBForceTable::calForceIndex (
-	  	nonBondedInteractionTableBuff,
-	  	const_numAtomType[0],
-	  	reftype,
-	  	TypeType(targettype[jj]));
-	  }
-	  else {
-	    fidx = AtomNBForceTable::calForceIndex (
-	  	nonBondedInteractionTable,
-	  	const_numAtomType[0],
-	  	reftype,
-	  	targettype[jj]);
-	  }
-	  // fidx = AtomNBForceTable::calForceIndex (
-	  // 	  nonBondedInteractionTable,
-	  // 	  const_numAtomType[0],
-	  // 	  reftype,
-	  // 	  targettype[jj]);
+	  fidx = AtomNBForceTable::calForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[jj]);
 	  // if (fidx != mdForceNULL) {
 	  ScalorType fx, fy, fz;
 	  nbForce (nonBondedInteractionType[fidx],
@@ -1473,7 +1426,7 @@ __global__ void calNonBondedInteraction (
     reftype = type[ii];
 #else
     ref = tex1Dfetch (global_texRef_interaction_coord, ii);
-    // reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
   ScalorType rlist = clist.rlist;
@@ -1497,10 +1450,8 @@ __global__ void calNonBondedInteraction (
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
-	// if (bid == 0 && tid == 0){
-	//   printf ("%d ", targetCellIdx);
-	// }
 
     __syncthreads();
     // find neighbor
@@ -1518,11 +1469,11 @@ __global__ void calNonBondedInteraction (
 	if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
 	  ForceIndexType fidx(0);
-	  // fidx = AtomNBForceTable::calForceIndex (
-	  // 	  nonBondedInteractionTable,
-	  // 	  const_numAtomType[0],
-	  // 	  reftype,
-	  // 	  targettype[jj]);
+	  fidx = AtomNBForceTable::calForceIndex (
+	  	  const_nonBondedInteractionTable,
+	  	  const_numAtomType[0],
+	  	  reftype,
+	  	  targettype[jj]);
 	  // if (fidx != mdForceNULL) {
 	  ScalorType fx, fy, fz, dp;
 	  nbForcePoten (nonBondedInteractionType[fidx],

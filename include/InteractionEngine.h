@@ -145,7 +145,6 @@ __global__ void calNonBondedInteraction (
     ScalorType * forcy, 
     ScalorType * forcz,
     const TypeType * type,
-    const IndexType * nonBondedInteractionTable,
     const RectangularBox box,
     DeviceCellList clist,
     mdError_t * ptr_de);

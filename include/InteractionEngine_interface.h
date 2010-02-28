@@ -19,8 +19,6 @@ class InteractionEngine_interface
   IndexType calAngleInteraction_sbuffSize;
   bool hasBond;
   bool hasAngle;
-  bool sharedNonBondedInteractionTable;
-  IndexType * nonBondedInteractionTable;
   IndexType applyNonBondedInteraction_CellList_sbuffSize;
   // ScalorType * statistic_nb_buff0;
   // ScalorType * statistic_nb_buff1;
