@@ -20,7 +20,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
+#define NThreadsPerBlockCell	64
 #define NThreadsPerBlockAtom	64
 
 int main(int argc, char * argv[])

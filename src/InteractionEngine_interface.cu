@@ -1359,8 +1359,8 @@ __global__ void calNonBondedInteraction (
 	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
 	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
-	ScalorType dr2;
-	if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
+	// ScalorType dr2;
+	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
 	  ForceIndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
@@ -1374,7 +1374,7 @@ __global__ void calNonBondedInteraction (
 		   &nonBondedInteractionParameter
 		   [nonBondedInteractionParameterPosition[fidx]],
 		   diffx, diffy, diffz,
-		   dr2,
+		   // dr2,
 		   &fx, &fy, &fz);
 	  fsumx += fx;
 	  fsumy += fy;
@@ -1465,8 +1465,8 @@ __global__ void calNonBondedInteraction (
 	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
 	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
-	ScalorType dr2;
-	if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
+	// ScalorType dr2;
+	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
 	  ForceIndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
@@ -1479,7 +1479,7 @@ __global__ void calNonBondedInteraction (
 	  nbForcePoten (nonBondedInteractionType[fidx],
 			&nonBondedInteractionParameter
 			[nonBondedInteractionParameterPosition[fidx]],
-			diffx, diffy, diffz, 
+			diffx, diffy, diffz,
 			&fx, &fy, &fz, &dp);
 	  myPoten += dp;
 	  myVxx += fx * diffx;
