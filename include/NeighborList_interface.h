@@ -1,13 +1,18 @@
+class NeighborList;
+
 #ifndef __NeighborList_interface_h_wanghan__
 #define __NeighborList_interface_h_wanghan__
 
 #include "common.h"
 #include "BoxGeometry.h"
+#include "Reshufflable.h"
 #include "MDSystem.h"
+#include "MDSystem_interface.h"
 #include "NeighborList.h"
 #include "MDError_interface.h"
 #include "MDTimer_interface.h"
-#include "MDSystem_interface.h"
+#include "SystemNonBondedInteraction.h"
+
 
 using namespace RectangularBoxGeometry;
 
@@ -17,10 +22,10 @@ typedef enum {
   CellListBuilt
 } NeighborListBuiltMode;
 
+class WrongBuildMethod {};
 
-class NeighborList
+class NeighborList : public Reshufflable
 {
-  bool malloced ;
   IndexType * mySendBuff;
   IndexType * myTargetBuff;
   // ScalorType * judgeRebuild_buff;
@@ -33,19 +38,45 @@ private:
   IndexType buildDeviceCellList_step1_sbuffSize;
   IndexType judgeRebuild_judgeCoord_block_sbuffSize;
 private:
-  void initCellList (const MDSystem & sys,
-		     const ScalorType & rlist,
-		     const BoxDirection_t & bdir);
-  void reinitCellList (const MDSystem & sys,
-		       const ScalorType & rlist,
-		       const BoxDirection_t & bdir);  
+  bool mallocedDeviceCellList;
+  bool mallocedDeviceNeighborList;
+  bool initedGlobalTexture;
+  bool mallocedJudgeStuff;
+  bool mallocedNonBondedForceTable;
+  void clearDeviceCellList();
+  void clearDeviceNeighborList();
+  void unbindGlobalTexture();
+  void clearJudgeStuff();
+  void clear();
+  void DecideNeighboringMethod (const MDSystem & sys,
+				const ScalorType & rlist,
+				const BoxDirection_t & bdir,
+				const IndexType & devide,
+				NeighborListBuiltMode & mode,
+				IntVectorType & NCell);
+  void mallocDeviceCellList (const IntVectorType & NCell,
+			     const VectorType & boxSize);
+  void mallocDeviceNeighborList (const MDSystem & sys,
+				 const IndexType & DeviceNeighborListExpansion);
+  void bindGlobalTexture (const MDSystem & sys);
+  void mallocJudgeStuff(const MDSystem & sys);
+  void initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
+private:
+  void normalizeMDSystem (const MDSystem & sys);
+  void backupJudgeCoord (const MDSystem & sys);
+  void naivelyBuildDeviceCellList (const MDSystem & sys);
+  void buildDeviceCellList (const MDSystem & sys);
+  void buildDeviceNeighborListCellList (const MDSystem & sys);
+  void buildDeviceNeighborListAllPair  (const MDSystem & sys);
 public:
   NeighborListBuiltMode mode;
+  ScalorType myrlist;
   BoxDirection_t mybdir;
+  IndexType mydevide;
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
   IndexType NatomType;
-  ForceIndexType * nbForceTable;
+  IndexType * nbForceTable;
   IndexType nbForceTableLength;
   bool sharednbForceTable;
   IndexType bitDeepth;
@@ -53,13 +84,12 @@ public:
   dim3 atomGridDim;
   dim3 myBlockDim;
 public:
-#ifndef COORD_IN_ONE_VEC
-  ScalorType * backupCoordx;
-  ScalorType * backupCoordy;
-  ScalorType * backupCoordz;
-#else
   CoordType * backupCoord;
-#endif
+private: // reshuffle backup
+  IndexType * bkdnlistData;
+  IndexType * bkdnlistNneighbor;
+  IndexType * bkdnlistForceIndex;
+  CoordType * bkbackupCoord;
 public:
   /** 
    * Constructure
@@ -76,11 +106,17 @@ public:
    * @param bdir Denotes which direction of box will be cell devided. User
    * should validate this parameter.
    */
-  NeighborList (const MDSystem & sys,
+  NeighborList (const SystemNonBondedInteraction & sysNbInter,
+		const MDSystem & sys,
 		const ScalorType & rlist, const IndexType & NTread,
 		const IndexType & DeviceNeighborListExpansion = 5,
-		const RectangularBoxGeometry::BoxDirection_t & bdir = 7)
-      {init (sys, rlist, NTread, DeviceNeighborListExpansion, bdir);}
+		const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+		const IndexType devide = 1)
+      : mallocedDeviceCellList (false), mallocedDeviceNeighborList (false),
+	mallocedJudgeStuff (false), initedGlobalTexture (false),
+	mallocedNonBondedForceTable (false),
+	mode (NullMode)
+      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir, devide);}
   /** 
    * Destructor
    * 
@@ -101,10 +137,19 @@ public:
    * @param bdir Denotes which direction of box will be cell devided. User
    * should validate this parameter.
    */
-  void init (const MDSystem & sys,
-	     const ScalorType & rlist, const IndexType & NTread,
+  void init (const SystemNonBondedInteraction & sysNbInter,
+	     const MDSystem & sys,
+	     const ScalorType & rlist,
+	     const IndexType & NTread,
 	     const IndexType & DeviceNeighborListExpansion = 5,
-	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7);
+	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+	     const IndexType & cellListDevideLevel = 1);
+  void reinit (const MDSystem & sys,
+	       const ScalorType & rlist,
+	       const IndexType & NTread,
+	       const IndexType & DeviceNeighborListExpansion = 5,
+	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
+	       const IndexType & cellListDevideLevel = 1);
   /** 
    * Build neighbor list
    * 
@@ -135,6 +180,16 @@ public:
   bool judgeRebuild (const MDSystem & sys,
 		     const ScalorType &diffTol,
 		     MDTimer *timer=NULL);
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer *timer=NULL);
+  void reshuffleCell (const IndexType * indexTable,
+		      const IndexType & numAtom,
+		      MDTimer *timer=NULL);
+  void buildCellList (const MDSystem & sys,
+		      MDTimer * timer = NULL);
+  void reBuildCellList (const MDSystem & sys,
+			MDTimer * timer = NULL);
 };
 
 	     

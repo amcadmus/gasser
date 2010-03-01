@@ -17,10 +17,12 @@ class SumVector
   dim3 myBlockDim;
   IndexType bitBlockDim;
   IndexType sharedBuffSize;
+  void clear();
 public:
   SumVector();
   ~SumVector();
-  void init (IndexType NumberOfSum, IndexType NThread);
+  void init   (IndexType NumberOfSum, IndexType NThread);
+  void reinit (IndexType NumberOfSum, IndexType NThread);
   SCALORTYPE * getBuff () {return buff;}
   void sumBuff (SCALORTYPE * result, IndexType posi,
 		cudaStream_t stream = 0);
@@ -37,8 +39,9 @@ static IndexType roundUpDivide (IndexType v, IndexType bit)
   else return result + 1;
 }
 
-template<typename SCALORTYPE>
-static __global__ void sumVectorInitSetZero (SCALORTYPE * buff, IndexType length)
+template <typename SCALORTYPE>
+static __global__ void
+sumVectorInitSetZero (SCALORTYPE * buff, IndexType length)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   if (bid == 0){
@@ -58,13 +61,25 @@ SumVector<SCALORTYPE>::SumVector()
 }
 
 template<typename SCALORTYPE>
-SumVector<SCALORTYPE>::~SumVector()
+void SumVector<SCALORTYPE>::clear()
 {
   freeAPointer ((void**)&NBlock);
+  // free (NBlock);
   if (deviceMalloced){
     cudaFree (buff);
+    deviceMalloced = false;
   }
-}  
+  buffLength = 0;
+  NSum = 0;
+  bitBlockDim = 0;
+  sharedBuffSize = 0;
+}
+
+template<typename SCALORTYPE>
+SumVector<SCALORTYPE>::~SumVector()
+{
+  clear();
+}
 
 template<typename SCALORTYPE>
 void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
@@ -108,6 +123,14 @@ void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
   sharedBuffSize = (1 << bitBlockDim) * sizeof(SCALORTYPE);
 }
 
+template<typename SCALORTYPE>
+void SumVector<SCALORTYPE>::reinit (IndexType NumberOfSum, IndexType NThread)
+{
+  clear();
+  init (NumberOfSum, NThread);
+}
+
+
 extern __shared__ volatile int sbuffpub [];
 template<typename SCALORTYPE>
 static __global__ void sumVectorSumUnit (SCALORTYPE * buff, IndexType dataStart,
@@ -132,6 +155,96 @@ static __global__ void sumVectorSumUnit (SCALORTYPE * buff, IndexType dataStart,
     skip >>= 1;
   }
 
+  // if (skip == 32){
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  // }
+  // else if (skip == 64){
+  //   __syncthreads();
+  //   if (threadIdx.x < 64){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 64];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  //   __syncthreads();
+  // }
+  // else if (skip == 128){
+  //   __syncthreads();
+  //   if (threadIdx.x < 128){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 128];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 64){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 64];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  //   __syncthreads();
+  // }
+  // else {
+  //   return ;
+  // }  
+  
   if (threadIdx.x == 0){
     result[resultStart + bid] = sbuff[0];
   }
@@ -159,6 +272,96 @@ static __global__ void sumVectorSumUnitAdd (SCALORTYPE * buff, IndexType dataSta
     }
     skip >>= 1;
   }
+
+  // if (skip == 32){
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  // }
+  // else if (skip == 64){
+  //   __syncthreads();
+  //   if (threadIdx.x < 64){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 64];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  //   __syncthreads();
+  // }
+  // else if (skip == 128){
+  //   __syncthreads();
+  //   if (threadIdx.x < 128){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 128];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 64){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 64];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 32){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 32];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 16){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 16];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 8){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 8];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 4){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 4];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 2){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 2];
+  //   }
+  //   __syncthreads();
+  //   if (threadIdx.x < 1){
+  //     sbuff[threadIdx.x] += sbuff[threadIdx.x + 1];
+  //   }
+  //   __syncthreads();
+  // }
+  // else {
+  //   return ;
+  // }
 
   if (threadIdx.x == 0){
     result[resultStart + bid] += sbuff[0];

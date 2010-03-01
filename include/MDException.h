@@ -22,6 +22,9 @@ class MDExcptExceedConstantMemLimit;
 class MDExcptUndefinedAtomType;
 class MDExcptUndefinedNBForceType;
 class MDExcpt0AtomType;
+class MDExcptUnbuiltNonBondedInteraction;
+class MDExcptWrongNumberAtomDataTopology;
+
 
 // char delimitor[3] = {':', ' ', '\0'};
 
@@ -86,6 +89,20 @@ public:
       { strncpy (message, description, MaxExceptionMsgLength);
 	strncat (message, delimitor, MaxExceptionMsgLength);
 	strncat (message, "undefined non-bonded force type", MaxExceptionMsgLength);}
+  virtual const char* what() const throw()
+      {
+	return message;
+      }
+};
+
+class MDExcptUnbuiltNonBondedInteraction : public MDException
+{
+  char message[MaxExceptionMsgLength];
+public:
+  MDExcptUnbuiltNonBondedInteraction ( const char * description) 
+      { strncpy (message, description, MaxExceptionMsgLength);
+	strncat (message, delimitor, MaxExceptionMsgLength);
+	strncat (message, "uninit non-boned interaction", MaxExceptionMsgLength);}
   virtual const char* what() const throw()
       {
 	return message;
@@ -217,6 +234,14 @@ public:
       }
 };
   
+class MDExcptWrongNumberAtomDataTopology : public MDException
+{
+public:
+  virtual const char * what () const throw ()
+      {
+	return "Number of Atoms in topology and in data are not consistent";
+      }
+};
   
 
 

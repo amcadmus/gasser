@@ -3,6 +3,7 @@
 #include "GromacsFileManager.h"
 #include "FileManager.h"
 #include "MDException.h"
+#include "Reshuffle_interface.h"
 
 MDSystem::MDSystem()
 {
@@ -14,7 +15,8 @@ MDSystem::MDSystem()
 }
 
 
-void MDSystem::initConfig (const char * configfile, const char * mapfile,
+void MDSystem::initConfig (const char * configfile,
+			   // const char * mapfile,
 			   const IndexType & maxNumAtom)
 {
   FILE * fpc = fopen (configfile, "r");
@@ -70,9 +72,9 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
   freeAPointer ((void**)&tmpatomIndex);
   RectangularBoxGeometry::setBoxSize (bx, by, bz, &box);
   
-  tmpNAtomType = readAtomNameMapFile (mapfile, hdata.numAtom, hdata.atomName,
-				      hdata.type, hdata.mass, hdata.charge) ;
-  initMass (&hdata);
+  // tmpNAtomType = readAtomNameMapFile (mapfile, hdata.numAtom, hdata.atomName,
+  // 				      hdata.type, hdata.mass, hdata.charge) ;
+  // initMass (&hdata);
 
   printf ("# total %d atoms found, %d types are presented in mapping file\n",
 	  hdata.numAtom, tmpNAtomType);
@@ -85,14 +87,66 @@ void MDSystem::initConfig (const char * configfile, const char * mapfile,
   
   hdata.NFreedom = hdata.numAtom * 3;
 
-  fclose (fpc);
-  
+  fclose (fpc);  
+}
+
+
+void MDSystem::
+initTopology (const Topology::System & sysTop)
+{
+  if (hdata.numAtom != sysTop.indexShift.back()){
+    throw MDExcptWrongNumberAtomDataTopology ();
+  }
+  unsigned shift = 0;
+  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+    for (unsigned j = 0; j < sysTop.numbers[i]; ++j){
+      for (unsigned k = 0; k < sysTop.molecules[i].size(); ++k){
+	hdata.mass[shift] = sysTop.molecules[i].atoms[k].mass;
+	hdata.charge[shift] = sysTop.molecules[i].atoms[k].charge;
+	hdata.type[shift] = sysTop.molecules[i].atoms[k].type;
+	shift++;
+      }
+    }
+  }
+  initMass (&hdata);
+}	       
+
+static __global__ void
+init_backMapTable (const IndexType numAtom,
+		   IndexType * backMapTable)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    backMapTable[ii] = ii;
+  }
+}
+
+void MDSystem::
+initDeviceData ()
+{ 
   ////////////////////////////////////////////////////////////
   // init device system
   ////////////////////////////////////////////////////////////
-
   initDeviceMDData (&hdata, &ddata);
   initDeviceMDData (&hdata, &recoveredDdata);
+  initDeviceMDData (&hdata, &bkDdata);
+  cudaMalloc ((void**)&backMapTable, sizeof(IndexType) * hdata.numAtom);
+  cudaMalloc ((void**)&backMapTableBuff, sizeof(IndexType) * hdata.numAtom);
+  checkCUDAError ("MDSystem::initDeviceMDData, malloc back map table");
+  
+  dim3 myBlockDim, atomGridDim;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  IndexType nob;
+  if (hdata.numAtom % myBlockDim.x == 0){
+    nob = hdata.numAtom / myBlockDim.x;
+  } else {
+    nob = hdata.numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
+  init_backMapTable
+      <<<atomGridDim, myBlockDim>>> (
+	  bkDdata.numAtom, backMapTable);
 }
 
 
@@ -138,91 +192,23 @@ void MDSystem::writeHostDataGro (const char * filename,
   if (timer != NULL) timer->toc(mdTimeDataIO);
 }
 
-
-void MDSystem::initNBForce (const IndexType & NAtomType)
-{
-  if (NAtomType != 0){
-    nbForce.init (NAtomType);
-    printf ("# %d types of atoms will be registed for non-bonded interation\n",
-	    NAtomType);
-  }
-  else if (tmpNAtomType != 0){
-    nbForce.init (tmpNAtomType);
-    printf ("# %d types of atoms will be registed for non-bonded interation\n",
-	    tmpNAtomType);
-  }
-  else {
-    throw MDExcpt0AtomType();
-  }
-}
-
-void MDSystem::addNBForce (const TypeType &atomi, const TypeType &atomj, 
-			   const mdNBInteraction_t & forceType,
-			   const ScalorType * param)
-{
-  nbForce.addNBForce (atomi, atomj, forceType, param);
-}
-
-ScalorType MDSystem::
-calMaxNBRcut()
-{
-  ScalorType max  = 0.f;
-  for (IndexType i = 0; i < nbForce.setting.NNBForce; ++i){
-    ScalorType tmp = calRcut (nbForce.setting.type[i],
-			      &nbForce.setting.param[nbForce.setting.paramPosi[i]]);
-    if (tmp > max) max = tmp;
-  }
-  return max;
-}
-
-
 MDSystem::~MDSystem()
 {
   freeAPointer ((void **)&xdx);
 }
 
   
-void MDSystem::initBond ()
-{
-  bdlist.init (ddata);
-}
-
-void MDSystem::addBond (const IndexType & ii,
-			const IndexType & jj,
-			const mdBondInteraction_t & type,
-			const ScalorType * param)
-{
-  bdlist.addBond(ii, jj, type, param);
-}
-
-void MDSystem::buildBond ()
-{
-  bdlist.build();
-}
-
-void MDSystem::initAngle ()
-{
-  anglelist.init (ddata);
-}
-
-void MDSystem::addAngle (const IndexType & ii,
-			 const IndexType & jj,
-			 const IndexType & kk,
-			 const mdAngleInteraction_t & type,
-			 const ScalorType * param)
-{
-  anglelist.addAngle(ii, jj, kk, type, param);
-}
-
-void MDSystem::buildAngle ()
-{
-  anglelist.build();
-}
-
-void MDSystem::updateHost(MDTimer *timer)
+void MDSystem::updateHostFromDevice (MDTimer *timer)
 {
   if (timer != NULL) timer->tic(mdTimeDataTransfer);
   cpyDeviceMDDataToHost (&ddata, &hdata);
+  if (timer != NULL) timer->toc(mdTimeDataTransfer);
+}
+
+void MDSystem::updateHostFromRecovered (MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
+  cpyDeviceMDDataToHost (&recoveredDdata, &hdata);
   if (timer != NULL) timer->toc(mdTimeDataTransfer);
 }
 
@@ -273,3 +259,152 @@ void MDSystem::endWriteXtc()
 {
   xdrfile_close(xdfile);
 }
+
+
+void MDSystem::
+recoverDeviceData (MDTimer * timer)
+{
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
+
+  dim3 myBlockDim, atomGridDim;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  IndexType nob;
+  if (hdata.numAtom % myBlockDim.x == 0){
+    nob = hdata.numAtom / myBlockDim.x;
+  } else {
+    nob = hdata.numAtom / myBlockDim.x + 1;
+  }
+  atomGridDim = toGridDim (nob);
+
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coord, ddata.numAtom, backMapTable, recoveredDdata.coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoix, ddata.numAtom, backMapTable, recoveredDdata.coordNoix);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoiy, ddata.numAtom, backMapTable, recoveredDdata.coordNoiy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.coordNoiz, ddata.numAtom, backMapTable, recoveredDdata.coordNoiz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.velox, ddata.numAtom, backMapTable, recoveredDdata.velox);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.veloy, ddata.numAtom, backMapTable, recoveredDdata.veloy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.veloz, ddata.numAtom, backMapTable, recoveredDdata.veloz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcx, ddata.numAtom, backMapTable, recoveredDdata.forcx);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcy, ddata.numAtom, backMapTable, recoveredDdata.forcy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.forcz, ddata.numAtom, backMapTable, recoveredDdata.forcz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.type, ddata.numAtom, backMapTable, recoveredDdata.type);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.mass, ddata.numAtom, backMapTable, recoveredDdata.mass);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.massi, ddata.numAtom, backMapTable, recoveredDdata.massi);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (ddata.charge, ddata.numAtom, backMapTable, recoveredDdata.charge);  
+  if (timer != NULL) timer->tic(mdTimeDataTransfer);
+}
+
+
+static __global__ void
+Reshuffle_calBackMapTable (const IndexType numAtom,
+			   const IndexType * backMapTableBuff,
+			   const IndexType * idxTable,
+			   IndexType *backMapTable)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom){
+    backMapTable[idxTable[ii]] = backMapTableBuff[ii];
+  }
+}
+
+void MDSystem::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer)
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+
+  cpyDeviceMDDataToDevice (&ddata, &bkDdata);
+  
+  IndexType nob;
+  dim3 myBlockDim;
+  myBlockDim.x = DefaultNThreadPerBlock;
+  if (ddata.numAtom % myBlockDim.x == 0){
+    nob = ddata.numAtom / myBlockDim.x;
+  } else {
+    nob = ddata.numAtom / myBlockDim.x + 1;
+  }
+  dim3 atomGridDim = toGridDim (nob);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.coord, ddata.numAtom, indexTable, ddata.coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.coordNoix, ddata.numAtom, indexTable, ddata.coordNoix);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.coordNoiy, ddata.numAtom, indexTable, ddata.coordNoiy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.coordNoiz, ddata.numAtom, indexTable, ddata.coordNoiz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.velox, ddata.numAtom, indexTable, ddata.velox);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.veloy, ddata.numAtom, indexTable, ddata.veloy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.veloz, ddata.numAtom, indexTable, ddata.veloz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.forcx, ddata.numAtom, indexTable, ddata.forcx);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.forcy, ddata.numAtom, indexTable, ddata.forcy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.forcz, ddata.numAtom, indexTable, ddata.forcz);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.type, ddata.numAtom, indexTable, ddata.type);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.mass, ddata.numAtom, indexTable, ddata.mass);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.massi, ddata.numAtom, indexTable, ddata.massi);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.charge, ddata.numAtom, indexTable, ddata.charge);  
+
+  cudaMemcpy (backMapTableBuff, backMapTable, sizeof(IndexType) * ddata.numAtom,
+	      cudaMemcpyDeviceToDevice);
+  Reshuffle_calBackMapTable
+      <<<atomGridDim, myBlockDim>>> (
+	  ddata.numAtom,
+	  backMapTableBuff,
+	  indexTable,
+	  backMapTable);
+
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+

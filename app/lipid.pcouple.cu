@@ -20,7 +20,7 @@
 
 
 #define NThreadsPerBlockCell	192
-#define NThreadsPerBlockAtom	128
+#define NThreadsPerBlockAtom	16
 
 int main(int argc, char * argv[])
 {
@@ -80,25 +80,32 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.5;
   ScalorType rlist = maxrcut + nlistExten;
+  ScalorType rebuildThreshold = 0.5 * nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 200,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY);
   nlist.build(sys);
   MDStatistic st(sys);
-  VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  ScalorType refT = 0.9977411970749;
-  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
   inter.registBondedInteraction    (sysBdInter);
-
+  
   MDTimer timer;
   unsigned i;
   ScalorType dt = 0.005;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
+  BerendsenLeapFrog blpf (sys, NThreadsPerBlockAtom, dt,
+			  inter,
+			  nlist,
+			  rebuildThreshold,
+			  &bdInterList);
+  blpf.TCouple (0.9977411970749, 0.1);
+  blpf.addPcoupleGroup (PCoupleX | PCoupleY,
+  			0., 1, 1);
+  
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
 
   timer.tic(mdTimeTotal);
@@ -121,13 +128,9 @@ int main(int argc, char * argv[])
       }	  
       if ((i+1) % 10 == 0){
 	st.clearDevice();
-	inte_vr.step1 (sys, dt, &timer);
-	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-	inter.applyBondedInteraction (sys, bdInterList, st, &timer);
-	inte_vr.step2 (sys, dt, st, &timer);
+	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
@@ -139,29 +142,14 @@ int main(int argc, char * argv[])
 		st.pressureXX(),
 		st.pressureYY(),
 		st.pressureZZ(),
-		st.pressure());
+		st.pressure(),
+		sys.box.size.x,
+		sys.box.size.y,
+		sys.box.size.z);
 	fflush(stdout);
       }
       else {
-	inte_vr.step1 (sys, dt, &timer);
-	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, &timer);
-	inter.applyBondedInteraction (sys, bdInterList, &timer);
-	inte_vr.step2 (sys, dt, &timer);
-      }
-      if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	// // nlistExten = 0.2;
-	// // rlist = maxrcut + nlistExten;
-	// // nlist.reinit (sys, rlist, NThreadsPerBlockCell, 40,
-	// // 	      RectangularBoxGeometry::mdRectBoxDirectionX |
-	// // 	      RectangularBoxGeometry::mdRectBoxDirectionY);
-	// // printf ("# at step %d, ncelllx %d\n", i+1, nlist.dclist.NCell.x);
-	// // nlist.build(sys);
-	// printf ("# Rebuild at step %09i ... ", i+1);
-	// fflush(stdout);
-	nlist.reBuild(sys, &timer);
-	// printf ("done\n");
-	// fflush(stdout);
+	blpf.oneStep (sys, &timer);      
       }
       if ((i+1) % 1000 == 0){
       	sys.recoverDeviceData (&timer);

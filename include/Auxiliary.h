@@ -6,6 +6,7 @@
 #include "common.h"
 
 
+
 __device__ void      addKthBit (IndexType *a, IndexType k);
 __device__ IndexType getKthBit (IndexType  a, IndexType k);
 
@@ -13,8 +14,10 @@ __device__ IndexType getKthBit (IndexType  a, IndexType k);
 // 				     IndexType * result);
 
 template <typename T>
-__device__ void cpyGlobalDataToSharedBuff (T * globalData, T * sharedBuff,
-					   IndexType length)
+__device__ void
+cpyGlobalDataToSharedBuff (const T * globalData,
+			   T * sharedBuff,
+			   IndexType length)
 {
   IndexType start = 0;
   do {
@@ -27,20 +30,23 @@ __device__ void cpyGlobalDataToSharedBuff (T * globalData, T * sharedBuff,
   __syncthreads();
 }
 
-template <typename T>
-__device__ void cpyGlobalDataToSharedBuff (T * globalData, volatile T * sharedBuff,
-					   IndexType length)
-{
-  IndexType start = 0;
-  do {
-    IndexType ii = threadIdx.x + start;
-    if (ii < length) {
-      sharedBuff[ii] = globalData[ii];
-    }
-    start += blockDim.x;
-  } while (start < length);
-  __syncthreads();
-}
+// template <typename T>
+// __device__ void
+// cpyGlobalDataToSharedBuff (const T * globalData,
+// 			   volatile T * sharedBuff,
+// 			   IndexType length)
+// {
+//   IndexType start = 0;
+//   do {
+//     IndexType ii = threadIdx.x + start;
+//     if (ii < length) {
+//       sharedBuff[ii] = globalData[ii];
+//     }
+//     start += blockDim.x;
+//   } while (start < length);
+//   __syncthreads();
+// }
+
 
 template <typename T>
 __device__ void setGlobalData (T * globalData, IndexType length, T value)
@@ -67,8 +73,10 @@ __device__ static IndexType roundUp4 (IndexType x)
 }
 
 template<typename T>
-__global__ void rescaleProperty (T * data, const IndexType N,
-				 const T scalor)
+__global__ void
+rescaleProperty (T * data,
+		 const IndexType N,
+		 const T scalor)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -76,6 +84,21 @@ __global__ void rescaleProperty (T * data, const IndexType N,
     data[ii] *= scalor;
   }
 }
+
+template<typename T>
+__global__ void
+setValue (T * data,
+	  const IndexType N,
+	  const T value)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < N) {
+    data[ii] = value;
+  }
+}
+  
+
 #ifdef COORD_IN_ONE_VEC
 static __global__ void rescaleCoord (CoordType * data, const IndexType N,
 				     const CoordType scalor)

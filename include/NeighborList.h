@@ -10,6 +10,7 @@ using namespace RectangularBoxGeometry;
 
 struct DeviceCellList 
 {
+  IndexType devide;
   ScalorType rlist;		/**< radius for list building */
   IntVectorType NCell;		/**< the number of cells on each direction */
   VectorType NCelli;		/**< inverse the NCell */
@@ -19,6 +20,10 @@ struct DeviceCellList
 				 * in each cell */
   IndexType stride;		/**< stride of cell list, which should
 				 * be larger than thread per block */
+  IndexType * numNeighborCell;
+  IndexType * neighborCellIndex;
+  CoordType * neighborCellShift;
+  IndexType maxNumNeighborCell;
 };
 
 struct DeviceNeighborList
@@ -29,47 +34,63 @@ struct DeviceNeighborList
 				 * indexes of neigbors of i-th atom*/
   IndexType * Nneighbor;	/**< vector stores the number of neigbors of
 				 * each atom*/
-  ForceIndexType * forceIndex;	/**< matrix stores the index of
+  IndexType * forceIndex;	/**< matrix stores the index of
 				 * non-bonded interaction, whose type
 				 * and parameters are keeped by the
 				 * interaction engine. */
   IndexType stride;             /**< stride of neighbor list, which is
 				 * the expected larger than or equal
 				 * to the number of Atoms */
+  // DeviceNeighborList ();
+  // ~DeviceNeighborList ();
 };
 
-/** 
- * An 3D index to 1D index mapping for cells.
- * 
- * @param clist Reference to the cell list.
- * @param ix x component of cell 3D index.
- * @param iy y component of cell 3D index.
- * @param iz z component of cell 3D index.
- * 
- * @return 1D index of the corresponding cell
- */
-__device__ IndexType D3toD1 (const DeviceCellList &clist, 
-			     const IndexType &ix,
-			     const IndexType &iy,
-			     const IndexType &iz);
-/** 
- * An 1D index to 3D index mapping for cells.
- * 
- * @param clist Reference of the cell list
- * @param i 1D index of the cell
- * @param x x component of cell 3D index.
- * @param y y component of cell 3D index.
- * @param z z component of cell 3D index.
- */
-__device__ void D1toD3 (const DeviceCellList & clist,
-			const IndexType &i, 
-			IndexType &x,
-			IndexType &y,
-			IndexType &z);
 
-__device__ IndexType getDeviceCellListData (const DeviceCellList & clist, 
-					    const IndexType & cid,
-					    const IndexType & aid);
+// __device__ IndexType
+// D3toD1 (const DeviceCellList &clist, 
+// 	const IndexType &ix,
+// 	const IndexType &iy,
+// 	const IndexType &iz);
+// __device__ void
+// D1toD3 (const DeviceCellList & clist,
+// 	const IndexType &i, 
+// 	IndexType &x,
+// 	IndexType &y,
+// 	IndexType &z);
+
+template <typename VEC, typename T>
+__device__ T
+D3toD1 (const VEC & NCell,
+	const T &ix,
+	const T &iy,
+	const T &iz);
+template <typename VEC, typename T>
+__device__ void
+D1toD3 (const VEC & NCell,
+	const T &i, 
+	T &x,
+	T &y,
+	T &z);
+
+
+__device__ IndexType &
+getDeviceCellListData (const DeviceCellList & clist, 
+		       const IndexType & cid,
+		       const IndexType & aid);
+__device__ IndexType &
+getNeighborCellIndex (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i);
+__device__ CoordType &
+getNeighborCellShift (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i);
+__device__ void
+pushNeighborCell (const DeviceCellList & clist,
+		  const IndexType & cid,
+		  const IndexType & neighborIndex,
+		  const CoordType & neighborShift);
+
 
 ////////////////////////////////////////////////////////////
 // cell list operations
@@ -81,22 +102,9 @@ __device__ IndexType getDeviceCellListData (const DeviceCellList & clist,
  * 
  * @param clist the cell list
  */
-__global__ void prepare_naivlyBuildDeviceCellList (DeviceCellList  clist);
+__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList  clist);
 // needs ceil(numAtom/blockDim.x) blocks
-__global__ void naivlyBuildDeviceCellList (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					   ScalorType * coordx,
-					   ScalorType * coordy,
-					   ScalorType * coordz,
-#else
-					   CoordType * coord,
-#endif
-					   RectangularBox box,
-					   DeviceCellList clist,
-					   mdError_t * ptr_de = NULL,
-					   IndexType * erridx = NULL,
-					   ScalorType * errsrc = NULL);
-__global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
+__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
 #ifndef COORD_IN_ONE_VEC
 					    ScalorType * coordx,
 					    ScalorType * coordy,
@@ -104,14 +112,32 @@ __global__ void naivlyBuildDeviceCellList2 (IndexType numAtom,
 #else
 					    CoordType * coord,
 #endif
-					    IntScalorType * coordNoix,
-					    IntScalorType * coordNoiy,
-					    IntScalorType * coordNoiz,
 					    RectangularBox box,
 					    DeviceCellList clist,
 					    mdError_t * ptr_de = NULL,
 					    IndexType * erridx = NULL,
 					    ScalorType * errsrc = NULL);
+__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
+#ifndef COORD_IN_ONE_VEC
+					     ScalorType * coordx,
+					     ScalorType * coordy,
+					     ScalorType * coordz,
+#else
+					     CoordType * coord,
+#endif
+					     IntScalorType * coordNoix,
+					     IntScalorType * coordNoiy,
+					     IntScalorType * coordNoiz,
+					     RectangularBox box,
+					     DeviceCellList clist,
+					     mdError_t * ptr_de = NULL,
+					     IndexType * erridx = NULL,
+					     ScalorType * errsrc = NULL);
+__global__ void
+buildCellNeighborhood (DeviceCellList clist,
+		       const IndexType devide,
+		       const VectorType boxSize);
+
 
 // needs NCell blocks
 __global__ void buildDeviceCellList_initBuff (IndexType * sendBuff,
@@ -161,7 +187,7 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 						  TypeType * type,
 						  RectangularBox box,
 						  DeviceNeighborList nlist,
-						  ForceIndexType * nbForceTable,
+						  const IndexType * nbForceTable,
 						  IndexType NatomType,
 						  bool sharednbForceTable,
 						  mdError_t * ptr_de = NULL);
@@ -178,7 +204,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (IndexType numAtom,
 							RectangularBox box,
 							DeviceCellList clist,
 							DeviceNeighborList nlist,
-							ForceIndexType * nbForceTable,
+							const IndexType * nbForceTable,
 							IndexType NatomType,
 							bool sharednbForceTable,
 							mdError_t * ptr_de = NULL);
@@ -218,6 +244,32 @@ __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
 #endif
 					       const ScalorType diffTol2,
 					       IndexType * judgeRebuild_buff);
+
+//////////////////////////////////////////////////
+// reshuffle functions
+//////////////////////////////////////////////////
+__global__ void
+Reshuffle_reshuffleDeviceCellList (IndexType * clistData,
+				   const IndexType * idxTable);
+__global__ void
+Reshuffle_backupDeviceNeighborList (const IndexType numAtom,
+				    const IndexType * nlistData1,
+				    const IndexType * nbForceIndex1,
+				    const IndexType stride,
+				    const IndexType * Nneighbor1,
+				    IndexType * nlistData2,
+				    IndexType * nbForceIndex2,
+				    IndexType * Nneighbor2);
+__global__ void
+Reshuffle_reshuffleDeviceNeighborList (const IndexType numAtom,
+				       const IndexType * nlistData2,
+				       const IndexType * nbForceIndex2,
+				       const IndexType stride,
+				       const IndexType * Nneighbor2,
+				       const IndexType * idxTable,
+				       IndexType * nlistData1,
+				       IndexType * Nneighbor1,
+				       IndexType * nbForceIndex1);
 
 
 ////////////////////////////////////////////////////////////
@@ -271,27 +323,96 @@ __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
 // cell list operations
 ////////////////////////////////////////////////////////////
 
-__device__ IndexType getDeviceCellListData (const DeviceCellList & clist, 
-					    const IndexType & cid, const IndexType & pid)
+__device__ IndexType &
+getDeviceCellListData (const DeviceCellList & clist, 
+		       const IndexType & cid,
+		       const IndexType & pid)
 {
   return clist.data[cid * clist.stride + pid];
 }
 
-__device__ IndexType D3toD1 (const DeviceCellList & clist,
-			     const IndexType &ix, const IndexType &iy, const IndexType &iz)
+__device__ IndexType &
+getNeighborCellIndex (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i)
 {
-  return iz + clist.NCell.z * iy + clist.NCell.z * clist.NCell.y * ix;
-  // return IndexType(clist.NCell.y) * (IndexType(clist.NCell.x) * ix + iy) + iz;
+  return clist.neighborCellIndex[cid * clist.maxNumNeighborCell + i];
 }
-__device__ void D1toD3 (const DeviceCellList & clist, const IndexType &i, 
-			IndexType &x, IndexType &y, IndexType &z)
+
+__device__ CoordType &
+getNeighborCellShift (const DeviceCellList & clist,
+		      const IndexType & cid,
+		      const IndexType & i)
 {
-  IndexType tmp = i;
-  z = tmp % (clist.NCell.z);
-  tmp = (tmp - z) / clist.NCell.z;
-  y = tmp % (clist.NCell.y);
-  x = (tmp - y) / clist.NCell.y;
+  return clist.neighborCellShift[cid * clist.maxNumNeighborCell + i];
 }
+
+__device__ void 
+pushNeighborCell (const DeviceCellList & clist,
+		  const IndexType & cid,
+		  const IndexType & neighborIndex,
+		  const CoordType & neighborShift)
+{
+  IndexType index = clist.numNeighborCell[cid] ++;
+  getNeighborCellIndex (clist, cid, index) = neighborIndex;
+  getNeighborCellShift (clist, cid, index) = neighborShift;
+}
+
+
+// __device__ IndexType
+// D3toD1 (const DeviceCellList & clist,
+// 	const IndexType &ix,
+// 	const IndexType &iy,
+// 	const IndexType &iz)
+// {
+//   return iz +
+//       clist.NCell.z * iy +
+//       clist.NCell.z * clist.NCell.y * ix;
+//   // return IndexType(clist.NCell.y) * (IndexType(clist.NCell.x) * ix + iy) + iz;
+// }
+
+// __device__ void
+// D1toD3 (const DeviceCellList & clist,
+// 	const IndexType &i, 
+// 	IndexType &x,
+// 	IndexType &y,
+// 	IndexType &z)
+// {
+//   IndexType tmp = i;
+//   z = tmp % (clist.NCell.z);
+//   tmp = (tmp - z) / clist.NCell.z;
+//   y = tmp % (clist.NCell.y);
+//   x = (tmp - y) / clist.NCell.y;
+// }
+
+
+      template <typename VEC, typename T>
+      __device__ T
+      D3toD1 (const VEC & NCell,
+	      const T &ix,
+	      const T &iy,
+	      const T &iz)
+      {
+	return iz +
+	    NCell.z * iy +
+	    NCell.z * NCell.y * ix;
+	// return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
+      }
+
+  template <typename VEC, typename T>
+      __device__ void
+      D1toD3 (const VEC & NCell,
+	      const T &i, 
+	      T &x,
+	      T &y,
+	      T &z)
+  {
+    T tmp = i;
+    z = tmp % (NCell.z);
+    tmp = (tmp - z) / NCell.z;
+    y = tmp % (NCell.y);
+    x = (tmp - y) / NCell.y;
+  }
 
 
 
@@ -325,63 +446,63 @@ __device__ void D1toD3 (const DeviceCellList & clist, const IndexType &i,
 
 
 
-__device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
-{
-  IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-  predbuff[tid] = getKthBit(sharedbuff[tid], k);
-  predbuff[tid+blockDim.x] = 0;
+  __device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
+  {
+    IndexType tid = threadIdx.x;
+    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+    predbuff[tid] = getKthBit(sharedbuff[tid], k);
+    predbuff[tid+blockDim.x] = 0;
 
-  __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-  IndexType target, mydata = sharedbuff[tid];
-  if (getKthBit(sharedbuff[tid], k)) {
-    target = blockDim.x - predbuff[tid];
+    __syncthreads();
+    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+    IndexType target, mydata = sharedbuff[tid];
+    if (getKthBit(sharedbuff[tid], k)) {
+      target = blockDim.x - predbuff[tid];
+    }
+    else {
+      // IndexType total0 = blockDim.x - total1;
+      // IndexType after0 = blockDim.x - tid - predbuff[tid];
+      // target = total0 - after0;
+      target = tid + predbuff[tid] - total1;
+    }
+    __syncthreads();
+    sharedbuff[target] = mydata;
+    __syncthreads();
   }
-  else {
-    // IndexType total0 = blockDim.x - total1;
-    // IndexType after0 = blockDim.x - tid - predbuff[tid];
-    // target = total0 - after0;
-    target = tid + predbuff[tid] - total1;
-  }
-  __syncthreads();
-  sharedbuff[target] = mydata;
-  __syncthreads();
-}
 
-__device__ IndexType headSort (volatile IndexType * sharedbuff,
-			       volatile IndexType * targetCell)
-{
-  IndexType k = NUintBit - 1;
-  IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-  predbuff[tid] = getKthBit(sharedbuff[tid], k);
-  predbuff[tid+blockDim.x] = 0;
+  __device__ IndexType headSort (volatile IndexType * sharedbuff,
+				 volatile IndexType * targetCell)
+  {
+    IndexType k = NUintBit - 1;
+    IndexType tid = threadIdx.x;
+    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+    predbuff[tid] = getKthBit(sharedbuff[tid], k);
+    predbuff[tid+blockDim.x] = 0;
 
-  __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-  IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
-  if (getKthBit(sharedbuff[tid], k)) {
-    target = blockDim.x - predbuff[tid];
+    __syncthreads();
+    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+    IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
+    if (getKthBit(sharedbuff[tid], k)) {
+      target = blockDim.x - predbuff[tid];
+    }
+    else {
+      target = tid + predbuff[tid] - total1;
+    }
+    __syncthreads();
+    sharedbuff[target] = mydata;
+    targetCell[target] = mycell;
+    __syncthreads();
+    return total1;
   }
-  else {
-    target = tid + predbuff[tid] - total1;
-  }
-  __syncthreads();
-  sharedbuff[target] = mydata;
-  targetCell[target] = mycell;
-  __syncthreads();
-  return total1;
-}
 
 
-__device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
-{
-  __syncthreads();
-  for (IndexType i = 0; i < bitDeepth; ++i){
-    kthSort(sharedbuff, i);
+  __device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
+  {
+    __syncthreads();
+    for (IndexType i = 0; i < bitDeepth; ++i){
+      kthSort(sharedbuff, i);
+    }
   }
-}
 
 
 

@@ -1,106 +1,220 @@
 #include "NonBondedInteraction.h"
 
-SystemNBForce::
-SystemNBForce()
+bool NonBondedInteractionParameter::
+same (const NonBondedInteractionParameter & f1) const
 {
-  indexTable.data = NULL;
-  indexTable.dataLength = 0;
-  indexTable.NAtomType = 0;
-  setting.type = NULL;
-  setting.NNBForce = 0;
-  setting.param = NULL;
-  setting.paramPosi = NULL;
-  setting.paramLength = 0;
+  if (f1.type() != this->type()){
+    return false;
+  }
+  const ScalorType * myparam = this->c_ptr();
+  const ScalorType * fparam  = f1.c_ptr();
+  for (unsigned i = 0; i < this->numParam(); ++i){
+    if (myparam[i] != fparam[i]){
+      return false;
+    }
+  }
+  return true;
 }
 
-void SystemNBForce::
-init (const IndexType NAtomType)
+bool NonBondedInteractionParameter::
+operator == (const NonBondedInteractionParameter & f1) const
 {
-  indexTable.NAtomType = NAtomType;
-  indexTable.dataLength = AtomNBForceTable::calDataLength(NAtomType);
-  indexTable.data = (ForceIndexType *) malloc (
-      indexTable.dataLength * sizeof(ForceIndexType));
-  if (indexTable.data == NULL){
-    throw MDExcptFailedMallocOnHost ("SystemNBForce::init", "indexTable.data",
-				     indexTable.dataLength * sizeof(ForceIndexType));
-  }
-  for (IndexType i = 0; i < indexTable.dataLength; ++i){
-    indexTable.data[i] = 0;
-  }
-
-  memNBForce = 1 + indexTable.dataLength;
-  memNBParam = memNBForce * MaxNumberParamPerForce;
-  setting.type = (mdNBInteraction_t *) malloc (
-      memNBForce * sizeof(mdNBInteraction_t));
-  if (setting.type == NULL){
-    throw MDExcptFailedMallocOnHost ("SystemNBForce::init", "setting.type",
-				     memNBForce * sizeof(mdNBInteraction_t));
-  }
-  setting.param = (ScalorType *) malloc (memNBParam * sizeof(ScalorType));
-  if (setting.param == NULL){
-    throw MDExcptFailedMallocOnHost ("SystemNBForce::init", "setting.param",
-				     memNBParam * sizeof(ScalorType));
-  }
-  setting.paramPosi = (IndexType *) malloc (memNBForce * sizeof(IndexType));
-  if (setting.paramPosi == NULL){
-    throw MDExcptFailedMallocOnHost ("SystemNBForce::init", "setting.paramPosi",
-				     memNBForce * sizeof(IndexType));
-  }
-  setting.NNBForce = 1;
-  setting.paramLength = 1;
-  setting.type[0] = mdForceNBNull;
-  setting.param[0] = 0.f;
-  setting.paramPosi[0] = 0;
+  return this->same(f1);
 }
 
-void SystemNBForce::addNBForce (const TypeType &atomi, const TypeType &atomj, 
-				const mdNBInteraction_t & forceType,
-				const ScalorType * param)
+InteractionType LennardJones6_12Parameter::
+type () const
 {
-  bool exist;
-  ForceIndexType i = 0;
-  IndexType Nparam = calNumNBParameter (forceType);
-  for (i = 0; i < setting.NNBForce; ++i){
-    exist = true;
-    if (setting.type[i] == forceType ){
-      if (forceType == mdForceNBNull) break;
-      for (IndexType j = 0; j < Nparam; ++j){
-	if (param[j] != setting.param[setting.paramPosi[i]+j]){
-	  exist = false;
-	  break;
-	}
-      }
-    }
-    else {
-      exist = false;
-    }
-    if (exist){
-      break;
-    }
-  }
-  if (exist){
-    AtomNBForceTable::setTableItem (indexTable.data, indexTable.NAtomType,
-				    atomi, atomj, i);
-  }
-  else{
-    AtomNBForceTable::setTableItem (indexTable.data, indexTable.NAtomType,
-				    atomi, atomj, i);
-    setting.type[setting.NNBForce] = forceType;
-    setting.paramPosi[setting.NNBForce] = setting.paramLength;
-    for (IndexType j = 0; j < Nparam; ++j){
-      setting.param[j + setting.paramLength] = param[j];
-    }
-    setting.NNBForce ++;
-    setting.paramLength += Nparam;
-  }
+  return mdForceLennardJones6_12;
 }
-  
-SystemNBForce::~SystemNBForce()
+
+unsigned LennardJones6_12Parameter::
+numParam () const 
 {
-  freeAPointer((void**)&setting.type);
-  freeAPointer((void**)&setting.param);
-  freeAPointer((void**)&setting.paramPosi);
-  freeAPointer((void**)&indexTable.data);
+  return mdForceNParamLennardJones6_12;
+}
+
+const ScalorType * LennardJones6_12Parameter::
+c_ptr () const
+{
+  return param;
+}
+
+ScalorType * LennardJones6_12Parameter::
+c_ptr () 
+{
+  return param;
+}
+
+ScalorType LennardJones6_12Parameter::
+rcut() const
+{
+  return LennardJones6_12::calRcut (param);
+}
+
+void LennardJones6_12Parameter::
+reinit (ScalorType epsilon,
+	ScalorType sigma,
+	ScalorType shift,
+	ScalorType rcut)
+{
+  LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
+}
+
+LennardJones6_12Parameter::
+LennardJones6_12Parameter (ScalorType epsilon,
+			   ScalorType sigma,
+			   ScalorType shift,
+			   ScalorType rcut)
+{
+  LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
+}
+
+InteractionType LennardJones6_12CapParameter::
+type () const 
+{
+  return mdForceLennardJones6_12_cap;
+}
+
+unsigned LennardJones6_12CapParameter::
+numParam () const 
+{
+  return mdForceNParamLennardJones6_12_cap;
+}
+
+const ScalorType * LennardJones6_12CapParameter::
+c_ptr() const 
+{
+  return param;
+}
+
+ScalorType * LennardJones6_12CapParameter::
+c_ptr() 
+{
+  return param;
+}
+
+ScalorType LennardJones6_12CapParameter::
+rcut () const
+{
+  return LennardJones6_12_cap::calRcut (param);
+}
+
+void LennardJones6_12CapParameter::
+reinit (ScalorType epsilon,
+      ScalorType sigma,
+      ScalorType shift,
+      ScalorType rcut,
+      ScalorType cap)
+{
+  LennardJones6_12_cap::initParameter
+      (param, epsilon, sigma, shift, rcut, cap);
+}
+
+LennardJones6_12CapParameter::
+LennardJones6_12CapParameter (ScalorType epsilon,
+			      ScalorType sigma,
+			      ScalorType shift,
+			      ScalorType rcut,
+			      ScalorType cap)
+{
+  LennardJones6_12_cap::initParameter
+      (param, epsilon, sigma, shift, rcut, cap);
+}
+
+InteractionType CosTailParameter::
+type () const 
+{
+  return mdForceCosTail;
+}
+
+unsigned CosTailParameter::
+numParam () const 
+{
+  return mdForceNParamCosTail;
+}
+
+const ScalorType * CosTailParameter::
+c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * CosTailParameter::
+c_ptr () 
+{
+  return param;
+}
+
+ScalorType CosTailParameter::
+rcut () const 
+{
+  return CosTail::calRcut (param);
+}
+
+void  CosTailParameter::
+reinit (ScalorType epsilon,
+	ScalorType b,
+	ScalorType wc)
+{
+  CosTail::initParameter (param, epsilon, b, wc);
+}
+
+CosTailParameter::
+CosTailParameter (ScalorType epsilon,
+		  ScalorType b,
+		  ScalorType wc)
+{
+  CosTail::initParameter (param, epsilon, b, wc);
+}
+
+
+InteractionType CosTailCapParameter::
+type () const 
+{
+  return mdForceCosTail_cap;
+}
+
+unsigned CosTailCapParameter::
+numParam () const 
+{
+  return mdForceNParamCosTail_cap;
+}
+
+const ScalorType * CosTailCapParameter::
+c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * CosTailCapParameter::
+c_ptr () 
+{
+  return param;
+}
+
+ScalorType CosTailCapParameter::
+rcut () const 
+{
+  return CosTail_cap::calRcut (param);
+}
+
+void  CosTailCapParameter::
+reinit (ScalorType epsilon,
+	ScalorType b,
+	ScalorType wc,
+	ScalorType cap)
+{
+  CosTail_cap::initParameter (param, epsilon, b, wc, cap);
+}
+
+CosTailCapParameter::
+CosTailCapParameter (ScalorType epsilon,
+		     ScalorType b,
+		     ScalorType wc,
+		     ScalorType cap)
+{
+  CosTail_cap::initParameter (param, epsilon, b, wc, cap);
 }
 
   

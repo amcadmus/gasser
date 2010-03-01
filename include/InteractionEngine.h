@@ -138,6 +138,32 @@ __global__ void clearForce (const IndexType numAtom,
   // ScalorType targetx, targety, targetz;
 
 
+__global__ void calNonBondedInteraction (
+    const IndexType numAtom,
+    const CoordType * coord,
+    ScalorType * forcx,
+    ScalorType * forcy, 
+    ScalorType * forcz,
+    const TypeType * type,
+    const RectangularBox box,
+    DeviceCellList clist,
+    mdError_t * ptr_de);
+__global__ void calNonBondedInteraction (
+    const IndexType numAtom,
+    const CoordType * coord,
+    ScalorType * forcx,
+    ScalorType * forcy, 
+    ScalorType * forcz,
+    const TypeType * type,
+    const RectangularBox box,
+    DeviceCellList clist,
+    ScalorType * statistic_nb_buff0,
+    ScalorType * statistic_nb_buff1,
+    ScalorType * statistic_nb_buff2,
+    ScalorType * statistic_nb_buff3,
+    mdError_t * ptr_de);
+
+
 
 
 

@@ -4,24 +4,29 @@
 #include "common.h"
 #include "AngleInteraction.h"
 
+
 struct HostAngleList 
 {
   IndexType stride; // is the expected larger than or equal to the number of Atoms
   // IndexType listLength;
-  IndexType listLength_mem;
-  IndexType * angleNei;
-  IndexType * myPosi;
-  ForceIndexType * angleIndex;
-  IndexType * Nangle;
+  IndexType maxNumAngle;
+  IndexType * angleNeighborIndex;
+  IndexType * angleIndex;
+  IndexType * anglePosi;
+  IndexType * numAngle;
+private:
+  void clearMem ();
 public:
   HostAngleList ();
   ~HostAngleList ();
-  void init (const IndexType & stride);
+  void clearAngle ();
+  void reinit (const IndexType & stride,
+	       const IndexType & maxNumAngle);
   void addAngle (const IndexType &i,
 		 const IndexType &j,
 		 const IndexType &k,
-		 const ForceIndexType &fidx);
-  void sort (mdAngleInteraction_t * angleType);
+		 const IndexType &angleIndex,
+		 const IndexType &anglePosi);
 };
 
 
@@ -29,31 +34,22 @@ struct DeviceAngleList
 {
   bool malloced ;
   IndexType stride; // is the expected larger than or equal to the number of Atoms
-  IndexType listLength;
-  IndexType * angleNei;
-  IndexType * myPosi;
-  ForceIndexType * angleIndex;
-  IndexType * Nangle;
+  IndexType maxNumAngle;
+  IndexType * angleNeighborIndex;
+  IndexType * angleIndex;
+  IndexType * anglePosi;
+  IndexType * numAngle;
 };
 
-void initDeviceAngleList (DeviceAngleList & danglelist) ;
-void buildDeviceAngleList (HostAngleList & hanglelist,
-			  DeviceAngleList & danglelist);
-void destroyDeviceAngleList (DeviceAngleList & danglelist) ;
+void initDeviceAngleList (DeviceAngleList & dbdlist) ;
+void mallocDeviceAngleList (const HostAngleList & hbdlist,
+			    DeviceAngleList & dbdlist);
+void copyDeviceAngleList (const HostAngleList & hbdlist,
+			  DeviceAngleList & dbdlist);
+void copyDeviceAngleList (const DeviceAngleList & dbdlist1,
+			  DeviceAngleList & dbdlist);
+void destroyDeviceAngleList (DeviceAngleList & dbdlist) ;
 
-// // get the jj th angle neighbor of atom ii
-// __device__ IndexType getAngleAtomIndex (DeviceAngleList danglelist,
-// 					IndexType jj,
-// 					IndexType ii) 
-// { return danglelist.data[danglelist.stride * jj + ii];}
-// __device__ ForceIndexType getAngleForceIndex (DeviceAngleList danglelist,
-// 					     IndexType jj,
-// 					     IndexType ii)
-// { return danglelist.angleIndex[danglelist.stride * jj + ii];}
-// // number of angles of ii th atom
-// __device__ IndexType getNAngle (DeviceAngleList danglelist,
-// 			       IndexType ii)
-// { return danglelist.Nangle[ii]; }
 
 #endif
 

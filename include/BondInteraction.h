@@ -1,30 +1,45 @@
-#ifndef __BondedInteraction_h_wanghan__
-#define __BondedInteraction_h_wanghan__
+#ifndef __BondInteraction_h_wanghan__
+#define __BondInteraction_h_wanghan__
 
 #include "common.h"
-
-enum mdBondInteraction {
-  mdForceHarmonicSpring		= 0,
-  mdForceFENE			= 1
-} ;
-typedef enum mdBondInteraction mdBondInteraction_t;
+#include "Interaction.h"
 
 enum mdBondInteractionNParam{
   mdForceNParamHarmonicSpring	= 2,
   mdForceNParamFENE		= 2
 };
 
-inline __host__ IndexType calNumBondParameter (mdBondInteraction_t type)
+
+class HarmonicSpringParameter : public BondInteractionParameter
 {
-  switch (type){
-  case mdForceHarmonicSpring:
-      return mdForceNParamHarmonicSpring;
-  case mdForceFENE:
-      return mdForceNParamFENE;
-  default:
-      return 0;
-  }
-}
+  ScalorType param [mdForceNParamHarmonicSpring];
+public:
+  HarmonicSpringParameter () {}
+  HarmonicSpringParameter (ScalorType k,
+			   ScalorType r0);
+  void reinit (ScalorType k,
+	       ScalorType r0);
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
+  virtual const ScalorType * c_ptr () const ;
+};
+
+class FENEParameter : public BondInteractionParameter
+{
+  ScalorType param [mdForceNParamFENE];
+public:
+  FENEParameter () {}
+  FENEParameter (ScalorType k,
+		 ScalorType rinf);
+  void reinit (ScalorType k,
+	       ScalorType rinf);
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
+  virtual const ScalorType * c_ptr () const ;
+};
+
 
 namespace HarmonicSpring {
     typedef enum paramIndex{
@@ -78,7 +93,7 @@ namespace FENE {
 
 
 __device__ void 
-bondForce (const mdBondInteraction_t ftype,
+bondForce (const InteractionType ftype,
 	   const ScalorType * param,
 	   ScalorType diffx, ScalorType diffy, ScalorType diffz,
 	   ScalorType *fx,   ScalorType *fy,   ScalorType *fz)
@@ -104,7 +119,7 @@ bondForce (const mdBondInteraction_t ftype,
 
 
 __device__ void
-bondForcePoten (const mdBondInteraction_t ftype,
+bondForcePoten (const InteractionType ftype,
 		const ScalorType * param,
 		ScalorType diffx, ScalorType diffy, ScalorType diffz,
 		ScalorType *fx,   ScalorType *fy,   ScalorType *fz,
@@ -126,24 +141,6 @@ bondForcePoten (const mdBondInteraction_t ftype,
   //     return 0.f;
   // }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
