@@ -196,6 +196,7 @@ Topology::System::
 System ()
 {
   name[0] = '\0';
+  numFreedom = 0;
 }
 
 
@@ -205,13 +206,18 @@ addMolecules (const Molecule & mol,
 {
   molecules.push_back(mol);
   numbers.push_back(number);
+  if (molecules.size() == 1){
+    indexShift.push_back(0);
+  }
   indexShift.push_back(number * mol.atoms.size());
+  numFreedom += molecules.size() * number;
 }
 
 void Topology::System::
 clear()
 {
   name[0] = '\0';
+  numFreedom = 0;
   molecules.clear();
   numbers.clear();
   indexShift.clear();

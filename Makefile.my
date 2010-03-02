@@ -7,15 +7,15 @@
 # boost-include-path=	/people/thnfs/homes/wanghan/local/include/boost-1_36
 # boost-lib-path=		/people/thnfs/homes/wanghan/local/lib
 # boost-lib-option=	-lboost_program_options
-link-options=		/home/wanghan/local/lib/libxdrfile.a 
-link-path=		-L /home/wanghan/local/lib
+link-options=		/home/wanghan/local/lib/libxdrfile.a /usr/lib/openmpi/libmpi.a
+link-path=		-L /home/wanghan/local/lib -L/usr/lib/opemmpi
 
 include_dirs = 	./include ~/local/include  ~/local/include/xdrfile/
 .SUFFIXES: .cu .c .cpp .o
 
 sources_dir =		src
 application_dir=	app
-application_target=	$(notdir $(subst .cu,,$(wildcard $(application_dir)/*.cu)))
+application_target=	$(notdir $(subst .cpp,,$(wildcard $(application_dir)/*.cpp)))
 cppsources := 		$(wildcard $(sources_dir)/*.cpp)
 tmp_cppsources =  	$(notdir $(cppsources))
 tmp_cppdepends = 	$(subst .cpp,.d,$(tmp_cppsources))
@@ -49,15 +49,15 @@ cobjects = 	$(addprefix $(cobjects_dir)/,$(tmp_cobjects))
 cudepends = 	$(addprefix $(cudepends_dir)/,$(tmp_cudepends))
 cuobjects = 	$(addprefix $(cuobjects_dir)/,$(tmp_cuobjects))
 
-appobjects=	$(subst .cu,.o,$(wildcard $(application_dir)/*.cu))
+appobjects=	$(subst .cpp,.o,$(wildcard $(application_dir)/*.cpp))
 
 libtarget=	$(lib_dir)/libmd.a
 
-C:=		gcc
+C:=		mpicc
 CFLAGS +=	-g -O0 
 CFLAGS += 	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC
 
-CXX:=		g++
+CXX:=		mpicxx
 CXXFLAGS += 	$(CFLAGS)
 
 CU:=		nvcc
@@ -76,7 +76,7 @@ $(appobjects):
 
 .PHONY: clean
 clean:
-	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d
+	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d lib/mdlib.a src/mdlib.a
 
 .PHONY: makedir
 makedir:
@@ -95,7 +95,7 @@ ifneq "$(MAKECMDGOALS)" "clean"
 -include $(cppdepends)
 -include $(cdepends)
 -include $(cudepends)
--include $(addprefix $(application_dir)/,$(notdir $(subst .cu,.d,$(wildcard $(application_dir)/*.cu))))
+-include $(addprefix $(application_dir)/,$(notdir $(subst .cpp,.d,$(wildcard $(application_dir)/*.cpp))))
 endif
 
 # $(call make-depend,source-file,object-dir,depend-file)
@@ -122,7 +122,7 @@ endef
 
 # $(call make-target,target,object-files-or-lib-files)
 define make-target
-  $(CU) $(CUFLAGS) $(link-path) -o $1 $2 -lm $(link-options) 
+  $(CXX) $(CXXFLAGS) $(link-path) -o $1 $2 -lm $(link-options) 
 endef
 
 
@@ -137,5 +137,5 @@ $(cuobjects_dir)/%.o:	$(sources_dir)/%.cu
 	$(CU) $(CUFLAGS) -o $@ -c $<	
 $(application_dir)/%.o:	$(application_dir)/%.cu
 	$(call make-depend-cu,$<,$(application_dir),$(application_dir)/$(notdir $(subst .o,.d,$@)))
-	$(CU) $(CUFLAGS) -o $@ -c $<		
+	$(CXX) $(CXXFLAGS) -o $@ -c $<		
 

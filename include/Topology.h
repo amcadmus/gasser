@@ -97,6 +97,7 @@ namespace Topology {
     struct System
     {
       char name[8];
+      IndexType numFreedom;
       std::vector<Molecule > molecules;
       std::vector<IndexType > numbers;
       std::vector<IndexType > indexShift;
