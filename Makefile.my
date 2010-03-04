@@ -7,7 +7,7 @@
 # boost-include-path=	/people/thnfs/homes/wanghan/local/include/boost-1_36
 # boost-lib-path=		/people/thnfs/homes/wanghan/local/lib
 # boost-lib-option=	-lboost_program_options
-link-options=		/home/wanghan/local/lib/libxdrfile.a /usr/lib/openmpi/libmpi.a
+link-options=		/home/wanghan/local/lib/libxdrfile.a /usr/lib/openmpi/libmpi.a -lcudart -L/home/wanghan/local/cuda/lib
 link-path=		-L /home/wanghan/local/lib -L/usr/lib/opemmpi
 
 include_dirs = 	./include ~/local/include  ~/local/include/xdrfile/
@@ -76,7 +76,7 @@ $(appobjects):
 
 .PHONY: clean
 clean:
-	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d lib/mdlib.a src/mdlib.a
+	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d lib/mdlib.a lib/mdlib.a
 
 .PHONY: makedir
 makedir:

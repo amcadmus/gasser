@@ -101,179 +101,189 @@ public:
 
 
 namespace AtomNBForceTable{
-    __host__ IndexType calDataLength (const IndexType Ntype);
-    __host__ int deviceInitTable (const ForceIndexType * htableData,
-				  ForceIndexType ** dtableData,
-				  const IndexType Ntype);
-    __host__ void setTableItem (ForceIndexType * tableData,
-				const IndexType Ntype,
-				const TypeType atom0, 
-				const TypeType atom1,
-				const ForceIndexType forceType);
-    __device__ ForceIndexType calForceIndex (const IndexType * tableData, 
-					     const IndexType Ntype,
-					     const TypeType atom0, 
-					     const TypeType atom1);
-    // __device__ ForceIndexType calForceIndex (volatile IndexType * tableData, 
-    // 					     const IndexType Ntype,
-    // 					     const TypeType atom0, 
-    // 					     const TypeType atom1);
-    __device__ IndexType dCalDataLength (const IndexType Ntype);
+  IndexType calDataLength (const IndexType Ntype);
+  int deviceInitTable (const IndexType * htableData,
+				IndexType ** dtableData,
+				const IndexType Ntype);
+  void setTableItem (IndexType * tableData,
+			      const IndexType Ntype,
+			      const TypeType atom0, 
+			      const TypeType atom1,
+			      const IndexType forceType);
+#ifdef DEVICE_CODE
+  __device__ IndexType calForceIndex (const IndexType * tableData, 
+					   const IndexType Ntype,
+					   const TypeType atom0, 
+					   const TypeType atom1);
+  // __device__ IndexType calForceIndex (volatile IndexType * tableData, 
+  // 					     const IndexType Ntype,
+  // 					     const TypeType atom0, 
+  // 					     const TypeType atom1);
+  __device__ IndexType dCalDataLength (const IndexType Ntype);
+#endif
 };
 
 
 
 namespace LennardJones6_12{
-    typedef enum paramIndex {
-      epsilon		= 0,
-      sigma		= 1,
-      shift		= 2,
-      rcut		= 3
-    } paramIndex_t;
+  typedef enum paramIndex {
+    epsilon		= 0,
+    sigma		= 1,
+    shift		= 2,
+    rcut		= 3
+  } paramIndex_t;
     
-    __host__ void initParameter (ScalorType * param, 
-				 ScalorType epsilon,
-				 ScalorType sigma,
-				 ScalorType shift,
-				 ScalorType rcut);
-    __host__ ScalorType calRcut (const ScalorType * param);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType diff2,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  void initParameter (ScalorType * param, 
+			       ScalorType epsilon,
+			       ScalorType sigma,
+			       ScalorType shift,
+			       ScalorType rcut);
+ ScalorType calRcut (const ScalorType * param);
+#ifdef DEVICE_CODE
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType diff2,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
+#endif
 };
 
 
 namespace LennardJones6_12_cap {
-    ScalorType lj6_12_originForce (ScalorType * param, ScalorType r);
-    ScalorType lj6_12_originPoten (ScalorType * param, ScalorType r);
-    ScalorType lj6_12_findCapR (ScalorType * param);
+  ScalorType lj6_12_originForce (ScalorType * param, ScalorType r);
+  ScalorType lj6_12_originPoten (ScalorType * param, ScalorType r);
+  ScalorType lj6_12_findCapR (ScalorType * param);
 
-    typedef enum paramIndex {
-      epsilon		= 0,
-      sigma		= 1,
-      shift		= 2,
-      rcut		= 3,
-      cap		= 4,
-      capR		= 5,
-      pcapR		= 6
-    } paramIndex_t;
+  typedef enum paramIndex {
+    epsilon		= 0,
+    sigma		= 1,
+    shift		= 2,
+    rcut		= 3,
+    cap		= 4,
+    capR		= 5,
+    pcapR		= 6
+  } paramIndex_t;
 
-    __host__ void initParameter (ScalorType * param,
-				 ScalorType epsilon,
-				 ScalorType sigma,
-				 ScalorType shift,
-				 ScalorType rcut,
-				 ScalorType cap);
-    __host__ ScalorType calRcut (const ScalorType * param);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  void initParameter (ScalorType * param,
+			       ScalorType epsilon,
+			       ScalorType sigma,
+			       ScalorType shift,
+			       ScalorType rcut,
+			       ScalorType cap);
+  ScalorType calRcut (const ScalorType * param);
+#ifdef DEVICE_CODE
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
+#endif
 };
 
 
 
 
 namespace CosTail{
-    typedef enum paramIndex {
-      epsilon		= 0,
-      bv		= 1,
-      rc		= 2,
-      wc		= 3,
-      wci		= 4,
-      rcut		= 5
-    } paramIndex_t;
+  typedef enum paramIndex {
+    epsilon		= 0,
+    bv		= 1,
+    rc		= 2,
+    wc		= 3,
+    wci		= 4,
+    rcut		= 5
+  } paramIndex_t;
     
-    __host__ void initParameter (ScalorType * param, 
-				 ScalorType epsilon_,
-				 ScalorType bv_,
-				 ScalorType wc_);
-    __host__ ScalorType calRcut (const ScalorType * param);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  void initParameter (ScalorType * param, 
+			       ScalorType epsilon_,
+			       ScalorType bv_,
+			       ScalorType wc_);
+  ScalorType calRcut (const ScalorType * param);
+#ifdef DEVICE_CODE
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
+#endif
 };
 
 
 namespace CosTail_cap{
-    typedef enum paramIndex {
-      epsilon		= 0,
-      bv		= 1,
-      rc		= 2,
-      wc		= 3,
-      wci		= 4,
-      rcut		= 5,
-      cap		= 6,
-      capR		= 7,
-      pcapR		= 8
-    } paramIndex_t;
+  typedef enum paramIndex {
+    epsilon		= 0,
+    bv		= 1,
+    rc		= 2,
+    wc		= 3,
+    wci		= 4,
+    rcut		= 5,
+    cap		= 6,
+    capR		= 7,
+    pcapR		= 8
+  } paramIndex_t;
     
-    __host__ void initParameter (ScalorType * param, 
-				 ScalorType epsilon_,
-				 ScalorType bv_,
-				 ScalorType wc_,
-				 ScalorType cap_);
-    __host__ ScalorType calRcut (const ScalorType * param);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  void initParameter (ScalorType * param, 
+			       ScalorType epsilon_,
+			       ScalorType bv_,
+			       ScalorType wc_,
+			       ScalorType cap_);
+  ScalorType calRcut (const ScalorType * param);
+#ifdef DEVICE_CODE
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
+#endif
 };
 
 
 			   
 
-
+#ifdef DEVICE_CODE
 __device__ void 
 nbForce (const InteractionType ftype,
 	 const ScalorType * param,
@@ -310,7 +320,9 @@ nbForce (const InteractionType ftype,
   //     break;
   // }
 }
+#endif
 
+#ifdef DEVICE_CODE
 __device__ void 
 nbForce (const InteractionType ftype,
 	 const ScalorType * param,
@@ -348,8 +360,9 @@ nbForce (const InteractionType ftype,
   //     break;
   // }
 }
+#endif
 
-
+#ifdef DEVICE_CODE
 __device__ void
 nbForcePoten (const InteractionType ftype,
 	      const ScalorType * param,
@@ -389,9 +402,9 @@ nbForcePoten (const InteractionType ftype,
   //     break;
   // }
 }
+#endif
 
-
-// inline __host__  ScalorType 
+// inline  ScalorType 
 // calRcut (const InteractionType ftype,
 // 	 const ScalorType * param)
 // {
@@ -426,8 +439,8 @@ nbForcePoten (const InteractionType ftype,
 
 
 
-
-__device__ ForceIndexType AtomNBForceTable::calForceIndex (const IndexType * table, 
+#ifdef DEVICE_CODE
+__device__ IndexType AtomNBForceTable::calForceIndex (const IndexType * table, 
 							   const IndexType Ntype,
 							   const TypeType atom0, 
 							   const TypeType atom1)
@@ -437,8 +450,9 @@ __device__ ForceIndexType AtomNBForceTable::calForceIndex (const IndexType * tab
   return table[i * Ntype + j - ((i*(i+1)) >> 1)];
   // return table[i * Ntype + j - i];
 }
+#endif
 
-// __device__ ForceIndexType AtomNBForceTable::calForceIndex (volatile ForceIndexType * table, 
+// __device__ IndexType AtomNBForceTable::calForceIndex (volatile IndexType * table, 
 // 							   const IndexType Ntype,
 // 							   const TypeType atom0, 
 // 							   const TypeType atom1)
@@ -450,42 +464,44 @@ __device__ ForceIndexType AtomNBForceTable::calForceIndex (const IndexType * tab
 // }
 
 
-inline __host__ IndexType AtomNBForceTable::calDataLength (const IndexType Ntype)
+inline IndexType AtomNBForceTable::calDataLength (const IndexType Ntype)
 {
   return ((Ntype * (Ntype + 1)) >> 1);
 }
 
+#ifdef DEVICE_CODE
 __device__ IndexType AtomNBForceTable::dCalDataLength (const IndexType Ntype)
 {
   return ((Ntype * (Ntype + 1)) >> 1);
 }
+#endif
 
-inline __host__ int AtomNBForceTable::deviceInitTable (const ForceIndexType * htable,
-						       ForceIndexType ** dtable,
-						       const IndexType Ntype)
-{
-  cudaMalloc ((void**)&dtable, calDataLength(Ntype) * sizeof(ForceIndexType));
-  cudaMemcpy (*dtable, htable, calDataLength(Ntype) * sizeof(ForceIndexType),
-	      cudaMemcpyHostToDevice);
-  checkCUDAError ("AtomNBForceTable::deviceInitTable");
-  return 0;
-}
+// inline int AtomNBForceTable::deviceInitTable (const IndexType * htable,
+// 						       IndexType ** dtable,
+// 						       const IndexType Ntype)
+// {
+//   cudaMalloc ((void**)&dtable, calDataLength(Ntype) * sizeof(IndexType));
+//   cudaMemcpy (*dtable, htable, calDataLength(Ntype) * sizeof(IndexType),
+// 	      cudaMemcpyHostToDevice);
+//   checkCUDAError ("AtomNBForceTable::deviceInitTable");
+//   return 0;
+// }
 
-inline __host__ void AtomNBForceTable::setTableItem (ForceIndexType * table,
-						     const IndexType Ntype,
-						     const TypeType atom0, 
-						     const TypeType atom1,
-						     const ForceIndexType forceIdx)
-{
-  IndexType i, j;
-  atom0 <= atom1 ? (i = atom0, j = atom1) : (i = atom1, j = atom0);
-  table[i * Ntype + j - ((i*(i+1)) >> 1)] = forceIdx;
-  // table[i * Ntype + j - i] = forceIdx;
-}
+// inline void AtomNBForceTable::setTableItem (IndexType * table,
+// 						     const IndexType Ntype,
+// 						     const TypeType atom0, 
+// 						     const TypeType atom1,
+// 						     const IndexType forceIdx)
+// {
+//   IndexType i, j;
+//   atom0 <= atom1 ? (i = atom0, j = atom1) : (i = atom1, j = atom0);
+//   table[i * Ntype + j - ((i*(i+1)) >> 1)] = forceIdx;
+//   // table[i * Ntype + j - i] = forceIdx;
+// }
 
 
 
-inline __host__ void LennardJones6_12::initParameter (ScalorType * param, 
+inline void LennardJones6_12::initParameter (ScalorType * param, 
 						      ScalorType epsilon_,
 						      ScalorType sigma_,
 						      ScalorType shift_,
@@ -497,11 +513,13 @@ inline __host__ void LennardJones6_12::initParameter (ScalorType * param,
   param[rcut]  = rcut_;
 }
 
-inline __host__ ScalorType LennardJones6_12::calRcut (const ScalorType * param)
+inline ScalorType LennardJones6_12::calRcut (const ScalorType * param)
 {
   return param[rcut];
 }
 
+
+#ifdef DEVICE_CODE
 __device__ void LennardJones6_12::force (const ScalorType * param,
 					 ScalorType diffx,
 					 ScalorType diffy,
@@ -535,7 +553,9 @@ __device__ void LennardJones6_12::force (const ScalorType * param,
   // *fy = diffy * scalor;
   // *fz = diffz * scalor;
 }
+#endif
 
+#ifdef DEVICE_CODE
 __device__ void LennardJones6_12::force (const ScalorType * param,
 					 ScalorType diffx,
 					 ScalorType diffy,
@@ -569,8 +589,9 @@ __device__ void LennardJones6_12::force (const ScalorType * param,
   // *fy = diffy * scalor;
   // *fz = diffz * scalor;
 }
+#endif
 
-
+#ifdef DEVICE_CODE
 __device__ ScalorType LennardJones6_12::forcePoten (const ScalorType * param,
 						    ScalorType diffx,
 						    ScalorType diffy,
@@ -592,10 +613,10 @@ __device__ ScalorType LennardJones6_12::forcePoten (const ScalorType * param,
   *fz = diffz * scalor;
   return boolScalor * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
 }
-  
+#endif
 
 
-inline __host__ ScalorType LennardJones6_12_cap::
+inline ScalorType LennardJones6_12_cap::
 lj6_12_originForce (ScalorType * param, ScalorType r)
 {
   ScalorType dr2 = r*r;
@@ -609,7 +630,7 @@ lj6_12_originForce (ScalorType * param, ScalorType r)
   return 4.f * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri;
 }
 
-inline __host__ ScalorType LennardJones6_12_cap::
+inline ScalorType LennardJones6_12_cap::
 lj6_12_originPoten (ScalorType * param, ScalorType r)
 {
   ScalorType dr2 = r*r;
@@ -623,7 +644,7 @@ lj6_12_originPoten (ScalorType * param, ScalorType r)
   return 4.f * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
 }
 
-inline __host__ ScalorType LennardJones6_12_cap::
+inline ScalorType LennardJones6_12_cap::
 lj6_12_findCapR (ScalorType * param)
 {
   ScalorType point = 0.95f * param[rcut];
@@ -645,7 +666,7 @@ lj6_12_findCapR (ScalorType * param)
 }
 
 
-inline __host__ void LennardJones6_12_cap::initParameter (ScalorType * param,
+inline void LennardJones6_12_cap::initParameter (ScalorType * param,
 							  ScalorType epsilon_,
 							  ScalorType sigma_,
 							  ScalorType shift_,
@@ -661,11 +682,13 @@ inline __host__ void LennardJones6_12_cap::initParameter (ScalorType * param,
   param[pcapR] = lj6_12_originPoten(param, param[capR]);
 }
 
-inline __host__ ScalorType LennardJones6_12_cap::calRcut (const ScalorType * param)
+inline ScalorType LennardJones6_12_cap::calRcut (const ScalorType * param)
 {
   return param[rcut];
 }
 
+
+#ifdef DEVICE_CODE
 __device__ void LennardJones6_12_cap::force (const ScalorType * param,
 					     ScalorType diffx,
 					     ScalorType diffy,
@@ -700,8 +723,9 @@ __device__ void LennardJones6_12_cap::force (const ScalorType * param,
   *fy = -diffy * scalor;
   *fz = -diffz * scalor;
 }
+#endif
 
-
+#ifdef DEVICE_CODE
 __device__ ScalorType LennardJones6_12_cap::forcePoten (const ScalorType * param,
 							ScalorType diffx,
 							ScalorType diffy,
@@ -737,12 +761,12 @@ __device__ ScalorType LennardJones6_12_cap::forcePoten (const ScalorType * param
   *fz = -diffz * scalor;
   return 4.f * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
 }
+#endif
 
 
 
 
-
-inline __host__ void CosTail::initParameter (ScalorType * param, 
+inline void CosTail::initParameter (ScalorType * param, 
 					     ScalorType epsilon_,
 					     ScalorType bv_,
 					     ScalorType wc_)
@@ -758,11 +782,12 @@ inline __host__ void CosTail::initParameter (ScalorType * param,
   param[rcut] = param[rc] + param[wc];
 }
 
-inline __host__ ScalorType CosTail::calRcut (const ScalorType * param)
+inline ScalorType CosTail::calRcut (const ScalorType * param)
 {
   return param[rcut];
 }  
-  
+
+#ifdef DEVICE_CODE
 __device__ void CosTail::force (const ScalorType * param,
 				ScalorType diffx,
 				ScalorType diffy,
@@ -792,7 +817,9 @@ __device__ void CosTail::force (const ScalorType * param,
   *fy = diffy * fscalor;
   *fz = diffz * fscalor;
 }
-  
+#endif
+
+#ifdef DEVICE_CODE
 __device__ ScalorType CosTail::forcePoten (const ScalorType * param,
 					   ScalorType diffx,
 					   ScalorType diffy,
@@ -829,11 +856,11 @@ __device__ ScalorType CosTail::forcePoten (const ScalorType * param,
 
   return rvalue;
 }
+#endif
 
 
 
-
-inline __host__ void
+inline void
 CosTail_cap::initParameter (ScalorType * param, 
 			    ScalorType epsilon_,
 			    ScalorType bv_,
@@ -858,12 +885,13 @@ CosTail_cap::initParameter (ScalorType * param,
   param[pcapR] = LennardJones6_12_cap::lj6_12_originPoten(ljparam, param[capR]);
 }
 
-inline __host__ ScalorType
+inline ScalorType
 CosTail_cap::calRcut (const ScalorType * param)
 {
   return param[rcut];
 }
 
+#ifdef DEVICE_CODE
 __device__ void
 CosTail_cap::force (const ScalorType * param,
 		    ScalorType diffx,
@@ -904,8 +932,9 @@ CosTail_cap::force (const ScalorType * param,
   *fy = diffy * fscalor;
   *fz = diffz * fscalor;
 }
+#endif
 
-
+#ifdef DEVICE_CODE
 __device__ ScalorType
 CosTail_cap::forcePoten (const ScalorType * param,
 			 ScalorType diffx,
@@ -953,7 +982,7 @@ CosTail_cap::forcePoten (const ScalorType * param,
 
   return rvalue;
 }
-
+#endif
 
 
 

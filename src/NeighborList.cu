@@ -1,3 +1,5 @@
+#define DEVICE_CODE
+
 #include "NeighborList.h"
 #include<stdio.h>
 #include "Auxiliary.h"
@@ -164,7 +166,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
 		       const IndexType devide,
-		       const VectorType boxSize)
+		       const HostVectorType boxSize)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -413,11 +415,11 @@ __global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
 __global__ void
 Reshuffle_backupDeviceNeighborList (const IndexType numAtom,
 				    const IndexType * nlistData1,
-				    const ForceIndexType * nbForceIndex1,
+				    const IndexType * nbForceIndex1,
 				    const IndexType stride,
 				    const IndexType * Nneighbor1,
 				    IndexType * nlistData2,
-				    ForceIndexType * nbForceIndex2,
+				    IndexType * nbForceIndex2,
 				    IndexType * Nneighbor2)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -468,12 +470,12 @@ Reshuffle_reshuffleDeviceCellList (IndexType * clistData,
 __global__ void
 Reshuffle_reshuffleDeviceNeighborList (const IndexType numAtom,
 				       const IndexType * nlistData1,
-				       const ForceIndexType* nbForceIndex1,
+				       const IndexType* nbForceIndex1,
 				       const IndexType stride,
 				       const IndexType * Nneighbor1,
 				       const IndexType * idxTable,
 				       IndexType * nlistData2,
-				       ForceIndexType * nbForceIndex2,
+				       IndexType * nbForceIndex2,
 				       IndexType * Nneighbor2)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;

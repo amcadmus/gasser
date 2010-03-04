@@ -1,3 +1,4 @@
+#define DEVICE_CODE
 #include "BoxGeometry.h"
 
 

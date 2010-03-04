@@ -1,0 +1,66 @@
+#ifndef __Parallel_TransferEngine_h__
+#define __Parallel_TransferEngine_h__
+
+#include "Parallel_Environment.h"
+#include "mpi.h"
+#include "common.h"
+
+namespace Parallel{
+
+  class TransferEngine 
+  {
+    const Environment * env;
+    int * blockLength;
+    MPI_Aint * shiftIndex;
+    void * buff;
+    MPI_Aint add_buff;
+    bool dataTypeBuilt;
+    MPI_Datatype dataType;
+    unsigned count;
+    unsigned memSize;
+    MPI_Request request;
+    MPI_Status status;
+private:
+    void resize (unsigned memSize);
+public:
+    TransferEngine (const Environment & env);
+    ~TransferEngine ();
+public:
+    void clear ();
+    void clearRegistered ();
+    void registerBuff (void * buff, size_t size);
+    void build ();
+    void Isend (int dest, int tag);
+    void Irecv (int src,  int tag);
+    bool test ();
+    void wait ();
+    
+  };
+
+  class SummationEngine 
+  {
+    const Environment & env;
+private:
+    ScalorType * sumScalorBuff;
+    IndexType    sumScalorBuffSize;
+    IndexType * sumIndexBuff;
+    IndexType   sumIndexBuffSize;
+    IntScalorType * sumIntScalorBuff;
+    IntScalorType   sumIntScalorBuffSize;
+public:
+    SummationEngine (const Environment & env);
+    ~SummationEngine ();
+public:
+    ScalorType sumScalor    (ScalorType * data, int num, ScalorType ** result);
+    ScalorType sumScalorAll (ScalorType * data, int num, ScalorType ** result);
+    IntScalorType sumIntScalor    (IntScalorType * data, int num, IntScalorType **result);
+    IntScalorType sumIntScalorAll (IntScalorType * data, int num, IntScalorType **result);
+    IndexType sumIndex    (IndexType * data, int num, IndexType ** result);
+    IndexType sumIndexAll (IndexType * data, int num, IndexType ** result);
+  };
+  
+}
+
+
+
+#endif

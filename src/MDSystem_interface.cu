@@ -1,3 +1,4 @@
+#define DEVICE_CODE
 #define CPLUSPLUS
 #include "MDSystem_interface.h"
 #include "GromacsFileManager.h"

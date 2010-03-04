@@ -1,3 +1,5 @@
+#define DEVICE_CODE
+
 #include "InteractionEngine_interface.h"
 #include "NonBondedInteraction.h"
 #include "BondInteraction.h"
@@ -553,7 +555,7 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
     //   if (jj >= myNei) continue;
       
       IndexType targetIdx ( nlist.data [nlistPosi] );
-      ForceIndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
+      IndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
 #ifdef COMPILE_NO_TEX
       CoordType target ( coord[targetIdx] );
 #else
@@ -622,7 +624,7 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 	 jj < nlist.Nneighbor[ii];
 	 ++jj, nlistPosi += nlist.stride){
       IndexType targetIdx ( nlist.data[nlistPosi] );
-      ForceIndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
+      IndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
 #ifdef COMPILE_NO_TEX    
       CoordType target ( coord[targetIdx] );
 #else
@@ -706,7 +708,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
     diffz = target.z - ref.z;
     shortestImage (box, &diffx, &diffy, &diffz);
     ScalorType fx, fy, fz;
-    ForceIndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
+    IndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
     bondForce (bondedInteractionType[bondFindex],
 	       &bondedInteractionParameter
 	       [bondedInteractionParameterPosition[bondFindex]],
@@ -769,7 +771,7 @@ __global__ void calBondInteraction (const IndexType numAtom,
       diffz = target.z - ref.z;
       shortestImage (box, &diffx, &diffy, &diffz);
       ScalorType fx, fy, fz;
-      ForceIndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
+      IndexType bondFindex = bdlist.bondIndex[jj * bdlist.stride + ii];
       ScalorType dp;
       bondForcePoten (bondedInteractionType[bondFindex],
 		      &bondedInteractionParameter
@@ -875,7 +877,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
       ScalorType fx, fy, fz;
-      ForceIndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
+      IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       angleForce (center,
 		  bondedInteractionType[angleFindex],
 		  &bondedInteractionParameter
@@ -960,7 +962,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
       ScalorType fx, fy, fz;
-      ForceIndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
+      IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       ScalorType dp;
       angleForcePoten (center,
 		       bondedInteractionType[angleFindex],
@@ -1110,7 +1112,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 // 	    ScalorType dr2;
 // 	    if ((dr2 = (diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 // 		targetIndexes[jj] != ii){
-// 	      ForceIndexType fidx(0);
+// 	      IndexType fidx(0);
 // 	      // fidx = AtomNBForceTable::calForceIndex (
 // 	      // 	  nonBondedInteractionTable,
 // 	      // 	  const_numAtomType[0],
@@ -1252,7 +1254,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 // 	    //printf ("%d\t%d\t%f\t%f\n", ii, 
 // 	    if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
 // 		targetIndexes[jj] != ii){
-// 	      ForceIndexType fidx(0);
+// 	      IndexType fidx(0);
 // 	      // fidx = AtomNBForceTable::calForceIndex (
 // 	      // 	  nonBondedInteractionTable,
 // 	      // 	  const_numAtomType[0],
@@ -1362,7 +1364,7 @@ __global__ void calNonBondedInteraction (
 	// ScalorType dr2;
 	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
-	  ForceIndexType fidx(0);
+	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
 	      const_nonBondedInteractionTable,
 	      const_numAtomType[0],
@@ -1468,7 +1470,7 @@ __global__ void calNonBondedInteraction (
 	// ScalorType dr2;
 	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
 	    targetIndexes[jj] != ii){
-	  ForceIndexType fidx(0);
+	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
 	  	  const_nonBondedInteractionTable,
 	  	  const_numAtomType[0],

@@ -106,6 +106,7 @@ namespace Topology {
       void addMolecules (const Molecule & mol,
 			 const IndexType & number);
       void clear();
+      IndexType numAtom () const {return indexShift.back();}
     };
 }
 

@@ -6,7 +6,7 @@
 typedef float		ScalorType;
 typedef int		IntScalorType;
 typedef unsigned	IndexType;
-typedef unsigned	ForceIndexType;
+// typedef unsigned	ForceIndexType;
 typedef int		TypeType;
 
 #define MaxThreadsPerBlock			512
@@ -37,5 +37,19 @@ typedef float3		VectorType;
 typedef int3		IntVectorType;
 typedef uint3		IndexVectorType;
 #endif
+
+
+struct floatH4 
+{
+  float x, y, z, w;
+};
+struct floatH3
+{
+  float x, y, z;
+};
+
+typedef floatH4		HostCoordType;
+typedef floatH3		HostVectorType;
+
 
 #endif

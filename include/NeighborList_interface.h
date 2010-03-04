@@ -55,7 +55,7 @@ private:
 				NeighborListBuiltMode & mode,
 				IntVectorType & NCell);
   void mallocDeviceCellList (const IntVectorType & NCell,
-			     const VectorType & boxSize);
+			     const HostVectorType & boxSize);
   void mallocDeviceNeighborList (const MDSystem & sys,
 				 const IndexType & DeviceNeighborListExpansion);
   void bindGlobalTexture (const MDSystem & sys);

@@ -1,4 +1,14 @@
+#define DEVICE_CODE
+
 #include "Statistic_interface.h"
+
+
+void MDStatistic::deviceCopy (const MDStatistic & st)
+{
+  cudaMemcpy (ddata, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyDeviceToDevice);
+  checkCUDAError ("Statistic::deviceCopy");
+}
 
 
 // __global__ void initBuff (ScalorType * buff, IndexType n);

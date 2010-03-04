@@ -1,18 +1,18 @@
+#define HOST_CODE
+#define CPP_FILE
+
 #include "Parallel_MDData.h"
 #include "GromacsFileManager.h"
 
 Parallel::HostMDData::
 HostMDData()
     : numAtom_(0), memSize_(0),
-      totalMass (0.f), totalMassi (0.f), totalNumFreedom (0),
       coord (NULL),
       coordNoix (NULL), coordNoiy(NULL), coordNoiz(NULL),
       velox (NULL), veloy(NULL), veloz(NULL),
       forcx (NULL), forcy(NULL), forcz(NULL),
       globalIndex (NULL),
-      type (NULL), mass (NULL), charge (NULL),
-      atomName (NULL), atomIndex (NULL),
-      resdName (NULL), resdIndex (NULL)
+      type (NULL), mass (NULL), charge (NULL)
 {
 }
 
@@ -27,9 +27,6 @@ clearAll ()
 {
   numAtom_ = 0;
   memSize_ = 0;
-  totalNumFreedom = 0;
-  totalMass = 0;
-  totalMassi = 0;
   
   freeAPointer ((void**)&coord);
   freeAPointer ((void**)&coordNoix);
@@ -45,10 +42,6 @@ clearAll ()
   freeAPointer ((void**)&type);
   freeAPointer ((void**)&mass);
   freeAPointer ((void**)&charge);
-  freeAPointer ((void**)&atomName);
-  freeAPointer ((void**)&atomIndex);
-  freeAPointer ((void**)&resdName);
-  freeAPointer ((void**)&resdIndex);
 }
 
 
@@ -60,7 +53,7 @@ reallocAll (const IndexType & memSize__)
   reallocForce		(memSize__);
   reallocGlobalIndex	(memSize__);
   reallocTopProperty	(memSize__);
-  reallocGroProperty	(memSize__);
+  // reallocGroProperty	(memSize__);
 }
 
 
@@ -73,10 +66,10 @@ reallocCoordinate (const IndexType & memSize__)
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
 
-  size_t sizecoord =memSize_ * sizeof(CoordType);
+  size_t sizecoord =memSize_ * sizeof(HostCoordType);
   size_t sizei = memSize_ * sizeof(IntScalorType);
 
-  coord = (CoordType *) realloc (coord, sizecoord);
+  coord = (HostCoordType *) realloc (coord, sizecoord);
   if (coord == NULL) throw (MDExcptFailedReallocOnHost("coord", sizecoord));  
   coordNoix = (IntScalorType *) realloc (coordNoix, sizei);
   if (coordNoix == NULL) throw MDExcptFailedReallocOnHost ("coordNoix", sizei);
@@ -158,29 +151,8 @@ reallocTopProperty (const IndexType & memSize__)
   if (charge == NULL) throw MDExcptFailedReallocOnHost("charge", sizef);
 }
 
-void Parallel::HostMDData::
-reallocGroProperty (const IndexType & memSize__)
-{
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
-  if (memSize__ == 0) return ;
-  memSize_ = memSize__;
 
-  size_t sizec = memSize_ * sizeof(char) * StringSize;
-  size_t sizeidx = memSize_ * sizeof(IndexType);
-  
-  atomName = (char *) realloc (atomName, sizec);
-  if (atomName == NULL) throw MDExcptFailedReallocOnHost("atomName", sizec);
-  atomIndex = (IndexType *) realloc (atomIndex, sizeidx);
-  if (atomIndex == NULL) throw MDExcptFailedReallocOnHost("atomIndex", sizeidx);
-  resdName = (char *) realloc (resdName, sizec);
-  if (resdName == NULL) throw MDExcptFailedReallocOnHost("resdName", sizec);
-  resdIndex = (IndexType *) realloc (resdIndex, sizeidx); 
-  if (resdIndex == NULL) throw MDExcptFailedReallocOnHost("resdIndex", sizeidx);
-}
-
-IndexType Parallel::HostMDData::
+IndexType Parallel::GlobalHostMDData::
 numAtomInGroFile (const char * filename)
 {
   FILE * fpc = fopen (filename, "r");
@@ -197,41 +169,77 @@ numAtomInGroFile (const char * filename)
   return numAtom;
 }
 
-
 void Parallel::HostMDData::
-initCoordinateVelocity_GroFile (const char * filename)
+pushBackAtom  (const HostCoordType & coord_,
+	       const IntScalorType & coordNoix_,
+	       const IntScalorType & coordNoiy_,
+	       const IntScalorType & coordNoiz_,
+	       const ScalorType & velox_,
+	       const ScalorType & veloy_,
+	       const ScalorType & veloz_,
+	       const IndexType & globalIndex_,
+	       const TypeType & type_,
+	       const ScalorType & mass_,
+	       const ScalorType & charge_)
+{
+  if (numAtom_ == memSize_){
+    memSize_ ++;
+    memSize_ <<= 1;
+    reallocAll (memSize_);
+  }
+  coord[numAtom_] = coord_;
+  coordNoix[numAtom_] = coordNoix_;
+  coordNoiy[numAtom_] = coordNoiy_;
+  coordNoiz[numAtom_] = coordNoiz_;
+  velox[numAtom_] = velox_;
+  veloy[numAtom_] = veloy_;
+  veloz[numAtom_] = veloz_;
+  globalIndex[numAtom_] = globalIndex_;
+  type[numAtom_] = type_;
+  mass[numAtom_] = mass_;
+  charge[numAtom_] = charge_;
+  numAtom_ ++;
+}
+
+
+
+void Parallel::GlobalHostMDData::
+initConf_GroFile (const char * filename,
+		  char * atomName, IndexType * atomIndex,
+		  char * resdName, IndexType * resdIndex)
 {
   FILE * fpc = fopen (filename, "r");
   if (fpc == NULL) {
-    throw MDExcptCannotOpenFile ("HostMDData::initCoordinateVelocity_GroFile", filename);
+    throw MDExcptCannotOpenFile ("HostMDData::initConf_GroFile", filename);
   }
   while (fgetc(fpc) != '\n');
 
   if (fscanf (fpc, "%d", &(numAtom_)) != 1){
-    throw MDExcptWrongFileFormat ("HostMDData::initCoordinateVelocity_GroFile", filename);
+    throw MDExcptWrongFileFormat ("HostMDData::initConf_GroFile", filename);
   }
 
   if (numAtom_ > memSize_) {
     throw MDExcptNumAtomMoreThanMemSize ();
   }
+  
 
   ScalorType bx, by, bz;
   ScalorType * tmpx, * tmpy, * tmpz;
   tmpx = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
   if (tmpx == NULL){
-    throw MDExcptFailedMallocOnHost ("HostMDData::initCoordinateVelocity_GroFile",
+    throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpx",
 				     sizeof(ScalorType) * memSize_);
   }
   tmpy = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
   if (tmpy == NULL){
-    throw MDExcptFailedMallocOnHost ("HostMDData::initCoordinateVelocity_GroFile",
+    throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpy",
 				     sizeof(ScalorType) * memSize_);
   }
   tmpz = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
   if (tmpz == NULL){
-    throw MDExcptFailedMallocOnHost ("HostMDData::initCoordinateVelocity_GroFile",
+    throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpz",
 				     sizeof(ScalorType) * memSize_);
   }
@@ -242,32 +250,25 @@ initCoordinateVelocity_GroFile (const char * filename)
 				   velox,  veloy,  veloz,
 				   &bx, &by, &bz) ;
   for (IndexType i = 0; i < numAtom_; ++i){
+    globalIndex[i] = i;
     coord[i].x = tmpx[i];
     coord[i].y = tmpy[i];
     coord[i].z = tmpz[i];
+    coordNoix[i] = 0;
+    coordNoiy[i] = 0;
+    coordNoiz[i] = 0;
   }
   free (tmpx);
   free (tmpy);
   free (tmpz);
 
-  RectangularBoxGeometry::setBoxSize (bx, by, bz, &box);
+  RectangularBoxGeometry::setBoxSize (bx, by, bz, &globalBox);
 
   fclose (fpc);  
 }
 
 
-void Parallel::HostMDData::
-initMass ()
-{
-  totalMass = 0;
-  for (IndexType i = 0; i < numAtom_; ++i){
-    totalMass += mass[i];
-  }
-  totalMassi = 1./totalMass;  
-}
-
-
-IndexType Parallel::HostMDData::
+IndexType Parallel::GlobalHostMDData::
 findMolIndex (const Topology::System & sysTop,
 	      const IndexType & globalIndex)
 {
@@ -291,7 +292,7 @@ findMolIndex (const Topology::System & sysTop,
 }
 
 
-void Parallel::HostMDData::
+void Parallel::GlobalHostMDData::
 initTopology (const Topology::System & sysTop)
 {
   for (IndexType i = 0; i < numAtom_; ++i){
@@ -302,10 +303,20 @@ initTopology (const Topology::System & sysTop)
     charge[i] = sysTop.molecules[molIndex].atoms[atomIndex].charge;
     type[i] = sysTop.molecules[molIndex].atoms[atomIndex].type;
   }
-
-  initMass ();
-
-  totalNumFreedom = numAtom_ * 3;
 }
 
+
+void Parallel::HostMDData::
+writeData_SimpleFile (const char * filename)
+{
+  FILE * fp = fopen (filename, "w");
+  if (fp == NULL){
+    throw MDExcptCannotOpenFile(filename);
+  }
+  fprintf (fp, "# %d\n", numAtom_);
+  for (IndexType i = 0; i < numAtom_; ++i){
+    fprintf (fp, "%8.3f %8.3f %8.3f\n", coord[i].x, coord[i].y, coord[i].z);
+  }
+  fclose (fp);
+}
 

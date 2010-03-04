@@ -1,3 +1,5 @@
+#define DEVICE_CODE
+
 #include "MDError_interface.h"
 
 #define NErrorIndex	2

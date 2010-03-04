@@ -136,7 +136,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
 		       const IndexType devide,
-		       const VectorType boxSize);
+		       const HostVectorType boxSize);
 
 
 // needs NCell blocks

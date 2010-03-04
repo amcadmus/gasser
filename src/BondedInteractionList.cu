@@ -1,3 +1,5 @@
+#define DEVICE_CODE
+
 #include "BondedInteractionList.h"
 
 BondedInteractionList::

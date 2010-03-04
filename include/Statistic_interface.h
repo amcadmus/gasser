@@ -56,12 +56,7 @@ public:
   ScalorType BondedEnergy ();
 };
 
-inline void MDStatistic::deviceCopy (const MDStatistic & st)
-{
-  cudaMemcpy (ddata, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
-	      cudaMemcpyDeviceToDevice);
-  checkCUDAError ("Statistic::deviceCopy");
-}
+
 
 inline ScalorType MDStatistic::NonBondedEnergy()
 {
