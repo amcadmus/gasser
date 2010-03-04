@@ -9,6 +9,17 @@ typedef unsigned	IndexType;
 // typedef unsigned	ForceIndexType;
 typedef int		TypeType;
 
+#ifdef HOST_CODE
+__align(64) struct float4
+{
+  float x, y, z, w;
+};
+struct float3
+{
+  float x, y, z;
+};
+#endif // hostcode
+
 #define MaxThreadsPerBlock			512
 #define NThreadForSum				64
 #define DefaultNThreadPerBlock			64
@@ -50,6 +61,6 @@ struct floatH3
 
 typedef floatH4		HostCoordType;
 typedef floatH3		HostVectorType;
-
+// typedef floatH4		CoordType;
 
 #endif

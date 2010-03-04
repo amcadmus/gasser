@@ -21,6 +21,7 @@ private:
     GlobalHostMDData globalHostData;
     HostMDData sendHostData;
     HostMDData localHostData;
+    DeviceMDData deviceData;
 public:
     MDSystem (const Environment & env_);
     ~MDSystem();

@@ -13,7 +13,6 @@ class NeighborList;
 #include "MDTimer_interface.h"
 #include "SystemNonBondedInteraction.h"
 
-
 using namespace RectangularBoxGeometry;
 
 typedef enum {

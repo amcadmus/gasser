@@ -45,7 +45,7 @@ reallocGroProperty (const IndexType & memSize__)
 void Parallel::MDSystem::
 init (const char * confFileName,
       const Topology::System & sysTop)
-{
+ {
   Parallel::TransferEngine transSend (*env);
   Parallel::TransferEngine transRecv (*env);
   
@@ -230,17 +230,20 @@ init (const char * confFileName,
     }
   }
 
-
-  // MPI_Barrier (env->communicator());
-  // SummationEngine sume (*env);
-  // IndexType *sumNum;
-  // sume.sumIndexAll (&localHostData.numAtom(), 1, &sumNum);
-  // printf ("myrank is %d, my num atom is %d\n", env->myRank(), localHostData.numAtom());
-  // fflush (stdout);
-  // if (env->myRank() == 0){
-  //   printf ("sumTotal is %d, global is %d\n", sumNum[0], globalHostData.numAtom());
-  //   fflush (stdout);
-  // }
+  deviceData.copyFromHost (localHostData);
+  deviceData.copyToHost (localHostData);
+  
+  
+  MPI_Barrier (env->communicator());
+  SummationEngine sume (*env);
+  IndexType *sumNum;
+  sume.sumIndexAll (&localHostData.numAtom(), 1, &sumNum);
+  printf ("myrank is %d, my num atom is %d\n", env->myRank(), localHostData.numAtom());
+  fflush (stdout);
+  if (env->myRank() == 0){
+    printf ("sumTotal is %d, global is %d\n", sumNum[0], globalHostData.numAtom());
+    fflush (stdout);
+  }
   
 }
   

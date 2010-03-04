@@ -21,6 +21,7 @@
  * these are textures for a fast reference of particle position.
  * 
  */
+
 #ifndef COORD_IN_ONE_VEC
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordx;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordy;

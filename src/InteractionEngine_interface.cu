@@ -28,7 +28,6 @@ IndexType const_numAtomType[1];
 __constant__
 IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
-
 void InteractionEngine_interface::init (const MDSystem  & sys,
 					const IndexType & NTread)
 {
