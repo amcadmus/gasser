@@ -95,3 +95,16 @@ barrier ()
   MPI_Barrier (commCart);
 }
 
+
+void Parallel::Environment::
+neighborProcIndex (int direction,
+		   int displacement,
+		   int & src,
+		   int & dest)
+{
+  MPI_Cart_shift (Parallel::Environment::commCart,
+		  direction,
+		  displacement,
+		  & src, & dest);
+}
+

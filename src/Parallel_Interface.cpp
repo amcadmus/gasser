@@ -19,15 +19,13 @@ finalizeEnvironment ()
 int Parallel::Interface::
 myRank()
 {
-  Environment env;
-  return env.myRank();
+  return Parallel::Environment::myRank();
 }
 
 int Parallel::Interface::
 numProc()
 {
-  Environment env;  
-  return env.numProc();
+  return Parallel::Environment::numProc();
 }
 
 void Parallel::Interface::
@@ -60,3 +58,4 @@ barrier ()
 {
   Parallel::Environment::barrier();
 }
+

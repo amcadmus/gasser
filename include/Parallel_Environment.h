@@ -13,7 +13,7 @@ namespace Parallel {
     CoordXIndex =	0,
     CoordYIndex	=	1,
     CoordZIndex	=	2
-  };
+  } ;
   
   class Environment 
   {
@@ -43,6 +43,11 @@ public:
 			    int & ny,
 			    int & nz) ;
     static void barrier ();
+
+    static int neighborProcIndex (int direction,
+				  int displacement,
+				  int & src,
+				  int & dest);
   };
 }
 

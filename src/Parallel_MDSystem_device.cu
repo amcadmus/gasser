@@ -74,8 +74,8 @@ init (const char * confFileName,
 
   deviceData.mallocAll (localHostData.memSize());
   deviceData.copyFromHost (localHostData);
-  // deviceData.copyToHost (localHostData);  
+  // deviceData.copyToHost   (localHostData);  
 }
-  
+
 
 

@@ -22,7 +22,9 @@ namespace Parallel{
 		     int & ny,
 		     int & nz);
     void barrier ();
-    // namespace Transfer{
+
+    
+// namespace Transfer{
     //   void init ();
     //   void finalize ();
     //   void registSendBuff (void * buff, unsigned size);

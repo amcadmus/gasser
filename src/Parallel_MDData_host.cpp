@@ -500,3 +500,89 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 }
 
 
+void Parallel::MDSystem::
+redistribute ()
+{
+  Parallel::TransferEngine tr_xsend0;
+  Parallel::TransferEngine tr_xrecv0;
+  Parallel::TransferEngine tr_xsend1;
+  Parallel::TransferEngine tr_xrecv1;
+  Parallel::TransferEngine tr_ysend0;
+  Parallel::TransferEngine tr_yrecv0;
+  Parallel::TransferEngine tr_ysend1;
+  Parallel::TransferEngine tr_yrecv1;
+  Parallel::TransferEngine tr_zsend0;
+  Parallel::TransferEngine tr_zrecv0;
+  Parallel::TransferEngine tr_zsend1;
+  Parallel::TransferEngine tr_zrecv1;
+
+  int xsend0_nei, xrecv0_nei;
+  int xsend1_nei, xrecv1_nei;
+  int ysend0_nei, yrecv0_nei;
+  int ysend1_nei, yrecv1_nei;
+  int zsend0_nei, zrecv0_nei;
+  int zsend1_nei, zrecv1_nei;
+  
+  Parallel::Environment env;
+  env.neighborProcIndex (Parallel::CoordXIndex,  1, xsend0_nei, xrecv0_nei);
+  env.neighborProcIndex (Parallel::CoordXIndex, -1, xsend1_nei, xrecv1_nei);
+  env.neighborProcIndex (Parallel::CoordYIndex,  1, ysend0_nei, yrecv0_nei);
+  env.neighborProcIndex (Parallel::CoordYIndex, -1, ysend1_nei, yrecv1_nei);
+  env.neighborProcIndex (Parallel::CoordZIndex,  1, zsend0_nei, zrecv0_nei);
+  env.neighborProcIndex (Parallel::CoordZIndex, -1, zsend1_nei, zrecv1_nei);
+  
+  Parallel::HostCellList::iterator it;
+  for (it = xsend0.begin(); it != xsend0.end(); ++it){
+    tr_xsend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_xsend0.build();
+  tr_xsend0.Isend(xsend0_nei, 0);
+  IndexType * numAtomInCell =
+      (IndexType *) malloc (sizeof(IndexType) * xrecv0.numCell());
+  if (numAtomInCell == 0){
+    throw MDExcptFailedMallocOnHost ("HostMDData::redistribute",
+				     "numAtomInCell",
+				     sizeof(IndexType) * xrecv0.numCell());
+  }
+  tr_xrecv0.registerBuff (numAtomInCell, sizeof(IndexType) * xrecv0.numCell());
+  tr_xrecv0.build();
+  tr_xrecv0.Irecv(xrecv0_nei, 0);
+  tr_xrecv0.wait();
+  tr_xsend0.wait();
+  tr_xrecv0.clearRegistered();
+  tr_xsend0.clearRegistered();
+  // for (it = xsend0.begin(); it != xsend.end(); ++it){
+  //   tr_xsend0.registerBuff (
+  // 	it.atomIndexInCell(), sizeof(IndexType)*it.numAtomInCell());
+}
+
+  
+  
+  
+  for (itsend = xsend1.begin(); itsend != xsend1.end(); ++itsend){
+    tr_xsend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_xrecv0.build();
+  tr_xsend0.Isend(xsend1_nei, 0);
+  for (itsend = ysend0.begin(); itsend != ysend0.end(); ++itsend){
+    tr_ysend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_ysend0.build();
+  tr_ysend0.Isend(ysend0_nei, 0);
+  for (itsend = ysend1.begin(); itsend != ysend1.end(); ++itsend){
+    tr_ysend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_yrecv0.build();
+  tr_ysend1.Isend(ysend1_nei, 0);
+  for (itsend = zsend0.begin(); itsend != zsend0.end(); ++itsend){
+    tr_zsend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_zsend0.build();
+  tr_zsend0.Isend(zsend0_nei, 0);
+  for (itsend = zsend1.begin(); itsend != zsend1.end(); ++itsend){
+    tr_zsend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
+  }
+  tr_zrecv0.build();
+  tr_zsend1.Isend(zsend1_nei, 0);
+  
+  

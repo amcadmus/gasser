@@ -58,9 +58,14 @@ struct floatH3
 {
   float x, y, z;
 };
+struct intH3
+{
+  int x, y, z;
+};
 
 typedef floatH4		HostCoordType;
 typedef floatH3		HostVectorType;
+typedef intH3		HostIntVectorType;
 // typedef floatH4		CoordType;
 
 #endif

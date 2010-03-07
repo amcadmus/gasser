@@ -19,7 +19,7 @@ namespace RectangularBoxGeometry{
     mdRectBoxDirectionZ	= 4
   } ;
   typedef int BoxDirection_t;
-    
+  
   void setBoxSize (ScalorType x,
 		   ScalorType y,
 		   ScalorType z,
