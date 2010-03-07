@@ -1,7 +1,10 @@
 #ifndef __MDSystem_h_wanghan__
 #define __MDSystem_h_wanghan__
 
-#include "common.h"
+#define DEVICE_CODE
+
+#include "systemDefines.h"
+// #include "common.h"
 
 class HostMDData
 {
@@ -9,13 +12,7 @@ public:
   IndexType numAtom;
   IndexType numMem;
   IndexType NFreedom;
-#ifndef COORD_IN_ONE_VEC
-  ScalorType * coordx;
-  ScalorType * coordy;
-  ScalorType * coordz;
-#else
   CoordType * coord;
-#endif
   IntScalorType * coordNoix;
   IntScalorType * coordNoiy;
   IntScalorType * coordNoiz;
@@ -87,11 +84,9 @@ void cpyDeviceMDDataToHost (const DeviceMDData * ddata,
 void cpyDeviceMDDataToDevice (const DeviceMDData * ddata1,
 			      DeviceMDData * ddata);
 
-#ifdef COORD_IN_ONE_VEC
 __global__ void deviceCpyTypeToCoordW (CoordType * coord,
 				       const TypeType * type,
 				       const IndexType N);
-#endif
 
 __host__ void mallocHostMDData (IndexType numAtom,
 				IndexType expectedMaxNumAtom,

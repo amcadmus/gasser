@@ -1,7 +1,7 @@
 #define DEVICE_CODE
 
+#include "common.h"
 #include "GPU_Environment.h"
-#include "error.h"
 
 GPU::Environment::
 Environment()

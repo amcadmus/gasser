@@ -2,10 +2,8 @@
 #define __Auxiliary_h_wanghan__
 #include <stdio.h>
 
-#include "SumVector.h"
 #include "common.h"
-
-
+#include "SumVector.h"
 
 __device__ void      addKthBit (IndexType *a, IndexType k);
 __device__ IndexType getKthBit (IndexType  a, IndexType k);

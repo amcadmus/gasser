@@ -1,6 +1,6 @@
 #define DEVICE_CODE
-
 #include "Parallel_MDData.h"
+#include "compile_error_mixcode.h"
 
 Parallel::DeviceMDData::
 DeviceMDData ()

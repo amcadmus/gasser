@@ -1,11 +1,10 @@
-#define CPP_FILE
-
 #ifndef __Parallel_Environment_h_wanghan__
 #define __Parallel_Environment_h_wanghan__
 
+#define MPI_CODE
 #include "mpi.h"
-#include "MDException.h"
-
+#include "common.h"
+// #include "MDException.h"
 
 namespace Parallel {
   class MDExcptDimsNotConsistentWithNProc : public MDException {};
@@ -18,37 +17,35 @@ namespace Parallel {
   
   class Environment 
   {
-    MPI_Comm commCart;
-    int dims[3];
-    int myRank_;
-    int numProc_;
-    bool inited;
+    static MPI_Comm commCart;
+    static int dims[3];
+    static int myRank_;
+    static int numProc_;
 public:
-    Environment (int * argc, char *** argv);
-    ~Environment();
-public:
-    void init (const int division[3]);
-    int myRank  () const {return myRank_;}
-    int numProc () const {return numProc_;}
-    // const MPI_Comm * communicator () const {return commCart;}
-    const MPI_Comm & communicator () const {return commCart;}
-    void cartCoordToRank (const int & ix,
-			  const int & iy,
-			  const int & iz,
-			  int & rank) const;
-    void randToCartCoord (const int & rank,
-			  int & ix,
-			  int & iy,
-			  int & iz) const;
-    void numProcDim (int & nx,
-		     int & ny,
-		     int & nz) const;
-    // void numProcDim (int * dims);
-    
+    static void init (int * argc, char *** argv);
+    static void finalize ();
+    static void initCart (const int & nx,
+			  const int & ny,
+			  const int & nz);
+    static int myRank  () {return myRank_;}
+    static int numProc () {return numProc_;}
+    static const MPI_Comm & communicator ()
+	{return commCart;}
+    static void cartCoordToRank (const int & ix,
+				 const int & iy,
+				 const int & iz,
+				 int & rank) ;
+    static void randToCartCoord (const int & rank,
+				 int & ix,
+				 int & iy,
+				 int & iz) ;
+    static void numProcDim (int & nx,
+			    int & ny,
+			    int & nz) ;
+    static void barrier ();
   };
-
-
 }
 
+ 
 #endif
 

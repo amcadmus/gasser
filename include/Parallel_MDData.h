@@ -121,6 +121,11 @@ public:
   };
 
 
+  void distributeGlobalMDData (const GlobalHostMDData & gdata,
+			       HostMDData & ldata);
+
+  
+#ifdef DEVICE_CODE
   class DeviceMDData 
   {
 protected:
@@ -196,7 +201,7 @@ public:
     const ScalorType * dptr_mass		() const {return mass;}
     const ScalorType * dptr_charge		() const {return charge;}
   };
-
+#endif
   // void cpyHostMDDataToDevice (const HostMDData & hdata,
   // 			      DeviceMDData
 

@@ -1,10 +1,10 @@
 #include <stdio.h>
+#include "MDSystem_interface.h"
 #include "common.h"
 #include "BoxGeometry.h"
 #include "MDSystem.h"
 #include "RandomGenerator.h"
 #include "Auxiliary.h"
-#include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
 #include "Statistic.h"
 #include "Integrator_interface.h"

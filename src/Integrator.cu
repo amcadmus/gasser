@@ -1,3 +1,5 @@
+#include "MDSystem_interface.h"
+#include "common.h"
 #include "Integrator.h"
 #include "Auxiliary.h"
 #include <stdio.h>

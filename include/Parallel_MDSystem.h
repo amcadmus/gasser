@@ -1,8 +1,9 @@
 #ifndef __Parallel_MDSystem_h_wanghan__
 #define __Parallel_MDSystem_h_wanghan__
 
-#include "Parallel_Environment.h"
 #include "Parallel_MDData.h"
+
+#define DEVICE_CODE
 
 namespace Parallel {
     
@@ -16,14 +17,12 @@ private:
     IndexType * resdIndex;
     void reallocGroProperty (const IndexType & memSize);
 
-    const Environment * env;
     IndexType  globalNumAtom;
     GlobalHostMDData globalHostData;
-    HostMDData sendHostData;
     HostMDData localHostData;
     DeviceMDData deviceData;
 public:
-    MDSystem (const Environment & env_);
+    MDSystem ();
     ~MDSystem();
     // void initConf_GroFile (const char * filename);
     IndexType numAtomInGroFile (const char * filename) 

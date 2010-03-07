@@ -1,3 +1,5 @@
+#define DEVICE_CODE
+
 #include "BondList.h"
 
 void initDeviceBondList (DeviceBondList & dbdlist)

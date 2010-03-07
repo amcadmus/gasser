@@ -1,15 +1,16 @@
 #ifndef __Parallel_TransferEngine_h__
 #define __Parallel_TransferEngine_h__
 
+#define MPI_CODE
 #include "Parallel_Environment.h"
 #include "mpi.h"
 #include "common.h"
+
 
 namespace Parallel{
 
   class TransferEngine 
   {
-    const Environment * env;
     int * blockLength;
     MPI_Aint * shiftIndex;
     void * buff;
@@ -23,7 +24,7 @@ namespace Parallel{
 private:
     void resize (unsigned memSize);
 public:
-    TransferEngine (const Environment & env);
+    TransferEngine ();
     ~TransferEngine ();
 public:
     void clear ();
@@ -34,12 +35,10 @@ public:
     void Irecv (int src,  int tag);
     bool test ();
     void wait ();
-    
   };
 
   class SummationEngine 
   {
-    const Environment & env;
 private:
     ScalorType * sumScalorBuff;
     IndexType    sumScalorBuffSize;
@@ -48,7 +47,7 @@ private:
     IntScalorType * sumIntScalorBuff;
     IntScalorType   sumIntScalorBuffSize;
 public:
-    SummationEngine (const Environment & env);
+    SummationEngine ();
     ~SummationEngine ();
 public:
     ScalorType sumScalor    (ScalorType * data, int num, ScalorType ** result);

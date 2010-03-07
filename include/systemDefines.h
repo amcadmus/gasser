@@ -9,16 +9,16 @@ typedef unsigned	IndexType;
 // typedef unsigned	ForceIndexType;
 typedef int		TypeType;
 
-#ifdef HOST_CODE
-__align(64) struct float4
-{
-  float x, y, z, w;
-};
-struct float3
-{
-  float x, y, z;
-};
-#endif // hostcode
+// #ifdef HOST_CODE
+// __align(64) struct float4
+// {
+//   float x, y, z, w;
+// };
+// struct float3
+// {
+//   float x, y, z;
+// };
+// #endif // hostcode
 
 #define MaxThreadsPerBlock			512
 #define NThreadForSum				64
@@ -42,7 +42,7 @@ struct float3
 
 #define M_PIF				3.14159265f
 
-#ifndef CPP_FILE
+#ifdef DEVICE_CODE
 typedef float4		CoordType;
 typedef float3		VectorType;
 typedef int3		IntVectorType;

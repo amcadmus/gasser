@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "MDSystem_interface.h"
 #include "common.h"
 #include "BoxGeometry.h"
 #include "MDSystem.h"
@@ -11,7 +12,6 @@
 #include "tmp.h"
 #include "Reshuffle_interface.h"
 
-#include "MDSystem_interface.h"
 
 #include "Topology.h"
 #include "SystemBondedInteraction.h"

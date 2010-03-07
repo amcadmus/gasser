@@ -1,14 +1,16 @@
-#define HOST_CODE
-#define CPP_FILE
+#define MPI_CODE
 
 #include "Parallel_TransferEngine.h"
+#include "Parallel_Environment.h"
+
 #include "common.h"
 #include <stdlib.h>
 
+#include "compile_error_mixcode.h"
+
 Parallel::TransferEngine::
-TransferEngine (const Environment & env_)
-    : env (&env_),
-      buff (NULL),
+TransferEngine ()
+    : buff (NULL),
       blockLength(NULL),
       shiftIndex(NULL),
       dataTypeBuilt (false),
@@ -58,13 +60,13 @@ build ()
 void Parallel::TransferEngine::
 Isend (int dest, int tag)
 {
-  MPI_Isend (buff, 1, dataType, dest, tag, env->communicator(), &request);
+  MPI_Isend (buff, 1, dataType, dest, tag, Parallel::Environment::communicator(), &request);
 }
 
 void Parallel::TransferEngine::
 Irecv (int src,  int tag)
 {
-  MPI_Irecv (buff, 1, dataType, src,  tag, env->communicator(), &request);
+  MPI_Irecv (buff, 1, dataType, src,  tag, Parallel::Environment::communicator(), &request);
 }
 
 bool Parallel::TransferEngine::
@@ -114,14 +116,13 @@ Parallel::TransferEngine::
 
 
 Parallel::SummationEngine::
-SummationEngine (const Environment & env_)
+SummationEngine ()
     : sumScalorBuff (NULL),
       sumScalorBuffSize (0),
       sumIndexBuff (NULL),
       sumIndexBuffSize (0),
       sumIntScalorBuff (NULL),
-      sumIntScalorBuffSize (0),
-      env(env_)
+      sumIntScalorBuffSize (0)
 {
 }
 
@@ -136,13 +137,14 @@ Parallel::SummationEngine::
 ScalorType Parallel::SummationEngine::
 sumScalor (ScalorType * data, int num, ScalorType ** result)
 {
+  Environment env;
   if (num > sumScalorBuffSize && env.myRank() == 0){
     sumScalorBuff = (ScalorType *)realloc(sumScalorBuff, num * sizeof(ScalorType));
     if (sumScalorBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(ScalorType)*num));
     sumScalorBuffSize = num;
   }
   
-  MPI_Reduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, 0, env.communicator());;
+  MPI_Reduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, 0, Parallel::Environment::communicator());;
   *result = sumScalorBuff;
 }
 
@@ -156,20 +158,21 @@ sumScalorAll (ScalorType * data, int num, ScalorType ** result)
     sumScalorBuffSize = num;
   }
   
-  MPI_Allreduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, env.communicator());;
+  MPI_Allreduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, Parallel::Environment::communicator());;
   *result = sumScalorBuff;
 }
 
 IndexType Parallel::SummationEngine::
 sumIndex (IndexType * data, int num, IndexType ** result)
 {
+  Environment env;
   if (num > sumIndexBuffSize && env.myRank() == 0){
     sumIndexBuff = (IndexType *)realloc(sumIndexBuff, num * sizeof(IndexType));
     if (sumIndexBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(IndexType)*num));
     sumIndexBuffSize = num;
   }
   
-  MPI_Reduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, 0, env.communicator());;
+  MPI_Reduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, 0, Parallel::Environment::communicator());;
   *result = sumIndexBuff;
 }
 
@@ -186,7 +189,7 @@ sumIndexAll (IndexType * data, int num, IndexType ** result)
   //   sumIndexBuff[i] = 0;
   // }
   
-  MPI_Allreduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, env.communicator());;
+  MPI_Allreduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, Parallel::Environment::communicator());;
   *result = sumIndexBuff;
 }
 
