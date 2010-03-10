@@ -561,11 +561,14 @@ add (const DeviceSubCellList & a)
 void Parallel::DeviceSubCellList::
 sub (const DeviceSubCellList & a)
 {
-  std::vector<IndexType > result;
-  Parallel::Interface::set_difference (this->begin(), this->end(),
-				       a.begin(), a.end(),
-				       result.begin());
-  this->std::vector<IndexType>::operator= (result);
+  std::vector<IndexType > result (this->size());
+  std::vector<IndexType >::iterator newend =
+      Parallel::Interface::set_difference (this->begin(), this->end(),
+					   a.begin(), a.end(),
+					   result.begin());
+  std::vector<IndexType >::iterator newend2 =
+      Parallel::Interface::copy (result.begin(), newend, this->begin());
+  this->erase (newend2, this->end());
 }
 
 

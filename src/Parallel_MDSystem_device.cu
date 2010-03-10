@@ -88,6 +88,24 @@ init (const char * confFileName,
   deviceData.coord[132].z = 1.1;
   
   deviceData.rebuild ();
+
+  DeviceSubCellList subList;
+  deviceData.buildSubListAllCell (subList);
+  //  for (IndexType i = 0; i < subList.size(); ++i){
+  //   IndexType ix, iy, iz;
+  //   deviceData.D1toD3 (subList[i], ix, iy, iz);
+  //   printf ("%d %d %d\n", ix, iy, iz);
+  // }
+ 
+  deviceData.buildSubListRealCell (subList);
+  // for (IndexType i = 0; i < subList.size(); ++i){
+  //   IndexType ix, iy, iz;
+  //   deviceData.D1toD3 (subList[i], ix, iy, iz);
+  //   printf ("%d %d %d\n", ix, iy, iz);
+  // }
+
+  deviceData.buildSubListGhostCell (subList);
+  
 }
 
 

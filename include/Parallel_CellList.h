@@ -146,17 +146,20 @@ public:
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
 		       DeviceSubCellList & subList);
-    void buildSubListLevel1 (const IndexType & xIdLo,
-			     const IndexType & xIdUp,
-			     const IndexType & yIdLo,
-			     const IndexType & yIdUp,
-			     const IndexType & zIdLo,
-			     const IndexType & zIdUp,
-			     DeviceSubCellList & subList);    
+    inline void buildSubListAllCell   (DeviceSubCellList & subList);
+    inline void buildSubListRealCell  (DeviceSubCellList & subList);
+    inline void buildSubListGhostCell (DeviceSubCellList & subList);
+    // void buildSubListLevel1 (const IndexType & xIdLo,
+    // 			     const IndexType & xIdUp,
+    // 			     const IndexType & yIdLo,
+    // 			     const IndexType & yIdUp,
+    // 			     const IndexType & zIdLo,
+    // 			     const IndexType & zIdUp,
+    // 			     DeviceSubCellList & subList);    
   };
 
   
-  class DeviceSubCellList : std::vector<IndexType > 
+  class DeviceSubCellList : public std::vector<IndexType > 
   {
     friend  class DeviceCellListedMDData;
     DeviceCellListedMDData * ptr_data;
@@ -183,12 +186,52 @@ public:
   };
 
   
-  // namespace GPUGlobalCall{
 #endif // DEVICE_CODE
     
 }
 
-    
+
+#ifdef DEVICE_CODE
+void Parallel::DeviceCellListedMDData::
+buildSubListAllCell (DeviceSubCellList & subList)
+{
+  buildSubList (0, getNumCell().x,
+		0, getNumCell().y,
+		0, getNumCell().z,
+		subList);
+}
+
+  
+void Parallel::DeviceCellListedMDData::
+buildSubListRealCell  (DeviceSubCellList & subList)
+{
+  IndexType devideLevel = getDevideLevel();
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		subList);
+}
+
+      
+void Parallel::DeviceCellListedMDData::
+buildSubListGhostCell (DeviceSubCellList & subList)
+{
+  buildSubListAllCell (subList);
+  DeviceSubCellList temp;
+  buildSubListRealCell (temp);
+  subList.sub(temp);
+
+  int count = 0;
+  for (IndexType i = 0; i < subList.size(); ++i){
+    IndexType ix, iy, iz;
+    D1toD3 (subList[i], ix, iy, iz);
+    printf ("%d %d %d %d\n", ++count, ix, iy, iz);
+  }
+  
+}
+#endif // DEVICE_CODE
+
+
 
 
 #endif

@@ -33,14 +33,21 @@ unique (std::vector<IndexType>::iterator a, std::vector<IndexType>::iterator b)
   std::unique (a, b);
 }
 
-void Parallel::Interface::
+std::vector<IndexType >::iterator Parallel::Interface::
 set_difference (std::vector<IndexType>::const_iterator a0,
 		std::vector<IndexType>::const_iterator a1,
 		std::vector<IndexType>::const_iterator b0,
 		std::vector<IndexType>::const_iterator b1,
 		std::vector<IndexType>::iterator c0)
 {
-  std::set_difference (a0, a1, b0, b1, c0);
+  return std::set_difference (a0, a1, b0, b1, c0);
 }
 
+std::vector<IndexType >::iterator Parallel::Interface::
+copy (std::vector<IndexType>::const_iterator b0,
+      std::vector<IndexType>::const_iterator b1,
+      std::vector<IndexType>::iterator c0)
+{
+  return std::copy (b0, b1, c0);
+}
 
