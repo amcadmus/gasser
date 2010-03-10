@@ -2,6 +2,7 @@
 #define __Parallel_MDSystem_h_wanghan__
 
 #include "Parallel_MDData.h"
+#include "Parallel_CellList.h"
 
 #define DEVICE_CODE
 
@@ -9,19 +10,19 @@ namespace Parallel {
     
   class MDSystem 
   {
-    HostCellList & myCellList;
-    SubHostCellList xsend0;
-    SubHostCellList xrecv0;
-    SubHostCellList xsend1;
-    SubHostCellList xrecv1;
-    SubHostCellList ysend0;
-    SubHostCellList yrecv0;
-    SubHostCellList ysend1;
-    SubHostCellList yrecv1;
-    SubHostCellList zsend0;
-    SubHostCellList zrecv0;
-    SubHostCellList zsend1;
-    SubHostCellList zrecv1;
+    HostSubCellList xsend0;
+    HostSubCellList xrecv0;
+    IndexType * recv0Num;
+    HostSubCellList xsend1;
+    HostSubCellList xrecv1;
+    HostSubCellList ysend0;
+    HostSubCellList yrecv0;
+    HostSubCellList ysend1;
+    HostSubCellList yrecv1;
+    HostSubCellList zsend0;
+    HostSubCellList zrecv0;
+    HostSubCellList zsend1;
+    HostSubCellList zrecv1;
 private:
     // gro file related
     char * atomName;
@@ -30,13 +31,12 @@ private:
     IndexType * resdIndex;
     void reallocGroProperty (const IndexType & memSize);
 
-    IndexType  globalNumAtom;
-    GlobalHostMDData globalHostData;
-    HostMDData localHostData;
-    DeviceMDData deviceData;
-    HostMDData sendHostData;
+    IndexType			globalNumAtom;
+    GlobalHostMDData		globalHostData;
+    HostCellListedMDData	localHostData;
+    DeviceCellListedMDData	deviceData;
 public:
-    MDSystem (HostCellList & myCellList);
+    MDSystem ();
     ~MDSystem();
     // void initConf_GroFile (const char * filename);
     IndexType numAtomInGroFile (const char * filename) 
@@ -46,7 +46,7 @@ public:
     void writeLocalData_SimpleFile (const char * filename)
 	{ localHostData.writeData_SimpleFile(filename); }
 public:
-    void redistribute ();
+    // void redistribute ();
     
   };
 }

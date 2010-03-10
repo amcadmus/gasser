@@ -35,7 +35,7 @@ public:
 				 const int & iy,
 				 const int & iz,
 				 int & rank) ;
-    static void randToCartCoord (const int & rank,
+    static void rankToCartCoord (const int & rank,
 				 int & ix,
 				 int & iy,
 				 int & iz) ;
@@ -44,10 +44,10 @@ public:
 			    int & nz) ;
     static void barrier ();
 
-    static int neighborProcIndex (int direction,
-				  int displacement,
-				  int & src,
-				  int & dest);
+    static void neighborProcIndex (int direction,
+				   int displacement,
+				   int & src,
+				   int & dest);
   };
 }
 

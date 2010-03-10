@@ -386,33 +386,33 @@ pushNeighborCell (const DeviceCellList & clist,
 // }
 
 
-      template <typename VEC, typename T>
-      __device__ T
-      D3toD1 (const VEC & NCell,
-	      const T &ix,
-	      const T &iy,
-	      const T &iz)
-      {
-	return iz +
-	    NCell.z * iy +
-	    NCell.z * NCell.y * ix;
-	// return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
-      }
+template <typename VEC, typename T>
+__device__ T
+D3toD1 (const VEC & NCell,
+	const T &ix,
+	const T &iy,
+	const T &iz)
+{
+  return iz +
+      NCell.z * iy +
+      NCell.z * NCell.y * ix;
+  // return IndexType(NCell.y) * (IndexType(NCell.x) * ix + iy) + iz;
+}
 
-  template <typename VEC, typename T>
-      __device__ void
-      D1toD3 (const VEC & NCell,
-	      const T &i, 
-	      T &x,
-	      T &y,
-	      T &z)
-  {
-    T tmp = i;
-    z = tmp % (NCell.z);
-    tmp = (tmp - z) / NCell.z;
-    y = tmp % (NCell.y);
-    x = (tmp - y) / NCell.y;
-  }
+template <typename VEC, typename T>
+__device__ void
+D1toD3 (const VEC & NCell,
+	const T &i, 
+	T &x,
+	T &y,
+	T &z)
+{
+  T tmp = i;
+  z = tmp % (NCell.z);
+  tmp = (tmp - z) / NCell.z;
+  y = tmp % (NCell.y);
+  x = (tmp - y) / NCell.y;
+}
 
 
 

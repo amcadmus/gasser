@@ -4,6 +4,7 @@
 #include "common.h"
 #include "Topology.h"
 #include "BoxGeometry.h"
+#include "Parallel_DataTransferBlock.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -48,6 +49,7 @@ protected:
     void reallocTopProperty (const IndexType & memSize);
 public:
     HostMDData ();
+    HostMDData (const HostMDData & hdata);
     ~HostMDData ();
 public:
     const IndexType & numAtom () const {return numAtom_;}
@@ -57,6 +59,7 @@ public:
     void clearAll ();
     void clearData () {numAtom_ = 0;}
     void reallocAll (const IndexType & memSize);
+    void copy (const HostMDData & hdata);
 public:
     const RectangularBox & getGlobalBox	() const {return globalBox;}
     void setGlobalBox (const ScalorType & bx,
@@ -76,6 +79,10 @@ public:
 		       const ScalorType & mass,
 		       const ScalorType & charge);
     void writeData_SimpleFile (const char * filename);
+public:
+    void formDataTransferBlock (const IndexType & startIndex,
+				const IndexType & num,
+				DataTransferBlock & block);
 public:
     HostCoordType * cptr_coordinate		() {return coord;}
     IntScalorType * cptr_coordinateNoiX		() {return coordNoix;}
@@ -128,7 +135,7 @@ public:
 #ifdef DEVICE_CODE
   class DeviceMDData 
   {
-protected:
+public:
     IndexType numAtom_;
     IndexType memSize_;
     CoordType * coord;
@@ -153,12 +160,15 @@ protected:
     bool malloced;
 public:
     DeviceMDData ();
+    DeviceMDData (const DeviceMDData & ddata);
     ~DeviceMDData ();
 public:
     const IndexType & numAtom () const {return numAtom_;}
     const IndexType & memSize () const {return memSize_;}
     IndexType & numAtom ()  {return numAtom_;}
 
+    const RectangularBox & getGlobalBox     () const {return globalBox;}
+    const HostVectorType & getGlobalBoxSize () const {return globalBox.size;}
     void setGlobalBox (const RectangularBox & box)
 	{ globalBox = box; }
     void setGlobalBox (const ScalorType & bx,
@@ -167,10 +177,12 @@ public:
 	{ setBoxSize (bx, by, bz, &globalBox); }
 
     void mallocAll (const IndexType &memSize);
+    void initZero ();
     void clearAll ();
     void clearData () {numAtom_ = 0;}
     void copyFromHost (const HostMDData & hdata);
     void copyToHost   (HostMDData & hdata) const;
+    void copyFromDevice (const DeviceMDData & ddata);
 public:
     CoordType * dptr_coordinate			() {return coord;}
     IntScalorType * dptr_coordinateNoiX		() {return coordNoix;}

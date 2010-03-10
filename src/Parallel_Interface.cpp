@@ -4,6 +4,14 @@
 #include "Parallel_Environment.h"
 #include "compile_error_mixcode.h"
 
+#define NUMTHREADSINCELL 4
+
+unsigned Parallel::Interface::
+numThreadsInCell ()
+{
+  return NUMTHREADSINCELL;
+}
+
 void Parallel::Interface::
 initEnvironment (int * argc, char ***argv)
 {
@@ -43,6 +51,15 @@ cartCoordToRank (const int & ix,
 		 int & rank )
 {
   Parallel::Environment::cartCoordToRank (ix, iy, iz, rank);
+}
+
+void Parallel::Interface::
+rankToCartCoord (const int & rank,
+		 int & ix,
+		 int & iy,
+		 int & iz) 
+{
+  Parallel::Environment::rankToCartCoord (rank, ix, iy, iz);
 }
 
 void Parallel::Interface::

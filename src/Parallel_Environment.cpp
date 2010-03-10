@@ -69,7 +69,7 @@ cartCoordToRank(const int & ix,
 }
 
 void Parallel::Environment::
-randToCartCoord (const int & rank,
+rankToCartCoord (const int & rank,
 		 int & ix,
 		 int & iy,
 		 int & iz) 

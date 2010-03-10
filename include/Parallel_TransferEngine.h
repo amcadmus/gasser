@@ -3,6 +3,7 @@
 
 #define MPI_CODE
 #include "Parallel_Environment.h"
+#include "Parallel_DataTransferBlock.h"
 #include "mpi.h"
 #include "common.h"
 
@@ -30,6 +31,7 @@ public:
     void clear ();
     void clearRegistered ();
     void registerBuff (void * buff, size_t size);
+    void registerBuff (const DataTransferBlock & block);
     void build ();
     void Isend (int dest, int tag);
     void Irecv (int src,  int tag);

@@ -193,3 +193,12 @@ sumIndexAll (IndexType * data, int num, IndexType ** result)
   *result = sumIndexBuff;
 }
 
+
+void Parallel::TransferEngine::
+registerBuff (const DataTransferBlock & block)
+{
+  for (IndexType i = 0; i < NumDataItemsInMDData; ++i){
+    registerBuff (block.pointer[i], block.size[i]);
+  }
+}
+

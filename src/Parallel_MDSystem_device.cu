@@ -68,13 +68,26 @@ init (const char * confFileName,
 			     & (globalHostData.cptr_coordinateNoiZ()[i]));
     }
     globalHostData.initTopology (sysTop);
+    for (int i = 0; i < globalNumAtom; ++i){
+      globalHostData.cptr_coordinate()[i].w = globalHostData.cptr_type()[i];
+    }
   }
   
   distributeGlobalMDData (globalHostData, localHostData);
 
-  deviceData.mallocAll (localHostData.memSize());
+  // deviceData.mallocAll (localHostData.memSize());
   deviceData.copyFromHost (localHostData);
   // deviceData.copyToHost   (localHostData);  
+
+  deviceData.initCellStructure (2);
+
+  // deviceData.rebuild ();
+
+  deviceData.coord[124].z = 3.1;
+  deviceData.coord[128].z = 0.9;
+  deviceData.coord[132].z = 1.1;
+  
+  deviceData.rebuild ();
 }
 
 

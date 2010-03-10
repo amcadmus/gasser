@@ -75,7 +75,8 @@ void MDError::check (const char * msg)
       printf ("%f  ", hscalor[i]);
     }
     printf ("\n");
-    exit (EXIT_FAILURE);
+    // exit (EXIT_FAILURE);
+    throw MDExcptCuda ();
   }
 }
 

@@ -14,7 +14,7 @@ namespace Parallel{
 			  const int & iy,
 			  const int & iz,
 			  int & rank );
-    void randToCartCoord (const int & rank,
+    void rankToCartCoord (const int & rank,
 			  int & ix,
 			  int & iy,
 			  int & iz) ;
@@ -23,7 +23,8 @@ namespace Parallel{
 		     int & nz);
     void barrier ();
 
-    
+    unsigned numThreadsInCell  () ;
+    // unsigned numThreadsForAtom ();
 // namespace Transfer{
     //   void init ();
     //   void finalize ();

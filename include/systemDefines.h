@@ -53,6 +53,8 @@ typedef uint3		IndexVectorType;
 struct floatH4 
 {
   float x, y, z, w;
+  // floatH4 & operator = (const floatH4 & a) 
+  //     {x = a.x; y = a.y; z = a.z; w = a.w;
 };
 struct floatH3
 {
