@@ -89,7 +89,7 @@ init (const char * confFileName,
   
   deviceData.rebuild ();
 
-  DeviceSubCellList subList;
+  SubCellList subList;
   deviceData.buildSubListAllCell (subList);
   //  for (IndexType i = 0; i < subList.size(); ++i){
   //   IndexType ix, iy, iz;
@@ -109,7 +109,7 @@ init (const char * confFileName,
 
   Parallel::DeviceTransferPackage trans ;
   trans.reinit (subList);
-  trans.packAtom (deviceData);
+  trans.pack (deviceData);
 
   int i = 1;
   return;

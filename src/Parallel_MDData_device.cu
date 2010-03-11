@@ -87,7 +87,8 @@ clearAll ()
 
 
 void Parallel::DeviceMDData::
-copyFromHost (const HostMDData & hdata)
+copyFromHost (const HostMDData & hdata,
+	      const MDDataItemMask_t mask)
 {
   if (memSize_ < hdata.numData()){
     clearAll();
@@ -101,35 +102,55 @@ copyFromHost (const HostMDData & hdata)
   size_t sizecoord = numData_ * sizeof(CoordType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
-  
-  cudaMemcpy (coord, hdata.coord, sizecoord, cudaMemcpyHostToDevice);
-  checkCUDAError ("cpyHostMDDataToDevice coord");
 
-  cudaMemcpy (coordNoix, hdata.coordNoix, sizei, cudaMemcpyHostToDevice);
-  cudaMemcpy (coordNoiy, hdata.coordNoiy, sizei, cudaMemcpyHostToDevice);
-  cudaMemcpy (coordNoiz, hdata.coordNoiz, sizei, cudaMemcpyHostToDevice);
-  checkCUDAError ("cpyHostMDDataToDevice coordNoi");
-  
-  cudaMemcpy (velox, hdata.velox, sizef, cudaMemcpyHostToDevice);
-  cudaMemcpy (veloy, hdata.veloy, sizef, cudaMemcpyHostToDevice);
-  cudaMemcpy (veloz, hdata.veloz, sizef, cudaMemcpyHostToDevice);
-  checkCUDAError ("cpyHostMDDataToDevice velo");
+  if (mask & MDDataItemMask_Coordinate){
+    cudaMemcpy (coord, hdata.coord, sizecoord, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice coord");
+  }
 
-  cudaMemcpy (forcx, hdata.forcx, sizef, cudaMemcpyHostToDevice);
-  cudaMemcpy (forcy, hdata.forcy, sizef, cudaMemcpyHostToDevice);
-  cudaMemcpy (forcz, hdata.forcz, sizef, cudaMemcpyHostToDevice);
-  checkCUDAError ("cpyHostMDDataToDevice forc");
+  if (mask & MDDataItemMask_CoordinateNoi){
+    cudaMemcpy (coordNoix, hdata.coordNoix, sizei, cudaMemcpyHostToDevice);
+    cudaMemcpy (coordNoiy, hdata.coordNoiy, sizei, cudaMemcpyHostToDevice);
+    cudaMemcpy (coordNoiz, hdata.coordNoiz, sizei, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice coordNoi");
+  }
 
-  cudaMemcpy (globalIndex, hdata.globalIndex, sizeIdx, cudaMemcpyHostToDevice);
-  cudaMemcpy (type, hdata.type, sizet, cudaMemcpyHostToDevice);
-  cudaMemcpy (mass, hdata.mass, sizef, cudaMemcpyHostToDevice);
-  cudaMemcpy (charge, hdata.charge, sizef, cudaMemcpyHostToDevice);   
-  checkCUDAError ("cpyHostMDDataToDevice other");
+  if (mask & MDDataItemMask_Velocity){
+    cudaMemcpy (velox, hdata.velox, sizef, cudaMemcpyHostToDevice);
+    cudaMemcpy (veloy, hdata.veloy, sizef, cudaMemcpyHostToDevice);
+    cudaMemcpy (veloz, hdata.veloz, sizef, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice velo");
+  }
+
+  if (mask & MDDataItemMask_Force){
+    cudaMemcpy (forcx, hdata.forcx, sizef, cudaMemcpyHostToDevice);
+    cudaMemcpy (forcy, hdata.forcy, sizef, cudaMemcpyHostToDevice);
+    cudaMemcpy (forcz, hdata.forcz, sizef, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice forc");
+  }
+
+  if (mask & MDDataItemMask_GlobalIndex){
+    cudaMemcpy (globalIndex, hdata.globalIndex, sizeIdx, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice globalIndex");
+  }
+  if (mask & MDDataItemMask_Type){
+    cudaMemcpy (type, hdata.type, sizet, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice type");
+  }
+  if (mask & MDDataItemMask_Mass){
+    cudaMemcpy (mass, hdata.mass, sizef, cudaMemcpyHostToDevice);
+    checkCUDAError ("cpyHostMDDataToDevice mass");
+  }
+  if (mask & MDDataItemMask_Charge){
+    cudaMemcpy (charge, hdata.charge, sizef, cudaMemcpyHostToDevice);   
+    checkCUDAError ("cpyHostMDDataToDevice charge");
+  }
 }
 
 
 void Parallel::DeviceMDData::
-copyToHost (HostMDData & hdata) const
+copyToHost (HostMDData & hdata,
+	    const MDDataItemMask_t mask) const
 {
   if (hdata.memSize() < numData_){
     hdata.reallocAll (numData_);
@@ -142,37 +163,57 @@ copyToHost (HostMDData & hdata) const
   size_t sizecoord = numData_ * sizeof(CoordType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
-  
-  cudaMemcpy (hdata.coord, coord, sizecoord, cudaMemcpyDeviceToHost);
-  checkCUDAError ("cpyDeviceMDDataToHost coord");
-  
-  cudaMemcpy (hdata.coordNoix, coordNoix, sizei, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.coordNoiy, coordNoiy, sizei, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.coordNoiz, coordNoiz, sizei, cudaMemcpyDeviceToHost);
-  checkCUDAError ("cpyDeviceMDDataToHost coordNoi");
-  
-  cudaMemcpy (hdata.velox, velox, sizef, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.veloy, veloy, sizef, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.veloz, veloz, sizef, cudaMemcpyDeviceToHost);
-  checkCUDAError ("cpyDeviceMDDataToHost velo");
 
-  cudaMemcpy (hdata.forcx, forcx, sizef, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.forcy, forcy, sizef, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.forcz, forcz, sizef, cudaMemcpyDeviceToHost);
-  checkCUDAError ("cpyDeviceMDDataToHost forc");
+  if (mask & MDDataItemMask_Coordinate){
+    cudaMemcpy (hdata.coord, coord, sizecoord, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost coord");
+  }
 
-  cudaMemcpy (hdata.globalIndex, globalIndex, sizeIdx, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.type, type, sizet, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.mass, mass, sizef, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.charge, charge, sizef, cudaMemcpyDeviceToHost);  
-  checkCUDAError ("cpyDeviceMDDataToHost other");
+  if (mask & MDDataItemMask_CoordinateNoi){
+    cudaMemcpy (hdata.coordNoix, coordNoix, sizei, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.coordNoiy, coordNoiy, sizei, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.coordNoiz, coordNoiz, sizei, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost coordNoi");
+  }
+
+  if (mask & MDDataItemMask_Velocity){
+    cudaMemcpy (hdata.velox, velox, sizef, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.veloy, veloy, sizef, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.veloz, veloz, sizef, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost velo");
+  }
+
+  if (mask & MDDataItemMask_Force){
+    cudaMemcpy (hdata.forcx, forcx, sizef, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.forcy, forcy, sizef, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.forcz, forcz, sizef, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost forc");
+  }
+  
+  if (mask & MDDataItemMask_GlobalIndex){
+    cudaMemcpy (hdata.globalIndex, globalIndex, sizeIdx, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost globalIndex");
+  }
+  if (mask & MDDataItemMask_Type){
+    cudaMemcpy (hdata.type, type, sizet, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost type");
+  }
+  if (mask & MDDataItemMask_Mass){
+    cudaMemcpy (hdata.mass, mass, sizef, cudaMemcpyDeviceToHost);
+    checkCUDAError ("cpyDeviceMDDataToHost mass");
+  }
+  if (mask & MDDataItemMask_Charge){
+    cudaMemcpy (hdata.charge, charge, sizef, cudaMemcpyDeviceToHost);  
+    checkCUDAError ("cpyDeviceMDDataToHost charge");
+  }
 }
 
 
 void Parallel::DeviceMDData::
-copyFromDevice (const DeviceMDData & ddata)
+copyFromDevice (const DeviceMDData & ddata,
+		const MDDataItemMask_t mask)
 {
-  if (numData_ < ddata.memSize_){
+  if (numData_ < ddata.memSize()){
     clearAll();
     mallocAll (ddata.memSize());
   }
@@ -184,30 +225,49 @@ copyFromDevice (const DeviceMDData & ddata)
   size_t sizecoord = numData_ * sizeof(CoordType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
-  
-  cudaMemcpy (coord, ddata.coord, sizecoord, cudaMemcpyDeviceToDevice);
-  checkCUDAError ("cpyDeviceMDDataToDevice coord");
 
-  cudaMemcpy (coordNoix, ddata.coordNoix, sizei, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (coordNoiy, ddata.coordNoiy, sizei, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (coordNoiz, ddata.coordNoiz, sizei, cudaMemcpyDeviceToDevice);
-  checkCUDAError ("cpyDeviceMDDataToDevice coordNoi");
-  
-  cudaMemcpy (velox, ddata.velox, sizef, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (veloy, ddata.veloy, sizef, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (veloz, ddata.veloz, sizef, cudaMemcpyDeviceToDevice);
-  checkCUDAError ("cpyDeviceMDDataToDevice velo");
+  if (mask & MDDataItemMask_Coordinate){
+    cudaMemcpy (coord, ddata.coord, sizecoord, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice coord");
+  }
 
-  cudaMemcpy (forcx, ddata.forcx, sizef, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (forcy, ddata.forcy, sizef, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (forcz, ddata.forcz, sizef, cudaMemcpyDeviceToDevice);
-  checkCUDAError ("cpyDeviceMDDataToDevice forc");
+  if (mask & MDDataItemMask_CoordinateNoi){
+    cudaMemcpy (coordNoix, ddata.coordNoix, sizei, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (coordNoiy, ddata.coordNoiy, sizei, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (coordNoiz, ddata.coordNoiz, sizei, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice coordNoi");
+  }
 
-  cudaMemcpy (globalIndex, ddata.globalIndex, sizeIdx, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (type, ddata.type, sizet, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (mass, ddata.mass, sizef, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (charge, ddata.charge, sizef, cudaMemcpyDeviceToDevice);   
-  checkCUDAError ("cpyDeviceMDDataToDevice other");
+  if (mask & MDDataItemMask_Velocity){
+    cudaMemcpy (velox, ddata.velox, sizef, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (veloy, ddata.veloy, sizef, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (veloz, ddata.veloz, sizef, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice velo");
+  }
+
+  if (mask & MDDataItemMask_Force){
+    cudaMemcpy (forcx, ddata.forcx, sizef, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (forcy, ddata.forcy, sizef, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (forcz, ddata.forcz, sizef, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice forc");
+  }
+
+  if (mask & MDDataItemMask_GlobalIndex){
+    cudaMemcpy (globalIndex, ddata.globalIndex, sizeIdx, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice globalIndex");
+  }
+  if (mask & MDDataItemMask_Type){
+    cudaMemcpy (type, ddata.type, sizet, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice globalIndex");
+  }
+  if (mask & MDDataItemMask_Mass){
+    cudaMemcpy (mass, ddata.mass, sizef, cudaMemcpyDeviceToDevice);
+    checkCUDAError ("cpyDeviceMDDataToDevice globalIndex");
+  }
+  if (mask & MDDataItemMask_Charge){
+    cudaMemcpy (charge, ddata.charge, sizef, cudaMemcpyDeviceToDevice);     
+    checkCUDAError ("cpyDeviceMDDataToDevice globalIndex");
+  }
 }
 
 
@@ -232,6 +292,9 @@ initZero ()
        velox,
        veloy,
        veloz,
+       forcx,
+       forcy,
+       forcz,
        globalIndex,
        type,
        mass,
@@ -249,6 +312,9 @@ initZeroDeviceData(const IndexType num,
 		   ScalorType * velox,
 		   ScalorType * veloy,
 		   ScalorType * veloz,
+		   ScalorType * forcx,
+		   ScalorType * forcy,
+		   ScalorType * forcz,
 		   IndexType  * globalIndex,
 		   TypeType   * type,
 		   ScalorType * mass,
@@ -267,6 +333,7 @@ initZeroDeviceData(const IndexType num,
     coord[ii] = tmp;
     coordNoix[ii] = coordNoiy[ii] = coordNoiz[ii] = 0;
     veloz[ii] = veloy[ii] = veloz[ii] = 0.f;
+    forcz[ii] = forcy[ii] = forcz[ii] = 0.f;
     globalIndex[ii] = MaxIndexValue;
     type[ii] = 0;
     mass[ii] = 0;

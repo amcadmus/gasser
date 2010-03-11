@@ -544,23 +544,53 @@ HostMDData (const HostMDData & hdata)
 }
 
 void Parallel::HostMDData::
-copy (const HostMDData & hdata)
+copy (const HostMDData & hdata,
+      const MDDataItemMask_t mask)
 {
   if (memSize_ < hdata.numData_){
     reallocAll (hdata.numData_);
   }
-  for (IndexType i = 0 ; i < hdata.numData_; ++i){
-    coord[i] = hdata.coord[i];
-    coordNoix[i] = hdata.coordNoix[i];
-    coordNoiy[i] = hdata.coordNoiy[i];
-    coordNoiz[i] = hdata.coordNoiz[i];
-    velox[i] = hdata.velox[i];
-    veloy[i] = hdata.veloy[i];
-    veloz[i] = hdata.veloz[i];
-    globalIndex[i] = hdata.globalIndex[i];
-    type[i] = hdata.type[i];
-    mass[i] = hdata.mass[i];
-    charge[i] = hdata.charge[i];
+  numData_ = hdata.numData_;
+  setGlobalBox (hdata.getGlobalBox());
+  
+  if (mask & MDDataItemMask_Coordinate) {
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      coord[i] = hdata.coord[i];
+    }
+  }
+  if (mask & MDDataItemMask_CoordinateNoi){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      coordNoix[i] = hdata.coordNoix[i];
+      coordNoiy[i] = hdata.coordNoiy[i];
+      coordNoiz[i] = hdata.coordNoiz[i];
+    }
+  }
+  if (mask & MDDataItemMask_Velocity){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      velox[i] = hdata.velox[i];
+      veloy[i] = hdata.veloy[i];
+      veloz[i] = hdata.veloz[i];
+    }
+  }
+  if (mask & MDDataItemMask_GlobalIndex){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){  
+      globalIndex[i] = hdata.globalIndex[i];
+    }
+  }
+  if (mask & MDDataItemMask_Type){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      type[i] = hdata.type[i];
+    }
+  }
+  if (mask & MDDataItemMask_Mass){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      mass[i] = hdata.mass[i];
+    }
+  }
+  if (mask & MDDataItemMask_Charge){
+    for (IndexType i = 0 ; i < hdata.numData_; ++i){
+      charge[i] = hdata.charge[i];
+    }
   }
   // return *this;
 }

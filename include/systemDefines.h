@@ -1,7 +1,7 @@
 #ifndef __systemDefines_h_wanghan__
 #define __systemDefines_h_wanghan__
 
-//#include <limit.h>
+#include <limits.h>
 
 typedef float		ScalorType;
 typedef int		IntScalorType;

@@ -16,6 +16,31 @@ namespace Parallel{
   class HostMDData ;
   class GlobalHostMDData;
   class DeviceMDData;
+
+  enum MDDataItemShift
+  {
+    MDDataItemShift_Coordinate			= 0,
+    MDDataItemShift_CoordinateNoi		= 1,
+    MDDataItemShift_Velocity			= 2,
+    MDDataItemShift_Force			= 3,
+    MDDataItemShift_GlobalIndex			= 4,
+    MDDataItemShift_Type				= 5,
+    MDDataItemShift_Mass				= 6,
+    MDDataItemShift_Charge			= 7
+  } ;
+  enum MDDataItemMask
+  {
+    MDDataItemMask_All				= MaxIndexValue,
+    MDDataItemMask_Coordinate			= (1<<MDDataItemShift_Coordinate),
+    MDDataItemMask_CoordinateNoi		= (1<<MDDataItemShift_CoordinateNoi),
+    MDDataItemMask_Velocity			= (1<<MDDataItemShift_Velocity),
+    MDDataItemMask_Force			= (1<<MDDataItemShift_Force),
+    MDDataItemMask_GlobalIndex			= (1<<MDDataItemShift_GlobalIndex),
+    MDDataItemMask_Type				= (1<<MDDataItemShift_Type),
+    MDDataItemMask_Mass				= (1<<MDDataItemShift_Mass),
+    MDDataItemMask_Charge			= (1<<MDDataItemShift_Charge)
+  };
+  typedef IndexType MDDataItemMask_t;
   
   class HostMDData 
   {
@@ -59,7 +84,8 @@ public:
     void clearAll ();
     void clearData () {numData_ = 0;}
     void reallocAll (const IndexType & memSize);
-    void copy (const HostMDData & hdata);
+    void copy (const HostMDData & hdata,
+	       const MDDataItemMask_t mask = MDDataItemMask_All);
 public:
     const RectangularBox & getGlobalBox	() const {return globalBox;}
     void setGlobalBox (const ScalorType & bx,
@@ -180,9 +206,12 @@ public:
     void initZero ();
     void clearAll ();
     void clearData () {numData_ = 0;}
-    void copyFromHost (const HostMDData & hdata);
-    void copyToHost   (HostMDData & hdata) const;
-    void copyFromDevice (const DeviceMDData & ddata);
+    void copyFromHost (const HostMDData & hdata,
+		       const MDDataItemMask_t mask = MDDataItemMask_All);
+    void copyToHost   (HostMDData & hdata,
+		       const MDDataItemMask_t mask = MDDataItemMask_All) const;
+    void copyFromDevice (const DeviceMDData & ddata,
+			 const MDDataItemMask_t mask = MDDataItemMask_All);
 public:
     CoordType * dptr_coordinate			() {return coord;}
     IntScalorType * dptr_coordinateNoiX		() {return coordNoix;}

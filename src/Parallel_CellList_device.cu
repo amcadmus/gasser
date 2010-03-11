@@ -522,34 +522,26 @@ Parallel::DeviceCellListedMDData::
   clearCell();
 }
 
-Parallel::DeviceSubCellList::
-DeviceSubCellList ()
-    : ptr_data (NULL)
+Parallel::SubCellList::
+SubCellList ()
 {
 }
 
 
-void Parallel::DeviceSubCellList::
-bond (DeviceCellListedMDData & ddata)
-{
-  ptr_data = &ddata;
-}
-
-void Parallel::DeviceSubCellList::
+void Parallel::SubCellList::
 build ()
 {
   Parallel::Interface::sort (this->begin(), this->end());
 }
 
-bool Parallel::DeviceSubCellList::
+bool Parallel::SubCellList::
 isBuilt ()
 {
-  return (ptr_data != NULL) &&
-      (Parallel::Interface::is_sorted (this->begin(), this->end()));
+  return (Parallel::Interface::is_sorted (this->begin(), this->end()));
 }
 
-void Parallel::DeviceSubCellList::
-add (const DeviceSubCellList & a)
+void Parallel::SubCellList::
+add (const SubCellList & a)
 {
   for (std::vector<IndexType>::const_iterator it = a.begin();
        it != a.end(); ++it){
@@ -559,8 +551,8 @@ add (const DeviceSubCellList & a)
   Parallel::Interface::sort   (this->begin(), this->end());
 }
 
-void Parallel::DeviceSubCellList::
-sub (const DeviceSubCellList & a)
+void Parallel::SubCellList::
+sub (const SubCellList & a)
 {
   std::vector<IndexType > result (this->size());
   std::vector<IndexType >::iterator newend =
@@ -581,7 +573,7 @@ buildSubList (const IndexType & xIdLo,
 	      const IndexType & yIdUp,
 	      const IndexType & zIdLo,
 	      const IndexType & zIdUp,
-	      DeviceSubCellList & subList)
+	      SubCellList & subList)
 {
   if (xIdUp > numCell.x){
     throw MDExcptCellList ("x up index exceeds number of cells on x");
@@ -594,7 +586,6 @@ buildSubList (const IndexType & xIdLo,
   }
 
   subList.clear();
-  subList.bond(*this);
   
   for (IndexType i = xIdLo; i < xIdUp; ++i){
     for (IndexType j = yIdLo; j < yIdUp; ++j){
@@ -654,7 +645,7 @@ easyMallocMe (IndexType memSize_)
 }
 
 void Parallel::DeviceTransferPackage::
-reinit (const DeviceSubCellList & subCellList)
+reinit (const SubCellList & subCellList)
 {
   if (memSize < subCellList.size()){
     easyMallocMe (subCellList.size());
@@ -669,7 +660,8 @@ reinit (const DeviceSubCellList & subCellList)
 }
 
 void Parallel::DeviceTransferPackage::
-packAtom (DeviceCellListedMDData & ddata)
+pack (DeviceCellListedMDData & ddata,
+      const MDDataItemMask_t mask)
 {
   if (numCell == 0) return;
   
@@ -684,7 +676,7 @@ packAtom (DeviceCellListedMDData & ddata)
   }
   cudaMemcpy (numAtomInCell, ddata.numAtomInCell, size,
 	      cudaMemcpyDeviceToHost);
-  checkCUDAError ("DeviceTransferPackage::packAtom cpy numAtomInCell to host");
+  checkCUDAError ("DeviceTransferPackage::pack cpy numAtomInCell to host");
   
   hcellStartIndex[0] = 0;
   for (IndexType i = 1; i < numCell+1; ++i){
@@ -693,7 +685,7 @@ packAtom (DeviceCellListedMDData & ddata)
   this->numData() = hcellStartIndex[numCell];
   cudaMemcpy (cellStartIndex, hcellStartIndex, (numCell+1) * sizeof(IndexType),
 	      cudaMemcpyHostToDevice);
-  checkCUDAError ("DeviceTransferPackage::packAtom cpy cellStartIndex to device");
+  checkCUDAError ("DeviceTransferPackage::pack cpy cellStartIndex to device");
   
   free (numAtomInCell);
 
@@ -702,11 +694,12 @@ packAtom (DeviceCellListedMDData & ddata)
     this->DeviceMDData::mallocAll (this->DeviceMDData::numData() * 2);
   }
   
-  Parallel::CudaGlobal::packDeviceDataAtom
+  Parallel::CudaGlobal::packDeviceData
       <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
 	  cellIndex,
 	  ddata.numAtomInCell,
 	  cellStartIndex,
+	  mask,
 	  ddata.dptr_coordinate(),
 	  ddata.dptr_coordinateNoiX(),
 	  ddata.dptr_coordinateNoiY(),
@@ -714,6 +707,9 @@ packAtom (DeviceCellListedMDData & ddata)
 	  ddata.dptr_velocityX(),
 	  ddata.dptr_velocityY(),
 	  ddata.dptr_velocityZ(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
 	  ddata.dptr_globalIndex(),
 	  ddata.dptr_type(),
 	  ddata.dptr_mass(),
@@ -725,6 +721,9 @@ packAtom (DeviceCellListedMDData & ddata)
 	  this->dptr_velocityX(),
 	  this->dptr_velocityY(),
 	  this->dptr_velocityZ(),
+	  this->dptr_forceX(),
+	  this->dptr_forceY(),
+	  this->dptr_forceZ(),
 	  this->dptr_globalIndex(),
 	  this->dptr_type(),
 	  this->dptr_mass(),
@@ -733,31 +732,38 @@ packAtom (DeviceCellListedMDData & ddata)
 
 
 __global__ void Parallel::CudaGlobal::
-packDeviceDataAtom (const IndexType * cellIndex,
-		    const IndexType * numAtomInCell,
-		    const IndexType * cellStartIndex,
-		    const CoordType  * source_coord,
-		    const IntScalorType * source_coordNoix,
-		    const IntScalorType * source_coordNoiy,
-		    const IntScalorType * source_coordNoiz,
-		    const ScalorType * source_velox,
-		    const ScalorType * source_veloy,
-		    const ScalorType * source_veloz,
-		    const IndexType  * source_globalIndex,
-		    const TypeType   * source_type,
-		    const ScalorType * source_mass,
-		    const ScalorType * source_charge,
-		    CoordType  * coord,
-		    IntScalorType * coordNoix,
-		    IntScalorType * coordNoiy,
-		    IntScalorType * coordNoiz,
-		    ScalorType * velox,
-		    ScalorType * veloy,
-		    ScalorType * veloz,
-		    IndexType  * globalIndex,
-		    TypeType   * type,
-		    ScalorType * mass,
-		    ScalorType * charge)
+packDeviceData (const IndexType * cellIndex,
+		const IndexType * numAtomInCell,
+		const IndexType * cellStartIndex,
+		const MDDataItemMask_t mask,
+		const CoordType  * source_coord,
+		const IntScalorType * source_coordNoix,
+		const IntScalorType * source_coordNoiy,
+		const IntScalorType * source_coordNoiz,
+		const ScalorType * source_velox,
+		const ScalorType * source_veloy,
+		const ScalorType * source_veloz,
+		const ScalorType * source_forcx,
+		const ScalorType * source_forcy,
+		const ScalorType * source_forcz,
+		const IndexType  * source_globalIndex,
+		const TypeType   * source_type,
+		const ScalorType * source_mass,
+		const ScalorType * source_charge,
+		CoordType  * coord,
+		IntScalorType * coordNoix,
+		IntScalorType * coordNoiy,
+		IntScalorType * coordNoiz,
+		ScalorType * velox,
+		ScalorType * veloy,
+		ScalorType * veloz,
+		ScalorType * forcx,
+		ScalorType * forcy,
+		ScalorType * forcz,
+		IndexType  * globalIndex,
+		TypeType   * type,
+		ScalorType * mass,
+		ScalorType * charge)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -767,17 +773,36 @@ packDeviceDataAtom (const IndexType * cellIndex,
   IndexType toid = tid + cellStartIndex[bid];
   
   if (tid < numAtomInCell[cellIdx]){
-    coord[toid] = source_coord[fromid];
-    coordNoix[toid] = source_coordNoix[fromid];
-    coordNoiy[toid] = source_coordNoiy[fromid];
-    coordNoiz[toid] = source_coordNoiz[fromid];
-    velox[toid] = source_velox[fromid];
-    veloy[toid] = source_veloy[fromid];
-    veloz[toid] = source_veloz[fromid];
-    globalIndex[toid] = source_globalIndex[fromid];
-    type[toid] = source_type[fromid];
-    mass[toid] = source_mass[fromid];
-    charge[toid] = source_charge[fromid];
+    if (mask & MDDataItemMask_Coordinate){
+      coord[toid] = source_coord[fromid];
+    }
+    if (mask & MDDataItemMask_CoordinateNoi){
+      coordNoix[toid] = source_coordNoix[fromid];
+      coordNoiy[toid] = source_coordNoiy[fromid];
+      coordNoiz[toid] = source_coordNoiz[fromid];
+    }
+    if (mask & MDDataItemMask_Velocity){
+      velox[toid] = source_velox[fromid];
+      veloy[toid] = source_veloy[fromid];
+      veloz[toid] = source_veloz[fromid];
+    }
+    if (mask & MDDataItemMask_Force){
+      forcx[toid] = source_forcx[fromid];
+      forcy[toid] = source_forcy[fromid];
+      forcz[toid] = source_forcz[fromid];
+    }
+    if (mask & MDDataItemMask_GlobalIndex){
+      globalIndex[toid] = source_globalIndex[fromid];
+    }
+    if (mask & MDDataItemMask_Type){
+      type[toid] = source_type[fromid];
+    }
+    if (mask & MDDataItemMask_Mass){
+      mass[toid] = source_mass[fromid];
+    }
+    if (mask & MDDataItemMask_Charge){
+      charge[toid] = source_charge[fromid];
+    }
   }
 }
 

@@ -60,47 +60,42 @@ public:
 			     const IndexType & zIdUp,
 			     SubHostCellList & subList);
   };
-
   
-  class HostSubCellList : std::vector<IndexType > 
+  class SubCellList : public std::vector<IndexType > 
   {
-    HostCellListedMDData * ptr_data;
-    
-    // IndexType * begin;
-    // IndexType * end;
-  //   class Iterator : public std::vector<IndexType >::iterator
-  //   {
-  // public:
-  //     // IndexType cellStartIndex ()
-  //     // 	  {return Parallel::Environment::numAtomInCell() * **this;}
-  //     // IndexType numAtomInCell ();
-  //   };
-  //   friend class Iterator;
 public:
-    HostSubCellList () :ptr_data(NULL) {};
-    ~HostSubCellList () {};
+    SubCellList ();
+    ~SubCellList () {}
 public:
     void build ();
     bool isBuilt ();
-    void bond (HostCellListedMDData & ddata);
-    void add (const HostSubCellList & a);
-    void sub (const HostSubCellList & a);    
+    void add (const SubCellList & a);
+    void sub (const SubCellList & a);    
   };
 
 
-  // class HostTransferapackage : public DeviceMDData
-  // {
-  //   IndexType numCell;
-  //   IndexType memSize;
-  //   IndexType * cellIndex;
-  //   IndexType * cellStartIndex;
-  // };
+
+  class HostTransferapackage : public HostMDData
+  {
+    IndexType numCell;
+    IndexType memSize;
+    IndexType * cellIndex;
+    IndexType * cellStartIndex;
+    inline void clearMe ();
+    inline void easyMallocMe (IndexType memSize);
+public:
+    HostTransferapackage ();
+    ~HostTransferapackage ();
+public:
+    void reinit (const SubCellList & SubCellList);
+    void packAtom (HostCellListedMDData & hdata);
+  };
   
 
   
   
 #ifdef DEVICE_CODE
-  class DeviceSubCellList;
+  class SubCellList;
   class DeviceTransferPackage ;
   
   class DeviceCellListedMDData : public DeviceMDData 
@@ -158,44 +153,17 @@ public:
 		       const IndexType & yIdUp,
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
-		       DeviceSubCellList & subList);
-    inline void buildSubListAllCell   (DeviceSubCellList & subList);
-    inline void buildSubListRealCell  (DeviceSubCellList & subList);
-    inline void buildSubListGhostCell (DeviceSubCellList & subList);
+		       SubCellList & subList);
+    inline void buildSubListAllCell   (SubCellList & subList);
+    inline void buildSubListRealCell  (SubCellList & subList);
+    inline void buildSubListGhostCell (SubCellList & subList);
     // void buildSubListLevel1 (const IndexType & xIdLo,
     // 			     const IndexType & xIdUp,
     // 			     const IndexType & yIdLo,
     // 			     const IndexType & yIdUp,
     // 			     const IndexType & zIdLo,
     // 			     const IndexType & zIdUp,
-    // 			     DeviceSubCellList & subList);    
-  };
-
-  
-  class DeviceSubCellList : public std::vector<IndexType > 
-  {
-    friend  class DeviceCellListedMDData;
-    DeviceCellListedMDData * ptr_data;
-    
-    // IndexType * begin;
-    // IndexType * end;
-  //   class Iterator : public std::vector<IndexType >::iterator
-  //   {
-  // public:
-  //     // IndexType cellStartIndex ()
-  //     // 	  {return Parallel::Environment::numAtomInCell() * **this;}
-  //     // IndexType numAtomInCell ();
-  //   };
-  //   friend class Iterator;
-public:
-    DeviceSubCellList ();
-    ~DeviceSubCellList () {}
-public:
-    void bond (DeviceCellListedMDData & ddata);
-    void build ();
-    bool isBuilt ();
-    void add (const DeviceSubCellList & a);
-    void sub (const DeviceSubCellList & a);    
+    // 			     SubCellList & subList);    
   };
 
 
@@ -213,8 +181,9 @@ public:
     DeviceTransferPackage ();
     ~DeviceTransferPackage ();
 public:
-    void reinit (const DeviceSubCellList & subCellList);
-    void packAtom (DeviceCellListedMDData & ddata);
+    void reinit (const SubCellList & subCellList);
+    void pack (DeviceCellListedMDData & ddata,
+	       const MDDataItemMask_t mask = MDDataItemMask_All);
   };
   
   
@@ -225,7 +194,7 @@ public:
 
 #ifdef DEVICE_CODE
 void Parallel::DeviceCellListedMDData::
-buildSubListAllCell (DeviceSubCellList & subList)
+buildSubListAllCell (SubCellList & subList)
 {
   buildSubList (0, getNumCell().x,
 		0, getNumCell().y,
@@ -235,7 +204,7 @@ buildSubListAllCell (DeviceSubCellList & subList)
 
   
 void Parallel::DeviceCellListedMDData::
-buildSubListRealCell  (DeviceSubCellList & subList)
+buildSubListRealCell  (SubCellList & subList)
 {
   IndexType devideLevel = getDevideLevel();
   buildSubList (devideLevel, getNumCell().x - devideLevel,
@@ -246,10 +215,10 @@ buildSubListRealCell  (DeviceSubCellList & subList)
 
       
 void Parallel::DeviceCellListedMDData::
-buildSubListGhostCell (DeviceSubCellList & subList)
+buildSubListGhostCell (SubCellList & subList)
 {
   buildSubListAllCell (subList);
-  DeviceSubCellList temp;
+  SubCellList temp;
   buildSubListRealCell (temp);
   subList.sub(temp);
 

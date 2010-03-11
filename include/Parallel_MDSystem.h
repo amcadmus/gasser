@@ -10,19 +10,19 @@ namespace Parallel {
     
   class MDSystem 
   {
-    HostSubCellList xsend0;
-    HostSubCellList xrecv0;
+    SubCellList xsend0;
+    SubCellList xrecv0;
     IndexType * recv0Num;
-    HostSubCellList xsend1;
-    HostSubCellList xrecv1;
-    HostSubCellList ysend0;
-    HostSubCellList yrecv0;
-    HostSubCellList ysend1;
-    HostSubCellList yrecv1;
-    HostSubCellList zsend0;
-    HostSubCellList zrecv0;
-    HostSubCellList zsend1;
-    HostSubCellList zrecv1;
+    SubCellList xsend1;
+    SubCellList xrecv1;
+    SubCellList ysend0;
+    SubCellList yrecv0;
+    SubCellList ysend1;
+    SubCellList yrecv1;
+    SubCellList zsend0;
+    SubCellList zrecv0;
+    SubCellList zsend1;
+    SubCellList zrecv1;
 private:
     // gro file related
     char * atomName;
