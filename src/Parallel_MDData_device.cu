@@ -6,7 +6,7 @@
 
 Parallel::DeviceMDData::
 DeviceMDData ()
-    : numAtom_ (0), memSize_(0), malloced(false)
+    : numData_ (0), memSize_(0), malloced(false)
 {
 }
 
@@ -30,6 +30,7 @@ mallocAll (const IndexType & memSize__)
   size_t sizei = memSize_ * sizeof(IntScalorType);
   size_t sizecoord =memSize_ * sizeof(CoordType);
   size_t sizeIdx = memSize_ * sizeof(IndexType);
+  size_t sizet = memSize_ * sizeof(TypeType);
   
   cudaMalloc ((void**) &coord, sizecoord);
   checkCUDAError ("initDeviceMDData coord");
@@ -50,7 +51,7 @@ mallocAll (const IndexType & memSize__)
   checkCUDAError ("initDeviceMDData coordNoi");
 
   cudaMalloc ((void**) &globalIndex, sizeIdx);
-  cudaMalloc ((void**) &type, memSize_ * sizeof(TypeType));
+  cudaMalloc ((void**) &type, sizet);
   cudaMalloc ((void**) &mass, sizef);
   cudaMalloc ((void**) &charge, sizef);
   checkCUDAError ("initDeviceMDData top Property");
@@ -88,17 +89,18 @@ clearAll ()
 void Parallel::DeviceMDData::
 copyFromHost (const HostMDData & hdata)
 {
-  if (memSize_ < hdata.numAtom()){
+  if (memSize_ < hdata.numData()){
     clearAll();
-    mallocAll(hdata.numAtom());
+    mallocAll (hdata.numData());
   }
-  numAtom_ = hdata.numAtom();
+  numData_ = hdata.numData();
   setGlobalBox (hdata.getGlobalBox());
 		
-  size_t sizef = numAtom_ * sizeof(ScalorType);
-  size_t sizei = numAtom_ * sizeof(IntScalorType);
-  size_t sizecoord = numAtom_ * sizeof(CoordType);
-  size_t sizeIdx = memSize_ * sizeof(IndexType);
+  size_t sizef = numData_ * sizeof(ScalorType);
+  size_t sizei = numData_ * sizeof(IntScalorType);
+  size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizeIdx = numData_ * sizeof(IndexType);
+  size_t sizet = numData_ * sizeof(TypeType);
   
   cudaMemcpy (coord, hdata.coord, sizecoord, cudaMemcpyHostToDevice);
   checkCUDAError ("cpyHostMDDataToDevice coord");
@@ -119,7 +121,7 @@ copyFromHost (const HostMDData & hdata)
   checkCUDAError ("cpyHostMDDataToDevice forc");
 
   cudaMemcpy (globalIndex, hdata.globalIndex, sizeIdx, cudaMemcpyHostToDevice);
-  cudaMemcpy (type, hdata.type, numAtom_ * sizeof(TypeType), cudaMemcpyHostToDevice);
+  cudaMemcpy (type, hdata.type, sizet, cudaMemcpyHostToDevice);
   cudaMemcpy (mass, hdata.mass, sizef, cudaMemcpyHostToDevice);
   cudaMemcpy (charge, hdata.charge, sizef, cudaMemcpyHostToDevice);   
   checkCUDAError ("cpyHostMDDataToDevice other");
@@ -129,16 +131,17 @@ copyFromHost (const HostMDData & hdata)
 void Parallel::DeviceMDData::
 copyToHost (HostMDData & hdata) const
 {
-  if (hdata.memSize() < numAtom_){
-    hdata.reallocAll (numAtom_);
+  if (hdata.memSize() < numData_){
+    hdata.reallocAll (numData_);
   }
-  hdata.numAtom() = numAtom_;
+  hdata.numData_ = numData_;
   hdata.setGlobalBox (globalBox);
   
-  size_t sizef = numAtom_ * sizeof(ScalorType);
-  size_t sizei = numAtom_ * sizeof(IntScalorType);
-  size_t sizecoord = numAtom_ * sizeof(CoordType);
-  size_t sizeIdx = memSize_ * sizeof(IndexType);
+  size_t sizef = numData_ * sizeof(ScalorType);
+  size_t sizei = numData_ * sizeof(IntScalorType);
+  size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizeIdx = numData_ * sizeof(IndexType);
+  size_t sizet = numData_ * sizeof(TypeType);
   
   cudaMemcpy (hdata.coord, coord, sizecoord, cudaMemcpyDeviceToHost);
   checkCUDAError ("cpyDeviceMDDataToHost coord");
@@ -159,7 +162,7 @@ copyToHost (HostMDData & hdata) const
   checkCUDAError ("cpyDeviceMDDataToHost forc");
 
   cudaMemcpy (hdata.globalIndex, globalIndex, sizeIdx, cudaMemcpyDeviceToHost);
-  cudaMemcpy (hdata.type, type, numAtom_ * sizeof(TypeType), cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata.type, type, sizet, cudaMemcpyDeviceToHost);
   cudaMemcpy (hdata.mass, mass, sizef, cudaMemcpyDeviceToHost);
   cudaMemcpy (hdata.charge, charge, sizef, cudaMemcpyDeviceToHost);  
   checkCUDAError ("cpyDeviceMDDataToHost other");
@@ -169,17 +172,18 @@ copyToHost (HostMDData & hdata) const
 void Parallel::DeviceMDData::
 copyFromDevice (const DeviceMDData & ddata)
 {
-  if (memSize_ < ddata.memSize_){
+  if (numData_ < ddata.memSize_){
     clearAll();
     mallocAll (ddata.memSize());
   }
-  numAtom_ = ddata.numAtom();
+  numData_ = ddata.numData();
   setGlobalBox (ddata.getGlobalBox());
 		
-  size_t sizef = numAtom_ * sizeof(ScalorType);
-  size_t sizei = numAtom_ * sizeof(IntScalorType);
-  size_t sizecoord = numAtom_ * sizeof(CoordType);
-  size_t sizeIdx = memSize_ * sizeof(IndexType);
+  size_t sizef = numData_ * sizeof(ScalorType);
+  size_t sizei = numData_ * sizeof(IntScalorType);
+  size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizeIdx = numData_ * sizeof(IndexType);
+  size_t sizet = numData_ * sizeof(TypeType);
   
   cudaMemcpy (coord, ddata.coord, sizecoord, cudaMemcpyDeviceToDevice);
   checkCUDAError ("cpyDeviceMDDataToDevice coord");
@@ -200,7 +204,7 @@ copyFromDevice (const DeviceMDData & ddata)
   checkCUDAError ("cpyDeviceMDDataToDevice forc");
 
   cudaMemcpy (globalIndex, ddata.globalIndex, sizeIdx, cudaMemcpyDeviceToDevice);
-  cudaMemcpy (type, ddata.type, numAtom_ * sizeof(TypeType), cudaMemcpyDeviceToDevice);
+  cudaMemcpy (type, ddata.type, sizet, cudaMemcpyDeviceToDevice);
   cudaMemcpy (mass, ddata.mass, sizef, cudaMemcpyDeviceToDevice);
   cudaMemcpy (charge, ddata.charge, sizef, cudaMemcpyDeviceToDevice);   
   checkCUDAError ("cpyDeviceMDDataToDevice other");
@@ -209,7 +213,7 @@ copyFromDevice (const DeviceMDData & ddata)
 
 Parallel::DeviceMDData::
 DeviceMDData (const DeviceMDData & ddata)
-    : numAtom_ (0), memSize_(0), malloced(false)
+    : numData_ (0), memSize_(0), malloced(false)
 {
   copyFromDevice (ddata);
 }

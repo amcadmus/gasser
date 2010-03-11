@@ -92,6 +92,7 @@ initCellStructure (const ScalorType & rlist,
     mallocAll (numThreadsInCell * totalNumCell);
     initZero();
   }
+  numData_ = totalNumCell * numThreadsInCell;
   mallocCell (totalNumCell, maxNumNeighborCell);
   initZeroCell ();
 
@@ -104,7 +105,7 @@ initCellStructure (const ScalorType & rlist,
 	  frameUp,
 	  numCell,
 	  numAtomInCell,
-	  numAtom_,
+	  bkData.numData(),
 	  bkData.dptr_coordinate(),
 	  bkData.dptr_coordinateNoiX(),
 	  bkData.dptr_coordinateNoiY(),
@@ -344,8 +345,8 @@ rebuildCellList_step1 (const VectorType frameLow,
     targetCellx = IndexType((coord[ii].x - frameLow.x) * dcellxi);
     targetCelly = IndexType((coord[ii].y - frameLow.y) * dcellyi);
     targetCellz = IndexType((coord[ii].z - frameLow.z) * dcellzi);
-    printf ("%d %d %d %d %f %f %f\n", ii, targetCellx, targetCelly, targetCellz,
-	    coord[ii].x, coord[ii].y, coord[ii].z);
+    // printf ("%d %d %d %d %f %f %f\n", ii, targetCellx, targetCelly, targetCellz,
+    // 	    coord[ii].x, coord[ii].y, coord[ii].z);
     if (targetCellx == numCell.x){
       targetCellx -= numCell.x;
     }
@@ -605,5 +606,180 @@ buildSubList (const IndexType & xIdLo,
 }
 
 
+Parallel::DeviceTransferPackage::
+DeviceTransferPackage ()
+    : numCell (0), memSize(0), hcellIndex(NULL), hcellStartIndex(NULL)
+{
+}
+
+void Parallel::DeviceTransferPackage::
+clearMe ()
+{
+  if (memSize != 0){
+    cudaFree (cellIndex);
+    cudaFree (cellStartIndex);
+    freeAPointer ((void**)&hcellIndex);
+    freeAPointer ((void**)&hcellStartIndex);
+    memSize = 0;
+    numCell = 0;
+  }
+}
+
+Parallel::DeviceTransferPackage::
+~DeviceTransferPackage ()
+{
+  clearMe();
+}
+
+void Parallel::DeviceTransferPackage::
+easyMallocMe (IndexType memSize_)
+{
+  clearMe ();
+  memSize = memSize_;
+  size_t size = memSize * sizeof(IndexType);
+  size_t size1 = (memSize+1) * sizeof(IndexType);
+  cudaMalloc ((void**)&cellIndex, size);
+  cudaMalloc ((void**)&cellStartIndex, size1);
+  checkCUDAError ("DeviceTransferPackage::mallocMe failed malloc");
+  hcellIndex = (IndexType *) malloc (size);
+  if (hcellIndex == NULL){
+    throw MDExcptFailedMallocOnHost ("DeviceTransferPackage::reinit",
+				     "hcellIndex", size);
+  }
+  hcellStartIndex = (IndexType *) malloc (size1);
+  if (hcellStartIndex == NULL){
+    throw MDExcptFailedMallocOnHost ("DeviceTransferPackage::reinit",
+				     "hcellStartIndex", size1);
+  }
+}
+
+void Parallel::DeviceTransferPackage::
+reinit (const DeviceSubCellList & subCellList)
+{
+  if (memSize < subCellList.size()){
+    easyMallocMe (subCellList.size());
+  }
+  numCell = subCellList.size();
+  for (IndexType i = 0; i < numCell; ++i){
+    hcellIndex[i] = subCellList[i];
+  }
+  size_t size = memSize * sizeof(IndexType);
+  cudaMemcpy (cellIndex, hcellIndex, size, cudaMemcpyHostToDevice);
+  checkCUDAError ("DeviceTransferPackage::reinit memcpy");
+}
+
+void Parallel::DeviceTransferPackage::
+packAtom (DeviceCellListedMDData & ddata)
+{
+  if (numCell == 0) return;
+  
+  IndexType totalNumCell = ddata.numCell.x * ddata.numCell.y * ddata.numCell.z;
+  IndexType * numAtomInCell ;
+  size_t size = totalNumCell * sizeof(IndexType);
+  
+  numAtomInCell = (IndexType *) malloc (size);
+  if (numAtomInCell == NULL){
+    throw MDExcptFailedMallocOnHost ("DeviceTransferPackage::reinit",
+				     "hcellIndex", size);
+  }
+  cudaMemcpy (numAtomInCell, ddata.numAtomInCell, size,
+	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("DeviceTransferPackage::packAtom cpy numAtomInCell to host");
+  
+  hcellStartIndex[0] = 0;
+  for (IndexType i = 1; i < numCell+1; ++i){
+    hcellStartIndex[i] = hcellStartIndex[i-1] + numAtomInCell[cellIndex[i-1]];
+  }
+  this->numData() = hcellStartIndex[numCell];
+  cudaMemcpy (cellStartIndex, hcellStartIndex, (numCell+1) * sizeof(IndexType),
+	      cudaMemcpyHostToDevice);
+  checkCUDAError ("DeviceTransferPackage::packAtom cpy cellStartIndex to device");
+  
+  free (numAtomInCell);
+
+  this->DeviceMDData::setGlobalBox (ddata.getGlobalBox());
+  if (this->DeviceMDData::numData() > this->DeviceMDData::memSize()){
+    this->DeviceMDData::mallocAll (this->DeviceMDData::numData() * 2);
+  }
+  
+  Parallel::CudaGlobal::packDeviceDataAtom
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
+	  cellIndex,
+	  ddata.numAtomInCell,
+	  cellStartIndex,
+	  ddata.dptr_coordinate(),
+	  ddata.dptr_coordinateNoiX(),
+	  ddata.dptr_coordinateNoiY(),
+	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ(),
+	  ddata.dptr_globalIndex(),
+	  ddata.dptr_type(),
+	  ddata.dptr_mass(),
+	  ddata.dptr_charge(),
+	  this->dptr_coordinate(),
+	  this->dptr_coordinateNoiX(),
+	  this->dptr_coordinateNoiY(),
+	  this->dptr_coordinateNoiZ(),
+	  this->dptr_velocityX(),
+	  this->dptr_velocityY(),
+	  this->dptr_velocityZ(),
+	  this->dptr_globalIndex(),
+	  this->dptr_type(),
+	  this->dptr_mass(),
+	  this->dptr_charge());
+}
 
 
+__global__ void Parallel::CudaGlobal::
+packDeviceDataAtom (const IndexType * cellIndex,
+		    const IndexType * numAtomInCell,
+		    const IndexType * cellStartIndex,
+		    const CoordType  * source_coord,
+		    const IntScalorType * source_coordNoix,
+		    const IntScalorType * source_coordNoiy,
+		    const IntScalorType * source_coordNoiz,
+		    const ScalorType * source_velox,
+		    const ScalorType * source_veloy,
+		    const ScalorType * source_veloz,
+		    const IndexType  * source_globalIndex,
+		    const TypeType   * source_type,
+		    const ScalorType * source_mass,
+		    const ScalorType * source_charge,
+		    CoordType  * coord,
+		    IntScalorType * coordNoix,
+		    IntScalorType * coordNoiy,
+		    IntScalorType * coordNoiz,
+		    ScalorType * velox,
+		    ScalorType * veloy,
+		    ScalorType * veloz,
+		    IndexType  * globalIndex,
+		    TypeType   * type,
+		    ScalorType * mass,
+		    ScalorType * charge)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType cellIdx = cellIndex[bid];
+  IndexType fromid = tid + cellIdx * blockDim.x;
+  IndexType toid = tid + cellStartIndex[bid];
+  
+  if (tid < numAtomInCell[cellIdx]){
+    coord[toid] = source_coord[fromid];
+    coordNoix[toid] = source_coordNoix[fromid];
+    coordNoiy[toid] = source_coordNoiy[fromid];
+    coordNoiz[toid] = source_coordNoiz[fromid];
+    velox[toid] = source_velox[fromid];
+    veloy[toid] = source_veloy[fromid];
+    veloz[toid] = source_veloz[fromid];
+    globalIndex[toid] = source_globalIndex[fromid];
+    type[toid] = source_type[fromid];
+    mass[toid] = source_mass[fromid];
+    charge[toid] = source_charge[fromid];
+  }
+}
+
+
+  

@@ -88,12 +88,25 @@ public:
   };
 
 
+  // class HostTransferapackage : public DeviceMDData
+  // {
+  //   IndexType numCell;
+  //   IndexType memSize;
+  //   IndexType * cellIndex;
+  //   IndexType * cellStartIndex;
+  // };
+  
+
+  
   
 #ifdef DEVICE_CODE
   class DeviceSubCellList;
+  class DeviceTransferPackage ;
   
   class DeviceCellListedMDData : public DeviceMDData 
   {
+    friend class DeviceTransferPackage ;
+    
     bool malloced ;
     
     ScalorType rlist;
@@ -185,6 +198,25 @@ public:
     void sub (const DeviceSubCellList & a);    
   };
 
+
+  class DeviceTransferPackage : public DeviceMDData
+  {
+    IndexType numCell;
+    IndexType memSize;
+    IndexType * hcellIndex;
+    IndexType * cellIndex;
+    IndexType * hcellStartIndex;
+    IndexType * cellStartIndex;
+    inline void clearMe ();
+    inline void easyMallocMe (IndexType memSize);
+public:
+    DeviceTransferPackage ();
+    ~DeviceTransferPackage ();
+public:
+    void reinit (const DeviceSubCellList & subCellList);
+    void packAtom (DeviceCellListedMDData & ddata);
+  };
+  
   
 #endif // DEVICE_CODE
     
@@ -221,13 +253,12 @@ buildSubListGhostCell (DeviceSubCellList & subList)
   buildSubListRealCell (temp);
   subList.sub(temp);
 
-  int count = 0;
-  for (IndexType i = 0; i < subList.size(); ++i){
-    IndexType ix, iy, iz;
-    D1toD3 (subList[i], ix, iy, iz);
-    printf ("%d %d %d %d\n", ++count, ix, iy, iz);
-  }
-  
+  // int count = 0;
+  // for (IndexType i = 0; i < subList.size(); ++i){
+  //   IndexType ix, iy, iz;
+  //   D1toD3 (subList[i], ix, iy, iz);
+  //   printf ("%d %d %d %d\n", ++count, ix, iy, iz);
+  // }  
 }
 #endif // DEVICE_CODE
 

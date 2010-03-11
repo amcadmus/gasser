@@ -11,7 +11,7 @@
 
 Parallel::HostMDData::
 HostMDData()
-    : numAtom_(0), memSize_(0),
+    : numData_(0), memSize_(0),
       coord (NULL),
       coordNoix (NULL), coordNoiy(NULL), coordNoiz(NULL),
       velox (NULL), veloy(NULL), veloz(NULL),
@@ -30,7 +30,7 @@ Parallel::HostMDData::
 void Parallel::HostMDData::
 clearAll ()
 {
-  numAtom_ = 0;
+  numData_ = 0;
   memSize_ = 0;
   
   freeAPointer ((void**)&coord);
@@ -65,9 +65,9 @@ reallocAll (const IndexType & memSize__)
 void Parallel::HostMDData::
 reallocCoordinate (const IndexType & memSize__)
 {
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
+  // if (memSize_ != 0 && memSize_ != memSize__){
+  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
+  // }
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
 
@@ -87,9 +87,9 @@ reallocCoordinate (const IndexType & memSize__)
 void Parallel::HostMDData::
 reallocVelocity (const IndexType & memSize__)
 {
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
+  // if (memSize_ != 0 && memSize_ != memSize__){
+  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
+  // }
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
   
@@ -106,9 +106,9 @@ reallocVelocity (const IndexType & memSize__)
 void Parallel::HostMDData::
 reallocForce (const IndexType & memSize__)
 {
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
+  // if (memSize_ != 0 && memSize_ != memSize__){
+  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
+  // }
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
   
@@ -125,9 +125,9 @@ reallocForce (const IndexType & memSize__)
 void Parallel::HostMDData::
 reallocGlobalIndex (const IndexType & memSize__)
 {
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
+  // if (memSize_ != 0 && memSize_ != memSize__){
+  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
+  // }
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
 
@@ -140,9 +140,9 @@ reallocGlobalIndex (const IndexType & memSize__)
 void Parallel::HostMDData::
 reallocTopProperty (const IndexType & memSize__)
 {
-  if (memSize_ != 0 && memSize_ != memSize__){
-    throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  }
+  // if (memSize_ != 0 && memSize_ != memSize__){
+  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
+  // }
   if (memSize__ == 0) return ;
   memSize_ = memSize__;
 
@@ -166,12 +166,12 @@ numAtomInGroFile (const char * filename)
   }
   while (fgetc(fpc) != '\n');
 
-  IndexType numAtom;
-  if (fscanf (fpc, "%d", &(numAtom)) != 1){
-    throw MDExcptWrongFileFormat ("HostMDData::numAtomInGroFile", filename);
+  IndexType numData;
+  if (fscanf (fpc, "%d", &(numData)) != 1){
+    throw MDExcptWrongFileFormat ("HostMDData::numDataInGroFile", filename);
   }
 
-  return numAtom;
+  return numData;
 }
 
 void Parallel::HostMDData::
@@ -187,23 +187,23 @@ pushBackAtom  (const HostCoordType & coord_,
 	       const ScalorType & mass_,
 	       const ScalorType & charge_)
 {
-  if (numAtom_ == memSize_){
+  if (numData_ == memSize_){
     memSize_ ++;
     memSize_ <<= 1;
     reallocAll (memSize_);
   }
-  coord[numAtom_] = coord_;
-  coordNoix[numAtom_] = coordNoix_;
-  coordNoiy[numAtom_] = coordNoiy_;
-  coordNoiz[numAtom_] = coordNoiz_;
-  velox[numAtom_] = velox_;
-  veloy[numAtom_] = veloy_;
-  veloz[numAtom_] = veloz_;
-  globalIndex[numAtom_] = globalIndex_;
-  type[numAtom_] = type_;
-  mass[numAtom_] = mass_;
-  charge[numAtom_] = charge_;
-  numAtom_ ++;
+  coord[numData_] = coord_;
+  coordNoix[numData_] = coordNoix_;
+  coordNoiy[numData_] = coordNoiy_;
+  coordNoiz[numData_] = coordNoiz_;
+  velox[numData_] = velox_;
+  veloy[numData_] = veloy_;
+  veloz[numData_] = veloz_;
+  globalIndex[numData_] = globalIndex_;
+  type[numData_] = type_;
+  mass[numData_] = mass_;
+  charge[numData_] = charge_;
+  numData_ ++;
 }
 
 
@@ -219,34 +219,35 @@ initConf_GroFile (const char * filename,
   }
   while (fgetc(fpc) != '\n');
 
-  if (fscanf (fpc, "%d", &(numAtom_)) != 1){
+  if (fscanf (fpc, "%d", &(numData_)) != 1){
     throw MDExcptWrongFileFormat ("HostMDData::initConf_GroFile", filename);
   }
 
-  if (numAtom_ > memSize_) {
-    throw MDExcptNumAtomMoreThanMemSize ();
+  if (numData_ > memSize_) {
+    reallocAll (numData_);
+    // throw MDExcptNumAtomMoreThanMemSize ();
   }
   
 
   ScalorType bx, by, bz;
   ScalorType * tmpx, * tmpy, * tmpz;
-  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
   if (tmpx == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpx",
-				     sizeof(ScalorType) * memSize_);
+				     sizeof(ScalorType) * numData_);
   }
-  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
   if (tmpy == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpy",
-				     sizeof(ScalorType) * memSize_);
+				     sizeof(ScalorType) * numData_);
   }
-  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * memSize_);
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
   if (tmpz == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpz",
-				     sizeof(ScalorType) * memSize_);
+				     sizeof(ScalorType) * numData_);
   }
   GromacsFileManager::readGroFile (filename,
 				   resdIndex, resdName, 
@@ -254,7 +255,7 @@ initConf_GroFile (const char * filename,
 				   tmpx, tmpy, tmpz,
 				   velox,  veloy,  veloz,
 				   &bx, &by, &bz) ;
-  for (IndexType i = 0; i < numAtom_; ++i){
+  for (IndexType i = 0; i < numData_; ++i){
     globalIndex[i] = i;
     coord[i].x = tmpx[i];
     coord[i].y = tmpy[i];
@@ -300,7 +301,7 @@ findMolIndex (const Topology::System & sysTop,
 void Parallel::GlobalHostMDData::
 initTopology (const Topology::System & sysTop)
 {
-  for (IndexType i = 0; i < numAtom_; ++i){
+  for (IndexType i = 0; i < numData_; ++i){
     IndexType molIndex = findMolIndex (sysTop, globalIndex[i]);
     IndexType atomIndex = (globalIndex[i] - sysTop.indexShift[molIndex]) %
 	(sysTop.molecules[molIndex].size());
@@ -318,8 +319,8 @@ writeData_SimpleFile (const char * filename)
   if (fp == NULL){
     throw MDExcptCannotOpenFile(filename);
   }
-  fprintf (fp, "# %d\n", numAtom_);
-  for (IndexType i = 0; i < numAtom_; ++i){
+  fprintf (fp, "# %d\n", numData_);
+  for (IndexType i = 0; i < numData_; ++i){
     fprintf (fp, "%8.3f %8.3f %8.3f\n", coord[i].x, coord[i].y, coord[i].z);
   }
   fclose (fp);
@@ -343,7 +344,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
   Parallel::Interface::numProcDim(nx, ny, nz);
   
   if (myRank == 0){
-    IndexType naiveLocalMemSize  = (gdata.numAtom() /
+    IndexType naiveLocalMemSize  = (gdata.numData() /
 				    Parallel::Interface::numProc() * 2);
     if (naiveLocalMemSize < 100)  naiveLocalMemSize = 100 ;
     sdata.reallocAll (naiveLocalMemSize);
@@ -366,7 +367,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  ScalorType uy = ly + hy;
 	  ScalorType lz = iz * hz;
 	  ScalorType uz = lz + hz;
-	  for (IndexType i = 0; i < gdata.numAtom(); ++i){
+	  for (IndexType i = 0; i < gdata.numData(); ++i){
 	    if (gdata.cptr_coordinate()[i].x >= lx &&
 		gdata.cptr_coordinate()[i].x <  ux &&
 		gdata.cptr_coordinate()[i].y >= ly &&
@@ -395,7 +396,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	int sendNumAtom, sendMemSize;
 	
 	if (myRank == 0){
-	  sendNumAtom = sdata.numAtom();
+	  sendNumAtom = sdata.numData();
 	  sendMemSize = sdata.memSize();
 	  transSend.clearRegistered ();
 	  transSend.registerBuff (&sendNumAtom, sizeof(IndexType));
@@ -419,27 +420,27 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	if (myRank == 0){
 	  transSend.clearRegistered ();
 	  transSend.registerBuff (sdata.cptr_coordinate(),
-				  sizeof(HostCoordType) * sdata.numAtom());
+				  sizeof(HostCoordType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_coordinateNoiX(),
-				  sizeof(IntScalorType) * sdata.numAtom());
+				  sizeof(IntScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_coordinateNoiY(),
-				  sizeof(IntScalorType) * sdata.numAtom());
+				  sizeof(IntScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_coordinateNoiZ(),
-				  sizeof(IntScalorType) * sdata.numAtom());
+				  sizeof(IntScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_velocityX(),
-				  sizeof(ScalorType) * sdata.numAtom());
+				  sizeof(ScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_velocityY(),
-				  sizeof(ScalorType) * sdata.numAtom());
+				  sizeof(ScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_velocityZ(),
-				  sizeof(ScalorType) * sdata.numAtom());
+				  sizeof(ScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_globalIndex(),
-				  sizeof(IndexType) * sdata.numAtom());
+				  sizeof(IndexType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_type(),
-				  sizeof(TypeType) * sdata.numAtom());
+				  sizeof(TypeType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_mass(),
-				  sizeof(ScalorType) * sdata.numAtom());
+				  sizeof(ScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_charge(),
-				  sizeof(ScalorType) * sdata.numAtom());
+				  sizeof(ScalorType) * sdata.numData());
 	  ScalorType tmpx, tmpy, tmpz;
 	  tmpx = sdata.getGlobalBox().size.x;
 	  tmpy = sdata.getGlobalBox().size.y;
@@ -488,7 +489,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  transRecv.Irecv (0, 0);
 	  transRecv.wait ();
 	  ldata.setGlobalBox (tmpx, tmpy, tmpz);
-	  ldata.numAtom () = recvNumAtom;
+	  ldata.numData () = recvNumAtom;
 	}
 	if (myRank == 0){
 	  transSend.wait ();
@@ -537,7 +538,7 @@ formDataTransferBlock (const IndexType & startIndex,
 
 Parallel::HostMDData::
 HostMDData (const HostMDData & hdata)
-    : numAtom_(0), memSize_(0)
+    : numData_(0), memSize_(0)
 {
   this->copy (hdata);
 }
@@ -545,10 +546,10 @@ HostMDData (const HostMDData & hdata)
 void Parallel::HostMDData::
 copy (const HostMDData & hdata)
 {
-  if (memSize_ < hdata.numAtom_){
-    reallocAll (hdata.numAtom_);
+  if (memSize_ < hdata.numData_){
+    reallocAll (hdata.numData_);
   }
-  for (IndexType i = 0 ; i < hdata.numAtom_; ++i){
+  for (IndexType i = 0 ; i < hdata.numData_; ++i){
     coord[i] = hdata.coord[i];
     coordNoix[i] = hdata.coordNoix[i];
     coordNoiy[i] = hdata.coordNoiy[i];

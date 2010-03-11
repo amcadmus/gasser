@@ -21,7 +21,7 @@ namespace Parallel{
   {
     friend class DeviceMDData ;
 protected:
-    IndexType numAtom_;
+    IndexType numData_;
     IndexType memSize_;
     HostCoordType * coord;
     IntScalorType * coordNoix;
@@ -52,12 +52,12 @@ public:
     HostMDData (const HostMDData & hdata);
     ~HostMDData ();
 public:
-    const IndexType & numAtom () const {return numAtom_;}
+    const IndexType & numData () const {return numData_;}
     const IndexType & memSize () const {return memSize_;}
-    IndexType & numAtom ()  {return numAtom_;}
+    IndexType & numData ()  {return numData_;}
     // IndexType & memSize ()  {return memSize_;}
     void clearAll ();
-    void clearData () {numAtom_ = 0;}
+    void clearData () {numData_ = 0;}
     void reallocAll (const IndexType & memSize);
     void copy (const HostMDData & hdata);
 public:
@@ -136,7 +136,7 @@ public:
   class DeviceMDData 
   {
 public:
-    IndexType numAtom_;
+    IndexType numData_;
     IndexType memSize_;
     CoordType * coord;
     IntScalorType * coordNoix;
@@ -163,9 +163,9 @@ public:
     DeviceMDData (const DeviceMDData & ddata);
     ~DeviceMDData ();
 public:
-    const IndexType & numAtom () const {return numAtom_;}
+    const IndexType & numData () const {return numData_;}
     const IndexType & memSize () const {return memSize_;}
-    IndexType & numAtom ()  {return numAtom_;}
+    IndexType & numData ()  {return numData_;}
 
     const RectangularBox & getGlobalBox     () const {return globalBox;}
     const HostVectorType & getGlobalBoxSize () const {return globalBox.size;}
@@ -179,7 +179,7 @@ public:
     void mallocAll (const IndexType &memSize);
     void initZero ();
     void clearAll ();
-    void clearData () {numAtom_ = 0;}
+    void clearData () {numData_ = 0;}
     void copyFromHost (const HostMDData & hdata);
     void copyToHost   (HostMDData & hdata) const;
     void copyFromDevice (const DeviceMDData & ddata);

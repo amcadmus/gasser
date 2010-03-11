@@ -71,6 +71,33 @@ namespace Parallel{
 			   ScalorType * mass,
 			   ScalorType * charge,
 			   mdError_t * ptr_de);
+    __global__ void
+    packDeviceDataAtom (const IndexType * cellIndex,
+			const IndexType * numAtomInCell,
+			const IndexType * cellStartIndex,
+			const CoordType  * source_coord,
+			const IntScalorType * source_coordNoix,
+			const IntScalorType * source_coordNoiy,
+			const IntScalorType * source_coordNoiz,
+			const ScalorType * source_velox,
+			const ScalorType * source_veloy,
+			const ScalorType * source_veloz,
+			const IndexType  * source_globalIndex,
+			const TypeType   * source_type,
+			const ScalorType * source_mass,
+			const ScalorType * source_charge,
+			CoordType  * coord,
+			IntScalorType * coordNoix,
+			IntScalorType * coordNoiy,
+			IntScalorType * coordNoiz,
+			ScalorType * velox,
+			ScalorType * veloy,
+			ScalorType * veloz,
+			IndexType  * globalIndex,
+			TypeType   * type,
+			ScalorType * mass,
+			ScalorType * charge);		       
+    
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

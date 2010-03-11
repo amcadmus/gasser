@@ -83,9 +83,9 @@ init (const char * confFileName,
 
   // deviceData.rebuild ();
 
-  deviceData.coord[124].z = 3.1;
-  deviceData.coord[128].z = 0.9;
-  deviceData.coord[132].z = 1.1;
+  deviceData.coord[124].x = -0.5;
+  deviceData.coord[128].x = -0.5;
+  deviceData.coord[132].x = -0.5;
   
   deviceData.rebuild ();
 
@@ -105,7 +105,14 @@ init (const char * confFileName,
   // }
 
   deviceData.buildSubListGhostCell (subList);
-  
+
+
+  Parallel::DeviceTransferPackage trans ;
+  trans.reinit (subList);
+  trans.packAtom (deviceData);
+
+  int i = 1;
+  return;
 }
 
 
