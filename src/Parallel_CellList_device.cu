@@ -599,7 +599,8 @@ buildSubList (const IndexType & xIdLo,
 
 Parallel::DeviceTransferPackage::
 DeviceTransferPackage ()
-    : numCell (0), memSize(0), hcellIndex(NULL), hcellStartIndex(NULL)
+    : numCell (0), memSize(0), hcellIndex(NULL), hcellStartIndex(NULL),
+      myMask (MDDataItemMask_All)
 {
 }
 
@@ -648,7 +649,7 @@ void Parallel::DeviceTransferPackage::
 reinit (const SubCellList & subCellList)
 {
   if (memSize < subCellList.size()){
-    easyMallocMe (subCellList.size());
+    easyMallocMe (subCellList.size()*2);
   }
   numCell = subCellList.size();
   for (IndexType i = 0; i < numCell; ++i){
@@ -660,10 +661,11 @@ reinit (const SubCellList & subCellList)
 }
 
 void Parallel::DeviceTransferPackage::
-pack (DeviceCellListedMDData & ddata,
+pack (const DeviceCellListedMDData & ddata,
       const MDDataItemMask_t mask)
 {
   if (numCell == 0) return;
+  myMask = mask;
   
   IndexType totalNumCell = ddata.numCell.x * ddata.numCell.y * ddata.numCell.z;
   IndexType * numAtomInCell ;
@@ -694,7 +696,7 @@ pack (DeviceCellListedMDData & ddata,
     this->DeviceMDData::mallocAll (this->DeviceMDData::numData() * 2);
   }
   
-  Parallel::CudaGlobal::packDeviceData
+  Parallel::CudaGlobal::packDeviceMDData
       <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
 	  cellIndex,
 	  ddata.numAtomInCell,
@@ -732,38 +734,38 @@ pack (DeviceCellListedMDData & ddata,
 
 
 __global__ void Parallel::CudaGlobal::
-packDeviceData (const IndexType * cellIndex,
-		const IndexType * numAtomInCell,
-		const IndexType * cellStartIndex,
-		const MDDataItemMask_t mask,
-		const CoordType  * source_coord,
-		const IntScalorType * source_coordNoix,
-		const IntScalorType * source_coordNoiy,
-		const IntScalorType * source_coordNoiz,
-		const ScalorType * source_velox,
-		const ScalorType * source_veloy,
-		const ScalorType * source_veloz,
-		const ScalorType * source_forcx,
-		const ScalorType * source_forcy,
-		const ScalorType * source_forcz,
-		const IndexType  * source_globalIndex,
-		const TypeType   * source_type,
-		const ScalorType * source_mass,
-		const ScalorType * source_charge,
-		CoordType  * coord,
-		IntScalorType * coordNoix,
-		IntScalorType * coordNoiy,
-		IntScalorType * coordNoiz,
-		ScalorType * velox,
-		ScalorType * veloy,
-		ScalorType * veloz,
-		ScalorType * forcx,
-		ScalorType * forcy,
-		ScalorType * forcz,
-		IndexType  * globalIndex,
-		TypeType   * type,
-		ScalorType * mass,
-		ScalorType * charge)
+packDeviceMDData (const IndexType * cellIndex,
+		  const IndexType * numAtomInCell,
+		  const IndexType * cellStartIndex,
+		  const MDDataItemMask_t mask,
+		  const CoordType  * source_coord,
+		  const IntScalorType * source_coordNoix,
+		  const IntScalorType * source_coordNoiy,
+		  const IntScalorType * source_coordNoiz,
+		  const ScalorType * source_velox,
+		  const ScalorType * source_veloy,
+		  const ScalorType * source_veloz,
+		  const ScalorType * source_forcx,
+		  const ScalorType * source_forcy,
+		  const ScalorType * source_forcz,
+		  const IndexType  * source_globalIndex,
+		  const TypeType   * source_type,
+		  const ScalorType * source_mass,
+		  const ScalorType * source_charge,
+		  CoordType  * coord,
+		  IntScalorType * coordNoix,
+		  IntScalorType * coordNoiy,
+		  IntScalorType * coordNoiz,
+		  ScalorType * velox,
+		  ScalorType * veloy,
+		  ScalorType * veloz,
+		  ScalorType * forcx,
+		  ScalorType * forcy,
+		  ScalorType * forcz,
+		  IndexType  * globalIndex,
+		  TypeType   * type,
+		  ScalorType * mass,
+		  ScalorType * charge)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -807,4 +809,309 @@ packDeviceData (const IndexType * cellIndex,
 }
 
 
+void Parallel::DeviceTransferPackage::
+copyToHost (HostTransferPackage & hpkg) const
+{
+  HostMDData & hdata(hpkg);
+  const DeviceMDData & ddata(*this);  
+  ddata.copyToHost (hdata, myMask);
+  // alloc memory
+  if (hpkg.getMemSize() < numCell){
+    hpkg.easyMallocMe (numCell * 2);
+  }
+  hpkg.getTotalNumCell() = numCell;
+  hpkg.getMask() = myMask;
+  for (IndexType i = 0; i < numCell; ++i){
+    hpkg.getCellIndex()[i] = cellIndex[i];
+    hpkg.getCellStartIndex()[i] = cellStartIndex[i];
+  }
+  hpkg.getCellStartIndex()[numCell] = cellStartIndex[numCell];  
+}
+
+void Parallel::DeviceTransferPackage::
+copyFromHost (const HostTransferPackage & hpkg)
+{
+  const HostMDData & hdata(hpkg);
+  DeviceMDData & ddata(*this);
+  myMask = hpkg.getMask();
+  ddata.copyFromHost (hdata, myMask);
+
+  if (memSize < hpkg.getTotalNumCell()){
+    easyMallocMe (hpkg.getTotalNumCell() * 2);
+  }
+  numCell = hpkg.getTotalNumCell();
+  for (IndexType i = 0; i < numCell; ++i){
+    hcellIndex[i] = hpkg.getCellIndex()[i];
+    hcellStartIndex[i] = hpkg.getCellStartIndex()[i];
+  }
+  hcellStartIndex[numCell] = hpkg.getCellStartIndex()[numCell];
+
+  cudaMemcpy (cellIndex, hcellIndex, sizeof(IndexType)*numCell,
+	      cudaMemcpyHostToDevice);
+  cudaMemcpy (cellStartIndex, hcellStartIndex, sizeof(IndexType)*(numCell+1),
+	      cudaMemcpyHostToDevice);
+  checkCUDAError ("DeviceTransferPackage::copyFromHost cpy from host");
+}
+
+
+void Parallel::DeviceTransferPackage::
+unpack_replace (DeviceCellListedMDData & ddata) const
+{
+  Parallel::CudaGlobal::unpackDeviceMDData_replace
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
+	  cellIndex,
+	  cellStartIndex,
+	  myMask,
+	  this->dptr_coordinate(),
+	  this->dptr_coordinateNoiX(),
+	  this->dptr_coordinateNoiY(),
+	  this->dptr_coordinateNoiZ(),
+	  this->dptr_velocityX(),
+	  this->dptr_velocityY(),
+	  this->dptr_velocityZ(),
+	  this->dptr_forceX(),
+	  this->dptr_forceY(),
+	  this->dptr_forceZ(),
+	  this->dptr_globalIndex(),
+	  this->dptr_type(),
+	  this->dptr_mass(),
+	  this->dptr_charge(),
+	  ddata.numAtomInCell,
+	  ddata.dptr_coordinate(),
+	  ddata.dptr_coordinateNoiX(),
+	  ddata.dptr_coordinateNoiY(),
+	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  ddata.dptr_globalIndex(),
+	  ddata.dptr_type(),
+	  ddata.dptr_mass(),
+	  ddata.dptr_charge());
+  checkCUDAError ("DeviceTransferPackage::unpack_replace");
+}
+
+
+void Parallel::DeviceTransferPackage::
+unpack_add (DeviceCellListedMDData & ddata) const
+{
+  Parallel::CudaGlobal::unpackDeviceMDData_add
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
+	  cellIndex,
+	  cellStartIndex,
+	  myMask,
+	  this->dptr_coordinate(),
+	  this->dptr_coordinateNoiX(),
+	  this->dptr_coordinateNoiY(),
+	  this->dptr_coordinateNoiZ(),
+	  this->dptr_velocityX(),
+	  this->dptr_velocityY(),
+	  this->dptr_velocityZ(),
+	  this->dptr_forceX(),
+	  this->dptr_forceY(),
+	  this->dptr_forceZ(),
+	  this->dptr_globalIndex(),
+	  this->dptr_type(),
+	  this->dptr_mass(),
+	  this->dptr_charge(),
+	  ddata.numAtomInCell,
+	  ddata.dptr_coordinate(),
+	  ddata.dptr_coordinateNoiX(),
+	  ddata.dptr_coordinateNoiY(),
+	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  ddata.dptr_globalIndex(),
+	  ddata.dptr_type(),
+	  ddata.dptr_mass(),
+	  ddata.dptr_charge(),
+	  err.ptr_de);
+  checkCUDAError ("DeviceTransferPackage::unpack_add");
+  err.updateHost ();
+  err.check ("DeviceTransferPackage::unpack_add");
+}
+
+
+
+__global__ void Parallel::CudaGlobal::
+unpackDeviceMDData_replace (const IndexType * cellIndex,
+			  const IndexType * cellStartIndex,
+			  const MDDataItemMask_t mask,
+			  const CoordType  * source_coord,
+			  const IntScalorType * source_coordNoix,
+			  const IntScalorType * source_coordNoiy,
+			  const IntScalorType * source_coordNoiz,
+			  const ScalorType * source_velox,
+			  const ScalorType * source_veloy,
+			  const ScalorType * source_veloz,
+			  const ScalorType * source_forcx,
+			  const ScalorType * source_forcy,
+			  const ScalorType * source_forcz,
+			  const IndexType  * source_globalIndex,
+			  const TypeType   * source_type,
+			  const ScalorType * source_mass,
+			  const ScalorType * source_charge,
+			  IndexType * numAtomInCell,
+			  CoordType  * coord,
+			  IntScalorType * coordNoix,
+			  IntScalorType * coordNoiy,
+			  IntScalorType * coordNoiz,
+			  ScalorType * velox,
+			  ScalorType * veloy,
+			  ScalorType * veloz,
+			  ScalorType * forcx,
+			  ScalorType * forcy,
+			  ScalorType * forcz,
+			  IndexType  * globalIndex,
+			  TypeType   * type,
+			  ScalorType * mass,
+			  ScalorType * charge)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType cellIdx = cellIndex[bid];
+  IndexType startIdx = cellStartIndex[bid];
+  IndexType numAtomInThisCell = cellStartIndex[bid+1] - startIdx;
+  IndexType toid   = tid + cellIdx * blockDim.x;
+  IndexType fromid = tid + startIdx;
+  if (tid == blockDim.x-1){
+    numAtomInCell[cellIdx] = numAtomInThisCell;
+  }
   
+  if (tid < numAtomInThisCell){
+    if (mask & MDDataItemMask_Coordinate){
+      coord[toid] = source_coord[fromid];
+    }
+    if (mask & MDDataItemMask_CoordinateNoi){
+      coordNoix[toid] = source_coordNoix[fromid];
+      coordNoiy[toid] = source_coordNoiy[fromid];
+      coordNoiz[toid] = source_coordNoiz[fromid];
+    }
+    if (mask & MDDataItemMask_Velocity){
+      velox[toid] = source_velox[fromid];
+      veloy[toid] = source_veloy[fromid];
+      veloz[toid] = source_veloz[fromid];
+    }
+    if (mask & MDDataItemMask_Force){
+      forcx[toid] = source_forcx[fromid];
+      forcy[toid] = source_forcy[fromid];
+      forcz[toid] = source_forcz[fromid];
+    }
+    if (mask & MDDataItemMask_GlobalIndex){
+      globalIndex[toid] = source_globalIndex[fromid];
+    }
+    if (mask & MDDataItemMask_Type){
+      type[toid] = source_type[fromid];
+    }
+    if (mask & MDDataItemMask_Mass){
+      mass[toid] = source_mass[fromid];
+    }
+    if (mask & MDDataItemMask_Charge){
+      charge[toid] = source_charge[fromid];
+    }
+  }
+}
+
+
+__global__ void Parallel::CudaGlobal::
+unpackDeviceMDData_add (const IndexType * cellIndex,
+			const IndexType * cellStartIndex,
+			const MDDataItemMask_t mask,
+			const CoordType  * source_coord,
+			const IntScalorType * source_coordNoix,
+			const IntScalorType * source_coordNoiy,
+			const IntScalorType * source_coordNoiz,
+			const ScalorType * source_velox,
+			const ScalorType * source_veloy,
+			const ScalorType * source_veloz,
+			const ScalorType * source_forcx,
+			const ScalorType * source_forcy,
+			const ScalorType * source_forcz,
+			const IndexType  * source_globalIndex,
+			const TypeType   * source_type,
+			const ScalorType * source_mass,
+			const ScalorType * source_charge,
+			IndexType * numAtomInCell,
+			CoordType  * coord,
+			IntScalorType * coordNoix,
+			IntScalorType * coordNoiy,
+			IntScalorType * coordNoiz,
+			ScalorType * velox,
+			ScalorType * veloy,
+			ScalorType * veloz,
+			ScalorType * forcx,
+			ScalorType * forcy,
+			ScalorType * forcz,
+			IndexType  * globalIndex,
+			TypeType   * type,
+			ScalorType * mass,
+			ScalorType * charge,
+			mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType cellIdx = cellIndex[bid];
+  IndexType startIdx = cellStartIndex[bid];
+  IndexType numAdded = cellStartIndex[bid+1] - startIdx;
+  IndexType alreadyInCell = numAtomInCell[cellIdx];
+  IndexType toid   = tid + cellIdx * blockDim.x + alreadyInCell;
+  IndexType fromid = tid + startIdx;
+  __shared__ IndexType numAtomInThisCell;
+  __shared__ bool failed ;
+  if (tid == 0){
+    if ((numAtomInThisCell = (numAtomInCell[cellIdx] += numAdded)) > blockDim.x &&
+	ptr_de != NULL){
+      *ptr_de = mdErrorShortCellList;
+      failed = true;
+    }
+    else {
+      failed = false;
+    }
+  }
+  __syncthreads();
+  if (failed) return;
+  
+  if (tid < numAdded){
+    if (mask & MDDataItemMask_Coordinate){
+      coord[toid] = source_coord[fromid];
+    }
+    if (mask & MDDataItemMask_CoordinateNoi){
+      coordNoix[toid] = source_coordNoix[fromid];
+      coordNoiy[toid] = source_coordNoiy[fromid];
+      coordNoiz[toid] = source_coordNoiz[fromid];
+    }
+    if (mask & MDDataItemMask_Velocity){
+      velox[toid] = source_velox[fromid];
+      veloy[toid] = source_veloy[fromid];
+      veloz[toid] = source_veloz[fromid];
+    }
+    if (mask & MDDataItemMask_Force){
+      forcx[toid] = source_forcx[fromid];
+      forcy[toid] = source_forcy[fromid];
+      forcz[toid] = source_forcz[fromid];
+    }
+    if (mask & MDDataItemMask_GlobalIndex){
+      globalIndex[toid] = source_globalIndex[fromid];
+    }
+    if (mask & MDDataItemMask_Type){
+      type[toid] = source_type[fromid];
+    }
+    if (mask & MDDataItemMask_Mass){
+      mass[toid] = source_mass[fromid];
+    }
+    if (mask & MDDataItemMask_Charge){
+      charge[toid] = source_charge[fromid];
+    }
+  }
+}
+
+

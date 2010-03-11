@@ -107,10 +107,23 @@ init (const char * confFileName,
   deviceData.buildSubListGhostCell (subList);
 
 
-  Parallel::DeviceTransferPackage trans ;
-  trans.reinit (subList);
-  trans.pack (deviceData);
+  Parallel::DeviceTransferPackage dpkg ;
+  MDDataItemMask_t mask = MDDataItemMask_All;
+  mask ^= MDDataItemMask_Force;
+  dpkg.reinit (subList);
+  dpkg.pack (deviceData, mask);
 
+  Parallel::HostTransferPackage hpkg;
+  dpkg.copyToHost (hpkg);
+
+  hpkg.cptr_forceX()[0] = 1.2;
+  hpkg.cptr_mass()[0] = 7;
+  hpkg.cptr_mass()[1] = 7;
+  hpkg.cptr_mass()[2] = 7;
+
+  dpkg.copyFromHost (hpkg);
+  dpkg.unpack_add (deviceData);
+  
   int i = 1;
   return;
 }
