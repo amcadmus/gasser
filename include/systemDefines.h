@@ -37,6 +37,8 @@ typedef int		TypeType;
 #define MaxNumberBondedInteractionParamemter	(256*3)
 #define MaxLengthNonBondedInteractionTable	128
 
+#define MemAllocExtension			2
+
 #define SystemSharedBuffSize		16384
 #define GlobalFunctionParamSizeLimit	256
 

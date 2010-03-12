@@ -7,8 +7,8 @@ namespace Parallel{
   namespace CudaGlobal {
     __global__ void
     initZeroCell (const IntVectorType numCell,
-		  IndexType * numAtomInCell,
-		  IndexType * numNeighborCell );
+		  IndexType * numAtomInCell);
+    
     __global__ void
     formCellStructure (const VectorType frameLow,
 		       const VectorType frameUp,

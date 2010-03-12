@@ -16,12 +16,11 @@ initZeroCell ()
   Parallel::CudaGlobal::initZeroCell
       <<<gridDim, numThreadBlock>>>(
 	  numCell, 
-	  numAtomInCell,
-	  numNeighborCell);
+	  numAtomInCell);
 }
 
 void Parallel::DeviceCellListedMDData::
-initCellStructure (const ScalorType & rlist,
+initCellStructure (const ScalorType & rlist_,
 		   const IndexType & devideLevel_,
 		   const BoxDirection_t & bdir)
 {
@@ -44,6 +43,7 @@ initCellStructure (const ScalorType & rlist,
   CellOnX = bdir & RectangularBoxGeometry::mdRectBoxDirectionX;
   CellOnY = bdir & RectangularBoxGeometry::mdRectBoxDirectionY;
   CellOnZ = bdir & RectangularBoxGeometry::mdRectBoxDirectionZ;
+  rlist = rlist_;
   double rlisti = 1./rlist;
 
   if (CellOnX ) numCell.x = int ( floor(getGlobalBoxSize().x * rlisti) );
@@ -83,17 +83,18 @@ initCellStructure (const ScalorType & rlist,
   
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
-  maxNumNeighborCell = 1;
-  if (CellOnX) maxNumNeighborCell *= devideLevel * 2 + 1;
-  if (CellOnY) maxNumNeighborCell *= devideLevel * 2 + 1;
-  if (CellOnZ) maxNumNeighborCell *= devideLevel * 2 + 1;
+  // maxNumNeighborCell = 1;
+  // if (CellOnX) maxNumNeighborCell *= devideLevel * 2 + 1;
+  // if (CellOnY) maxNumNeighborCell *= devideLevel * 2 + 1;
+  // if (CellOnZ) maxNumNeighborCell *= devideLevel * 2 + 1;
   
-  if (numThreadsInCell * totalNumCell > memSize_){
-    mallocAll (numThreadsInCell * totalNumCell);
-    initZero();
+  if (numThreadsInCell * totalNumCell > DeviceMDData::memSize_){
+    DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell);
+    DeviceMDData::initZero();
   }
   numData_ = totalNumCell * numThreadsInCell;
-  mallocCell (totalNumCell, maxNumNeighborCell);
+  // mallocCell (totalNumCell, maxNumNeighborCell);
+  easyMallocCell (totalNumCell);
   initZeroCell ();
 
   IndexType numThreadBlock = numThreadsInCell;
@@ -194,8 +195,7 @@ rebuild ()
 
 __global__ void Parallel::CudaGlobal::
 initZeroCell (const IntVectorType numCell,
-	      IndexType * numAtomInCell,
-	      IndexType * numNeighborCell )
+	      IndexType * numAtomInCell)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -204,7 +204,7 @@ initZeroCell (const IntVectorType numCell,
 
   if (ii < totalNumCell){
     numAtomInCell[ii] = 0;
-    numNeighborCell[ii] = 0;
+    // numNeighborCell[ii] = 0;
   }
 }
 
@@ -478,17 +478,17 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
 
 
 void Parallel::DeviceCellListedMDData::
-mallocCell (const IndexType & totalNumCell,
-	    const IndexType & maxNumNeighborCell_)
+easyMallocCell (const IndexType & totalNumCell)
 {
-  maxNumNeighborCell = maxNumNeighborCell_;
-  if (malloced){
-    clearCell ();
-  }
+  if (totalNumCell == 0) return;
+  // if (totalNumCell == numCell.x * numCell.y * numCell.z) return;
+  // maxNumNeighborCell = maxNumNeighborCell_;
+  clearCell ();
   cudaMalloc ((void**)&numAtomInCell, sizeof(IndexType) * totalNumCell);
-  cudaMalloc ((void**)&numNeighborCell, sizeof(IndexType) * totalNumCell);
-  cudaMalloc ((void**)&neighborCellIndex,
-	      sizeof(IndexType) * totalNumCell * maxNumNeighborCell);
+  // cudaMalloc ((void**)&numNeighborCell, sizeof(IndexType) * totalNumCell);
+  // cudaMalloc ((void**)&neighborCellIndex,
+  // 	      sizeof(IndexType) * totalNumCell * maxNumNeighborCell);
+  memSize = totalNumCell;
   checkCUDAError ("malloc Cell");
   malloced = true;
 }
@@ -498,8 +498,9 @@ clearCell()
 {
   if (malloced){
     cudaFree (numAtomInCell);
-    cudaFree (numNeighborCell);
-    cudaFree (neighborCellIndex);
+    memSize = 0;
+    // cudaFree (numNeighborCell);
+    // cudaFree (neighborCellIndex);
     malloced = false;
   }
 }
@@ -512,7 +513,8 @@ DeviceCellListedMDData ()
   frameLow.x = frameLow.y = frameLow.z = 0;
   frameUp.x  = frameUp.y  = frameUp.z  = 0;
   numCell.x  = numCell.y  = numCell.z  = 0;
-  maxNumNeighborCell = 0;
+  memSize = 0;
+  // maxNumNeighborCell = 0;
   malloced = false;
 }
 
@@ -626,6 +628,8 @@ Parallel::DeviceTransferPackage::
 void Parallel::DeviceTransferPackage::
 easyMallocMe (IndexType memSize_)
 {
+  if (memSize_ == 0) return;
+  // if (memSize == memSize_) return;
   clearMe ();
   memSize = memSize_;
   size_t size = memSize * sizeof(IndexType);
@@ -649,7 +653,7 @@ void Parallel::DeviceTransferPackage::
 reinit (const SubCellList & subCellList)
 {
   if (memSize < subCellList.size()){
-    easyMallocMe (subCellList.size()*2);
+    easyMallocMe (subCellList.size()*MemAllocExtension);
   }
   numCell = subCellList.size();
   for (IndexType i = 0; i < numCell; ++i){
@@ -693,7 +697,7 @@ pack (const DeviceCellListedMDData & ddata,
 
   this->DeviceMDData::setGlobalBox (ddata.getGlobalBox());
   if (this->DeviceMDData::numData() > this->DeviceMDData::memSize()){
-    this->DeviceMDData::mallocAll (this->DeviceMDData::numData() * 2);
+    this->DeviceMDData::easyMalloc (this->DeviceMDData::numData() * MemAllocExtension);
   }
   
   Parallel::CudaGlobal::packDeviceMDData
@@ -817,7 +821,7 @@ copyToHost (HostTransferPackage & hpkg) const
   ddata.copyToHost (hdata, myMask);
   // alloc memory
   if (hpkg.getMemSize() < numCell){
-    hpkg.easyMallocMe (numCell * 2);
+    hpkg.easyMallocMe (numCell * MemAllocExtension);
   }
   hpkg.getTotalNumCell() = numCell;
   hpkg.getMask() = myMask;
@@ -837,7 +841,7 @@ copyFromHost (const HostTransferPackage & hpkg)
   ddata.copyFromHost (hdata, myMask);
 
   if (memSize < hpkg.getTotalNumCell()){
-    easyMallocMe (hpkg.getTotalNumCell() * 2);
+    easyMallocMe (hpkg.getTotalNumCell() * MemAllocExtension);
   }
   numCell = hpkg.getTotalNumCell();
   for (IndexType i = 0; i < numCell; ++i){
@@ -1065,10 +1069,10 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
   IndexType alreadyInCell = numAtomInCell[cellIdx];
   IndexType toid   = tid + cellIdx * blockDim.x + alreadyInCell;
   IndexType fromid = tid + startIdx;
-  __shared__ IndexType numAtomInThisCell;
+  // __shared__ IndexType numAtomInThisCell;
   __shared__ bool failed ;
   if (tid == 0){
-    if ((numAtomInThisCell = (numAtomInCell[cellIdx] += numAdded)) > blockDim.x &&
+    if (((numAtomInCell[cellIdx] += numAdded)) > blockDim.x &&
 	ptr_de != NULL){
       *ptr_de = mdErrorShortCellList;
       failed = true;
@@ -1115,3 +1119,94 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
 }
 
 
+void Parallel::DeviceCellListedMDData::
+copyToHost (HostCellListedMDData & hdata,
+	    const MDDataItemMask_t mask) const
+{
+  const DeviceMDData & ddata (*this);
+  ddata.copyToHost (hdata, mask);
+
+  hdata.rlist = rlist;
+  hdata.devideLevel = devideLevel;
+  hdata.numCell.x = numCell.x;
+  hdata.numCell.y = numCell.y;
+  hdata.numCell.z = numCell.z;
+  hdata.frameUp.x = frameUp.x;
+  hdata.frameUp.y = frameUp.y;
+  hdata.frameUp.z = frameUp.z;
+  hdata.frameLow.x = frameLow.x;
+  hdata.frameLow.y = frameLow.y;
+  hdata.frameLow.z = frameLow.z;
+
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  size_t size = totalNumCell * sizeof (IndexType);
+
+  if (hdata.HostCellListedMDData::memSize < totalNumCell){
+    hdata.easyReallocCell (totalNumCell * MemAllocExtension);
+  }
+  cudaMemcpy (hdata.numAtomInCell, numAtomInCell, size,
+	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("DeviceCellListedMDData::copyToHost copy numAtomInCell");
+}
+
+  
+void Parallel::DeviceCellListedMDData::
+copyFromHost (const HostCellListedMDData & hdata,
+	      const MDDataItemMask_t mask)
+{
+  DeviceMDData & ddata(*this);
+  ddata.copyFromHost (hdata, mask);
+
+  rlist = hdata.rlist;
+  devideLevel = hdata.devideLevel;
+  numCell.x = hdata.numCell.x;
+  numCell.y = hdata.numCell.y;
+  numCell.z = hdata.numCell.z;
+  frameUp.x = hdata.frameUp.x;
+  frameUp.y = hdata.frameUp.y;
+  frameUp.z = hdata.frameUp.z;
+  frameLow.x = hdata.frameLow.x;
+  frameLow.y = hdata.frameLow.y;
+  frameLow.z = hdata.frameLow.z;
+  
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  size_t size = totalNumCell * sizeof (IndexType);
+
+  if (memSize < totalNumCell){
+    easyMallocCell (totalNumCell * MemAllocExtension);
+  }
+  cudaMemcpy (numAtomInCell, hdata.numAtomInCell, size,
+	      cudaMemcpyHostToDevice);
+  checkCUDAError ("DeviceCellListedMDData::copyFromHost copy numAtomInCell");
+}
+
+void Parallel::DeviceCellListedMDData::
+copyFromDevice (const DeviceCellListedMDData & ddata,
+		const MDDataItemMask_t mask)
+{  
+  DeviceMDData & me(*this);
+  me.copyFromDevice (ddata, mask);
+
+  rlist = ddata.rlist;
+  devideLevel = ddata.devideLevel;
+  numCell.x = ddata.numCell.x;
+  numCell.y = ddata.numCell.y;
+  numCell.z = ddata.numCell.z;
+  frameUp.x = ddata.frameUp.x;
+  frameUp.y = ddata.frameUp.y;
+  frameUp.z = ddata.frameUp.z;
+  frameLow.x = ddata.frameLow.x;
+  frameLow.y = ddata.frameLow.y;
+  frameLow.z = ddata.frameLow.z;
+  
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  size_t size = totalNumCell * sizeof (IndexType);
+
+  if (memSize < totalNumCell){
+    easyMallocCell (totalNumCell * MemAllocExtension);
+  }
+
+  cudaMemcpy (numAtomInCell, ddata.numAtomInCell, size,
+	      cudaMemcpyDeviceToDevice);
+  checkCUDAError ("DeviceCellListedMDData::copyFromDevice copy numAtomInCell");
+}

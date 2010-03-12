@@ -19,26 +19,27 @@ namespace Parallel{
 
   enum MDDataItemShift
   {
-    MDDataItemShift_Coordinate			= 0,
-    MDDataItemShift_CoordinateNoi		= 1,
-    MDDataItemShift_Velocity			= 2,
-    MDDataItemShift_Force			= 3,
-    MDDataItemShift_GlobalIndex			= 4,
-    MDDataItemShift_Type				= 5,
-    MDDataItemShift_Mass				= 6,
-    MDDataItemShift_Charge			= 7
+    MDDataItemShift_Coordinate		= 0,
+    MDDataItemShift_CoordinateNoi	= 1,
+    MDDataItemShift_Velocity		= 2,
+    MDDataItemShift_Force		= 3,
+    MDDataItemShift_GlobalIndex		= 4,
+    MDDataItemShift_Type		= 5,
+    MDDataItemShift_Mass		= 6,
+    MDDataItemShift_Charge		= 7
   } ;
   enum MDDataItemMask
   {
-    MDDataItemMask_All				= MaxIndexValue,
-    MDDataItemMask_Coordinate			= (1<<MDDataItemShift_Coordinate),
-    MDDataItemMask_CoordinateNoi		= (1<<MDDataItemShift_CoordinateNoi),
-    MDDataItemMask_Velocity			= (1<<MDDataItemShift_Velocity),
-    MDDataItemMask_Force			= (1<<MDDataItemShift_Force),
-    MDDataItemMask_GlobalIndex			= (1<<MDDataItemShift_GlobalIndex),
-    MDDataItemMask_Type				= (1<<MDDataItemShift_Type),
-    MDDataItemMask_Mass				= (1<<MDDataItemShift_Mass),
-    MDDataItemMask_Charge			= (1<<MDDataItemShift_Charge)
+    MDDataItemMask_All			= MaxIndexValue,
+    MDDataItemMask_Coordinate		= (1<<MDDataItemShift_Coordinate),
+    MDDataItemMask_CoordinateNoi	= (1<<MDDataItemShift_CoordinateNoi),
+    MDDataItemMask_Velocity		= (1<<MDDataItemShift_Velocity),
+    MDDataItemMask_Force		= (1<<MDDataItemShift_Force),
+    MDDataItemMask_AllExceptForce	= (MDDataItemMask_All^MDDataItemMask_Force),
+    MDDataItemMask_GlobalIndex		= (1<<MDDataItemShift_GlobalIndex),
+    MDDataItemMask_Type			= (1<<MDDataItemShift_Type),
+    MDDataItemMask_Mass			= (1<<MDDataItemShift_Mass),
+    MDDataItemMask_Charge		= (1<<MDDataItemShift_Charge)
   };
   typedef IndexType MDDataItemMask_t;
   
@@ -81,9 +82,9 @@ public:
     const IndexType & memSize () const {return memSize_;}
     IndexType & numData ()  {return numData_;}
     // IndexType & memSize ()  {return memSize_;}
-    void clearAll ();
+    void clear ();
     void clearData () {numData_ = 0;}
-    void reallocAll (const IndexType & memSize);
+    void easyRealloc (const IndexType & memSize);
     void copy (const HostMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
 public:
@@ -202,9 +203,9 @@ public:
 		       const ScalorType & bz)
 	{ setBoxSize (bx, by, bz, &globalBox); }
 
-    void mallocAll (const IndexType &memSize);
+    void easyMalloc (const IndexType &memSize);
     void initZero ();
-    void clearAll ();
+    void clear ();
     void clearData () {numData_ = 0;}
     void copyFromHost (const HostMDData & hdata,
 		       const MDDataItemMask_t mask = MDDataItemMask_All);

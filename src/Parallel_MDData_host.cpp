@@ -24,11 +24,11 @@ HostMDData()
 Parallel::HostMDData::
 ~HostMDData ()
 {
-  clearAll ();
+  clear ();
 }
 
 void Parallel::HostMDData::
-clearAll ()
+clear ()
 {
   numData_ = 0;
   memSize_ = 0;
@@ -51,8 +51,9 @@ clearAll ()
 
 
 void Parallel::HostMDData::
-reallocAll (const IndexType & memSize__)
+easyRealloc (const IndexType & memSize__)
 {
+  memSize_ = memSize__;
   reallocCoordinate	(memSize__);
   reallocVelocity	(memSize__);
   reallocForce		(memSize__);
@@ -69,7 +70,7 @@ reallocCoordinate (const IndexType & memSize__)
   //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
   // }
   if (memSize__ == 0) return ;
-  memSize_ = memSize__;
+  // memSize_ = memSize__;
 
   size_t sizecoord =memSize_ * sizeof(HostCoordType);
   size_t sizei = memSize_ * sizeof(IntScalorType);
@@ -91,7 +92,7 @@ reallocVelocity (const IndexType & memSize__)
   //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
   // }
   if (memSize__ == 0) return ;
-  memSize_ = memSize__;
+  // memSize_ = memSize__;
   
   size_t sizef = memSize_ * sizeof(ScalorType);
 
@@ -110,7 +111,7 @@ reallocForce (const IndexType & memSize__)
   //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
   // }
   if (memSize__ == 0) return ;
-  memSize_ = memSize__;
+  // memSize_ = memSize__;
   
   size_t sizef = memSize_ * sizeof(ScalorType);
   
@@ -129,7 +130,7 @@ reallocGlobalIndex (const IndexType & memSize__)
   //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
   // }
   if (memSize__ == 0) return ;
-  memSize_ = memSize__;
+  // memSize_ = memSize__;
 
   size_t sizeidx = memSize_ * sizeof(IndexType);
 
@@ -144,7 +145,7 @@ reallocTopProperty (const IndexType & memSize__)
   //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
   // }
   if (memSize__ == 0) return ;
-  memSize_ = memSize__;
+  // memSize_ = memSize__;
 
   size_t sizef = memSize_ * sizeof(ScalorType);
 
@@ -190,7 +191,7 @@ pushBackAtom  (const HostCoordType & coord_,
   if (numData_ == memSize_){
     memSize_ ++;
     memSize_ <<= 1;
-    reallocAll (memSize_);
+    easyRealloc (memSize_);
   }
   coord[numData_] = coord_;
   coordNoix[numData_] = coordNoix_;
@@ -224,7 +225,7 @@ initConf_GroFile (const char * filename,
   }
 
   if (numData_ > memSize_) {
-    reallocAll (numData_);
+    easyRealloc (numData_);
     // throw MDExcptNumAtomMoreThanMemSize ();
   }
   
@@ -347,7 +348,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
     IndexType naiveLocalMemSize  = (gdata.numData() /
 				    Parallel::Interface::numProc() * 2);
     if (naiveLocalMemSize < 100)  naiveLocalMemSize = 100 ;
-    sdata.reallocAll (naiveLocalMemSize);
+    sdata.easyRealloc (naiveLocalMemSize);
     sdata.setGlobalBox (gdata.getGlobalBox());
     
     hx = (gdata.getGlobalBox().size.x) / Nx;
@@ -412,7 +413,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  transRecv.build ();
 	  transRecv.Irecv (0, 0);
 	  transRecv.wait ();
-	  ldata.reallocAll (recvMemSize);
+	  ldata.easyRealloc (recvMemSize);
 	}
 	if (myRank == 0){
 	  transSend.wait ();
@@ -548,7 +549,7 @@ copy (const HostMDData & hdata,
       const MDDataItemMask_t mask)
 {
   if (memSize_ < hdata.numData_){
-    reallocAll (hdata.numData_);
+    easyRealloc (hdata.numData_ * MemAllocExtension);
   }
   numData_ = hdata.numData_;
   setGlobalBox (hdata.getGlobalBox());

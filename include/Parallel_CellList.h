@@ -21,10 +21,13 @@ public:
   };
 
   class SubCellList;
+  class DeviceCellListedMDData;
+  class DeviceTransferPackage;
   
   class HostCellListedMDData : public HostMDData
   {
     friend class HostTransferPackage;
+    friend class DeviceCellListedMDData;
     
     ScalorType rlist;
     IndexType devideLevel;
@@ -33,14 +36,14 @@ public:
     HostIntVectorType numCell;
 
     IndexType * numAtomInCell;
+    IndexType memSize;
 
     // IndexType * numNeighborCell;
     // IndexType * neighborCellIndex;
     // IndexType maxNumNeighborCell;
-public:
-    void reallocAll (const IndexType & totalNumCell,
-		     const IndexType & maxNumNeighborCell);
+private:
     IndexType * getNumAtomInCell () {return numAtomInCell;}
+    void easyReallocCell (const IndexType & totalNumCell);
 public:
     HostCellListedMDData ();
     ~HostCellListedMDData ();
@@ -92,18 +95,17 @@ public:
 
   class HostTransferPackage : public HostMDData
   {
+    friend class DeviceTransferPackage;
+    
     IndexType numCell;
     IndexType memSize;
     IndexType * cellIndex;
     IndexType * cellStartIndex;
     MDDataItemMask_t myMask;
-public:
+private:
     inline void clearMe ();
     void easyMallocMe (IndexType memSize);
-public:
-    HostTransferPackage ();
-    ~HostTransferPackage ();
-public:
+private:
     const IndexType & getTotalNumCell   () const {return numCell;}
     const IndexType & getMemSize        () const {return memSize;}
     const MDDataItemMask_t & getMask	() const {return myMask;}
@@ -115,9 +117,14 @@ public:
     IndexType * getCellIndex      () {return cellIndex;}
     IndexType * getCellStartIndex () {return cellStartIndex;}
 public:
+    HostTransferPackage ();
+    ~HostTransferPackage ();
+public:
     void reinit (const SubCellList & SubCellList);
     void pack (const HostCellListedMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
+    void unpack_replace (HostCellListedMDData & ddata) const;
+    void unpack_add     (HostCellListedMDData & ddata) const;
   };  
 
   
@@ -139,15 +146,15 @@ public:
     VectorType frameUp;
 
     IndexType * numAtomInCell;
-
+    IndexType memSize;
+    
     // IndexType * numNeighborCell;
     // IndexType * neighborCellIndex;
     // IndexType maxNumNeighborCell;
 
-    MDError err;
+    mutable MDError err;
 private:
-    void mallocCell (const IndexType & totalNumCell,
-		     const IndexType & maxNumNeighborCell);
+    void easyMallocCell (const IndexType & totalNumCell);
     void initZeroCell ();
     void clearCell ();
 public:
@@ -175,8 +182,12 @@ public:
 			    const BoxDirection_t & bdir = 7);
     void rebuild ();
 public:
-    void copyToHost   (HostCellListedMDData & hdata) const;
-    void copyFromHost (const HostCellListedMDData & hdata);
+    void copyToHost   (HostCellListedMDData & hdata,
+		       const MDDataItemMask_t mask = MDDataItemMask_All) const;
+    void copyFromHost (const HostCellListedMDData & hdata,
+		       const MDDataItemMask_t mask = MDDataItemMask_All);
+    void copyFromDevice (const DeviceCellListedMDData & ddata,
+			 const MDDataItemMask_t = MDDataItemMask_All);
 public:
     void buildSubList (const IndexType & xIdLo,
 		       const IndexType & xIdUp,

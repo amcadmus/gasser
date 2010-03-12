@@ -8,6 +8,7 @@
 
 Parallel::HostCellListedMDData::
 HostCellListedMDData ()
+    : memSize (0)
 {
   rlist = 0;
   devideLevel = 0;
@@ -30,8 +31,7 @@ Parallel::HostCellListedMDData::
 }
 
 void Parallel::HostCellListedMDData::
-reallocAll (const IndexType & totalNumCell,
-	    const IndexType & maxNumNeighborCell)
+easyReallocCell (const IndexType & totalNumCell)
 {
   numAtomInCell = (IndexType *) realloc (
       numAtomInCell, totalNumCell * sizeof(IndexType));
@@ -40,6 +40,7 @@ reallocAll (const IndexType & totalNumCell,
 				      "numAtomInCell",
 				      totalNumCell * sizeof(IndexType));
   }
+  memSize = totalNumCell;
   // numNeighborCell = (IndexType *) realloc (
   //     numNeighborCell, totalNumCell * sizeof(IndexType));
   // if (numNeighborCell == NULL){
@@ -199,6 +200,7 @@ Parallel::HostTransferPackage::
 void Parallel::HostTransferPackage::
 easyMallocMe (IndexType memSize_)
 {
+  if (memSize == memSize_) return;
   clearMe ();
   memSize = memSize_;
   size_t size = memSize * sizeof(IndexType);
@@ -244,20 +246,195 @@ pack (const HostCellListedMDData & hdata,
 
   this->HostMDData::setGlobalBox (hdata.getGlobalBox());
   if (this->HostMDData::numData() > this->HostMDData::memSize()){
-    this->HostMDData::reallocAll (this->HostMDData::numData() * 2);
+    this->HostMDData::easyRealloc (this->HostMDData::numData() * MemAllocExtension);
   }
 
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
-  IndexType toid = 0;
+  // IndexType toid = 0;
   for (IndexType i = 0; i < numCell; ++i){
+    IndexType toid = cellStartIndex[i];
     IndexType cellid = cellIndex[i];
     IndexType fromid = cellid * numThreadsInCell;
-    for (IndexType j = 0; j < hdata.numAtomInCell[cellid]; ++j){
-      this->cptr_coordinate()[toid++] = hdata.cptr_coordinate()[fromid++];
+    IndexType numInThisCell = hdata.numAtomInCell[cellid];
+    if (mask & MDDataItemMask_Coordinate){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_coordinate()[toid+j] = hdata.cptr_coordinate()[fromid+j];
+      }
     }
+    if (mask & MDDataItemMask_CoordinateNoi){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_coordinateNoiX()[toid+j] = hdata.cptr_coordinateNoiX()[fromid+j];
+	this->cptr_coordinateNoiY()[toid+j] = hdata.cptr_coordinateNoiY()[fromid+j];
+	this->cptr_coordinateNoiZ()[toid+j] = hdata.cptr_coordinateNoiZ()[fromid+j];
+      }
+    }
+    if (mask & MDDataItemMask_Velocity){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_velocityX()[toid+j] = hdata.cptr_velocityX()[fromid+j];
+	this->cptr_velocityY()[toid+j] = hdata.cptr_velocityY()[fromid+j];
+	this->cptr_velocityZ()[toid+j] = hdata.cptr_velocityZ()[fromid+j];
+      }
+    }    
+    if (mask & MDDataItemMask_Force){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_forceX()[toid+j] = hdata.cptr_forceX()[fromid+j];
+	this->cptr_forceY()[toid+j] = hdata.cptr_forceY()[fromid+j];
+	this->cptr_forceZ()[toid+j] = hdata.cptr_forceZ()[fromid+j];
+      }
+    }
+    if (mask & MDDataItemMask_GlobalIndex){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_globalIndex()[toid+j] = hdata.cptr_globalIndex()[fromid+j];
+      }
+    }
+    if (mask & MDDataItemMask_Mass){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_mass()[toid+j] = hdata.cptr_mass()[fromid+j];
+      }
+    }
+    if (mask & MDDataItemMask_Type){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_type()[toid+j] = hdata.cptr_type()[fromid+j];
+      }
+    }
+    if (mask & MDDataItemMask_Charge){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_charge()[toid+j] = hdata.cptr_charge()[fromid+j];
+      }
+    }
+    
   }  
 }
 
 
+void Parallel::HostTransferPackage::
+unpack_replace (HostCellListedMDData & hdata) const 
+{
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
 
+  for (IndexType i = 0; i < numCell; ++i){
+    IndexType fromid = cellStartIndex[i];
+    IndexType numInThisCell = cellStartIndex[i+1] - fromid;
+    if (numInThisCell == 0) continue;
+    IndexType targetCellId = cellIndex[i];
+    IndexType toid = targetCellId * numThreadsInCell;
+    hdata.numAtomInCell[targetCellId] = numInThisCell;
+    
+    if (myMask & MDDataItemMask_Coordinate){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_coordinate()[toid+j] = this->cptr_coordinate()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_CoordinateNoi){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_coordinateNoiX()[toid+j] = this->cptr_coordinateNoiX()[fromid+j];
+	hdata.cptr_coordinateNoiY()[toid+j] = this->cptr_coordinateNoiY()[fromid+j];
+	hdata.cptr_coordinateNoiZ()[toid+j] = this->cptr_coordinateNoiZ()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Velocity){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_velocityX()[toid+j] = this->cptr_velocityX()[fromid+j];
+	hdata.cptr_velocityY()[toid+j] = this->cptr_velocityY()[fromid+j];
+	hdata.cptr_velocityZ()[toid+j] = this->cptr_velocityZ()[fromid+j];
+      }
+    }    
+    if (myMask & MDDataItemMask_Force){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_forceX()[toid+j] = this->cptr_forceX()[fromid+j];
+	hdata.cptr_forceY()[toid+j] = this->cptr_forceY()[fromid+j];
+	hdata.cptr_forceZ()[toid+j] = this->cptr_forceZ()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_GlobalIndex){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_globalIndex()[toid+j] = this->cptr_globalIndex()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Mass){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_mass()[toid+j] = this->cptr_mass()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Type){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_type()[toid+j] = this->cptr_type()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Charge){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_charge()[toid+j] = this->cptr_charge()[fromid+j];
+      }
+    }
+    
+  }
+}
+
+
+
+void Parallel::HostTransferPackage::
+unpack_add (HostCellListedMDData & hdata) const 
+{
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+
+  for (IndexType i = 0; i < numCell; ++i){
+    IndexType fromid = cellStartIndex[i];
+    IndexType numAdded = cellStartIndex[i+1] - fromid;
+    if (numAdded == 0) continue;
+    IndexType targetCellId = cellIndex[i];
+    IndexType toid = targetCellId * numThreadsInCell + hdata.numAtomInCell[targetCellId];
+    hdata.numAtomInCell[targetCellId] += numAdded;
+    
+    if (myMask & MDDataItemMask_Coordinate){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_coordinate()[toid+j] = this->cptr_coordinate()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_CoordinateNoi){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_coordinateNoiX()[toid+j] = this->cptr_coordinateNoiX()[fromid+j];
+	hdata.cptr_coordinateNoiY()[toid+j] = this->cptr_coordinateNoiY()[fromid+j];
+	hdata.cptr_coordinateNoiZ()[toid+j] = this->cptr_coordinateNoiZ()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Velocity){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_velocityX()[toid+j] = this->cptr_velocityX()[fromid+j];
+	hdata.cptr_velocityY()[toid+j] = this->cptr_velocityY()[fromid+j];
+	hdata.cptr_velocityZ()[toid+j] = this->cptr_velocityZ()[fromid+j];
+      }
+    }    
+    if (myMask & MDDataItemMask_Force){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_forceX()[toid+j] = this->cptr_forceX()[fromid+j];
+	hdata.cptr_forceY()[toid+j] = this->cptr_forceY()[fromid+j];
+	hdata.cptr_forceZ()[toid+j] = this->cptr_forceZ()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_GlobalIndex){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_globalIndex()[toid+j] = this->cptr_globalIndex()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Mass){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_mass()[toid+j] = this->cptr_mass()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Type){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_type()[toid+j] = this->cptr_type()[fromid+j];
+      }
+    }
+    if (myMask & MDDataItemMask_Charge){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_charge()[toid+j] = this->cptr_charge()[fromid+j];
+      }
+    }
+    
+  }
+}
+
+
+    
 

@@ -53,7 +53,7 @@ init (const char * confFileName,
     // globalHostData.reallocVelocity   (globalNumAtom);
     // globalHostData.reallocGroProperty(globalNumAtom);
     // globalHostData.reallocGlobalIndex(globalNumAtom);
-    globalHostData.reallocAll (globalNumAtom);
+    globalHostData.easyRealloc (globalNumAtom);
     reallocGroProperty (globalNumAtom);
     globalHostData.initConf_GroFile (confFileName,
 				     atomName, atomIndex,
@@ -76,7 +76,8 @@ init (const char * confFileName,
   distributeGlobalMDData (globalHostData, localHostData);
 
   // deviceData.mallocAll (localHostData.memSize());
-  deviceData.copyFromHost (localHostData);
+  DeviceMDData & ddata (deviceData);
+  ddata.copyFromHost (localHostData);
   // deviceData.copyToHost   (localHostData);  
 
   deviceData.initCellStructure (2);
@@ -86,8 +87,18 @@ init (const char * confFileName,
   deviceData.coord[124].x = -0.5;
   deviceData.coord[128].x = -0.5;
   deviceData.coord[132].x = -0.5;
+  deviceData.dptr_mass()[124] = 7;
+  deviceData.dptr_mass()[128] = 7;
+  deviceData.dptr_mass()[132] = 7;
   
   deviceData.rebuild ();
+
+  deviceData.copyToHost (localHostData);
+
+  // DeviceCellListedMDData ddata1;
+  // ddata1.copyFromHost (localHostData);
+  // DeviceCellListedMDData ddata2;
+  // ddata2.copyFromDevice (deviceData);
 
   SubCellList subList;
   deviceData.buildSubListAllCell (subList);
@@ -106,10 +117,8 @@ init (const char * confFileName,
 
   deviceData.buildSubListGhostCell (subList);
 
-
   Parallel::DeviceTransferPackage dpkg ;
-  MDDataItemMask_t mask = MDDataItemMask_All;
-  mask ^= MDDataItemMask_Force;
+  MDDataItemMask_t mask = MDDataItemMask_AllExceptForce;
   dpkg.reinit (subList);
   dpkg.pack (deviceData, mask);
 
@@ -123,6 +132,7 @@ init (const char * confFileName,
 
   dpkg.copyFromHost (hpkg);
   dpkg.unpack_add (deviceData);
+  hpkg.unpack_add (localHostData);
   
   int i = 1;
   return;

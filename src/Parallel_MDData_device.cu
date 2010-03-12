@@ -13,16 +13,14 @@ DeviceMDData ()
 Parallel::DeviceMDData::
 ~DeviceMDData ()
 {
-  clearAll();
+  clear();
 }
 
 void Parallel::DeviceMDData::
-mallocAll (const IndexType & memSize__)
+easyMalloc (const IndexType & memSize__)
 {
-  if (malloced){
-    clearAll ();
-  }
   if (memSize__ == 0) return;
+  clear ();
 
   memSize_ = memSize__;
   
@@ -60,7 +58,7 @@ mallocAll (const IndexType & memSize__)
 }
 
 void Parallel::DeviceMDData::
-clearAll ()
+clear ()
 {
   if (malloced){
     cudaFree (coord);
@@ -81,6 +79,8 @@ clearAll ()
     cudaFree (type);
     cudaFree (mass);
     cudaFree (charge);
+
+    memSize_ = 0;
     malloced = false;
   }
 }
@@ -91,8 +91,7 @@ copyFromHost (const HostMDData & hdata,
 	      const MDDataItemMask_t mask)
 {
   if (memSize_ < hdata.numData()){
-    clearAll();
-    mallocAll (hdata.numData());
+    easyMalloc (hdata.numData() * MemAllocExtension);
   }
   numData_ = hdata.numData();
   setGlobalBox (hdata.getGlobalBox());
@@ -153,7 +152,7 @@ copyToHost (HostMDData & hdata,
 	    const MDDataItemMask_t mask) const
 {
   if (hdata.memSize() < numData_){
-    hdata.reallocAll (numData_);
+    hdata.easyRealloc (numData_ * MemAllocExtension);
   }
   hdata.numData_ = numData_;
   hdata.setGlobalBox (globalBox);
@@ -213,9 +212,8 @@ void Parallel::DeviceMDData::
 copyFromDevice (const DeviceMDData & ddata,
 		const MDDataItemMask_t mask)
 {
-  if (numData_ < ddata.memSize()){
-    clearAll();
-    mallocAll (ddata.memSize());
+  if (memSize_ < ddata.numData()){
+    easyMalloc (ddata.numData() * MemAllocExtension);
   }
   numData_ = ddata.numData();
   setGlobalBox (ddata.getGlobalBox());
@@ -329,7 +327,7 @@ initZeroDeviceData(const IndexType num,
     tmp.x = 0;
     tmp.y = 0;
     tmp.z = 0;
-    tmp.w = MaxIndexValue;
+    tmp.w = -1;
     coord[ii] = tmp;
     coordNoix[ii] = coordNoiy[ii] = coordNoiz[ii] = 0;
     veloz[ii] = veloy[ii] = veloz[ii] = 0.f;
