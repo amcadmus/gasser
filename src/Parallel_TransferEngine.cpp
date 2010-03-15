@@ -202,3 +202,16 @@ registerBuff (const DataTransferBlock & block)
   }
 }
 
+void Parallel::TransferEngine::
+registerBuff (HostSubCellList &hsubCell, const MDDataItemMask_t mask)
+{
+  IndexType num;
+  void ** buffs;
+  size_t * sizes;
+  hsubCell.collectBuffInfo (mask, &num, &buffs, &sizes);
+
+  for (IndexType i = 0; i < num; ++i){
+    registerBuff (buffs[i], sizes[i]);
+  }
+}
+

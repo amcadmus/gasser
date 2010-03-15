@@ -57,7 +57,53 @@ easyReallocCell (const IndexType & totalNumCell)
   // }
 }
 
+
+void Parallel::HostCellListedMDData::
+buildSubList (const IndexType & xIdLo,
+	      const IndexType & xIdUp,
+	      const IndexType & yIdLo,
+	      const IndexType & yIdUp,
+	      const IndexType & zIdLo,
+	      const IndexType & zIdUp,
+	      SubCellList & subList)
+{
+  if (xIdUp > numCell.x){
+    throw MDExcptCellList ("x up index exceeds number of cells on x");
+  }
+  if (yIdUp > numCell.y){
+    throw MDExcptCellList ("y up index exceeds number of cells on y");
+  }
+  if (zIdUp > numCell.z){
+    throw MDExcptCellList ("z up index exceeds number of cells on z");
+  }
+
+  subList.clear();
   
+  for (IndexType i = xIdLo; i < xIdUp; ++i){
+    for (IndexType j = yIdLo; j < yIdUp; ++j){
+      for (IndexType k = zIdLo; k < zIdUp; ++k){
+	subList.push_back ( D3toD1 (i, j, k));
+      }
+    }
+  }
+}
+
+
+void Parallel::HostCellListedMDData::
+buildSubList (const IndexType & xIdLo,
+	      const IndexType & xIdUp,
+	      const IndexType & yIdLo,
+	      const IndexType & yIdUp,
+	      const IndexType & zIdLo,
+	      const IndexType & zIdUp,
+	      HostSubCellList & subList)
+{
+  subList.setHostData (*this);
+  buildSubList (xIdLo, xIdUp, yIdLo, yIdUp, zIdLo, zIdUp, (SubCellList &)(subList));
+}
+
+
+
 
 // void Parallel::HostCellList::
 // formCellStructure (const ScalorType & rlist,
@@ -435,6 +481,199 @@ unpack_add (HostCellListedMDData & hdata) const
   }
 }
 
+inline static void
+reallocBuffAndSize (IndexType memSize,
+		    void *** buffs,
+		    size_t ** sizes)
+{
+  *buffs = (void **) realloc (*buffs, memSize * sizeof(void*));
+  if (*buffs == NULL){
+    throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
+				      "buffs",
+				      memSize * sizeof(void*));
+  }
+  *sizes = (size_t*) realloc (*sizes, memSize * sizeof(size_t));
+  if (*sizes == NULL){
+    throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
+				      "sizes",
+				      memSize * sizeof(size_t));
+  }
+}
 
+
+IndexType Parallel::HostSubCellList::
+collectBuffInfo (const MDDataItemMask_t mask,
+		 IndexType * num,
+		 void *** buffs,
+		 size_t ** sizes)
+{
+  // *num = this->size();
+  *num = 0;
+  IndexType numItem = 0;
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  
+  IndexType memSize = 1;
+  reallocBuffAndSize (memSize, buffs, sizes);
+  
+  if (mask & MDDataItemMask_Coordinate){
+    numItem ++;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize == *num){
+	memSize ++;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num] = (void*) &(ptr_hdata->cptr_coordinate()
+			      [this->operator[](i) * numThreadsInCell]);
+      (*sizes)[*num] = ptr_hdata->getNumAtomInCell()
+	  [this->operator[](i)] * sizeof (HostCoordType);
+      (*num) ++;
+    }
+  }
     
+  if (mask & MDDataItemMask_CoordinateNoi){
+    numItem += 3;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize < *num + 3){
+	memSize += 3;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num+0] = (void*) &(ptr_hdata->cptr_coordinateNoiX()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+1] = (void*) &(ptr_hdata->cptr_coordinateNoiY()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+2] = (void*) &(ptr_hdata->cptr_coordinateNoiZ()
+				[this->operator[](i) * numThreadsInCell]);
+      size_t size =  ptr_hdata->getNumAtomInCell()[this->operator[](i)] *
+	  sizeof (IntScalorType);
+      (*sizes)[*num+0] = size;
+      (*sizes)[*num+1] = size;
+      (*sizes)[*num+2] = size;
+      (*num) += 3;
+    }
+  }
+
+  if (mask & MDDataItemMask_Velocity){
+    numItem += 3;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize < *num + 3){
+	memSize += 3;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num+0] = (void*) &(ptr_hdata->cptr_velocityX()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+1] = (void*) &(ptr_hdata->cptr_velocityY()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+2] = (void*) &(ptr_hdata->cptr_velocityZ()
+				[this->operator[](i) * numThreadsInCell]);
+      size_t size =  ptr_hdata->getNumAtomInCell()[this->operator[](i)] *
+	  sizeof (ScalorType);
+      (*sizes)[*num+0] = size;
+      (*sizes)[*num+1] = size;
+      (*sizes)[*num+2] = size;
+      (*num) += 3;
+    }
+  }
+
+  if (mask & MDDataItemMask_Force){
+    numItem += 3;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize < *num + 3){
+	memSize += 3;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num+0] = (void*) &(ptr_hdata->cptr_forceX()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+1] = (void*) &(ptr_hdata->cptr_forceY()
+				[this->operator[](i) * numThreadsInCell]);
+      (*buffs)[*num+2] = (void*) &(ptr_hdata->cptr_forceZ()
+				[this->operator[](i) * numThreadsInCell]);
+      size_t size =  ptr_hdata->getNumAtomInCell()[this->operator[](i)] *
+	  sizeof (ScalorType);
+      (*sizes)[*num+0] = size;
+      (*sizes)[*num+1] = size;
+      (*sizes)[*num+2] = size;
+      (*num) += 3;
+    }
+  }
+
+  if (mask & MDDataItemMask_GlobalIndex){
+    numItem ++;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize == *num){
+	memSize ++;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num] = (void*) &(ptr_hdata->cptr_globalIndex()
+			      [this->operator[](i) * numThreadsInCell]);
+      (*sizes)[*num] =  ptr_hdata->getNumAtomInCell()
+	  [this->operator[](i)] * sizeof (IndexType);
+      (*num) ++;
+    }
+  }
+
+  if (mask & MDDataItemMask_Type){
+    numItem ++;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize == *num){
+	memSize ++;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num] = (void*) &(ptr_hdata->cptr_type()
+			      [this->operator[](i) * numThreadsInCell]);
+      (*sizes)[*num] =  ptr_hdata->getNumAtomInCell()
+	  [this->operator[](i)] * sizeof (TypeType);
+      (*num) ++;
+    }
+  }
+
+  if (mask & MDDataItemMask_Mass){
+    numItem ++;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize == *num){
+	memSize ++;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num] = (void*) &(ptr_hdata->cptr_mass()
+			      [this->operator[](i) * numThreadsInCell]);
+      (*sizes)[*num] =  ptr_hdata->getNumAtomInCell()
+	  [this->operator[](i)] * sizeof (ScalorType);
+      (*num) ++;
+    }
+  }
+
+  if (mask & MDDataItemMask_Charge){
+    numItem ++;
+    for (IndexType i = 0; i < this->size(); ++i){
+      if (memSize == *num){
+	memSize ++;
+	memSize <<= 1;
+	reallocBuffAndSize (memSize, buffs, sizes);
+      }
+      (*buffs)[*num] = (void*) &(ptr_hdata->cptr_charge()
+			      [this->operator[](i) * numThreadsInCell]);
+      (*sizes)[*num] =  ptr_hdata->getNumAtomInCell()
+	  [this->operator[](i)] * sizeof (ScalorType);
+      (*num) ++;
+    }
+  }
+
+  return memSize;
+}
+
+void Parallel::HostCellListedMDData::
+clearData (const SubCellList & subList)
+{
+  for (IndexType i = 0; i < subList.size(); ++i){
+    numAtomInCell[i] = 0;
+  }
+}
+
+
 

@@ -1,9 +1,10 @@
 #define MPI_CODE
 
-// #include "Parallel_MDSystem.h"
-// #include "Parallel_TransferEngine.h"
+#include "Parallel_MDSystem.h"
+#include "Parallel_TransferEngine.h"
+#include "Parallel_CellList.h"
 
-// #include "compile_error_mixcode.h"
+#include "compile_error_mixcode.h"
 
 // void Parallel::MDSystem::
 // redistribute()
@@ -118,3 +119,106 @@
 // }
 
 	
+
+// void Parallel::MDSystem::
+// tryHostSend ()
+// {
+//   HostSubCellList sublist0;
+//   HostSubCellList sublist1;
+
+//   localHostData.buildSubListAllCell (sublist0);
+//   localHostData1.buildSubListAllCell (sublist1);
+  
+//   Parallel::TransferEngine tran0;
+//   Parallel::TransferEngine tran1;
+  
+//   tran0.registerBuff (sublist0, MDDataItemMask_All);
+//   tran1.registerBuff (sublist1, MDDataItemMask_All);
+  
+//   tran0.Isend (0, 0);
+//   tran1.Irecv (0, 0);
+
+//   tran0.wait();
+//   tran1.wait();
+
+//   return;
+// }
+
+Parallel::SystemTranferUtils::
+SystemTranferUtils ()
+    : ptr_hdata (NULL)
+{
+}
+
+void Parallel::SystemTranferUtils::
+setHostData (HostCellListedMDData & hdata)
+{
+  ptr_hdata = &hdata;
+
+  HostIntVectorType numCell = ptr_hdata->getNumCell ();
+  IndexType devideLevel = ptr_hdata->getDevideLevel ();
+
+  ptr_hdata->buildSubList (numCell.x - devideLevel, numCell.x,
+			   0, numCell.y,
+			   0, numCell.z,
+			   xsend0);
+  ptr_hdata->buildSubList (0, devideLevel,
+			   0, numCell.y,
+			   0, numCell.z,
+			   xsend1);
+  ptr_hdata->buildSubList (devideLevel, devideLevel + devideLevel,
+			   0, numCell.y,
+			   0, numCell.z,
+			   xrecv0);
+  ptr_hdata->buildSubList (numCell.x - 2 * devideLevel, numCell.x - devideLevel,
+			   0, numCell.y,
+			   0, numCell.z,
+			   xrecv1);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   numCell.y - devideLevel, numCell.y,
+			   0, numCell.z,
+			   ysend0);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   0, devideLevel,
+			   0, numCell.z,
+			   ysend1);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   devideLevel, 2 * devideLevel,
+			   0, numCell.z,
+			   yrecv0);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   numCell.y - 2 * devideLevel, numCell.y - devideLevel,
+			   0, numCell.z,
+			   yrecv1);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   numCell.z - devideLevel, numCell.z,
+			   zsend0);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   0, devideLevel,
+			   zsend1);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   devideLevel, 2 * devideLevel,
+			   zrecv0);
+  ptr_hdata->buildSubList (devideLevel, numCell.x - devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   numCell.z - 2 * devideLevel, numCell.z - devideLevel,
+			   zrecv1);
+}
+
+
+void Parallel::SystemTranferUtils::
+redistribute ()
+{
+  MDDataItemMask_t mask = MDDataItemMask_AllExceptForce;
+
+  Parallel::TransferEngine sender;
+  Parallel::TransferEngine recver;
+
+  sender.registerBuff (xsend0, mask);
+  recver.registerBuff (xrecv0, mask);
+  
+}
+

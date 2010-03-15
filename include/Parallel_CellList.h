@@ -23,6 +23,8 @@ public:
   class SubCellList;
   class DeviceCellListedMDData;
   class DeviceTransferPackage;
+  class HostSubCellList;
+  class DeviceSubCellList;
   
   class HostCellListedMDData : public HostMDData
   {
@@ -42,7 +44,6 @@ public:
     // IndexType * neighborCellIndex;
     // IndexType maxNumNeighborCell;
 private:
-    IndexType * getNumAtomInCell () {return numAtomInCell;}
     void easyReallocCell (const IndexType & totalNumCell);
 public:
     HostCellListedMDData ();
@@ -56,6 +57,8 @@ public:
     const IndexType & getDevideLevel () const {return devideLevel;}
     const HostIntVectorType & getNumCell () const {return numCell;}
     const ScalorType & getRlist () const {return rlist;}
+    IndexType * getNumAtomInCell () {return numAtomInCell;}
+    const IndexType * getNumAtomInCell () const {return numAtomInCell;}
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,
 		      const IndexType & iz) const
@@ -66,6 +69,7 @@ public:
 		 IndexType & z)
 	{IndexType tmp = i;  z = tmp % (numCell.z); tmp = (tmp - z) / numCell.z;
 	  y = tmp % (numCell.y); x = (tmp - y) / numCell.y;}
+    void clearData (const SubCellList & subList);
 public:
     void buildSubList (const IndexType & xIdLo,
 		       const IndexType & xIdUp,
@@ -74,9 +78,19 @@ public:
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
 		       SubCellList & subList);
+    void buildSubList (const IndexType & xIdLo,
+		       const IndexType & xIdUp,
+		       const IndexType & yIdLo,
+		       const IndexType & yIdUp,
+		       const IndexType & zIdLo,
+		       const IndexType & zIdUp,
+		       HostSubCellList & subList);
     inline void buildSubListAllCell   (SubCellList & subList);
     inline void buildSubListRealCell  (SubCellList & subList);
     inline void buildSubListGhostCell (SubCellList & subList);
+    inline void buildSubListAllCell   (HostSubCellList & subList);
+    inline void buildSubListRealCell  (HostSubCellList & subList);
+    inline void buildSubListGhostCell (HostSubCellList & subList);
   };
   
   class SubCellList : public std::vector<IndexType > 
@@ -91,7 +105,24 @@ public:
     void sub (const SubCellList & a);    
   };
 
-
+  class HostSubCellList : public SubCellList
+  {
+    HostCellListedMDData * ptr_hdata;
+public:
+    HostSubCellList ()
+	: ptr_hdata(NULL) {}
+    HostSubCellList (HostCellListedMDData & hdata)
+	: ptr_hdata(&hdata) {}
+    void setHostData (HostCellListedMDData & hdata)
+	{ ptr_hdata = &hdata; }
+    bool isBuilt ()
+	{return ptr_hdata != NULL && SubCellList::isBuilt();}
+    IndexType collectBuffInfo (const MDDataItemMask_t mask,
+			       IndexType * num,
+			       void *** buffs,
+			       size_t ** sizes);
+  };
+  
 
   class HostTransferPackage : public HostMDData
   {
@@ -181,6 +212,7 @@ public:
 			    const IndexType & devideLevel = 1,
 			    const BoxDirection_t & bdir = 7);
     void rebuild ();
+    void clearData (const SubCellList & subList);
 public:
     void copyToHost   (HostCellListedMDData & hdata,
 		       const MDDataItemMask_t mask = MDDataItemMask_All) const;
@@ -227,6 +259,21 @@ public:
 public:
     void copyToHost   (HostTransferPackage & hpkg) const;
     void copyFromHost (const HostTransferPackage & hpkg);
+  };
+
+  
+  class DeviceSubCellList : public SubCellList
+  {
+    DeviceCellListedMDData * ptr_ddata;
+public:
+    DeviceSubCellList ()
+	: ptr_ddata(NULL) {}
+    DeviceSubCellList (DeviceCellListedMDData & ddata)
+	: ptr_ddata(&ddata) {}
+    void setDeviceData (DeviceCellListedMDData & ddata)
+	{ ptr_ddata = &ddata;}
+    bool isBuilt ()
+	{return ptr_ddata != NULL && SubCellList::isBuilt();}
   };
   
   

@@ -173,6 +173,10 @@ namespace Parallel{
 			    ScalorType * mass,
 			    ScalorType * charge,
 			    mdError_t * ptr_de);
+    void __global__
+    clearCellListData (const IndexType * deviceList,
+		       IndexType num,
+		       IndexType * numAtomInCell);
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

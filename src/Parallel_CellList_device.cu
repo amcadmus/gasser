@@ -1210,3 +1210,53 @@ copyFromDevice (const DeviceCellListedMDData & ddata,
 	      cudaMemcpyDeviceToDevice);
   checkCUDAError ("DeviceCellListedMDData::copyFromDevice copy numAtomInCell");
 }
+
+
+void Parallel::DeviceCellListedMDData::
+clearData (const SubCellList & subList)
+{
+  IndexType * tmpList;
+  IndexType * deviceList;
+  IndexType num = subList.size();
+  size_t size = sizeof(IndexType) * num;
+  
+  tmpList = (IndexType * )malloc (size);
+  if (tmpList == NULL){
+    throw MDExcptFailedMallocOnHost ("DeviceCellListedMDData::clearData",
+				     "tmpList", size);
+  }
+  cudaMalloc ((void**)&deviceList, size);
+  checkCUDAError ("DeviceCellListedMDData::clearData, malloc deviceList");
+
+  for (IndexType i = 0; i < num; ++i){
+    tmpList[i] = subList[i];
+  }
+  cudaMemcpy (deviceList, tmpList, size, cudaMemcpyDeviceToHost);
+
+  Parallel::CudaGlobal::clearCellListData
+      <<<(num + DefaultNThreadPerBlock -1) / DefaultNThreadPerBlock,
+      DefaultNThreadPerBlock>>> (
+	  deviceList,
+	  num,
+	  numAtomInCell);
+}
+
+
+void __global__
+Parallel::CudaGlobal::
+clearCellListData (const IndexType * deviceList,
+		   IndexType num,
+		   IndexType * numAtomInCell)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  if (ii < num){
+    numAtomInCell[deviceList[ii]] = 0;
+  }
+}
+
+
+
+
