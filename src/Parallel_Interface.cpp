@@ -76,3 +76,12 @@ barrier ()
   Parallel::Environment::barrier();
 }
 
+void Parallel::Interface::
+shiftNeighbor (int direction,
+	       int displacement,
+	       int & src,
+	       int & dest)
+{
+  Parallel::Environment::neighborProcIndex (direction, displacement, src, dest);
+}
+

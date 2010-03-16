@@ -3,6 +3,7 @@
 #include "Parallel_MDSystem.h"
 #include "Parallel_TransferEngine.h"
 #include "Parallel_CellList.h"
+#include "Parallel_Interface.h"
 
 #include "compile_error_mixcode.h"
 
@@ -148,6 +149,12 @@ Parallel::SystemTranferUtils::
 SystemTranferUtils ()
     : ptr_hdata (NULL)
 {
+  Parallel::Interface::shiftNeighbor (CoordXIndex,  1, xsrc0, xdest0);
+  Parallel::Interface::shiftNeighbor (CoordXIndex, -1, xsrc1, xdest1);
+  Parallel::Interface::shiftNeighbor (CoordYIndex,  1, ysrc0, ydest0);
+  Parallel::Interface::shiftNeighbor (CoordYIndex, -1, ysrc1, ydest1);
+  Parallel::Interface::shiftNeighbor (CoordZIndex,  1, zsrc0, zdest0);
+  Parallel::Interface::shiftNeighbor (CoordZIndex, -1, zsrc1, zdest1);
 }
 
 void Parallel::SystemTranferUtils::
@@ -217,8 +224,56 @@ redistribute ()
   Parallel::TransferEngine sender;
   Parallel::TransferEngine recver;
 
+  sender.clearRegistered();
+  recver.clearRegistered();
   sender.registerBuff (xsend0, mask);
   recver.registerBuff (xrecv0, mask);
-  
+  sender.Isend (xdest0, 0);
+  recver.Irecv (xsrc0, 0);
+  sender.wait();
+  recver.wait();  
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (xsend1, mask);
+  recver.registerBuff (xrecv1, mask);
+  sender.Isend (xdest1, 1);
+  recver.Irecv (xsrc1, 1);
+  sender.wait();
+  recver.wait();
+
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysend0, mask);
+  recver.registerBuff (yrecv0, mask);
+  sender.Isend (ydest0, 0);
+  recver.Irecv (ysrc0, 0);
+  sender.wait();
+  recver.wait();  
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysend1, mask);
+  recver.registerBuff (yrecv1, mask);
+  sender.Isend (ydest1, 1);
+  recver.Irecv (ysrc1, 1);
+  sender.wait();
+  recver.wait();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsend0, mask);
+  recver.registerBuff (zrecv0, mask);
+  sender.Isend (zdest0, 0);
+  recver.Irecv (zsrc0, 0);
+  sender.wait();
+  recver.wait();  
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsend1, mask);
+  recver.registerBuff (zrecv1, mask);
+  sender.Isend (zdest1, 1);
+  recver.Irecv (zsrc1, 1);
+  sender.wait();
+  recver.wait();
 }
 

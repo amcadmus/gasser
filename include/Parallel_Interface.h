@@ -24,6 +24,12 @@ namespace Parallel{
     void barrier ();
 
     unsigned numThreadsInCell  () ;
+
+    void shiftNeighbor (int direction,
+			int displacement,
+			int & src,
+			int & dest);
+    
     // unsigned numThreadsForAtom ();
 // namespace Transfer{
     //   void init ();

@@ -22,6 +22,19 @@ namespace Parallel {
     HostSubCellList zrecv0;
     HostSubCellList zsend1;
     HostSubCellList zrecv1;
+    int xdest0;
+    int xsrc0;
+    int xdest1;
+    int xsrc1;
+    int ydest0;
+    int ysrc0;
+    int ydest1;
+    int ysrc1;
+    int zdest0;
+    int zsrc0;
+    int zdest1;
+    int zsrc1;
+    
 private:
 public:
     SystemTranferUtils ();
