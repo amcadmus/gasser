@@ -31,6 +31,7 @@ namespace Parallel{
   enum MDDataItemMask
   {
     MDDataItemMask_All			= MaxIndexValue,
+    MDDataItemMask_None			= 0,
     MDDataItemMask_Coordinate		= (1<<MDDataItemShift_Coordinate),
     MDDataItemMask_CoordinateNoi	= (1<<MDDataItemShift_CoordinateNoi),
     MDDataItemMask_Velocity		= (1<<MDDataItemShift_Velocity),
@@ -152,6 +153,9 @@ public:
 			   char * atomName, IndexType * atomIndex,
 			   char * resdName, IndexType * resdIndex);
     void initTopology (const Topology::System & sysTop);
+    void writeData_GroFile (const char * filename,
+			    const char * atomName, const IndexType * atomIndex,
+			    const char * resdName, const IndexType * resdIndex);
   };
 
 

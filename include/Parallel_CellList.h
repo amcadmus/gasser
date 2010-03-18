@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "Parallel_MDData.h"
+#include "Parallel_TransferEngineCompatible.h"
 #include "MDError_interface.h"
 
 namespace Parallel{
@@ -47,6 +48,7 @@ private:
     void easyReallocCell (const IndexType & totalNumCell);
 public:
     HostCellListedMDData ();
+    HostCellListedMDData (const HostCellListedMDData & hdata);
     ~HostCellListedMDData ();
     // HostCellList ();
     // void formCellStructure (const ScalorType & rlist,
@@ -57,8 +59,8 @@ public:
     const IndexType & getDevideLevel () const {return devideLevel;}
     const HostIntVectorType & getNumCell () const {return numCell;}
     const ScalorType & getRlist () const {return rlist;}
-    IndexType * getNumAtomInCell () {return numAtomInCell;}
-    const IndexType * getNumAtomInCell () const {return numAtomInCell;}
+    IndexType * cptr_numAtomInCell () {return numAtomInCell;}
+    const IndexType * cptr_numAtomInCell () const {return numAtomInCell;}
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,
 		      const IndexType & iz) const
@@ -69,7 +71,12 @@ public:
 		 IndexType & z)
 	{IndexType tmp = i;  z = tmp % (numCell.z); tmp = (tmp - z) / numCell.z;
 	  y = tmp % (numCell.y); x = (tmp - y) / numCell.y;}
+    void clearData ();
     void clearData (const SubCellList & subList);
+    void copy (const HostCellListedMDData & hdata,
+	       const MDDataItemMask_t mask = MDDataItemMask_All);
+    void add  (const HostCellListedMDData & hdata,
+	       const MDDataItemMask_t mask = MDDataItemMask_All);
 public:
     void buildSubList (const IndexType & xIdLo,
 		       const IndexType & xIdUp,
@@ -105,6 +112,41 @@ public:
     void sub (const SubCellList & a);    
   };
 
+  class TransNumAtomInSubList : public TransferEngineCompatible 
+  {
+    void ** buffs;
+    size_t * sizes;
+    IndexType num;
+    void clear();
+public:
+    TransNumAtomInSubList ();
+    ~TransNumAtomInSubList ();
+    void reinit (HostSubCellList & list);
+    virtual void getTransBuffs (IndexType * num,
+				void *** buffs,
+				size_t ** sizes);
+  };
+
+  class TransSubListData : public TransferEngineCompatible
+  {
+    void ** buffs;
+    size_t * sizes;
+    IndexType num;
+    MDDataItemMask_t myMask;
+    HostSubCellList * ptr_list;
+    void clear ();
+public:
+    TransSubListData ();
+    ~TransSubListData ();
+    void reinit (HostSubCellList & list,
+		 const MDDataItemMask_t mask = MDDataItemMask_All);
+    void build ();
+    virtual void getTransBuffs (IndexType * num,
+				void *** buffs,
+				size_t ** sizes);
+  };
+
+  
   class HostSubCellList : public SubCellList
   {
     HostCellListedMDData * ptr_hdata;
@@ -115,15 +157,36 @@ public:
 	: ptr_hdata(&hdata) {}
     void setHostData (HostCellListedMDData & hdata)
 	{ ptr_hdata = &hdata; }
+    HostCellListedMDData * host_ptr ()
+	{ return ptr_hdata; }
+    const HostCellListedMDData * host_ptr () const
+	{ return ptr_hdata; }
     bool isBuilt ()
 	{return ptr_hdata != NULL && SubCellList::isBuilt();}
-    IndexType collectBuffInfo (const MDDataItemMask_t mask,
-			       IndexType * num,
-			       void *** buffs,
-			       size_t ** sizes);
-  };
-  
+public:
+    void clearData ()
+	{ ptr_hdata->clearData(*this);}
+    void add (const HostSubCellList & clist,
+	      const MDDataItemMask_t mask = MDDataItemMask_All);
+    
+// IndexType mallocSendRecvBuffRecord (const MDDataItemMask_t mask,
+    // 					void *** buffs,
+    // 					size_t ** sizes);
+    // IndexType prepareSendData (const MDDataItemMask_t mask,
+    // 			       IndexType * num,
+    // 			       void *** buffs,
+    // 			       size_t ** sizes);
+    // IndexType prepareRecvData_replace (const MDDataItemMask_t mask,
+    // 				       IndexType * numRecv,
+    // 				       IndexType * num);
+    
+    // void mallocNumAtomTrans (IndexType ** numSent, size_t * size);
+    // IndexType calculateNumAtomSend (IndexType * numSent);
 
+  };
+
+  
+  
   class HostTransferPackage : public HostMDData
   {
     friend class DeviceTransferPackage;
@@ -311,6 +374,43 @@ buildSubListGhostCell (SubCellList & subList)
   buildSubListRealCell (temp);
   subList.sub(temp);
 }
+
+
+
+void Parallel::HostCellListedMDData::
+buildSubListAllCell (HostSubCellList & subList)
+{
+  subList.setHostData (*this);
+  buildSubList (0, getNumCell().x,
+		0, getNumCell().y,
+		0, getNumCell().z,
+		(SubCellList &)subList);
+}
+
+  
+void Parallel::HostCellListedMDData::
+buildSubListRealCell  (HostSubCellList & subList)
+{
+  subList.setHostData (*this);
+  IndexType devideLevel = getDevideLevel();
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		(SubCellList &)subList);
+}
+
+      
+void Parallel::HostCellListedMDData::
+buildSubListGhostCell (HostSubCellList & subList)
+{
+  subList.setHostData (*this);
+  buildSubListAllCell ((SubCellList &)subList);
+  SubCellList temp;
+  buildSubListRealCell (temp);
+  subList.sub(temp);
+}
+
+
 
 
 #ifdef DEVICE_CODE

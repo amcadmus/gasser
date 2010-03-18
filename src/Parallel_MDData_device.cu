@@ -273,7 +273,7 @@ Parallel::DeviceMDData::
 DeviceMDData (const DeviceMDData & ddata)
     : numData_ (0), memSize_(0), malloced(false)
 {
-  copyFromDevice (ddata);
+  copyFromDevice (ddata, MDDataItemMask_All);
 }
 
 

@@ -1259,4 +1259,3 @@ clearCellListData (const IndexType * deviceList,
 
 
 
-

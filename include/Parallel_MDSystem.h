@@ -7,21 +7,32 @@
 // #define DEVICE_CODE
 
 namespace Parallel {
-  class SystemTranferUtils
+  class SystemRedistributeUtil
   {
     HostCellListedMDData * ptr_hdata;
+    HostCellListedMDData * ptr_buff ;
+
+    MDDataItemMask_t mask;
+
     HostSubCellList xsend0;
     HostSubCellList xrecv0;
+    HostSubCellList xrecv0h;
     HostSubCellList xsend1;
     HostSubCellList xrecv1;
+    HostSubCellList xrecv1h;
     HostSubCellList ysend0;
     HostSubCellList yrecv0;
+    HostSubCellList yrecv0h;
     HostSubCellList ysend1;
     HostSubCellList yrecv1;
+    HostSubCellList yrecv1h;
     HostSubCellList zsend0;
     HostSubCellList zrecv0;
+    HostSubCellList zrecv0h;
     HostSubCellList zsend1;
     HostSubCellList zrecv1;
+    HostSubCellList zrecv1h;
+    
     int xdest0;
     int xsrc0;
     int xdest1;
@@ -34,32 +45,72 @@ namespace Parallel {
     int zsrc0;
     int zdest1;
     int zsrc1;
-    
+
+    TransNumAtomInSubList xsendNum0;
+    TransNumAtomInSubList xrecvNum0;
+    TransNumAtomInSubList xsendNum1;
+    TransNumAtomInSubList xrecvNum1;
+    TransNumAtomInSubList ysendNum0;
+    TransNumAtomInSubList yrecvNum0;
+    TransNumAtomInSubList ysendNum1;
+    TransNumAtomInSubList yrecvNum1;
+    TransNumAtomInSubList zsendNum0;
+    TransNumAtomInSubList zrecvNum0;
+    TransNumAtomInSubList zsendNum1;
+    TransNumAtomInSubList zrecvNum1;
+
+    TransSubListData xsendData0;
+    TransSubListData xrecvData0;
+    TransSubListData xsendData1;
+    TransSubListData xrecvData1;    
+    TransSubListData ysendData0;
+    TransSubListData yrecvData0;
+    TransSubListData ysendData1;
+    TransSubListData yrecvData1;
+    TransSubListData zsendData0;
+    TransSubListData zrecvData0;
+    TransSubListData zsendData1;
+    TransSubListData zrecvData1;
+
 private:
 public:
-    SystemTranferUtils ();
-    void setHostData (HostCellListedMDData & hdata);
+    SystemRedistributeUtil ();
+    void setHostData (HostCellListedMDData & hdata,
+		      HostCellListedMDData & buffdata);
     void redistribute ();
   };
+
+
+  class SystemCollectDataUtil
+  {
+    HostCellListedMDData * ptr_hdata;
+    HostCellListedMDData * ptr_buff ;
+    HostMDData * ptr_gdata;
+    
+    MDDataItemMask_t mask;
+
+    HostSubCellList sendlist;
+    HostSubCellList recvlist;
+    TransNumAtomInSubList sendNum;
+    TransNumAtomInSubList recvNum;
+    TransSubListData sendData;
+    TransSubListData recvData;
+private:
+    void addBuffToGlobal ();
+public:
+    SystemCollectDataUtil ();
+    void setHostData (HostCellListedMDData & hdata,
+		      HostCellListedMDData & buffdata,
+		      HostMDData & globalData);
+    void collect ();
+  };
+  
   
 
 #ifdef DEVICE_CODE
   class MDSystem 
   {
-    // SubCellList xsend0;
-    // SubCellList xrecv0;
-    // IndexType * recv0Num;
-    // SubCellList xsend1;
-    // SubCellList xrecv1;
-    // SubCellList ysend0;
-    // SubCellList yrecv0;
-    // SubCellList ysend1;
-    // SubCellList yrecv1;
-    // SubCellList zsend0;
-    // SubCellList zrecv0;
-    // SubCellList zsend1;
-    // SubCellList zrecv1;
-private:
+public:
     // gro file related
     char * atomName;
     IndexType * atomIndex;
@@ -70,7 +121,11 @@ private:
     IndexType			globalNumAtom;
     GlobalHostMDData		globalHostData;
     HostCellListedMDData	localHostData;
+    HostCellListedMDData	hostBuff;
     DeviceCellListedMDData	deviceData;
+private:
+    SystemRedistributeUtil	redistribUtil;
+    SystemCollectDataUtil	collectUtil;
 public:
     MDSystem ();
     ~MDSystem();
@@ -81,9 +136,10 @@ public:
 	       const Topology::System & sysTop);
     void writeLocalData_SimpleFile (const char * filename)
 	{ localHostData.writeData_SimpleFile(filename); }
+    void writeGlobalData_GroFile (const char * filename);
 public:
-    // void redistribute ();
-    void tryHostSend ();
+    void collectLocalData ();
+    void redistribute ();
   };
 #endif
   

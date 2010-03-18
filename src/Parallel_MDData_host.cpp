@@ -340,9 +340,6 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 
   HostMDData sdata;
   int myRank = Parallel::Interface::myRank();
-
-  int nx, ny, nz;
-  Parallel::Interface::numProcDim(nx, ny, nz);
   
   if (myRank == 0){
     IndexType naiveLocalMemSize  = (gdata.numData() /
@@ -682,3 +679,39 @@ copy (const HostMDData & hdata,
   // tr_zsend1.Isend(zsend1_nei, 0);
   
   
+void Parallel::GlobalHostMDData::
+writeData_GroFile (const char * filename,
+		   const char * atomName, const IndexType * atomIndex,
+		   const char * resdName, const IndexType * resdIndex)
+{
+  FILE * fp = fopen (filename, "w");
+  if (fp == NULL){
+    throw MDExcptCannotOpenFile (filename);
+  }
+  // fprintf (fp, "# at time = %f, step = %d", time, step);
+  ScalorType * tmpx, * tmpy, * tmpz;
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  for (IndexType i = 0; i < numData_; ++i){
+    tmpx[i] = coord[i].x;
+    tmpy[i] = coord[i].y;
+    tmpz[i] = coord[i].z;
+  }
+  GromacsFileManager::writeGroFile (fp,
+				    numData_,
+				    resdIndex, resdName, 
+				    atomName, atomIndex,
+				    tmpx,  tmpy,  tmpz,
+				    velox, veloy, veloz,
+				    globalBox.size.x,
+				    globalBox.size.y,
+				    globalBox.size.z) ;
+  free (tmpx);
+  free (tmpy);
+  free (tmpz);
+  fclose (fp);
+
+
+}
+

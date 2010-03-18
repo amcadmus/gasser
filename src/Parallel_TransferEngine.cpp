@@ -194,23 +194,37 @@ sumIndexAll (IndexType * data, int num, IndexType ** result)
 }
 
 
-void Parallel::TransferEngine::
-registerBuff (const DataTransferBlock & block)
-{
-  for (IndexType i = 0; i < NumDataItemsInMDData; ++i){
-    registerBuff (block.pointer[i], block.size[i]);
-  }
-}
+// void Parallel::TransferEngine::
+// registerBuff (const DataTransferBlock & block)
+// {
+//   for (IndexType i = 0; i < NumDataItemsInMDData; ++i){
+//     registerBuff (block.pointer[i], block.size[i]);
+//   }
+// }
+
+// void Parallel::TransferEngine::
+// registerBuff (HostSubCellList &hsubCell, const MDDataItemMask_t mask)
+// {
+//   IndexType num;
+//   void ** buffs = NULL;
+//   size_t * sizes = NULL;
+//   hsubCell.collectBuffInfo (mask, &num, &buffs, &sizes);
+
+//   for (IndexType i = 0; i < num; ++i){
+//     registerBuff (buffs[i], sizes[i]);
+//   }
+// }
 
 void Parallel::TransferEngine::
-registerBuff (HostSubCellList &hsubCell, const MDDataItemMask_t mask)
+registerBuff (TransferEngineCompatible & data)
 {
   IndexType num;
   void ** buffs;
   size_t * sizes;
-  hsubCell.collectBuffInfo (mask, &num, &buffs, &sizes);
 
-  for (IndexType i = 0; i < num; ++i){
+  data.getTransBuffs (&num, &buffs, &sizes);
+
+  for (unsigned i = 0; i < num; ++i){
     registerBuff (buffs[i], sizes[i]);
   }
 }
