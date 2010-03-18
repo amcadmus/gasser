@@ -50,10 +50,7 @@ public:
     HostCellListedMDData ();
     HostCellListedMDData (const HostCellListedMDData & hdata);
     ~HostCellListedMDData ();
-    // HostCellList ();
-    // void formCellStructure (const ScalorType & rlist,
-    // 			    const IndexType & devideLevel = 1,
-    // 			    const BoxDirection_t & bdir = 7);
+public:
     const HostVectorType & getFrameUp  () const {return frameUp;}
     const HostVectorType & getFrameLow () const {return frameLow;}
     const IndexType & getDevideLevel () const {return devideLevel;}
@@ -61,6 +58,7 @@ public:
     const ScalorType & getRlist () const {return rlist;}
     IndexType * cptr_numAtomInCell () {return numAtomInCell;}
     const IndexType * cptr_numAtomInCell () const {return numAtomInCell;}
+public:
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,
 		      const IndexType & iz) const
@@ -71,12 +69,14 @@ public:
 		 IndexType & z)
 	{IndexType tmp = i;  z = tmp % (numCell.z); tmp = (tmp - z) / numCell.z;
 	  y = tmp % (numCell.y); x = (tmp - y) / numCell.y;}
+public:
     void clearData ();
     void clearData (const SubCellList & subList);
     void copy (const HostCellListedMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
     void add  (const HostCellListedMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
+    void writeData_SimpleFile (const char * filename);
 public:
     void buildSubList (const IndexType & xIdLo,
 		       const IndexType & xIdUp,

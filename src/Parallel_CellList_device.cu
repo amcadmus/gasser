@@ -30,8 +30,8 @@ initCellStructure (const ScalorType & rlist_,
   Parallel::Interface::rankToCartCoord (Parallel::Interface::myRank(), ix, iy, iz);
   double dx, dy, dz;
   dx = getGlobalBoxSize().x / double(Nx);
-  dy = getGlobalBoxSize().x / double(Nx);
-  dz = getGlobalBoxSize().x / double(Nx);
+  dy = getGlobalBoxSize().y / double(Ny);
+  dz = getGlobalBoxSize().z / double(Nz);
   frameLow.x = dx * ix;
   frameLow.y = dy * iy;
   frameLow.z = dz * iz;
@@ -46,11 +46,11 @@ initCellStructure (const ScalorType & rlist_,
   rlist = rlist_;
   double rlisti = 1./rlist;
 
-  if (CellOnX ) numCell.x = int ( floor(getGlobalBoxSize().x * rlisti) );
+  if (CellOnX ) numCell.x = int ( floor(dx * rlisti) );
   else numCell.x = 1;
-  if (CellOnY ) numCell.y = int ( floor(getGlobalBoxSize().y * rlisti) );
+  if (CellOnY ) numCell.y = int ( floor(dy * rlisti) );
   else numCell.y = 1;
-  if (CellOnZ ) numCell.z = int ( floor(getGlobalBoxSize().z * rlisti) );
+  if (CellOnZ ) numCell.z = int ( floor(dz * rlisti) );
   else numCell.z = 1;
 
   if ((CellOnX && numCell.x < 3) ||
@@ -93,6 +93,9 @@ initCellStructure (const ScalorType & rlist_,
     DeviceMDData::initZero();
   }
   numData_ = totalNumCell * numThreadsInCell;
+
+  // printf ("rank %d, numcell %d\n", Parallel::Interface::myRank(), totalNumCell);
+  // getchar ();
   // mallocCell (totalNumCell, maxNumNeighborCell);
   easyMallocCell (totalNumCell);
   initZeroCell ();

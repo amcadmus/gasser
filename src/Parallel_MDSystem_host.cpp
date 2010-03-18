@@ -342,6 +342,7 @@ redistribute ()
   xsend1.clearData();  
   xrecv1h.add (xrecv1, mask);
 
+  Parallel::Interface::barrier();
 
   sender.clearRegistered();
   recver.clearRegistered();
@@ -395,7 +396,8 @@ redistribute ()
   ysend1.clearData();
   yrecv1h.add (yrecv1, mask);
 
-
+  Parallel::Interface::barrier();
+  
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (zsendNum0);
@@ -575,7 +577,7 @@ collect ()
 	  sender.registerBuff (sendData);
 	  sender.build ();
 	  sender.Isend (0, workingRank * 10 + 2);
-	  sender.wait ();	  
+	  sender.wait ();
 	}
 	else if (myRank == 0){
 	  recver.clearRegistered();
@@ -589,6 +591,7 @@ collect ()
 	  recver.build ();
 	  recver.Irecv (workingRank, workingRank*10 + 2);
 	  recver.wait();
+	  addBuffToGlobal ();
 	}
 	Parallel::Interface::barrier();
       }

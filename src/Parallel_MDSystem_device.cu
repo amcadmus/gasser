@@ -101,7 +101,9 @@ init (const char * confFileName,
     deviceData.dptr_coordinate()[i].z += 2;
   }
   
+  // printf ("rank %d\n", Parallel::Interface::myRank());
   deviceData.rebuild ();
+  printf ("rank %d\n", Parallel::Interface::myRank());
 
   deviceData.copyToHost (localHostData, MDDataItemMask_All);
   hostBuff.copy (localHostData, MDDataItemMask_All);
@@ -178,9 +180,11 @@ collectLocalData ()
 void Parallel::MDSystem::
 writeGlobalData_GroFile (const char * filename)
 {
-  globalHostData.writeData_GroFile (filename,
-				    atomName, atomIndex,
-				    resdName, resdIndex);
+  if (Parallel::Interface::myRank() == 0){
+    globalHostData.writeData_GroFile (filename,
+				      atomName, atomIndex,
+				      resdName, resdIndex);
+  }
 }
 
 

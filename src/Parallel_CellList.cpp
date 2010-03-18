@@ -1152,4 +1152,26 @@ clearData()
   }
 }
 
+void Parallel::HostCellListedMDData::
+writeData_SimpleFile (const char * filename)
+{
+  FILE * fp = fopen (filename, "w");
+  if (fp == NULL){
+    throw MDExcptCannotOpenFile(filename);
+  }
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  IndexType totalAtom = 0;
+  for (IndexType i = 0; i < totalNumCell; ++i){
+    totalAtom += numAtomInCell[i];
+  }
+  fprintf (fp, "# %d\n", totalAtom);
+
+  for (IndexType i = 0; i < totalNumCell; ++i){
+    IndexType cellShift = i * Parallel::Interface::numThreadsInCell();
+    for (IndexType j = cellShift; j < cellShift + numAtomInCell[i]; ++j){
+      fprintf (fp, "%8.3f %8.3f %8.3f\n", coord[j].x, coord[j].y, coord[j].z);
+    }
+  }
+  fclose (fp);
+}
 
