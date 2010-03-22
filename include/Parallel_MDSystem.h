@@ -155,22 +155,24 @@ private:
 public:
     MDSystem ();
     ~MDSystem();
-    // void initConf_GroFile (const char * filename);
-    IndexType numAtomInGroFile (const char * filename) 
-	{ return globalHostData.numAtomInGroFile(filename); }
     void init (const char * confFileName,
 	       const Topology::System & sysTop);
-    void writeLocalData_SimpleFile (const char * filename)
-	{ localHostData.writeData_SimpleFile(filename); }
-    void writeGlobalData_GroFile (const char * filename);
 public:
     void updateHost ()
 	{ deviceData.copyToHost (localHostData); }
     void collectLocalData ();
     void redistribute ();
+public:
+    IndexType numAtomInGroFile (const char * filename) 
+	{ return globalHostData.numAtomInGroFile(filename); }
+    void writeLocalData_SimpleFile (const char * filename)
+	{ localHostData.writeData_SimpleFile(filename); }
+    void writeGlobalData_GroFile (const char * filename);
   };
 #endif // DEVICE_CODE
 
+
+  
 #ifdef DEVICE_CODE
   void Parallel::SystemRedistributeCopyUtil::
   copyToHost ()

@@ -105,7 +105,7 @@ namespace Parallel{
 		      ScalorType * mass,
 		      ScalorType * charge);		       
     
-    void __global__
+    __global__ void
     unpackDeviceMDData_replace (const IndexType * cellIndex,
 				const IndexType * cellStartIndex,
 				const MDDataItemMask_t mask,
@@ -139,7 +139,7 @@ namespace Parallel{
 				ScalorType * mass,
 				ScalorType * charge);
     
-    void __global__
+    __global__ void
     unpackDeviceMDData_add (const IndexType * cellIndex,
 			    const IndexType * cellStartIndex,
 			    const MDDataItemMask_t mask,
@@ -173,10 +173,17 @@ namespace Parallel{
 			    ScalorType * mass,
 			    ScalorType * charge,
 			    mdError_t * ptr_de);
-    void __global__
+    __global__ void
     clearCellListData (const IndexType * deviceList,
 		       IndexType num,
 		       IndexType * numAtomInCell);
+    __global__ void
+    normalizeSystem_CellListed (RectangularBox box,
+				const IndexType * numAtomInCell,
+				CoordType * coord,
+				IntScalorType * coordNoix,
+				IntScalorType * coordNoiy,
+				IntScalorType * coordNoiz);
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

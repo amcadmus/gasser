@@ -339,6 +339,3 @@ initZeroDeviceData(const IndexType num,
   }
 }
 
-
-
-  

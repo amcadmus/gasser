@@ -168,21 +168,6 @@ public:
 	{ ptr_hdata->clearData(*this);}
     void add (const HostSubCellList & clist,
 	      const MDDataItemMask_t mask = MDDataItemMask_All);
-    
-// IndexType mallocSendRecvBuffRecord (const MDDataItemMask_t mask,
-    // 					void *** buffs,
-    // 					size_t ** sizes);
-    // IndexType prepareSendData (const MDDataItemMask_t mask,
-    // 			       IndexType * num,
-    // 			       void *** buffs,
-    // 			       size_t ** sizes);
-    // IndexType prepareRecvData_replace (const MDDataItemMask_t mask,
-    // 				       IndexType * numRecv,
-    // 				       IndexType * num);
-    
-    // void mallocNumAtomTrans (IndexType ** numSent, size_t * size);
-    // IndexType calculateNumAtomSend (IndexType * numSent);
-
   };
 
   
@@ -252,13 +237,6 @@ private:
     void initZeroCell ();
     void clearCell ();
 public:
-    DeviceCellListedMDData () ;
-    ~DeviceCellListedMDData () ;
-    const VectorType & getFrameUp  () const {return frameUp;}
-    const VectorType & getFrameLow () const {return frameLow;}
-    const IndexType  & getDevideLevel () const {return devideLevel;}
-    const IntVectorType & getNumCell () const {return numCell;}
-    const ScalorType & getRlist () const {return rlist;}
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,
 		      const IndexType & iz) const
@@ -269,12 +247,21 @@ public:
 		 IndexType & z)
 	{IndexType tmp = i;  z = tmp % (numCell.z); tmp = (tmp - z) / numCell.z;
 	  y = tmp % (numCell.y); x = (tmp - y) / numCell.y;}
-
+public:
+    DeviceCellListedMDData () ;
+    ~DeviceCellListedMDData () ;
+    const VectorType & getFrameUp  () const {return frameUp;}
+    const VectorType & getFrameLow () const {return frameLow;}
+    const IndexType  & getDevideLevel () const {return devideLevel;}
+    const IntVectorType & getNumCell () const {return numCell;}
+    const ScalorType & getRlist () const {return rlist;}
 public:
     void initCellStructure (const ScalorType & rlist,
 			    const IndexType & devideLevel = 1,
 			    const BoxDirection_t & bdir = 7);
     void rebuild ();
+    void applyPeriodicBondaryCondition ();
+public:
     void clearData (const SubCellList & subList);
 public:
     void copyToHost   (HostCellListedMDData & hdata,

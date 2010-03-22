@@ -206,7 +206,6 @@ public:
 		       const ScalorType & by,
 		       const ScalorType & bz)
 	{ setBoxSize (bx, by, bz, &globalBox); }
-
     void easyMalloc (const IndexType &memSize);
     void initZero ();
     void clear ();

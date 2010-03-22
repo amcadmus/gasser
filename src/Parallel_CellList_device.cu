@@ -1262,3 +1262,44 @@ clearCellListData (const IndexType * deviceList,
 
 
 
+__global__ void Parallel::CudaGlobal::
+normalizeSystem_CellListed (RectangularBox box,
+			    const IndexType * numAtomInCell,
+			    CoordType * coord,
+			    IntScalorType * coordNoix,
+			    IntScalorType * coordNoiy,
+			    IntScalorType * coordNoiz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+ 
+  if (tid < numAtomInCell[bid]) {
+    RectangularBoxGeometry::moveParticleToBox_1image (
+	box.size.x, &(coord[ii].x), &coordNoix[ii]);
+    RectangularBoxGeometry::moveParticleToBox_1image (
+	box.size.y, &(coord[ii].y), &coordNoiy[ii]);
+    RectangularBoxGeometry::moveParticleToBox_1image (
+	box.size.z, &(coord[ii].z), &coordNoiz[ii]);
+  }
+}
+
+
+void Parallel::DeviceCellListedMDData::
+applyPeriodicBondaryCondition ()
+{
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
+  
+  Parallel::CudaGlobal::normalizeSystem_CellListed
+      <<<totalNumCell, numThreadsInCell>>> (
+	  globalBox,
+	  numAtomInCell,
+	  coord,
+	  coordNoix,
+	  coordNoiy,
+	  coordNoiz);
+}
+
+
+
