@@ -1234,7 +1234,7 @@ clearData (const SubCellList & subList)
   for (IndexType i = 0; i < num; ++i){
     tmpList[i] = subList[i];
   }
-  cudaMemcpy (deviceList, tmpList, size, cudaMemcpyDeviceToHost);
+  cudaMemcpy (deviceList, tmpList, size, cudaMemcpyHostToDevice);
 
   Parallel::CudaGlobal::clearCellListData
       <<<(num + DefaultNThreadPerBlock -1) / DefaultNThreadPerBlock,

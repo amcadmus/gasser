@@ -107,6 +107,7 @@ init (const char * confFileName,
 
   deviceData.copyToHost (localHostData, MDDataItemMask_All);
   hostBuff.copy (localHostData, MDDataItemMask_All);
+  hostBuff.clearData ();
   
   // hostBuff.copy (localHostData, MDDataItemMask_All);  
   // localHostData.copy (hostBuff);
@@ -157,7 +158,8 @@ init (const char * confFileName,
   
   // int i = 1;
 
-  redistribUtil.setHostData (localHostData, hostBuff);
+  redistribtransUtil.setHostData (localHostData, hostBuff);
+  redistribcopyUtil .setData     (localHostData, deviceData);
   
   collectUtil.setHostData (localHostData, hostBuff, globalHostData);
   
@@ -167,8 +169,12 @@ init (const char * confFileName,
 
 void Parallel::MDSystem::
 redistribute ()
-{  
-  redistribUtil.redistribute();
+{
+  localHostData.clearData ();
+  redistribcopyUtil .copyToHost ();
+  redistribcopyUtil .clearDeviceSent ();
+  redistribtransUtil.redistributeHost ();
+  redistribcopyUtil .copyFromHost ();
 }
 
 void Parallel::MDSystem::
@@ -188,4 +194,41 @@ writeGlobalData_GroFile (const char * filename)
 }
 
 
+Parallel::SystemRedistributeCopyUtil::
+SystemRedistributeCopyUtil ()
+{
+  mask = MDDataItemMask_AllExceptForce;
+}
+
+void Parallel::SystemRedistributeCopyUtil::
+setData (HostCellListedMDData & hdata,
+	 DeviceCellListedMDData & ddata)
+{
+  SubCellList tmp;
+  ptr_hdata = &hdata;
+  IndexType devideLevel = ptr_hdata->getDevideLevel ();
+  HostIntVectorType numCell = ptr_hdata->getNumCell ();
+
+  ptr_hdata->buildSubListGhostCell (hostSubOuter);
+  ptr_hdata->buildSubListAllCell (hostSubInner);
+  ptr_hdata->buildSubList (2 * devideLevel, numCell.x - 2 * devideLevel,
+			   2 * devideLevel, numCell.y - 2 * devideLevel,
+			   2 * devideLevel, numCell.z - 2 * devideLevel,
+			   tmp);
+  hostSubInner.sub (tmp);
+
+  ptr_ddata = &ddata;
+  ptr_ddata->buildSubListGhostCell (deviceSubOuter);
+  ptr_ddata->buildSubListAllCell (deviceSubInner);
+  ptr_ddata->buildSubList (2 * devideLevel, numCell.x - 2 * devideLevel,
+			   2 * devideLevel, numCell.y - 2 * devideLevel,
+			   2 * devideLevel, numCell.z - 2 * devideLevel,
+			   tmp);
+  deviceSubInner.sub (tmp);
+
+  hpkgInner.reinit (hostSubInner);
+  hpkgOuter.reinit (hostSubOuter);
+  dpkgInner.reinit (deviceSubInner);
+  dpkgOuter.reinit (deviceSubOuter);
+}
 

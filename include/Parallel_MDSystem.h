@@ -7,7 +7,7 @@
 // #define DEVICE_CODE
 
 namespace Parallel {
-  class SystemRedistributeUtil
+  class SystemRedistributeTransferUtil
   {
     HostCellListedMDData * ptr_hdata;
     HostCellListedMDData * ptr_buff ;
@@ -74,10 +74,10 @@ namespace Parallel {
 
 private:
 public:
-    SystemRedistributeUtil ();
+    SystemRedistributeTransferUtil ();
     void setHostData (HostCellListedMDData & hdata,
 		      HostCellListedMDData & buffdata);
-    void redistribute ();
+    void redistributeHost ();
   };
 
 
@@ -108,6 +108,31 @@ public:
   
 
 #ifdef DEVICE_CODE
+
+  class SystemRedistributeCopyUtil
+  {
+    SubCellList hostSubInner;
+    SubCellList hostSubOuter;
+    SubCellList deviceSubInner;
+    SubCellList deviceSubOuter;
+    
+    HostTransferPackage		hpkgInner;
+    DeviceTransferPackage	dpkgInner;
+    HostTransferPackage		hpkgOuter;
+    DeviceTransferPackage	dpkgOuter;
+    HostCellListedMDData *	ptr_hdata;
+    DeviceCellListedMDData *	ptr_ddata;
+    MDDataItemMask_t		mask;
+public:
+    SystemRedistributeCopyUtil ();
+    void setData (HostCellListedMDData & hdata,
+		  DeviceCellListedMDData & ddata);
+    inline void clearDeviceSent ();
+    inline void copyToHost ();
+    inline void copyFromHost ();
+  };
+  
+  
   class MDSystem 
   {
 public:
@@ -118,14 +143,15 @@ public:
     IndexType * resdIndex;
     void reallocGroProperty (const IndexType & memSize);
 
-    IndexType			globalNumAtom;
-    GlobalHostMDData		globalHostData;
-    HostCellListedMDData	localHostData;
-    HostCellListedMDData	hostBuff;
-    DeviceCellListedMDData	deviceData;
+    IndexType				globalNumAtom;
+    GlobalHostMDData			globalHostData;
+    HostCellListedMDData		localHostData;
+    HostCellListedMDData		hostBuff;
+    DeviceCellListedMDData		deviceData;
 private:
-    SystemRedistributeUtil	redistribUtil;
-    SystemCollectDataUtil	collectUtil;
+    SystemRedistributeTransferUtil	redistribtransUtil;
+    SystemRedistributeCopyUtil		redistribcopyUtil;
+    SystemCollectDataUtil		collectUtil;
 public:
     MDSystem ();
     ~MDSystem();
@@ -138,10 +164,36 @@ public:
 	{ localHostData.writeData_SimpleFile(filename); }
     void writeGlobalData_GroFile (const char * filename);
 public:
+    void updateHost ()
+	{ deviceData.copyToHost (localHostData); }
     void collectLocalData ();
     void redistribute ();
   };
-#endif
+#endif // DEVICE_CODE
+
+#ifdef DEVICE_CODE
+  void Parallel::SystemRedistributeCopyUtil::
+  copyToHost ()
+  {
+    dpkgOuter.pack (*ptr_ddata, mask);
+    dpkgOuter.copyToHost (hpkgOuter);
+    hpkgOuter.unpack_replace (*ptr_hdata);
+  }
+
+  void Parallel::SystemRedistributeCopyUtil::
+  copyFromHost ()
+  {
+    hpkgInner.pack (*ptr_hdata, mask);
+    dpkgInner.copyFromHost (hpkgInner);
+    dpkgInner.unpack_add (*ptr_ddata);
+  }
+
+  void Parallel::SystemRedistributeCopyUtil::
+  clearDeviceSent ()
+  {
+    ptr_ddata->clearData (deviceSubOuter);
+  }
+#endif // DEVICE_CODE
   
 }
 

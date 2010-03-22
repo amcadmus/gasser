@@ -145,8 +145,8 @@
 //   return;
 // }
 
-Parallel::SystemRedistributeUtil::
-SystemRedistributeUtil ()
+Parallel::SystemRedistributeTransferUtil::
+SystemRedistributeTransferUtil ()
     : ptr_hdata (NULL), ptr_buff(NULL), mask (MDDataItemMask_AllExceptForce)
 {
   Parallel::Interface::shiftNeighbor (CoordXIndex,  1, xsrc0, xdest0);
@@ -157,7 +157,7 @@ SystemRedistributeUtil ()
   Parallel::Interface::shiftNeighbor (CoordZIndex, -1, zsrc1, zdest1);
 }
 
-void Parallel::SystemRedistributeUtil::
+void Parallel::SystemRedistributeTransferUtil::
 setHostData (HostCellListedMDData & hdata,
 	     HostCellListedMDData & buffdata)
 {  
@@ -282,8 +282,8 @@ setHostData (HostCellListedMDData & hdata,
 }
 
 
-void Parallel::SystemRedistributeUtil::
-redistribute ()
+void Parallel::SystemRedistributeTransferUtil::
+redistributeHost ()
 {
   Parallel::TransferEngine sender;
   Parallel::TransferEngine recver;
