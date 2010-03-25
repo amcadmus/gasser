@@ -184,6 +184,14 @@ namespace Parallel{
 				IntScalorType * coordNoix,
 				IntScalorType * coordNoiy,
 				IntScalorType * coordNoiz);
+    __global__ void
+    buildCellNeighborhood (const IntVectorType numCell,
+			   const IndexType devideLevel,
+			   const ScalorType rlist,
+			   const HostVectorType boxSize,
+			   IndexType * numNeighbor,
+			   IndexType * neighborCellIndex,
+			   const IndexType stride);
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

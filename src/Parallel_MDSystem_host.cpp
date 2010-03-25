@@ -451,6 +451,8 @@ redistributeHost ()
   zrecv1h.add (zrecv1, mask);
 }
 
+
+
 Parallel::SystemCollectDataUtil::
 SystemCollectDataUtil()
     : ptr_hdata(NULL), ptr_buff(NULL),
@@ -600,3 +602,263 @@ collect ()
 }
 
 
+
+Parallel::SystemTransCoordsTransferUtil::
+SystemTransCoordsTransferUtil ()
+    : ptr_hdata (NULL), ptr_buff(NULL),
+      mask (MDDataItemMask_Coordinate | MDDataItemMask_GlobalIndex)
+{
+  Parallel::Interface::shiftNeighbor (CoordXIndex,  1, xsrc0, xdest0);
+  Parallel::Interface::shiftNeighbor (CoordXIndex, -1, xsrc1, xdest1);
+  Parallel::Interface::shiftNeighbor (CoordYIndex,  1, ysrc0, ydest0);
+  Parallel::Interface::shiftNeighbor (CoordYIndex, -1, ysrc1, ydest1);
+  Parallel::Interface::shiftNeighbor (CoordZIndex,  1, zsrc0, zdest0);
+  Parallel::Interface::shiftNeighbor (CoordZIndex, -1, zsrc1, zdest1);
+}
+
+void Parallel::SystemTransCoordsTransferUtil::
+setHostData (HostCellListedMDData & hdata,
+	     HostCellListedMDData & buffdata)
+{  
+  ptr_hdata = &hdata;
+  ptr_buff  = &buffdata;
+  
+  HostIntVectorType numCell = ptr_hdata->getNumCell ();
+  IndexType devideLevel = ptr_hdata->getDevideLevel ();
+
+  ptr_hdata->buildSubList (numCell.x - 2 * devideLevel, numCell.x - devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   xsend0);
+  ptr_hdata->buildSubList (devideLevel, 2 * devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   xsend1);
+  ptr_hdata->buildSubList (0, devideLevel,
+			   devideLevel, numCell.y - devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   xrecv0);
+  ptr_hdata->buildSubList (numCell.x - devideLevel, numCell.x,
+			   devideLevel, numCell.y - devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   xrecv1);
+  
+  ptr_hdata->buildSubList (0, numCell.x,
+			   numCell.y - 2 * devideLevel, numCell.y - devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   ysend0);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   devideLevel, 2 * devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   ysend1);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   0, devideLevel,
+			   devideLevel, numCell.z - devideLevel,
+			   yrecv0);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   numCell.y - devideLevel, numCell.y,
+			   devideLevel, numCell.z - devideLevel,
+			   yrecv1);
+  
+  ptr_hdata->buildSubList (0, numCell.x,
+			   0, numCell.y,
+			   numCell.z - 2 * devideLevel, numCell.z - devideLevel,
+			   zsend0);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   0, numCell.y,
+			   devideLevel, devideLevel * 2,
+			   zsend1);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   0, numCell.y,
+			   0, devideLevel,
+			   zrecv0);
+  ptr_hdata->buildSubList (0, numCell.x,
+			   0, numCell.y,
+			   numCell.z - devideLevel, numCell.z,
+			   zrecv1);
+
+  xsendNum0.reinit (xsend0);
+  xrecvNum0.reinit (xrecv0);
+  xsendNum1.reinit (xsend1);
+  xrecvNum1.reinit (xrecv1);
+  ysendNum0.reinit (ysend0);
+  yrecvNum0.reinit (yrecv0);
+  ysendNum1.reinit (ysend1);
+  yrecvNum1.reinit (yrecv1);
+  zsendNum0.reinit (zsend0);
+  zrecvNum0.reinit (zrecv0);
+  zsendNum1.reinit (zsend1);
+  zrecvNum1.reinit (zrecv1);
+
+  xsendData0.reinit (xsend0, mask);
+  xrecvData0.reinit (xrecv0, mask);
+  xsendData1.reinit (xsend1, mask);
+  xrecvData1.reinit (xrecv1, mask);
+  ysendData0.reinit (ysend0, mask);
+  yrecvData0.reinit (yrecv0, mask);
+  ysendData1.reinit (ysend1, mask);
+  yrecvData1.reinit (yrecv1, mask);
+  zsendData0.reinit (zsend0, mask);
+  zrecvData0.reinit (zrecv0, mask);
+  zsendData1.reinit (zsend1, mask);
+  zrecvData1.reinit (zrecv1, mask);
+  
+}
+
+
+void Parallel::SystemTransCoordsTransferUtil::
+transCoords ()
+{
+  Parallel::TransferEngine sender;
+  Parallel::TransferEngine recver;
+  
+  // ptr_buff->clearData();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (xsendNum0);
+  recver.registerBuff (xrecvNum0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (xdest0, 0);
+  recver.Irecv (xsrc0,  0);
+  sender.wait();
+  recver.wait();
+
+  xsendData0.build ();
+  xrecvData0.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (xsendData0);
+  recver.registerBuff (xrecvData0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (xdest0, 1);
+  recver.Irecv (xsrc0,  1);
+  sender.wait();
+  recver.wait();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (xsendNum1);
+  recver.registerBuff (xrecvNum1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (xdest1, 2);
+  recver.Irecv (xsrc1,  2);
+  sender.wait();
+  recver.wait();  
+
+  xsendData1.build ();
+  xrecvData1.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (xsendData1);
+  recver.registerBuff (xrecvData1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (xdest1, 3);
+  recver.Irecv (xsrc1,  3);
+  sender.wait();
+  recver.wait();
+
+  Parallel::Interface::barrier();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysendNum0);
+  recver.registerBuff (yrecvNum0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (ydest0, 0);
+  recver.Irecv (ysrc0,  0);
+  sender.wait();
+  recver.wait();  
+
+  ysendData0.build ();
+  yrecvData0.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysendData0);
+  recver.registerBuff (yrecvData0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (ydest0, 1);
+  recver.Irecv (ysrc0,  1);
+  sender.wait();
+  recver.wait();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysendNum1);
+  recver.registerBuff (yrecvNum1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (ydest1, 2);
+  recver.Irecv (ysrc1,  2);
+  sender.wait();
+  recver.wait();  
+
+  ysendData1.build ();
+  yrecvData1.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (ysendData1);
+  recver.registerBuff (yrecvData1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (ydest1, 3);
+  recver.Irecv (ysrc1,  3);
+  sender.wait();
+  recver.wait();
+
+  Parallel::Interface::barrier();
+  
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsendNum0);
+  recver.registerBuff (zrecvNum0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (zdest0, 0);
+  recver.Irecv (zsrc0,  0);
+  sender.wait();
+  recver.wait();  
+
+  zsendData0.build ();
+  zrecvData0.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsendData0);
+  recver.registerBuff (zrecvData0);
+  sender.build ();
+  recver.build ();
+  sender.Isend (zdest0, 1);
+  recver.Irecv (zsrc0,  1);
+  sender.wait();
+  recver.wait();
+
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsendNum1);
+  recver.registerBuff (zrecvNum1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (zdest1, 2);
+  recver.Irecv (zsrc1,  2);
+  sender.wait();
+  recver.wait();  
+
+  zsendData1.build ();
+  zrecvData1.build ();
+  sender.clearRegistered();
+  recver.clearRegistered();
+  sender.registerBuff (zsendData1);
+  recver.registerBuff (zrecvData1);
+  sender.build ();
+  recver.build ();
+  sender.Isend (zdest1, 3);
+  recver.Irecv (zsrc1,  3);
+  sender.wait();
+  recver.wait();
+}

@@ -79,6 +79,7 @@ init (const char * confFileName,
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
   deviceData.initCellStructure (2);
+  cellRelation.build (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){
   //   deviceData.dptr_coordinate()[i].x += 2;
@@ -92,8 +93,10 @@ init (const char * confFileName,
   hostBuff.copy (localHostData, MDDataItemMask_All);
   hostBuff.clearData ();
 
-  redistribtransUtil.setHostData (localHostData, hostBuff);
-  redistribcopyUtil .setData     (localHostData, deviceData);
+  redistribtransUtil  .setHostData (localHostData, hostBuff);
+  redistribcopyUtil   .setData     (localHostData, deviceData);
+  transCoordstransUtil.setHostData (localHostData, hostBuff);
+  transCoordscopyUtil .setData     (localHostData, deviceData);
   
   collectUtil.setHostData (localHostData, hostBuff, globalHostData);
   
@@ -109,6 +112,14 @@ redistribute ()
   redistribcopyUtil .clearDeviceSent ();
   redistribtransUtil.redistributeHost ();
   redistribcopyUtil .copyFromHost ();
+}
+
+void Parallel::MDSystem::
+transferCoordinate ()
+{
+  transCoordscopyUtil .copyToHost ();
+  transCoordstransUtil.transCoords ();
+  transCoordscopyUtil .copyFromHost ();
 }
 
 void Parallel::MDSystem::
@@ -165,4 +176,46 @@ setData (HostCellListedMDData & hdata,
   dpkgInner.reinit (deviceSubInner);
   dpkgOuter.reinit (deviceSubOuter);
 }
+
+
+Parallel::SystemTransCoordsCopyUtil::
+SystemTransCoordsCopyUtil ()
+    : mask (MDDataItemMask_Coordinate | MDDataItemMask_GlobalIndex)
+{
+}
+
+void Parallel::SystemTransCoordsCopyUtil::
+setData (HostCellListedMDData & hdata,
+	 DeviceCellListedMDData & ddata)
+{
+  SubCellList tmp;
+  ptr_hdata = &hdata;
+  IndexType devideLevel = ptr_hdata->getDevideLevel ();
+  HostIntVectorType numCell = ptr_hdata->getNumCell ();
+
+  ptr_hdata->buildSubListGhostCell (hostSubOuter);
+  ptr_hdata->buildSubListRealCell (hostSubInner);
+  ptr_hdata->buildSubList (2 * devideLevel, numCell.x - 2 * devideLevel,
+			   2 * devideLevel, numCell.y - 2 * devideLevel,
+			   2 * devideLevel, numCell.z - 2 * devideLevel,
+			   tmp);
+  hostSubInner.sub (tmp);
+
+  ptr_ddata = &ddata;
+  ptr_ddata->buildSubListGhostCell (deviceSubOuter);
+  ptr_ddata->buildSubListRealCell (deviceSubInner);
+  ptr_ddata->buildSubList (2 * devideLevel, numCell.x - 2 * devideLevel,
+			   2 * devideLevel, numCell.y - 2 * devideLevel,
+			   2 * devideLevel, numCell.z - 2 * devideLevel,
+			   tmp);
+  deviceSubInner.sub (tmp);
+
+  hpkgInner.reinit (hostSubInner);
+  hpkgOuter.reinit (hostSubOuter);
+  dpkgInner.reinit (deviceSubInner);
+  dpkgOuter.reinit (deviceSubOuter);
+}
+
+
+
 

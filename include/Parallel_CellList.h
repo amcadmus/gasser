@@ -255,6 +255,8 @@ public:
     const IndexType  & getDevideLevel () const {return devideLevel;}
     const IntVectorType & getNumCell () const {return numCell;}
     const ScalorType & getRlist () const {return rlist;}
+    IndexType * dptr_numAtomInCell () {return numAtomInCell;}
+    const IndexType * dptr_numAtomInCell () const {return numAtomInCell;}
 public:
     void initCellStructure (const ScalorType & rlist,
 			    const IndexType & devideLevel = 1,
@@ -326,6 +328,26 @@ public:
 	{return ptr_ddata != NULL && SubCellList::isBuilt();}
   };
   
+
+  class DeviceCellRelation 
+  {
+    DeviceCellListedMDData * ptr_list;
+    bool malloced;
+    IndexType * numNeighbor;
+    IndexType * neighborCellIndex;
+    IndexType MaxNeiPerCell;
+    void clear ();
+    void easyMalloc (const IndexType & totalNumCell,
+		     const IndexType & MaxNeiPerCell);
+public:
+    DeviceCellRelation () : ptr_list(NULL), malloced(false) {};
+    ~DeviceCellRelation ();
+    void build (DeviceCellListedMDData & list);
+    IndexType * dptr_numNeighborCell   () {return numNeighbor;}
+    IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}
+    const IndexType * dptr_numNeighborCell   () const {return numNeighbor;}
+    const IndexType * dptr_neighborCellIndex () const {return neighborCellIndex;}
+  };
   
 #endif // DEVICE_CODE
     

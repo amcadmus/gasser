@@ -17,6 +17,7 @@ initZeroCell ()
       <<<gridDim, numThreadBlock>>>(
 	  numCell, 
 	  numAtomInCell);
+  checkCUDAError ("DeviceCellListedMDData::initZeroCell");
 }
 
 void Parallel::DeviceCellListedMDData::
@@ -737,6 +738,7 @@ pack (const DeviceCellListedMDData & ddata,
 	  this->dptr_type(),
 	  this->dptr_mass(),
 	  this->dptr_charge());
+  checkCUDAError ("DeviceTransferPackage::pack, packDeviceMDData");
 }
 
 
@@ -1242,6 +1244,7 @@ clearData (const SubCellList & subList)
 	  deviceList,
 	  num,
 	  numAtomInCell);
+  checkCUDAError ("DeviceCellListedMDData::clearData, clearCellListData");
 }
 
 
@@ -1299,7 +1302,190 @@ applyPeriodicBondaryCondition ()
 	  coordNoix,
 	  coordNoiy,
 	  coordNoiz);
+  checkCUDAError ("DeviceCellListedMDData::applyPeriodicBondaryCondition");
 }
+
+void Parallel::DeviceCellRelation::
+easyMalloc (const IndexType & totalNumCell,
+	    const IndexType & MaxNeiPerCell)
+{
+  if (malloced){
+    clear ();
+  }
+  cudaMalloc ((void**)&numNeighbor, totalNumCell * sizeof(IndexType));
+  cudaMalloc ((void**)&neighborCellIndex,
+	      totalNumCell * MaxNeiPerCell * sizeof (IndexType));
+  checkCUDAError ("DeviceCellRelation::easyMalloc");
+  malloced = true;
+}
+
+void Parallel::DeviceCellRelation::
+clear ()
+{
+  cudaFree (numNeighbor);
+  cudaFree (neighborCellIndex);
+  malloced = false;
+}
+
+Parallel::DeviceCellRelation::
+~DeviceCellRelation ()
+{
+  clear();
+}
+
+void Parallel::DeviceCellRelation::
+build (DeviceCellListedMDData & list)
+{
+  ptr_list = &list;
+
+  IntVectorType numCell = list.getNumCell ();
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  MaxNeiPerCell = 2 * list.getDevideLevel() + 1;
+  MaxNeiPerCell = MaxNeiPerCell * MaxNeiPerCell * MaxNeiPerCell;
+  int Nx, Ny, Nz;
+  Parallel::Interface::numProcDim (Nx, Ny, Nz);
+  HostVectorType box = list.getGlobalBox().size;
+  box.x /= Nx;
+  box.y /= Ny;
+  box.z /= Nz;
+  
+  easyMalloc (totalNumCell, MaxNeiPerCell);
+  // setValue <<<
+  //     (totalNumCell + DefaultNThreadPerBlock - 1) / DefaultNThreadPerBlock,
+  //     DefaultNThreadPerBlock >>> (
+  // 	  numNeighbor,
+  // 	  totalNumCell,
+  // 	  0);
+  Parallel::CudaGlobal::buildCellNeighborhood
+      <<<toGridDim(totalNumCell), 1>>> (
+	  numCell,
+	  list.getDevideLevel(),
+	  list.getRlist(),
+	  box,
+	  numNeighbor,
+	  neighborCellIndex,
+	  MaxNeiPerCell);
+  checkCUDAError ("DeviceCellRelation::build, buildCellNeighborhood");
+}
+
+
+__global__ void Parallel::CudaGlobal::
+buildCellNeighborhood (const IntVectorType numCell,
+		       const IndexType devideLevel,
+		       const ScalorType rlist,
+		       const HostVectorType boxSize,
+		       IndexType * numNeighbor,
+		       IndexType * neighborCellIndex,
+		       const IndexType stride)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  __shared__ bool stop;
+
+  numNeighbor[bid] = 0;
+  int centerx, centery, centerz;
+  bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  if (numCell.x == 3) oneCellX = true;
+  if (numCell.y == 3) oneCellY = true;
+  if (numCell.z == 3) oneCellZ = true;
+
+  if (tid == 0){
+    stop = false;
+    Parallel::CudaDevice::D1toD3 (numCell, int(bid), centerx, centery, centerz);
+    if (oneCellX){
+      if (centerx == 0 || centerx == 2){
+	stop = true;
+      }
+    }
+    else {
+      if (centerx < devideLevel || centerx >= numCell.x - devideLevel){
+	stop = true;
+      }
+    }
+    if (oneCellY){
+      if (centery == 0 || centery == 2){
+	stop = true;
+      }
+    }
+    else {
+      if (centery < devideLevel || centery >= numCell.y - devideLevel){
+	stop = true;
+      }
+    }
+    if (oneCellZ){
+      if (centerz == 0 || centerz == 2){
+	stop = true;
+      }
+    }
+    else {
+      if (centerz < devideLevel || centerz >= numCell.z - devideLevel){
+	stop = true;
+      }
+    }
+  }
+  __syncthreads();
+  if (stop) return;
+
+  if (tid == 0){
+    int lowerX (-devideLevel);
+    int lowerY (-devideLevel);
+    int lowerZ (-devideLevel);
+    if (oneCellX) lowerX = -1;
+    if (oneCellY) lowerY = -1;
+    if (oneCellZ) lowerZ = -1;
+    int upperX (devideLevel+1);
+    int upperY (devideLevel+1);
+    int upperZ (devideLevel+1);
+    if (oneCellX) upperX = 2;
+    if (oneCellY) upperY = 2;
+    if (oneCellZ) upperZ = 2;
+    ScalorType scalorx, scalory, scalorz;
+    oneCellX ? scalorx = boxSize.x :
+	scalorx = boxSize.x / ScalorType(numCell.x - (devideLevel << 1));
+    oneCellY ? scalory = boxSize.y :
+	scalory = boxSize.y / ScalorType(numCell.y - (devideLevel << 1));
+    oneCellZ ? scalorz = boxSize.z :
+	scalorz = boxSize.z / ScalorType(numCell.z - (devideLevel << 1));
+    
+    ScalorType rlist2 = rlist * rlist;
+    for (int ix = lowerX; ix < upperX; ++ix){
+      for (int iy = lowerY; iy < upperY; ++iy){
+	for (int iz = lowerZ; iz < upperZ; ++iz){
+	  int myx = ix + int(centerx);
+	  int myy = iy + int(centery);
+	  int myz = iz + int(centerz);
+	  ScalorType min = 1e9;
+#pragma unroll 27
+	  for (int dx = -1; dx <= 1; ++dx){
+	    for (int dy = -1; dy <= 1; ++dy){
+	      for (int dz = -1; dz <= 1; ++dz){
+		ScalorType diffx ((-centerx + myx + dx) * scalorx);
+		ScalorType diffy ((-centery + myy + dy) * scalory);
+		ScalorType diffz ((-centerz + myz + dz) * scalorz);
+		// shortestImage (box, &diffx, &diffy, &diffz);
+		ScalorType diff2 (diffx * diffx + diffy * diffy + diffz * diffz);
+		if (diff2 < min){
+		  min = diff2;
+		}
+	      }
+	    }
+	  }
+	  if (min < rlist2){
+	    IndexType tmp = Parallel::CudaDevice::D3toD1 (numCell, myx, myy, myz);
+	    neighborCellIndex[(numNeighbor[bid]++) + bid * stride] = tmp;
+	  }
+	}
+      }
+    }
+  }
+}
+
+  
+
+  
+
+
+
 
 
 
