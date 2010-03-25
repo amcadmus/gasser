@@ -115,83 +115,126 @@ Parallel::TransferEngine::
 }
 
 
-Parallel::SummationEngine::
-SummationEngine ()
-    : sumScalorBuff (NULL),
-      sumScalorBuffSize (0),
-      sumIndexBuff (NULL),
-      sumIndexBuffSize (0),
-      sumIntScalorBuff (NULL),
-      sumIntScalorBuffSize (0)
-{
-}
+// // Parallel::SummationEngine::
+// // SummationEngine ()
+// //     : sumScalorBuff (NULL),
+// //       sumScalorBuffSize (0),
+// //       sumIndexBuff (NULL),
+// //       sumIndexBuffSize (0),
+// //       sumIntScalorBuff (NULL),
+// //       sumIntScalorBuffSize (0)
+// // {
+// // }
 
-Parallel::SummationEngine::
-~SummationEngine ()
-{
-  freeAPointer ((void**)&sumScalorBuff);
-  freeAPointer ((void**)&sumIntScalorBuff);
-  freeAPointer ((void**)&sumIndexBuff);
-}
+// // Parallel::SummationEngine::
+// // ~SummationEngine ()
+// // {
+// //   freeAPointer ((void**)&sumScalorBuff);
+// //   freeAPointer ((void**)&sumIntScalorBuff);
+// //   freeAPointer ((void**)&sumIndexBuff);
+// // }
 
-ScalorType Parallel::SummationEngine::
-sumScalor (ScalorType * data, int num, ScalorType ** result)
-{
-  Environment env;
-  if (num > sumScalorBuffSize && env.myRank() == 0){
-    sumScalorBuff = (ScalorType *)realloc(sumScalorBuff, num * sizeof(ScalorType));
-    if (sumScalorBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(ScalorType)*num));
-    sumScalorBuffSize = num;
-  }
+// // ScalorType Parallel::SummationEngine::
+// // sumScalor (ScalorType * data, int num, ScalorType ** result)
+// // {
+// //   Environment env;
+// //   if (num > sumScalorBuffSize && env.myRank() == 0){
+// //     sumScalorBuff = (ScalorType *)realloc(sumScalorBuff, num * sizeof(ScalorType));
+// //     if (sumScalorBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(ScalorType)*num));
+// //     sumScalorBuffSize = num;
+// //   }
   
-  MPI_Reduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, 0, Parallel::Environment::communicator());;
-  *result = sumScalorBuff;
-}
+// //   MPI_Reduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, 0, Parallel::Environment::communicator());;
+// //   *result = sumScalorBuff;
+// // }
 
-
-ScalorType Parallel::SummationEngine::
-sumScalorAll (ScalorType * data, int num, ScalorType ** result)
+void Parallel::SummationEngine::
+sum (ScalorType * data, int num, ScalorType * result)
 {
-  if (num > sumScalorBuffSize){
-    sumScalorBuff = (ScalorType *)realloc(sumScalorBuff, num * sizeof(ScalorType));
-    if (sumScalorBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(ScalorType)*num));
-    sumScalorBuffSize = num;
-  }
-  
-  MPI_Allreduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, Parallel::Environment::communicator());;
-  *result = sumScalorBuff;
+  MPI_Reduce (data, result, num, MPI_FLOAT, MPI_SUM, 0,
+	      Parallel::Environment::communicator());
 }
 
-IndexType Parallel::SummationEngine::
-sumIndex (IndexType * data, int num, IndexType ** result)
+void Parallel::SummationEngine::
+sum (IntScalorType * data, int num, IntScalorType * result)
 {
-  Environment env;
-  if (num > sumIndexBuffSize && env.myRank() == 0){
-    sumIndexBuff = (IndexType *)realloc(sumIndexBuff, num * sizeof(IndexType));
-    if (sumIndexBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(IndexType)*num));
-    sumIndexBuffSize = num;
-  }
-  
-  MPI_Reduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, 0, Parallel::Environment::communicator());;
-  *result = sumIndexBuff;
+  MPI_Reduce (data, result, num, MPI_INT, MPI_SUM, 0,
+	      Parallel::Environment::communicator());
 }
 
-
-IndexType Parallel::SummationEngine::
-sumIndexAll (IndexType * data, int num, IndexType ** result)
+void Parallel::SummationEngine::
+sum (IndexType * data, int num, IndexType * result)
 {
-  if (num > sumIndexBuffSize){
-    sumIndexBuff = (IndexType *)realloc(sumIndexBuff, num * sizeof(IndexType));
-    if (sumIndexBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(IndexType)*num));
-    sumIndexBuffSize = num;
-  }
-  // for (int i = 0; i < num; ++i){
-  //   sumIndexBuff[i] = 0;
-  // }
-  
-  MPI_Allreduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, Parallel::Environment::communicator());;
-  *result = sumIndexBuff;
+  MPI_Reduce (data, result, num, MPI_UNSIGNED, MPI_SUM, 0,
+	      Parallel::Environment::communicator());
 }
+
+void Parallel::SummationEngine::
+sumAll (ScalorType * data, int num, ScalorType * result)
+{
+  MPI_Allreduce (data, result, num, MPI_FLOAT, MPI_SUM, 
+	      Parallel::Environment::communicator());
+}
+
+void Parallel::SummationEngine::
+sumAll (IntScalorType * data, int num, IntScalorType * result)
+{
+  MPI_Allreduce (data, result, num, MPI_INT, MPI_SUM, 
+	      Parallel::Environment::communicator());
+}
+
+void Parallel::SummationEngine::
+sumAll (IndexType * data, int num, IndexType * result)
+{
+  MPI_Allreduce (data, result, num, MPI_UNSIGNED, MPI_SUM, 
+	      Parallel::Environment::communicator());
+}
+
+
+
+// // ScalorType Parallel::SummationEngine::
+// // sumScalorAll (ScalorType * data, int num, ScalorType ** result)
+// // {
+// //   if (num > sumScalorBuffSize){
+// //     sumScalorBuff = (ScalorType *)realloc(sumScalorBuff, num * sizeof(ScalorType));
+// //     if (sumScalorBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(ScalorType)*num));
+// //     sumScalorBuffSize = num;
+// //   }
+  
+// //   MPI_Allreduce (data, sumScalorBuff, num, MPI_FLOAT, MPI_SUM, Parallel::Environment::communicator());;
+// //   *result = sumScalorBuff;
+// // }
+
+// // IndexType Parallel::SummationEngine::
+// // sumIndex (IndexType * data, int num, IndexType ** result)
+// // {
+// //   Environment env;
+// //   if (num > sumIndexBuffSize && env.myRank() == 0){
+// //     sumIndexBuff = (IndexType *)realloc(sumIndexBuff, num * sizeof(IndexType));
+// //     if (sumIndexBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(IndexType)*num));
+// //     sumIndexBuffSize = num;
+// //   }
+  
+// //   MPI_Reduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, 0, Parallel::Environment::communicator());;
+// //   *result = sumIndexBuff;
+// // }
+
+
+// // IndexType Parallel::SummationEngine::
+// // sumIndexAll (IndexType * data, int num, IndexType ** result)
+// // {
+// //   if (num > sumIndexBuffSize){
+// //     sumIndexBuff = (IndexType *)realloc(sumIndexBuff, num * sizeof(IndexType));
+// //     if (sumIndexBuff == NULL) throw (MDExcptFailedReallocOnHost("SummationEngine::result", sizeof(IndexType)*num));
+// //     sumIndexBuffSize = num;
+// //   }
+// //   // for (int i = 0; i < num; ++i){
+// //   //   sumIndexBuff[i] = 0;
+// //   // }
+  
+// //   MPI_Allreduce (data, sumIndexBuff, num, MPI_UNSIGNED, MPI_SUM, Parallel::Environment::communicator());;
+// //   *result = sumIndexBuff;
+// // }
 
 
 // void Parallel::TransferEngine::

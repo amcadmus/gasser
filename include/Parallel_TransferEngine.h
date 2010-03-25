@@ -44,29 +44,49 @@ public:
     void wait ();
   };
 
-  class SummationEngine 
+//   class SummationEngine 
+//   {
+// private:
+//     ScalorType * sumScalorBuff;
+//     IndexType    sumScalorBuffSize;
+//     IndexType * sumIndexBuff;
+//     IndexType   sumIndexBuffSize;
+//     IntScalorType * sumIntScalorBuff;
+//     IntScalorType   sumIntScalorBuffSize;
+// public:
+//     SummationEngine ();
+//     ~SummationEngine ();
+// public:
+//     ScalorType sumScalor    (ScalorType * data, int num, ScalorType ** result);
+//     ScalorType sumScalorAll (ScalorType * data, int num, ScalorType ** result);
+//     IntScalorType sumIntScalor    (IntScalorType * data, int num, IntScalorType **result);
+//     IntScalorType sumIntScalorAll (IntScalorType * data, int num, IntScalorType **result);
+//     IndexType sumIndex    (IndexType * data, int num, IndexType ** result);
+//     IndexType sumIndexAll (IndexType * data, int num, IndexType ** result);
+//   };
+
+  class SummationEngine
   {
-private:
-    ScalorType * sumScalorBuff;
-    IndexType    sumScalorBuffSize;
-    IndexType * sumIndexBuff;
-    IndexType   sumIndexBuffSize;
-    IntScalorType * sumIntScalorBuff;
-    IntScalorType   sumIntScalorBuffSize;
 public:
-    SummationEngine ();
-    ~SummationEngine ();
-public:
-    ScalorType sumScalor    (ScalorType * data, int num, ScalorType ** result);
-    ScalorType sumScalorAll (ScalorType * data, int num, ScalorType ** result);
-    IntScalorType sumIntScalor    (IntScalorType * data, int num, IntScalorType **result);
-    IntScalorType sumIntScalorAll (IntScalorType * data, int num, IntScalorType **result);
-    IndexType sumIndex    (IndexType * data, int num, IndexType ** result);
-    IndexType sumIndexAll (IndexType * data, int num, IndexType ** result);
+    void sum (ScalorType * data,
+	      int num,
+	      ScalorType * result);
+    void sum (IntScalorType * data,
+	      int num,
+	      IntScalorType * result);
+    void sum (IndexType * data,
+	      int num,
+	      IndexType * result);    
+    void sumAll (ScalorType * data,
+		 int num,
+		 ScalorType * result);
+    void sumAll (IntScalorType * data,
+		 int num,
+		 IntScalorType * result);
+    void sumAll (IndexType * data,
+		 int num,
+		 IndexType * result);  
   };
-  
 }
-
-
 
 #endif

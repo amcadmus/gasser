@@ -18,8 +18,9 @@ reinit (const DeviceCellListedMDData & data)
   volume = data.getGlobalBox().size.x * data.getGlobalBox().size.y *
       data.getGlobalBox().size.z;
 
+  size = sizeof (ScalorType) * NumberOfStatisticItems;
   if (!dmalloced){
-    cudaMalloc ((void**)&ddata, sizeof(ScalorType)*NumberOfStatisticItems);
+    cudaMalloc ((void**)&ddata, size);
     checkCUDAError("DeviceStatistic::init, malloc");
     dmalloced = true;
   }
@@ -63,5 +64,12 @@ copy (const DeviceStatistic & st)
   cudaMemcpy (ddata, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
 	      cudaMemcpyDeviceToDevice);
   checkCUDAError ("DeviceStatistic::copy");
+}
+
+void Parallel::DeviceStatistic::
+copyToHost (HostStatistic & hst)
+{
+  cudaMemcpy (hst.cptr_localStatisticData(), ddata, size, cudaMemcpyDeviceToHost);
+  checkCUDAError ("DeviceStatistic::copyToHost");
 }
 
