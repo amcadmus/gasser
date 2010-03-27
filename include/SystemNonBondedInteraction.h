@@ -45,6 +45,7 @@ private:
   void build ();
 public:
   SystemNonBondedInteraction();
+  SystemNonBondedInteraction(const Topology::System & sysTop);
   ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
   void reinit (const Topology::System & sysTop);
   void clear ();

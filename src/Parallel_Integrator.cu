@@ -74,9 +74,9 @@ step2 (DeviceCellListedMDData & data,
 	  sum_kxx.getBuff(),
 	  sum_kyy.getBuff(),
 	  sum_kzz.getBuff());
-  sum_kxx.sumBuffAdd (st.dptr_statisticData(), mdStatisticKineticEnergyXX, 0);
-  sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatisticKineticEnergyYY, 0);
-  sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatisticKineticEnergyZZ, 0);
+  sum_kxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyXX, 0);
+  sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyYY, 0);
+  sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyZZ, 0);
 
   checkCUDAError ("interface::VelocityVerlet::step2, with st");
 }

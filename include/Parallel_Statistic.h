@@ -8,18 +8,18 @@
 
 namespace Parallel{
   enum mdStatisticItem {
-    mdStatisticBondedPotential			= 0,
-    mdStatisticNonBondedPotential		= 1,
-    mdStatisticElectrostaticPotential		= 2,
-    mdStatisticKineticEnergyXX			= 10,
-    mdStatisticKineticEnergyYY			= 11,
-    mdStatisticKineticEnergyZZ			= 12,
-    mdStatisticVirialXX				= 4,
-    mdStatisticVirialYY				= 5,
-    mdStatisticVirialZZ				= 6,
-    mdStatisticVirialXY				= 7,
-    mdStatisticVirialXZ				= 8,
-    mdStatisticVirialYZ				= 9
+    mdStatistic_BondedPotential			= 0,
+    mdStatistic_NonBondedPotential		= 1,
+    mdStatistic_ElectrostaticPotential		= 2,
+    mdStatistic_KineticEnergyXX			= 10,
+    mdStatistic_KineticEnergyYY			= 11,
+    mdStatistic_KineticEnergyZZ			= 12,
+    mdStatistic_VirialXX				= 4,
+    mdStatistic_VirialYY				= 5,
+    mdStatistic_VirialZZ				= 6,
+    mdStatistic_VirialXY				= 7,
+    mdStatistic_VirialXZ				= 8,
+    mdStatistic_VirialYZ				= 9
   };
   typedef enum mdStatisticItem mdStatisticItem_t;
 
@@ -71,7 +71,7 @@ private:
     ScalorType volume;
     size_t size;
     // void clear ();
-public:
+private:
     ScalorType *ddata;
 public:
     DeviceStatistic  () : dmalloced(false) {}
@@ -82,7 +82,7 @@ public:
 public:
     ScalorType * dptr_statisticData () {return ddata;}
     const ScalorType * dptr_statisticData () const {return ddata;}
-    void clearDevice ();
+    void clearData ();
     void copy (const DeviceStatistic & st);
     void copyToHost (HostStatistic & hst);
     void add  (const DeviceStatistic & st);
@@ -101,37 +101,37 @@ public:
 
 inline ScalorType Parallel::HostStatistic::NonBondedEnergy()
 {
-  return globalData[mdStatisticNonBondedPotential];
+  return globalData[mdStatistic_NonBondedPotential];
 }
 
 inline ScalorType Parallel::HostStatistic::BondedEnergy ()
 {
-  return globalData[mdStatisticBondedPotential];
+  return globalData[mdStatistic_BondedPotential];
 }
 
 inline ScalorType Parallel::HostStatistic::kineticEnergy ()
 {
-  return globalData[mdStatisticKineticEnergyXX] +
-      globalData[mdStatisticKineticEnergyYY] +
-      globalData[mdStatisticKineticEnergyZZ];
+  return globalData[mdStatistic_KineticEnergyXX] +
+      globalData[mdStatistic_KineticEnergyYY] +
+      globalData[mdStatistic_KineticEnergyZZ];
 }
 
 inline ScalorType Parallel::HostStatistic::pressureXX ()
 {
-  return 2. * volumei * (globalData[mdStatisticKineticEnergyXX] -
-			 globalData[mdStatisticVirialXX] * 0.5);
+  return 2. * volumei * (globalData[mdStatistic_KineticEnergyXX] -
+			 globalData[mdStatistic_VirialXX] * 0.5);
 }
 
 inline ScalorType Parallel::HostStatistic::pressureYY ()
 {
-  return 2. * volumei * (globalData[mdStatisticKineticEnergyYY] -
-			 globalData[mdStatisticVirialYY] * 0.5);
+  return 2. * volumei * (globalData[mdStatistic_KineticEnergyYY] -
+			 globalData[mdStatistic_VirialYY] * 0.5);
 }
 
 inline ScalorType Parallel::HostStatistic::pressureZZ ()
 {
-  return 2. * volumei * (globalData[mdStatisticKineticEnergyZZ] -
-			 globalData[mdStatisticVirialZZ] * 0.5);
+  return 2. * volumei * (globalData[mdStatistic_KineticEnergyZZ] -
+			 globalData[mdStatistic_VirialZZ] * 0.5);
 }
 
 inline ScalorType Parallel::HostStatistic::pressure ()
@@ -146,17 +146,17 @@ inline ScalorType Parallel::HostStatistic::virial()
 
 inline ScalorType Parallel::HostStatistic::virialXX ()
 {
-  return globalData[mdStatisticVirialXX];
+  return globalData[mdStatistic_VirialXX];
 }
 
 inline ScalorType Parallel::HostStatistic::virialYY ()
 {
-  return globalData[mdStatisticVirialYY];
+  return globalData[mdStatistic_VirialYY];
 }
 
 inline ScalorType Parallel::HostStatistic::virialZZ ()
 {
-  return globalData[mdStatisticVirialZZ];
+  return globalData[mdStatistic_VirialZZ];
 }
 
 

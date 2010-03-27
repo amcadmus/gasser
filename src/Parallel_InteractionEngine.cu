@@ -21,29 +21,35 @@ IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
 
 Parallel::InteractionEngine::
+InteractionEngine ()
+    : hasBond (false), hasAngle(false)
+{
+}
+
+Parallel::InteractionEngine::
 InteractionEngine (const DeviceCellListedMDData & ddata)
     : hasBond (false), hasAngle(false)
 {
-  init (ddata);
+  reinit (ddata);
 }
 
 void Parallel::InteractionEngine::
-init (const DeviceCellListedMDData & ddata)
+reinit (const DeviceCellListedMDData & ddata)
 {
   totalNumCell = ddata.getNumCell().x *
       ddata.getNumCell().y * ddata.getNumCell().z;
   gridDim = toGridDim (totalNumCell);
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   
-  sum_nb_p.init (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vxx.init (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vyy.init (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vzz.init (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_b_p.init (totalNumCell, NThreadForSum);
-  sum_b_vxx.init (totalNumCell, NThreadForSum);
-  sum_b_vyy.init (totalNumCell, NThreadForSum);
-  sum_b_vzz.init (totalNumCell, NThreadForSum);
-  sum_angle_p.init (totalNumCell, NThreadForSum);
+  sum_nb_p.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
+  sum_nb_vxx.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
+  sum_nb_vyy.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
+  sum_nb_vzz.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
+  sum_b_p.reinit (totalNumCell, NThreadForSum);
+  sum_b_vxx.reinit (totalNumCell, NThreadForSum);
+  sum_b_vyy.reinit (totalNumCell, NThreadForSum);
+  sum_b_vzz.reinit (totalNumCell, NThreadForSum);
+  sum_angle_p.reinit (totalNumCell, NThreadForSum);
 }
 
 
@@ -110,7 +116,8 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 			   const DeviceCellRelation & relation)
 {
   Parallel::CudaGlobal::calNonBondedInteraction
-      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+      <<<gridDim, Parallel::Interface::numThreadsInCell(),
+      applyNonBondedInteraction_CellList_sbuffSize>>> (
 	  ddata.dptr_coordinate(),
 	  ddata.dptr_type(),
 	  ddata.getGlobalBox().size,
@@ -119,7 +126,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
-	  totalNumCell,
+	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
@@ -137,7 +144,8 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 			   DeviceStatistic & st)
 {
   Parallel::CudaGlobal::calNonBondedInteraction
-      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+      <<<gridDim, Parallel::Interface::numThreadsInCell(),
+      applyNonBondedInteraction_CellList_sbuffSize>>> (
 	  ddata.dptr_coordinate(),
 	  ddata.dptr_type(),
 	  ddata.getGlobalBox().size,
@@ -146,7 +154,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
-	  totalNumCell,
+	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
@@ -156,10 +164,10 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  sum_nb_vzz.getBuff(),
 	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyNonBondedInteraction");
-  sum_nb_p.sumBuffAdd   (st.dptr_statisticData(), mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatisticVirialXX, 0);
-  sum_nb_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatisticVirialYY, 0);
-  sum_nb_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatisticVirialZZ, 0);
+  sum_nb_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_NonBondedPotential, 0);
+  sum_nb_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialXX, 0);
+  sum_nb_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
+  sum_nb_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialZZ, 0);
 }
 	  
 __global__ void Parallel::CudaGlobal::
@@ -189,9 +197,14 @@ calNonBondedInteraction (const CoordType * coord,
   IndexType target_cellIndex;
   IndexType target_numAtomInCell;
 
+  this_numNeighborCell = numNeighborCell[bid];
+  if (this_numNeighborCell == 0) return;
   this_numAtomInCell = numAtomInCell[bid];
   if (this_numAtomInCell == 0) return;
-  this_numNeighborCell = numNeighborCell[bid];
+  if (tid == 0){
+    printf ("bid: %d, numNei: %d\n", bid, this_numNeighborCell);
+  }
+    
 
   IndexType ii = bid * blockDim.x + tid;
   CoordType refCoord;
@@ -211,27 +224,32 @@ calNonBondedInteraction (const CoordType * coord,
   TypeType * targetType =
       (TypeType *) & targetCoord[blockDim.x];
   
+  IndexType count = 0;
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
+    __syncthreads();
     target_cellIndex = neighborCellIndex[bid * stride + kk];
     target_numAtomInCell = numAtomInCell[target_cellIndex];
     if (target_numAtomInCell == 0) continue;
-    IndexType tmpLower = target_cellIndex * blockDim.x;
-    IndexType jj = tmpLower + tid;
+    IndexType indexShift = target_cellIndex * blockDim.x;
+    IndexType jj = indexShift + tid;
     if (tid < target_numAtomInCell) {
       targetCoord[tid] = coord[jj];
       targetType[tid] = type[jj];
     }
+    __syncthreads();
     if (tid < this_numAtomInCell){
-      IndexType tmpUpper = tmpLower + target_numAtomInCell;
-      for (IndexType ll = tmpLower; ll < tmpUpper; ++ll){
-	if (ll != ii) {
+      for (IndexType ll = 0; ll < target_numAtomInCell; ++ll){
+	if (ll + indexShift != ii) {	  
 	  ScalorType diffx = targetCoord[ll].x - refCoord.x;
 	  ScalorType diffy = targetCoord[ll].y - refCoord.y;
 	  ScalorType diffz = targetCoord[ll].z - refCoord.z;
 	  shortestImage (boxSize.x, boxSizei.x, &diffx);
 	  shortestImage (boxSize.y, boxSizei.y, &diffy);
 	  shortestImage (boxSize.z, boxSizei.z, &diffz);
-	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
+	  if (diffx*diffx+diffy*diffy+diffz*diffz <= rlist2) {
+	    count ++;
+	    if (tid != 0)
+	    printf ("%f %f %f\n", targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z);
 	    IndexType fidx(0);
 	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
 		const_nonBondedInteractionTable,
@@ -257,6 +275,7 @@ calNonBondedInteraction (const CoordType * coord,
       }
     }
   }
+  printf ("bid: %d, tid: %d, num eff: %d\n", bid, tid, count);
 
   if (tid < this_numAtomInCell){
     forcx[ii] += fsumx;

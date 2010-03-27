@@ -35,9 +35,10 @@ namespace Parallel{
 private:
     // void initNonBondedInteraction (const MDSystem & sys);
 public:
+    InteractionEngine ();
     InteractionEngine (const DeviceCellListedMDData & data) ;
-    ~InteractionEngine ();
-    void init (const DeviceCellListedMDData & data);
+    ~InteractionEngine () {}
+    void reinit (const DeviceCellListedMDData & data);
     void registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
     // void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
 public:

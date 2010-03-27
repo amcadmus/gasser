@@ -343,10 +343,12 @@ public:
     DeviceCellRelation () : ptr_list(NULL), malloced(false) {};
     ~DeviceCellRelation ();
     void build (DeviceCellListedMDData & list);
+public:
     IndexType * dptr_numNeighborCell   () {return numNeighbor;}
     IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}
     const IndexType * dptr_numNeighborCell   () const {return numNeighbor;}
     const IndexType * dptr_neighborCellIndex () const {return neighborCellIndex;}
+    IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
   };
   
 #endif // DEVICE_CODE

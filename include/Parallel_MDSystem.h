@@ -224,6 +224,7 @@ public:
 		  DeviceCellListedMDData & ddata);
     inline void copyToHost ();
     inline void copyFromHost ();
+    inline void clearGhost ();
   };
     
   
@@ -260,7 +261,8 @@ public:
 	{ deviceData.copyToHost (localHostData); }
     void collectLocalData ();
     void redistribute ();
-    void transferCoordinate ();
+    void transferGhost ();
+    void clearGhost ();
 public:
     IndexType numAtomInGroFile (const char * filename) 
 	{ return globalHostData.numAtomInGroFile(filename); }
@@ -314,6 +316,12 @@ public:
     dpkgOuter.unpack_replace (*ptr_ddata);
   }
 
+  void Parallel::SystemTransCoordsCopyUtil::
+  clearGhost()
+  {
+    ptr_ddata->clearData (deviceSubOuter);
+  }
+  
 #endif // DEVICE_CODE
 
 }

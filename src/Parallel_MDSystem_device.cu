@@ -115,11 +115,17 @@ redistribute ()
 }
 
 void Parallel::MDSystem::
-transferCoordinate ()
+transferGhost ()
 {
   transCoordscopyUtil .copyToHost ();
   transCoordstransUtil.transCoords ();
   transCoordscopyUtil .copyFromHost ();
+}
+
+void Parallel::MDSystem::
+clearGhost ()
+{
+  transCoordscopyUtil.clearGhost();
 }
 
 void Parallel::MDSystem::

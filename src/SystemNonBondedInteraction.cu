@@ -33,6 +33,31 @@ SystemNonBondedInteraction ()
   maxrc = 0;
 }
 
+SystemNonBondedInteraction::
+SystemNonBondedInteraction (const Topology::System & sysTop)
+{
+  numParameters = 0;
+  numInteractionItems = 0;
+  numAtomTypes = 0;
+  interactionTableLength = 0;
+  types = NULL;
+  parameters = NULL;
+  positions = (IndexType *) malloc (sizeof(IndexType));
+  if (positions == NULL){
+    throw MDExcptFailedMallocOnHost ("SystemNonBondedInteraction::SystemNonBondedInteraction",
+				     "positions",
+				     sizeof(IndexType) );
+  }
+  positions[0] = 0;
+  interactionTable_ = NULL;
+  isBuilt = false;
+  maxrc = 0;
+
+  reinit (sysTop);
+}
+
+
+
 void SystemNonBondedInteraction::
 freeBuilt ()
 {

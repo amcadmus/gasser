@@ -25,7 +25,7 @@ reinit (const DeviceCellListedMDData & data)
     dmalloced = true;
   }
   
-  clearDevice ();
+  clearData ();
 }
 
 __global__ void Parallel::CudaGlobal::
@@ -45,7 +45,7 @@ addStatisticData (ScalorType * ddata, const ScalorType * cddata)
 }
 
 void Parallel::DeviceStatistic::
-clearDevice ()
+clearData ()
 {
   Parallel::CudaGlobal::clearStatisticData <<<1, NumberOfStatisticItems>>> (ddata);
   checkCUDAError("DeviceStatistic::clearDevice");
