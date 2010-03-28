@@ -6,6 +6,11 @@
 #include "BoxGeometry.h"
 #include "Parallel_DataTransferBlock.h"
 
+extern "C"{
+#include "xdrfile/xdrfile.h"
+#include "xdrfile/xdrfile_xtc.h"
+}
+
 using namespace RectangularBoxGeometry;
 
 namespace Parallel{
@@ -147,6 +152,10 @@ public:
   {
     IndexType findMolIndex (const Topology::System & sysTop,
 			    const IndexType & globalIndex);
+    XDRFILE *xdfile;
+    matrix xdbox;
+    rvec *xdx;
+    float xdprec;
 public:
     IndexType numAtomInGroFile (const char * filename);
     void initConf_GroFile (const char * filename,
@@ -156,6 +165,9 @@ public:
     void writeData_GroFile (const char * filename,
 			    const char * atomName, const IndexType * atomIndex,
 			    const char * resdName, const IndexType * resdIndex);
+    void initWriteData_xtcFile (const char * filename, float prec=1000.f);
+    void writeData_xtcFile (int step, float time);
+    void endWriteData_xtcFile ();
   };
 
 

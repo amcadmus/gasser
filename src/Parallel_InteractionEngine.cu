@@ -198,17 +198,29 @@ calNonBondedInteraction (const CoordType * coord,
   IndexType this_numNeighborCell;  
   IndexType target_cellIndex;
   IndexType target_numAtomInCell;
+  IndexType ii = bid * blockDim.x + tid;
 
   this_numNeighborCell = numNeighborCell[bid];
-  if (this_numNeighborCell == 0) return;
+  if (this_numNeighborCell == 0) {
+    statistic_nb_buff0[ii] = 0.f;
+    statistic_nb_buff1[ii] = 0.f;
+    statistic_nb_buff2[ii] = 0.f;
+    statistic_nb_buff3[ii] = 0.f;
+    return;
+  }  
   this_numAtomInCell = numAtomInCell[bid];
-  if (this_numAtomInCell == 0) return;
+  if (this_numAtomInCell == 0) {
+    statistic_nb_buff0[ii] = 0.f;
+    statistic_nb_buff1[ii] = 0.f;
+    statistic_nb_buff2[ii] = 0.f;
+    statistic_nb_buff3[ii] = 0.f;
+    return;
+  }  
+    
   // if (tid == 0){
   //   printf ("bid: %d, numNei: %d\n", bid, this_numNeighborCell);
-  // }
-    
+  // }    
 
-  IndexType ii = bid * blockDim.x + tid;
   CoordType refCoord;
   TypeType refType;
   ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
@@ -250,6 +262,7 @@ calNonBondedInteraction (const CoordType * coord,
 	  shortestImage (boxSize.z, boxSizei.z, &diffz);
 	  if (diffx*diffx+diffy*diffy+diffz*diffz <= rlist2) {
 	    count ++;
+	    // printf ("bid %d, tid %d, target_cell %d, ll %d\n", bid, tid, target_cellIndex, ll);
 	    // if (tid != 0)
 	    // printf ("%f %f %f\n", targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z);
 	    IndexType fidx(0);
@@ -265,6 +278,7 @@ calNonBondedInteraction (const CoordType * coord,
 			  diffx, diffy, diffz,
 			  &fx, &fy, &fz, &dp);
 	    myPoten += dp;
+	    // printf ("%f\n", dp);
 	    myVxx += fx * diffx;
 	    myVyy += fy * diffy;
 	    myVzz += fz * diffz;

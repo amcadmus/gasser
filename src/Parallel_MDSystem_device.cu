@@ -78,7 +78,7 @@ init (const char * confFileName,
   DeviceMDData & ddata (deviceData);
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
-  deviceData.initCellStructure (3.2);
+  deviceData.initCellStructure (3.5);
   cellRelation.build (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){

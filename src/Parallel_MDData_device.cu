@@ -339,3 +339,44 @@ initZeroDeviceData(const IndexType num,
   }
 }
 
+
+void Parallel::GlobalHostMDData::
+initWriteData_xtcFile (const char * filename, float prec)
+{
+  xdfile = NULL;
+  xdfile = xdrfile_open (filename, "w");
+  if (xdfile == NULL){
+    MDExcptCannotOpenFile ("MDSystem::initWriteXtc", filename);
+  }
+  for (unsigned i = 0; i < 3; ++i){
+    for (unsigned j = 0; j < 3; ++j){
+      xdbox[i][j] = 0.f;
+    }	      
+  }
+  xdx = (rvec *) malloc (sizeof(rvec) * memSize_);
+  if (xdx == NULL){
+    MDExcptFailedMallocOnHost ("MDSystem::initWriteXtc", "xdx", sizeof(rvec) * memSize_);
+  }
+  xdprec = prec;
+}
+
+
+void Parallel::GlobalHostMDData::
+writeData_xtcFile (int step, float time)
+{
+  for (IndexType i = 0; i < numData_; ++i){
+    xdx[i][0] = coord[i].x;
+    xdx[i][1] = coord[i].y;
+    xdx[i][2] = coord[i].z;
+  }
+  xdbox[0][0] = globalBox.size.x;
+  xdbox[1][1] = globalBox.size.y;
+  xdbox[2][2] = globalBox.size.z;
+  write_xtc (xdfile, numData_, step, time, xdbox, xdx, xdprec);
+}
+
+void Parallel::GlobalHostMDData::
+endWriteData_xtcFile ()
+{
+  xdrfile_close(xdfile);
+}
