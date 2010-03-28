@@ -16,7 +16,6 @@ namespace Parallel {
       SumVector<ScalorType> sum_kzz;
       IndexType sharedBuffSize;
   public:
-      ~VelocityVerlet ();
       VelocityVerlet (const DeviceCellListedMDData & sys) { init (sys);}
       void init (const DeviceCellListedMDData & sys);
   public:

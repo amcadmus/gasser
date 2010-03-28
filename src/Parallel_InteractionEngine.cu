@@ -4,7 +4,9 @@
 #include "Parallel_InteractionEngine.h"
 #include "Parallel_Interface.h"
 #include "NonBondedInteraction.h"
+#include "Parallel_Auxiliary.h"
 #include "compile_error_mixcode.h"
+
 
 __constant__
 InteractionType nonBondedInteractionType [MaxNumberNonBondedInteraction];
@@ -201,9 +203,9 @@ calNonBondedInteraction (const CoordType * coord,
   if (this_numNeighborCell == 0) return;
   this_numAtomInCell = numAtomInCell[bid];
   if (this_numAtomInCell == 0) return;
-  if (tid == 0){
-    printf ("bid: %d, numNei: %d\n", bid, this_numNeighborCell);
-  }
+  // if (tid == 0){
+  //   printf ("bid: %d, numNei: %d\n", bid, this_numNeighborCell);
+  // }
     
 
   IndexType ii = bid * blockDim.x + tid;
@@ -248,8 +250,8 @@ calNonBondedInteraction (const CoordType * coord,
 	  shortestImage (boxSize.z, boxSizei.z, &diffz);
 	  if (diffx*diffx+diffy*diffy+diffz*diffz <= rlist2) {
 	    count ++;
-	    if (tid != 0)
-	    printf ("%f %f %f\n", targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z);
+	    // if (tid != 0)
+	    // printf ("%f %f %f\n", targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z);
 	    IndexType fidx(0);
 	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
 		const_nonBondedInteractionTable,
@@ -289,7 +291,22 @@ calNonBondedInteraction (const CoordType * coord,
   statistic_nb_buff3[ii] = myVzz * 0.5f;
 }
 
-	  
+
+void Parallel::InteractionEngine::
+clearInteraction (DeviceCellListedMDData & data)
+{
+  Parallel::Auxiliary::setValue
+      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+	  data.dptr_forceX(), 0.f);
+  Parallel::Auxiliary::setValue
+      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+	  data.dptr_forceY(), 0.f);
+  Parallel::Auxiliary::setValue
+      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+	  data.dptr_forceZ(), 0.f);
+  checkCUDAError ("InteractionEngine::clearInteraction");
+}
+
     
 
 
