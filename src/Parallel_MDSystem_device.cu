@@ -78,7 +78,7 @@ init (const char * confFileName,
   DeviceMDData & ddata (deviceData);
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
-  deviceData.initCellStructure (2);
+  deviceData.initCellStructure (3.2);
   cellRelation.build (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){
@@ -148,7 +148,7 @@ writeGlobalData_GroFile (const char * filename)
 Parallel::SystemRedistributeCopyUtil::
 SystemRedistributeCopyUtil ()
 {
-  mask = MDDataItemMask_AllExceptForce;
+  mask = MDDataItemMask_All;
 }
 
 void Parallel::SystemRedistributeCopyUtil::

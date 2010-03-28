@@ -166,6 +166,9 @@ rebuild ()
 	  velox,
 	  veloy,
 	  veloz,
+	  forcx,
+	  forcy,
+	  forcz,
 	  globalIndex,
 	  type,
 	  mass,
@@ -184,6 +187,9 @@ rebuild ()
 	  velox,
 	  veloy,
 	  veloz,
+	  forcx,
+	  forcy,
+	  forcz,
 	  globalIndex,
 	  type,
 	  mass,
@@ -316,6 +322,9 @@ rebuildCellList_step1 (const VectorType frameLow,
 		       ScalorType * velox,
 		       ScalorType * veloy,
 		       ScalorType * veloz,
+		       ScalorType * forcx,
+		       ScalorType * forcy,
+		       ScalorType * forcz,
 		       IndexType  * globalIndex,
 		       TypeType   * type,
 		       ScalorType * mass,
@@ -383,6 +392,9 @@ rebuildCellList_step1 (const VectorType frameLow,
       velox[targetIndex] = velox[ii];
       veloy[targetIndex] = veloy[ii];
       veloz[targetIndex] = veloz[ii];
+      forcx[targetIndex] = forcx[ii];
+      forcy[targetIndex] = forcy[ii];
+      forcz[targetIndex] = forcz[ii];
       globalIndex[targetIndex] = globalIndex[ii];
       globalIndex[ii] = MaxIndexValue;
       type[targetIndex] = type[ii];
@@ -431,6 +443,9 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
 		       ScalorType * velox,
 		       ScalorType * veloy,
 		       ScalorType * veloz,
+		       ScalorType * forcx,
+		       ScalorType * forcy,
+		       ScalorType * forcz,
 		       IndexType  * globalIndex,
 		       TypeType   * type,
 		       ScalorType * mass,
@@ -465,6 +480,9 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
       velox[ii] = velox[fromId];
       veloy[ii] = veloy[fromId];
       veloz[ii] = veloz[fromId];
+      forcx[ii] = forcx[fromId];
+      forcy[ii] = forcy[fromId];
+      forcz[ii] = forcz[fromId];
       globalIndex[ii] = globalIndex[fromId];
       type[ii] = type[fromId];
       mass[ii] = mass[fromId];
@@ -1068,13 +1086,24 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
 
+  __shared__ IndexType tmpbuff[2];
+  if (tid < 2){
+    tmpbuff[tid] = cellStartIndex[bid+tid];
+  }
+  __syncthreads();
+  IndexType startIdx = tmpbuff[0];
+  IndexType numAdded = tmpbuff[1] - startIdx;
+  // IndexType startIdx = cellStartIndex[bid];
+  // IndexType numAdded = cellStartIndex[bid+1] - startIdx;
+  if (numAdded == 0) return;
+  
   IndexType cellIdx = cellIndex[bid];
-  IndexType startIdx = cellStartIndex[bid];
-  IndexType numAdded = cellStartIndex[bid+1] - startIdx;
   IndexType alreadyInCell = numAtomInCell[cellIdx];
   IndexType toid   = tid + cellIdx * blockDim.x + alreadyInCell;
   IndexType fromid = tid + startIdx;
   // __shared__ IndexType numAtomInThisCell;
+  
+  __syncthreads();
   __shared__ bool failed ;
   if (tid == 0){
     if (((numAtomInCell[cellIdx] += numAdded)) > blockDim.x &&

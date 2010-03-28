@@ -162,9 +162,9 @@ velocityVerlet_step2 (const IndexType * numAtomInCell,
     vz = (veloz[ii] += hdtmi * forcz[ii]);
   }
 
-  ScalorType scalor;
-  if (threadIdx.x < this_numAtomInCell) scalor = 0.5f * mass[ii];
-  else scalor = 0.f;
+  ScalorType scalor = 0.5f * mass[ii];
+  // if (threadIdx.x < this_numAtomInCell) scalor = 0.5f * mass[ii];
+  // else scalor = 0.f;
   
   buff[threadIdx.x] = scalor * vx * vx;
   sumVectorBlockBuffer_2 (buff);

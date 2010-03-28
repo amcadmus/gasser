@@ -269,15 +269,24 @@ calNonBondedInteraction (const CoordType * coord,
 	    myVyy += fy * diffy;
 	    myVzz += fz * diffz;
 	    fsumx += fx;
+	    // if (bid == 31 && tid == 2){
+	    //   printf ("fsumx: %f, fx: %f, dr2: %f\n", fsumx, fx, diffx*diffx+diffy*diffy+diffz*diffz);
+	    // }
 	    fsumy += fy;
+	    // if (bid == 31 && tid == 2){
+	    //   printf ("fsumy: %f, fy: %f, dr2: %f\n", fsumy, fy, diffx*diffx+diffy*diffy+diffz*diffz);
+	    // }
 	    fsumz += fz;
+	    // if (bid == 31 && tid == 2){
+	    //   printf ("fsumz: %f, fz: %f, dr2: %f\n", fsumz, fz, diffx*diffx+diffy*diffy+diffz*diffz);
+	    // }
 	  }
 	  // __syncthreads();
 	}
       }
     }
   }
-  printf ("bid: %d, tid: %d, num eff: %d\n", bid, tid, count);
+  // printf ("bid: %d, tid: %d, num eff: %d. fsum %f\n", bid, tid, count, fsumx);
 
   if (tid < this_numAtomInCell){
     forcx[ii] += fsumx;

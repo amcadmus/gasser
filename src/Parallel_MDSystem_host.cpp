@@ -147,7 +147,7 @@
 
 Parallel::SystemRedistributeTransferUtil::
 SystemRedistributeTransferUtil ()
-    : ptr_hdata (NULL), ptr_buff(NULL), mask (MDDataItemMask_AllExceptForce)
+    : ptr_hdata (NULL), ptr_buff(NULL), mask (MDDataItemMask_All)
 {
   Parallel::Interface::shiftNeighbor (CoordXIndex,  1, xsrc0, xdest0);
   Parallel::Interface::shiftNeighbor (CoordXIndex, -1, xsrc1, xdest1);
