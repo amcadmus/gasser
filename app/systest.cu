@@ -32,6 +32,7 @@ int main(int argc, char * argv[])
 				   1,
 				   Parallel::Interface::numProc());
   }
+
   
   GPU::Environment genv;
   genv.setDeviceId (0);

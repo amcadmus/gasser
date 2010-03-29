@@ -700,7 +700,7 @@ pack (const DeviceCellListedMDData & ddata,
   numAtomInCell = (IndexType *) malloc (size);
   if (numAtomInCell == NULL){
     throw MDExcptFailedMallocOnHost ("DeviceTransferPackage::reinit",
-				     "hcellIndex", size);
+				     "numAtomInCell", size);
   }
   cudaMemcpy (numAtomInCell, ddata.numAtomInCell, size,
 	      cudaMemcpyDeviceToHost);
@@ -708,7 +708,7 @@ pack (const DeviceCellListedMDData & ddata,
   
   hcellStartIndex[0] = 0;
   for (IndexType i = 1; i < numCell+1; ++i){
-    hcellStartIndex[i] = hcellStartIndex[i-1] + numAtomInCell[cellIndex[i-1]];
+    hcellStartIndex[i] = hcellStartIndex[i-1] + numAtomInCell[hcellIndex[i-1]];
   }
   this->numData() = hcellStartIndex[numCell];
   cudaMemcpy (cellStartIndex, hcellStartIndex, (numCell+1) * sizeof(IndexType),
@@ -721,11 +721,12 @@ pack (const DeviceCellListedMDData & ddata,
   if (this->DeviceMDData::numData() > this->DeviceMDData::memSize()){
     this->DeviceMDData::easyMalloc (this->DeviceMDData::numData() * MemAllocExtension);
   }
-  
+
+  checkCUDAError ("DeviceTransferPackage::pack, packDeviceMDData, before");
   Parallel::CudaGlobal::packDeviceMDData
       <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
 	  cellIndex,
-	  ddata.numAtomInCell,
+	  ddata.dptr_numAtomInCell(),
 	  cellStartIndex,
 	  mask,
 	  ddata.dptr_coordinate(),
@@ -792,7 +793,7 @@ packDeviceMDData (const IndexType * cellIndex,
 		  IndexType  * globalIndex,
 		  TypeType   * type,
 		  ScalorType * mass,
-		  ScalorType * charge)
+		  ScalorType * charge)		  
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -849,10 +850,10 @@ copyToHost (HostTransferPackage & hpkg) const
   hpkg.getTotalNumCell() = numCell;
   hpkg.getMask() = myMask;
   for (IndexType i = 0; i < numCell; ++i){
-    hpkg.getCellIndex()[i] = cellIndex[i];
-    hpkg.getCellStartIndex()[i] = cellStartIndex[i];
+    hpkg.getCellIndex()[i] = hcellIndex[i];
+    hpkg.getCellStartIndex()[i] = hcellStartIndex[i];
   }
-  hpkg.getCellStartIndex()[numCell] = cellStartIndex[numCell];  
+  hpkg.getCellStartIndex()[numCell] = hcellStartIndex[numCell];  
 }
 
 void Parallel::DeviceTransferPackage::
