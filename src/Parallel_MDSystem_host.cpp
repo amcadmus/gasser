@@ -488,9 +488,9 @@ addBuffToGlobal ()
 	   j < cellShift + ptr_buff->cptr_numAtomInCell()[i];
 	   ++j){
 	IndexType gIndex = ptr_buff->cptr_globalIndex()[j];
-	ptr_gdata->cptr_coordinateNoiX()[gIndex] = ptr_buff->cptr_coordinateNoiX()[j];
-	ptr_gdata->cptr_coordinateNoiY()[gIndex] = ptr_buff->cptr_coordinateNoiY()[j];
-	ptr_gdata->cptr_coordinateNoiZ()[gIndex] = ptr_buff->cptr_coordinateNoiZ()[j];
+	ptr_gdata->cptr_coordinateNoi()[gIndex].x = ptr_buff->cptr_coordinateNoi()[j].x;
+	ptr_gdata->cptr_coordinateNoi()[gIndex].y = ptr_buff->cptr_coordinateNoi()[j].y;
+	ptr_gdata->cptr_coordinateNoi()[gIndex].z = ptr_buff->cptr_coordinateNoi()[j].z;
       }
     }
 

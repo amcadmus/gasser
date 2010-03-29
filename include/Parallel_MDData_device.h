@@ -6,9 +6,7 @@ namespace Parallel {
     __global__ void
     initZeroDeviceData (const IndexType num,
 			CoordType  * coord,
-			IntScalorType * coordNoix,
-			IntScalorType * coordNoiy,
-			IntScalorType * coordNoiz,
+			CoordNoiType * coordNoi,
 			ScalorType * velox,
 			ScalorType * veloy,
 			ScalorType * veloz,

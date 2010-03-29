@@ -13,7 +13,7 @@ Parallel::HostMDData::
 HostMDData()
     : numData_(0), memSize_(0),
       coord (NULL),
-      coordNoix (NULL), coordNoiy(NULL), coordNoiz(NULL),
+      coordNoi (NULL),
       velox (NULL), veloy(NULL), veloz(NULL),
       forcx (NULL), forcy(NULL), forcz(NULL),
       globalIndex (NULL),
@@ -34,9 +34,7 @@ clear ()
   memSize_ = 0;
   
   freeAPointer ((void**)&coord);
-  freeAPointer ((void**)&coordNoix);
-  freeAPointer ((void**)&coordNoiy);
-  freeAPointer ((void**)&coordNoiz);
+  freeAPointer ((void**)&coordNoi);
   freeAPointer ((void**)&velox);
   freeAPointer ((void**)&veloy);
   freeAPointer ((void**)&veloz);
@@ -73,16 +71,12 @@ reallocCoordinate (const IndexType & memSize__)
   // memSize_ = memSize__;
 
   size_t sizecoord =memSize_ * sizeof(HostCoordType);
-  size_t sizei = memSize_ * sizeof(IntScalorType);
+  size_t sizecoordNoi = memSize_ * sizeof(HostCoordNoiType);
 
   coord = (HostCoordType *) realloc (coord, sizecoord);
   if (coord == NULL) throw (MDExcptFailedReallocOnHost("coord", sizecoord));  
-  coordNoix = (IntScalorType *) realloc (coordNoix, sizei);
-  if (coordNoix == NULL) throw MDExcptFailedReallocOnHost ("coordNoix", sizei);
-  coordNoiy = (IntScalorType *) realloc (coordNoiy, sizei);
-  if (coordNoiy == NULL) throw MDExcptFailedReallocOnHost ("coordNoiy", sizei);
-  coordNoiz = (IntScalorType *) realloc (coordNoiz, sizei);
-  if (coordNoiz == NULL) throw MDExcptFailedReallocOnHost ("coordNoiz", sizei);
+  coordNoi = (HostCoordNoiType *) realloc (coordNoi, sizecoordNoi);
+  if (coordNoi == NULL) throw MDExcptFailedReallocOnHost ("coordNoi", sizecoordNoi);
 }
 
 void Parallel::HostMDData::
@@ -177,9 +171,7 @@ numAtomInGroFile (const char * filename)
 
 void Parallel::HostMDData::
 pushBackAtom  (const HostCoordType & coord_,
-	       const IntScalorType & coordNoix_,
-	       const IntScalorType & coordNoiy_,
-	       const IntScalorType & coordNoiz_,
+	       const HostCoordNoiType & coordNoi_,
 	       const ScalorType & velox_,
 	       const ScalorType & veloy_,
 	       const ScalorType & veloz_,
@@ -194,9 +186,9 @@ pushBackAtom  (const HostCoordType & coord_,
     easyRealloc (memSize_);
   }
   coord[numData_] = coord_;
-  coordNoix[numData_] = coordNoix_;
-  coordNoiy[numData_] = coordNoiy_;
-  coordNoiz[numData_] = coordNoiz_;
+  coordNoi[numData_].x = coordNoi_.x;
+  coordNoi[numData_].y = coordNoi_.y;
+  coordNoi[numData_].z = coordNoi_.z;
   velox[numData_] = velox_;
   veloy[numData_] = veloy_;
   veloz[numData_] = veloz_;
@@ -261,9 +253,9 @@ initConf_GroFile (const char * filename,
     coord[i].x = tmpx[i];
     coord[i].y = tmpy[i];
     coord[i].z = tmpz[i];
-    coordNoix[i] = 0;
-    coordNoiy[i] = 0;
-    coordNoiz[i] = 0;
+    coordNoi[i].x = 0;
+    coordNoi[i].y = 0;
+    coordNoi[i].z = 0;
   }
   free (tmpx);
   free (tmpy);
@@ -374,9 +366,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 		gdata.cptr_coordinate()[i].z <  uz){
 	      sdata.pushBackAtom (
 		  gdata.cptr_coordinate()[i],
-		  gdata.cptr_coordinateNoiX()[i],
-		  gdata.cptr_coordinateNoiY()[i],
-		  gdata.cptr_coordinateNoiZ()[i],
+		  gdata.cptr_coordinateNoi()[i],
 		  gdata.cptr_velocityX()[i],
 		  gdata.cptr_velocityY()[i],
 		  gdata.cptr_velocityZ()[i],
@@ -419,12 +409,8 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  transSend.clearRegistered ();
 	  transSend.registerBuff (sdata.cptr_coordinate(),
 				  sizeof(HostCoordType) * sdata.numData());
-	  transSend.registerBuff (sdata.cptr_coordinateNoiX(),
-				  sizeof(IntScalorType) * sdata.numData());
-	  transSend.registerBuff (sdata.cptr_coordinateNoiY(),
-				  sizeof(IntScalorType) * sdata.numData());
-	  transSend.registerBuff (sdata.cptr_coordinateNoiZ(),
-				  sizeof(IntScalorType) * sdata.numData());
+	  transSend.registerBuff (sdata.cptr_coordinateNoi(),
+				  sizeof(HostCoordNoiType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_velocityX(),
 				  sizeof(ScalorType) * sdata.numData());
 	  transSend.registerBuff (sdata.cptr_velocityY(),
@@ -456,12 +442,8 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  transRecv.clearRegistered();
 	  transRecv.registerBuff (ldata.cptr_coordinate(),
 				  sizeof(HostCoordType) * recvNumAtom);
-	  transRecv.registerBuff (ldata.cptr_coordinateNoiX(),
-				  sizeof(IntScalorType) * recvNumAtom);
-	  transRecv.registerBuff (ldata.cptr_coordinateNoiY(),
-				  sizeof(IntScalorType) * recvNumAtom);
-	  transRecv.registerBuff (ldata.cptr_coordinateNoiZ(),
-				  sizeof(IntScalorType) * recvNumAtom);
+	  transRecv.registerBuff (ldata.cptr_coordinateNoi(),
+				  sizeof(HostCoordNoiType) * recvNumAtom);
 	  transRecv.registerBuff (ldata.cptr_velocityX(),
 				  sizeof(ScalorType) * recvNumAtom);
 	  transRecv.registerBuff (ldata.cptr_velocityY(),
@@ -502,36 +484,36 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 
 
 
-void Parallel::HostMDData::
-formDataTransferBlock (const IndexType & startIndex,
-		       const IndexType & num,
-		       DataTransferBlock & block)
-{
-  block.pointer[0] = &coord[startIndex];
-  block.pointer[1] = &coordNoix[startIndex];
-  block.pointer[2] = &coordNoiy[startIndex];
-  block.pointer[3] = &coordNoiz[startIndex];
-  block.pointer[4] = &velox[startIndex];
-  block.pointer[5] = &veloy[startIndex];
-  block.pointer[6] = &veloz[startIndex];
-  // block.pointer[7] = &forcx[startIndex];
-  // block.pointer[8] = &forcy[startIndex];
-  // block.pointer[9] = &forcz[startIndex];
-  block.pointer[10] = &globalIndex[startIndex];
-  block.pointer[11] = &type[startIndex];
-  block.pointer[12] = &mass[startIndex];
-  block.pointer[13] = &charge[startIndex];
-  block.size[0] = num * sizeof(HostCoordType);
-  block.size[1] = block.size[2] = block.size[3]
-      = num * sizeof(IntScalorType);
-  block.size[4] = block.size[5] = block.size[6]
-      // = block.size[7] = block.size[8] = block.size[9]
-      = block.size[12] = block.size[13]
-      = num * sizeof(ScalorType);
-  block.size[7] = block.size[8] = block.size[9] = 0;
-  block.size[10] = num * sizeof(IndexType);
-  block.size[11] = num * sizeof(TypeType);
-}
+// void Parallel::HostMDData::
+// formDataTransferBlock (const IndexType & startIndex,
+// 		       const IndexType & num,
+// 		       DataTransferBlock & block)
+// {
+//   block.pointer[0] = &coord[startIndex];
+//   block.pointer[1] = &coordNoix[startIndex];
+//   block.pointer[2] = &coordNoiy[startIndex];
+//   block.pointer[3] = &coordNoiz[startIndex];
+//   block.pointer[4] = &velox[startIndex];
+//   block.pointer[5] = &veloy[startIndex];
+//   block.pointer[6] = &veloz[startIndex];
+//   // block.pointer[7] = &forcx[startIndex];
+//   // block.pointer[8] = &forcy[startIndex];
+//   // block.pointer[9] = &forcz[startIndex];
+//   block.pointer[10] = &globalIndex[startIndex];
+//   block.pointer[11] = &type[startIndex];
+//   block.pointer[12] = &mass[startIndex];
+//   block.pointer[13] = &charge[startIndex];
+//   block.size[0] = num * sizeof(HostCoordType);
+//   block.size[1] = block.size[2] = block.size[3]
+//       = num * sizeof(IntScalorType);
+//   block.size[4] = block.size[5] = block.size[6]
+//       // = block.size[7] = block.size[8] = block.size[9]
+//       = block.size[12] = block.size[13]
+//       = num * sizeof(ScalorType);
+//   block.size[7] = block.size[8] = block.size[9] = 0;
+//   block.size[10] = num * sizeof(IndexType);
+//   block.size[11] = num * sizeof(TypeType);
+// }
 
 
 Parallel::HostMDData::
@@ -558,9 +540,9 @@ copy (const HostMDData & hdata,
   }
   if (mask & MDDataItemMask_CoordinateNoi){
     for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      coordNoix[i] = hdata.coordNoix[i];
-      coordNoiy[i] = hdata.coordNoiy[i];
-      coordNoiz[i] = hdata.coordNoiz[i];
+      coordNoi[i].x = hdata.coordNoi[i].x;
+      coordNoi[i].y = hdata.coordNoi[i].y;
+      coordNoi[i].z = hdata.coordNoi[i].z;
     }
   }
   if (mask & MDDataItemMask_Velocity){

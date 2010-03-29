@@ -56,9 +56,7 @@ protected:
     IndexType numData_;
     IndexType memSize_;
     HostCoordType * coord;
-    IntScalorType * coordNoix;
-    IntScalorType * coordNoiy;
-    IntScalorType * coordNoiz;
+    HostCoordNoiType * coordNoi;
     ScalorType * velox;
     ScalorType * veloy;
     ScalorType * veloz;
@@ -101,9 +99,7 @@ public:
 	{ setBoxSize (bx, by, bz, &globalBox); }
     void setGlobalBox (const RectangularBox & box) { globalBox = box; }
     void pushBackAtom (const HostCoordType & coord,
-		       const IntScalorType & coordNoix,
-		       const IntScalorType & coordNoiy,
-		       const IntScalorType & coordNoiz,
+		       const HostCoordNoiType & coordNoi,
 		       const ScalorType & velox,
 		       const ScalorType & veloy,
 		       const ScalorType & veloz,
@@ -112,15 +108,13 @@ public:
 		       const ScalorType & mass,
 		       const ScalorType & charge);
     void writeData_SimpleFile (const char * filename);
-public:
-    void formDataTransferBlock (const IndexType & startIndex,
-				const IndexType & num,
-				DataTransferBlock & block);
+// public:
+//     void formDataTransferBlock (const IndexType & startIndex,
+// 				const IndexType & num,
+// 				DataTransferBlock & block);
 public:
     HostCoordType * cptr_coordinate		() {return coord;}
-    IntScalorType * cptr_coordinateNoiX		() {return coordNoix;}
-    IntScalorType * cptr_coordinateNoiY		() {return coordNoiy;}
-    IntScalorType * cptr_coordinateNoiZ		() {return coordNoiz;}
+    HostCoordNoiType * cptr_coordinateNoi	() {return coordNoi;}
     ScalorType * cptr_velocityX			() {return velox;}
     ScalorType * cptr_velocityY			() {return veloy;}
     ScalorType * cptr_velocityZ			() {return veloz;}
@@ -132,9 +126,7 @@ public:
     ScalorType * cptr_mass			() {return mass;}
     ScalorType * cptr_charge			() {return charge;}
     const HostCoordType * cptr_coordinate	() const {return coord;}
-    const IntScalorType * cptr_coordinateNoiX	() const {return coordNoix;}
-    const IntScalorType * cptr_coordinateNoiY	() const {return coordNoiy;}
-    const IntScalorType * cptr_coordinateNoiZ	() const {return coordNoiz;}
+    const HostCoordNoiType * cptr_coordinateNoi	() const {return coordNoi;}
     const ScalorType * cptr_velocityX		() const {return velox;}
     const ScalorType * cptr_velocityY		() const {return veloy;}
     const ScalorType * cptr_velocityZ		() const {return veloz;}
@@ -182,9 +174,7 @@ public:
     IndexType numData_;
     IndexType memSize_;
     CoordType * coord;
-    IntScalorType * coordNoix;
-    IntScalorType * coordNoiy;
-    IntScalorType * coordNoiz;
+    CoordNoiType * coordNoi;
     ScalorType * velox;
     ScalorType * veloy;
     ScalorType * veloz;
@@ -230,9 +220,7 @@ public:
 			 const MDDataItemMask_t mask = MDDataItemMask_All);
 public:
     CoordType * dptr_coordinate			() {return coord;}
-    IntScalorType * dptr_coordinateNoiX		() {return coordNoix;}
-    IntScalorType * dptr_coordinateNoiY		() {return coordNoiy;}
-    IntScalorType * dptr_coordinateNoiZ		() {return coordNoiz;}
+    CoordNoiType * dptr_coordinateNoi		() {return coordNoi;}
     ScalorType * dptr_velocityX			() {return velox;}
     ScalorType * dptr_velocityY			() {return veloy;}
     ScalorType * dptr_velocityZ			() {return veloz;}
@@ -244,9 +232,7 @@ public:
     ScalorType * dptr_mass			() {return mass;}
     ScalorType * dptr_charge			() {return charge;}
     const CoordType * dptr_coordinate		() const {return coord;}
-    const IntScalorType * dptr_coordinateNoiX	() const {return coordNoix;}
-    const IntScalorType * dptr_coordinateNoiY	() const {return coordNoiy;}
-    const IntScalorType * dptr_coordinateNoiZ	() const {return coordNoiz;}
+    const CoordNoiType * dptr_coordinateNoi	() const {return coordNoi;}
     const ScalorType * dptr_velocityX		() const {return velox;}
     const ScalorType * dptr_velocityY		() const {return veloy;}
     const ScalorType * dptr_velocityZ		() const {return veloz;}

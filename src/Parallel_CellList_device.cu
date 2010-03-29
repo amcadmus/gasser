@@ -112,9 +112,7 @@ initCellStructure (const ScalorType & rlist_,
 	  numAtomInCell,
 	  bkData.numData(),
 	  bkData.dptr_coordinate(),
-	  bkData.dptr_coordinateNoiX(),
-	  bkData.dptr_coordinateNoiY(),
-	  bkData.dptr_coordinateNoiZ(),
+	  bkData.dptr_coordinateNoi(),
 	  bkData.dptr_velocityX(),
 	  bkData.dptr_velocityY(),
 	  bkData.dptr_velocityZ(),
@@ -123,9 +121,7 @@ initCellStructure (const ScalorType & rlist_,
 	  bkData.dptr_mass(),
 	  bkData.dptr_charge(),
 	  coord,
-	  coordNoix,
-	  coordNoiy,
-	  coordNoiz,
+	  coordNoi,
 	  velox,
 	  veloy,
 	  veloz,
@@ -160,9 +156,7 @@ rebuild ()
 	  bk_numAtomInCell,
 	  numAtomInCell,
 	  coord,
-	  coordNoix,
-	  coordNoiy,
-	  coordNoiz,
+	  coordNoi,
 	  velox,
 	  veloy,
 	  veloz,
@@ -181,9 +175,7 @@ rebuild ()
       <<<gridDim, numThreadBlock, numThreadBlock*sizeof(IndexType)*3>>> (
 	  numAtomInCell,
 	  coord,
-	  coordNoix,
-	  coordNoiy,
-	  coordNoiz,
+	  coordNoi,
 	  velox,
 	  veloy,
 	  veloz,
@@ -226,9 +218,7 @@ formCellStructure (const VectorType frameLow,
 		   IndexType * numAtomInCell,
 		   const IndexType numAtom,
 		   const CoordType  * bk_coord,
-		   const IntScalorType * bk_coordNoix,
-		   const IntScalorType * bk_coordNoiy,
-		   const IntScalorType * bk_coordNoiz,
+		   const CoordNoiType * bk_coordNoi,
 		   const ScalorType * bk_velox,
 		   const ScalorType * bk_veloy,
 		   const ScalorType * bk_veloz,
@@ -237,9 +227,7 @@ formCellStructure (const VectorType frameLow,
 		   const ScalorType * bk_mass,
 		   const ScalorType * bk_charge,
 		   CoordType  * coord,
-		   IntScalorType * coordNoix,
-		   IntScalorType * coordNoiy,
-		   IntScalorType * coordNoiz,
+		   CoordNoiType * coordNoi,
 		   ScalorType * velox,
 		   ScalorType * veloy,
 		   ScalorType * veloz,
@@ -296,9 +284,9 @@ formCellStructure (const VectorType frameLow,
     IndexType pid = atomicInc (&numAtomInCell[cellid], blockDim.x);
     targetIndex = pid + cellid * blockDim.x;
     coord[targetIndex] = bk_coord[ii];
-    coordNoix[targetIndex] = bk_coordNoix[ii];
-    coordNoiy[targetIndex] = bk_coordNoiy[ii];
-    coordNoiz[targetIndex] = bk_coordNoiz[ii];
+    coordNoi[targetIndex].x = bk_coordNoi[ii].x;
+    coordNoi[targetIndex].y = bk_coordNoi[ii].y;
+    coordNoi[targetIndex].z = bk_coordNoi[ii].z;
     velox[targetIndex] = bk_velox[ii];
     veloy[targetIndex] = bk_veloy[ii];
     veloz[targetIndex] = bk_veloz[ii];
@@ -316,9 +304,7 @@ rebuildCellList_step1 (const VectorType frameLow,
 		       const IndexType * bk_numAtomInCell,
 		       IndexType * numAtomInCell,
 		       CoordType  * coord,
-		       IntScalorType * coordNoix,
-		       IntScalorType * coordNoiy,
-		       IntScalorType * coordNoiz,
+		       CoordNoiType * coordNoi,
 		       ScalorType * velox,
 		       ScalorType * veloy,
 		       ScalorType * veloz,
@@ -386,9 +372,9 @@ rebuildCellList_step1 (const VectorType frameLow,
       }
       IndexType targetIndex = pid + cellid * blockDim.x;
       coord[targetIndex] = coord[ii];
-      coordNoix[targetIndex] = coordNoix[ii];
-      coordNoiy[targetIndex] = coordNoiy[ii];
-      coordNoiz[targetIndex] = coordNoiz[ii];
+      coordNoi[targetIndex].x = coordNoi[ii].x;
+      coordNoi[targetIndex].y = coordNoi[ii].y;
+      coordNoi[targetIndex].z = coordNoi[ii].z;
       velox[targetIndex] = velox[ii];
       veloy[targetIndex] = veloy[ii];
       veloz[targetIndex] = veloz[ii];
@@ -437,9 +423,7 @@ headSort (volatile IndexType * index,
 __global__ void Parallel::CudaGlobal::
 rebuildCellList_step2 (IndexType * numAtomInCell,
 		       CoordType  * coord,
-		       IntScalorType * coordNoix,
-		       IntScalorType * coordNoiy,
-		       IntScalorType * coordNoiz,
+		       CoordNoiType * coordNoi,
 		       ScalorType * velox,
 		       ScalorType * veloy,
 		       ScalorType * veloz,
@@ -474,9 +458,9 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
     IndexType fromId = myIndex[tid] + bid * blockDim.x;
     if (ii != fromId){
       coord[ii] = coord[fromId];
-      coordNoix[ii] = coordNoix[fromId];
-      coordNoiy[ii] = coordNoiy[fromId];
-      coordNoiz[ii] = coordNoiz[fromId];
+      coordNoi[ii].x = coordNoi[fromId].x;
+      coordNoi[ii].y = coordNoi[fromId].y;
+      coordNoi[ii].z = coordNoi[fromId].z;
       velox[ii] = velox[fromId];
       veloy[ii] = veloy[fromId];
       veloz[ii] = veloz[fromId];
@@ -730,9 +714,7 @@ pack (const DeviceCellListedMDData & ddata,
 	  cellStartIndex,
 	  mask,
 	  ddata.dptr_coordinate(),
-	  ddata.dptr_coordinateNoiX(),
-	  ddata.dptr_coordinateNoiY(),
-	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_coordinateNoi(),
 	  ddata.dptr_velocityX(),
 	  ddata.dptr_velocityY(),
 	  ddata.dptr_velocityZ(),
@@ -744,9 +726,7 @@ pack (const DeviceCellListedMDData & ddata,
 	  ddata.dptr_mass(),
 	  ddata.dptr_charge(),
 	  this->dptr_coordinate(),
-	  this->dptr_coordinateNoiX(),
-	  this->dptr_coordinateNoiY(),
-	  this->dptr_coordinateNoiZ(),
+	  this->dptr_coordinateNoi(),
 	  this->dptr_velocityX(),
 	  this->dptr_velocityY(),
 	  this->dptr_velocityZ(),
@@ -767,9 +747,7 @@ packDeviceMDData (const IndexType * cellIndex,
 		  const IndexType * cellStartIndex,
 		  const MDDataItemMask_t mask,
 		  const CoordType  * source_coord,
-		  const IntScalorType * source_coordNoix,
-		  const IntScalorType * source_coordNoiy,
-		  const IntScalorType * source_coordNoiz,
+		  const CoordNoiType * source_coordNoi,
 		  const ScalorType * source_velox,
 		  const ScalorType * source_veloy,
 		  const ScalorType * source_veloz,
@@ -781,9 +759,7 @@ packDeviceMDData (const IndexType * cellIndex,
 		  const ScalorType * source_mass,
 		  const ScalorType * source_charge,
 		  CoordType  * coord,
-		  IntScalorType * coordNoix,
-		  IntScalorType * coordNoiy,
-		  IntScalorType * coordNoiz,
+		  CoordNoiType * coordNoi,
 		  ScalorType * velox,
 		  ScalorType * veloy,
 		  ScalorType * veloz,
@@ -807,9 +783,7 @@ packDeviceMDData (const IndexType * cellIndex,
       coord[toid] = source_coord[fromid];
     }
     if (mask & MDDataItemMask_CoordinateNoi){
-      coordNoix[toid] = source_coordNoix[fromid];
-      coordNoiy[toid] = source_coordNoiy[fromid];
-      coordNoiz[toid] = source_coordNoiz[fromid];
+      coordNoi[toid].x = source_coordNoi[fromid].x;
     }
     if (mask & MDDataItemMask_Velocity){
       velox[toid] = source_velox[fromid];
@@ -891,9 +865,7 @@ unpack_replace (DeviceCellListedMDData & ddata) const
 	  cellStartIndex,
 	  myMask,
 	  this->dptr_coordinate(),
-	  this->dptr_coordinateNoiX(),
-	  this->dptr_coordinateNoiY(),
-	  this->dptr_coordinateNoiZ(),
+	  this->dptr_coordinateNoi(),
 	  this->dptr_velocityX(),
 	  this->dptr_velocityY(),
 	  this->dptr_velocityZ(),
@@ -906,9 +878,7 @@ unpack_replace (DeviceCellListedMDData & ddata) const
 	  this->dptr_charge(),
 	  ddata.numAtomInCell,
 	  ddata.dptr_coordinate(),
-	  ddata.dptr_coordinateNoiX(),
-	  ddata.dptr_coordinateNoiY(),
-	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_coordinateNoi(),
 	  ddata.dptr_velocityX(),
 	  ddata.dptr_velocityY(),
 	  ddata.dptr_velocityZ(),
@@ -932,9 +902,7 @@ unpack_add (DeviceCellListedMDData & ddata) const
 	  cellStartIndex,
 	  myMask,
 	  this->dptr_coordinate(),
-	  this->dptr_coordinateNoiX(),
-	  this->dptr_coordinateNoiY(),
-	  this->dptr_coordinateNoiZ(),
+	  this->dptr_coordinateNoi(),
 	  this->dptr_velocityX(),
 	  this->dptr_velocityY(),
 	  this->dptr_velocityZ(),
@@ -947,9 +915,7 @@ unpack_add (DeviceCellListedMDData & ddata) const
 	  this->dptr_charge(),
 	  ddata.numAtomInCell,
 	  ddata.dptr_coordinate(),
-	  ddata.dptr_coordinateNoiX(),
-	  ddata.dptr_coordinateNoiY(),
-	  ddata.dptr_coordinateNoiZ(),
+	  ddata.dptr_coordinateNoi(),
 	  ddata.dptr_velocityX(),
 	  ddata.dptr_velocityY(),
 	  ddata.dptr_velocityZ(),
@@ -973,9 +939,7 @@ unpackDeviceMDData_replace (const IndexType * cellIndex,
 			  const IndexType * cellStartIndex,
 			  const MDDataItemMask_t mask,
 			  const CoordType  * source_coord,
-			  const IntScalorType * source_coordNoix,
-			  const IntScalorType * source_coordNoiy,
-			  const IntScalorType * source_coordNoiz,
+			  const CoordNoiType * source_coordNoi,
 			  const ScalorType * source_velox,
 			  const ScalorType * source_veloy,
 			  const ScalorType * source_veloz,
@@ -988,9 +952,7 @@ unpackDeviceMDData_replace (const IndexType * cellIndex,
 			  const ScalorType * source_charge,
 			  IndexType * numAtomInCell,
 			  CoordType  * coord,
-			  IntScalorType * coordNoix,
-			  IntScalorType * coordNoiy,
-			  IntScalorType * coordNoiz,
+			  CoordNoiType * coordNoi,
 			  ScalorType * velox,
 			  ScalorType * veloy,
 			  ScalorType * veloz,
@@ -1019,9 +981,9 @@ unpackDeviceMDData_replace (const IndexType * cellIndex,
       coord[toid] = source_coord[fromid];
     }
     if (mask & MDDataItemMask_CoordinateNoi){
-      coordNoix[toid] = source_coordNoix[fromid];
-      coordNoiy[toid] = source_coordNoiy[fromid];
-      coordNoiz[toid] = source_coordNoiz[fromid];
+      coordNoi[toid].x = source_coordNoi[fromid].x;
+      coordNoi[toid].y = source_coordNoi[fromid].y;
+      coordNoi[toid].z = source_coordNoi[fromid].z;
     }
     if (mask & MDDataItemMask_Velocity){
       velox[toid] = source_velox[fromid];
@@ -1054,9 +1016,7 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
 			const IndexType * cellStartIndex,
 			const MDDataItemMask_t mask,
 			const CoordType  * source_coord,
-			const IntScalorType * source_coordNoix,
-			const IntScalorType * source_coordNoiy,
-			const IntScalorType * source_coordNoiz,
+			const CoordNoiType * source_coordNoi,
 			const ScalorType * source_velox,
 			const ScalorType * source_veloy,
 			const ScalorType * source_veloz,
@@ -1069,9 +1029,7 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
 			const ScalorType * source_charge,
 			IndexType * numAtomInCell,
 			CoordType  * coord,
-			IntScalorType * coordNoix,
-			IntScalorType * coordNoiy,
-			IntScalorType * coordNoiz,
+			CoordNoiType * coordNoi,
 			ScalorType * velox,
 			ScalorType * veloy,
 			ScalorType * veloz,
@@ -1124,9 +1082,9 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
       coord[toid] = source_coord[fromid];
     }
     if (mask & MDDataItemMask_CoordinateNoi){
-      coordNoix[toid] = source_coordNoix[fromid];
-      coordNoiy[toid] = source_coordNoiy[fromid];
-      coordNoiz[toid] = source_coordNoiz[fromid];
+      coordNoi[toid].x = source_coordNoi[fromid].x;
+      coordNoi[toid].y = source_coordNoi[fromid].y;
+      coordNoi[toid].z = source_coordNoi[fromid].z;
     }
     if (mask & MDDataItemMask_Velocity){
       velox[toid] = source_velox[fromid];
@@ -1299,9 +1257,7 @@ __global__ void Parallel::CudaGlobal::
 normalizeSystem_CellListed (RectangularBox box,
 			    const IndexType * numAtomInCell,
 			    CoordType * coord,
-			    IntScalorType * coordNoix,
-			    IntScalorType * coordNoiy,
-			    IntScalorType * coordNoiz)
+			    CoordNoiType * coordNoi)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -1309,11 +1265,11 @@ normalizeSystem_CellListed (RectangularBox box,
  
   if (tid < numAtomInCell[bid]) {
     RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.x, &(coord[ii].x), &coordNoix[ii]);
+	box.size.x, &(coord[ii].x), &(coordNoi[ii].x));
     RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.y, &(coord[ii].y), &coordNoiy[ii]);
+	box.size.y, &(coord[ii].y), &(coordNoi[ii].y));
     RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.z, &(coord[ii].z), &coordNoiz[ii]);
+	box.size.z, &(coord[ii].z), &(coordNoi[ii].z));
   }
 }
 
@@ -1329,9 +1285,7 @@ applyPeriodicBondaryCondition ()
 	  globalBox,
 	  numAtomInCell,
 	  coord,
-	  coordNoix,
-	  coordNoiy,
-	  coordNoiz);
+	  coordNoi);
   checkCUDAError ("DeviceCellListedMDData::applyPeriodicBondaryCondition");
 }
 

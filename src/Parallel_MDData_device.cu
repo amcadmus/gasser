@@ -25,13 +25,16 @@ easyMalloc (const IndexType & memSize__)
   memSize_ = memSize__;
   
   size_t sizef = memSize_ * sizeof(ScalorType);
-  size_t sizei = memSize_ * sizeof(IntScalorType);
   size_t sizecoord =memSize_ * sizeof(CoordType);
+  size_t sizecoordNoi =memSize_ * sizeof(CoordNoiType);
   size_t sizeIdx = memSize_ * sizeof(IndexType);
   size_t sizet = memSize_ * sizeof(TypeType);
   
   cudaMalloc ((void**) &coord, sizecoord);
   checkCUDAError ("initDeviceMDData coord");
+
+  cudaMalloc ((void**) &coordNoi, sizecoordNoi);
+  checkCUDAError ("initDeviceMDData coordNoi");
 
   cudaMalloc ((void**) &velox, sizef);
   cudaMalloc ((void**) &veloy, sizef);
@@ -42,11 +45,6 @@ easyMalloc (const IndexType & memSize__)
   cudaMalloc ((void**) &forcy, sizef);
   cudaMalloc ((void**) &forcz, sizef);
   checkCUDAError ("initDeviceMDData forc");
-
-  cudaMalloc ((void**) &coordNoix, sizei);
-  cudaMalloc ((void**) &coordNoiy, sizei);
-  cudaMalloc ((void**) &coordNoiz, sizei);
-  checkCUDAError ("initDeviceMDData coordNoi");
 
   cudaMalloc ((void**) &globalIndex, sizeIdx);
   cudaMalloc ((void**) &type, sizet);
@@ -62,10 +60,7 @@ clear ()
 {
   if (malloced){
     cudaFree (coord);
-    
-    cudaFree (coordNoix);
-    cudaFree (coordNoiy);
-    cudaFree (coordNoiz);
+    cudaFree (coordNoi);
   
     cudaFree (velox);
     cudaFree (veloy);
@@ -97,8 +92,8 @@ copyFromHost (const HostMDData & hdata,
   setGlobalBox (hdata.getGlobalBox());
 		
   size_t sizef = numData_ * sizeof(ScalorType);
-  size_t sizei = numData_ * sizeof(IntScalorType);
   size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizecoordNoi = numData_ * sizeof(CoordNoiType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
 
@@ -108,9 +103,7 @@ copyFromHost (const HostMDData & hdata,
   }
 
   if (mask & MDDataItemMask_CoordinateNoi){
-    cudaMemcpy (coordNoix, hdata.coordNoix, sizei, cudaMemcpyHostToDevice);
-    cudaMemcpy (coordNoiy, hdata.coordNoiy, sizei, cudaMemcpyHostToDevice);
-    cudaMemcpy (coordNoiz, hdata.coordNoiz, sizei, cudaMemcpyHostToDevice);
+    cudaMemcpy (coordNoi, hdata.coordNoi, sizecoordNoi, cudaMemcpyHostToDevice);
     checkCUDAError ("cpyHostMDDataToDevice coordNoi");
   }
 
@@ -158,8 +151,8 @@ copyToHost (HostMDData & hdata,
   hdata.setGlobalBox (globalBox);
   
   size_t sizef = numData_ * sizeof(ScalorType);
-  size_t sizei = numData_ * sizeof(IntScalorType);
   size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizecoordNoi = numData_ * sizeof(CoordNoiType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
 
@@ -169,9 +162,7 @@ copyToHost (HostMDData & hdata,
   }
 
   if (mask & MDDataItemMask_CoordinateNoi){
-    cudaMemcpy (hdata.coordNoix, coordNoix, sizei, cudaMemcpyDeviceToHost);
-    cudaMemcpy (hdata.coordNoiy, coordNoiy, sizei, cudaMemcpyDeviceToHost);
-    cudaMemcpy (hdata.coordNoiz, coordNoiz, sizei, cudaMemcpyDeviceToHost);
+    cudaMemcpy (hdata.coordNoi, coordNoi, sizecoordNoi, cudaMemcpyDeviceToHost);
     checkCUDAError ("cpyDeviceMDDataToHost coordNoi");
   }
 
@@ -219,8 +210,8 @@ copyFromDevice (const DeviceMDData & ddata,
   setGlobalBox (ddata.getGlobalBox());
 		
   size_t sizef = numData_ * sizeof(ScalorType);
-  size_t sizei = numData_ * sizeof(IntScalorType);
   size_t sizecoord = numData_ * sizeof(CoordType);
+  size_t sizecoordNoi = numData_ * sizeof(CoordNoiType);
   size_t sizeIdx = numData_ * sizeof(IndexType);
   size_t sizet = numData_ * sizeof(TypeType);
 
@@ -230,9 +221,7 @@ copyFromDevice (const DeviceMDData & ddata,
   }
 
   if (mask & MDDataItemMask_CoordinateNoi){
-    cudaMemcpy (coordNoix, ddata.coordNoix, sizei, cudaMemcpyDeviceToDevice);
-    cudaMemcpy (coordNoiy, ddata.coordNoiy, sizei, cudaMemcpyDeviceToDevice);
-    cudaMemcpy (coordNoiz, ddata.coordNoiz, sizei, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (coordNoi, ddata.coordNoi, sizecoordNoi, cudaMemcpyDeviceToDevice);
     checkCUDAError ("cpyDeviceMDDataToDevice coordNoi");
   }
 
@@ -284,9 +273,7 @@ initZero ()
       <<<memSize_ / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (memSize_,
        coord,
-       coordNoix,
-       coordNoiy,
-       coordNoiz,
+       coordNoi,
        velox,
        veloy,
        veloz,
@@ -304,9 +291,7 @@ initZero ()
 __global__ void Parallel::CudaGlobal::
 initZeroDeviceData(const IndexType num,
 		   CoordType  * coord,
-		   IntScalorType * coordNoix,
-		   IntScalorType * coordNoiy,
-		   IntScalorType * coordNoiz,
+		   CoordNoiType * coordNoi,
 		   ScalorType * velox,
 		   ScalorType * veloy,
 		   ScalorType * veloz,
@@ -329,7 +314,7 @@ initZeroDeviceData(const IndexType num,
     tmp.z = 0;
     tmp.w = -1;
     coord[ii] = tmp;
-    coordNoix[ii] = coordNoiy[ii] = coordNoiz[ii] = 0;
+    coordNoi[ii].x = coordNoi[ii].y = coordNoi[ii].z = 0;
     veloz[ii] = veloy[ii] = veloz[ii] = 0.f;
     forcz[ii] = forcy[ii] = forcz[ii] = 0.f;
     globalIndex[ii] = MaxIndexValue;

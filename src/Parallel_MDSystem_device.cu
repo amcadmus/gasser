@@ -63,9 +63,9 @@ init (const char * confFileName,
 			     & ((globalHostData.cptr_coordinate()[i]).x), 
 			     & ((globalHostData.cptr_coordinate()[i]).y), 
 			     & ((globalHostData.cptr_coordinate()[i]).z),
-			     & (globalHostData.cptr_coordinateNoiX()[i]),
-			     & (globalHostData.cptr_coordinateNoiY()[i]),
-			     & (globalHostData.cptr_coordinateNoiZ()[i]));
+			     & (globalHostData.cptr_coordinateNoi()[i].x),
+			     & (globalHostData.cptr_coordinateNoi()[i].y),
+			     & (globalHostData.cptr_coordinateNoi()[i].z));
     }
     globalHostData.initTopology (sysTop);
     for (int i = 0; i < globalNumAtom; ++i){

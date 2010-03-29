@@ -46,6 +46,7 @@ typedef int		TypeType;
 
 #ifdef DEVICE_CODE
 typedef float4		CoordType;
+typedef int3		CoordNoiType;
 typedef float3		VectorType;
 typedef int3		IntVectorType;
 typedef uint3		IndexVectorType;
@@ -68,6 +69,7 @@ struct intH3
 };
 
 typedef floatH4		HostCoordType;
+typedef intH3		HostCoordNoiType;
 typedef floatH3		HostVectorType;
 typedef intH3		HostIntVectorType;
 // typedef floatH4		CoordType;

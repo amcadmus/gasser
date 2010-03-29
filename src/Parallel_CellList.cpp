@@ -324,9 +324,9 @@ pack (const HostCellListedMDData & hdata,
     }
     if (mask & MDDataItemMask_CoordinateNoi){
       for (IndexType j = 0; j < numInThisCell; ++j){
-	this->cptr_coordinateNoiX()[toid+j] = hdata.cptr_coordinateNoiX()[fromid+j];
-	this->cptr_coordinateNoiY()[toid+j] = hdata.cptr_coordinateNoiY()[fromid+j];
-	this->cptr_coordinateNoiZ()[toid+j] = hdata.cptr_coordinateNoiZ()[fromid+j];
+	this->cptr_coordinateNoi()[toid+j].x = hdata.cptr_coordinateNoi()[fromid+j].x;
+	this->cptr_coordinateNoi()[toid+j].y = hdata.cptr_coordinateNoi()[fromid+j].y;
+	this->cptr_coordinateNoi()[toid+j].z = hdata.cptr_coordinateNoi()[fromid+j].z;
       }
     }
     if (mask & MDDataItemMask_Velocity){
@@ -388,9 +388,9 @@ unpack_replace (HostCellListedMDData & hdata) const
     }
     if (myMask & MDDataItemMask_CoordinateNoi){
       for (IndexType j = 0; j < numInThisCell; ++j){
-	hdata.cptr_coordinateNoiX()[toid+j] = this->cptr_coordinateNoiX()[fromid+j];
-	hdata.cptr_coordinateNoiY()[toid+j] = this->cptr_coordinateNoiY()[fromid+j];
-	hdata.cptr_coordinateNoiZ()[toid+j] = this->cptr_coordinateNoiZ()[fromid+j];
+	hdata.cptr_coordinateNoi()[toid+j].x = this->cptr_coordinateNoi()[fromid+j].x;
+	hdata.cptr_coordinateNoi()[toid+j].y = this->cptr_coordinateNoi()[fromid+j].y;
+	hdata.cptr_coordinateNoi()[toid+j].z = this->cptr_coordinateNoi()[fromid+j].z;
       }
     }
     if (myMask & MDDataItemMask_Velocity){
@@ -453,9 +453,9 @@ unpack_add (HostCellListedMDData & hdata) const
     }
     if (myMask & MDDataItemMask_CoordinateNoi){
       for (IndexType j = 0; j < numAdded; ++j){
-	hdata.cptr_coordinateNoiX()[toid+j] = this->cptr_coordinateNoiX()[fromid+j];
-	hdata.cptr_coordinateNoiY()[toid+j] = this->cptr_coordinateNoiY()[fromid+j];
-	hdata.cptr_coordinateNoiZ()[toid+j] = this->cptr_coordinateNoiZ()[fromid+j];
+	hdata.cptr_coordinateNoi()[toid+j].x = this->cptr_coordinateNoi()[fromid+j].x;
+	hdata.cptr_coordinateNoi()[toid+j].y = this->cptr_coordinateNoi()[fromid+j].y;
+	hdata.cptr_coordinateNoi()[toid+j].z = this->cptr_coordinateNoi()[fromid+j].z;
       }
     }
     if (myMask & MDDataItemMask_Velocity){
@@ -794,7 +794,7 @@ reinit (HostSubCellList & list,
   clear ();
   IndexType number = 0;
   if (mask & MDDataItemMask_Coordinate) number+=1;
-  if (mask & MDDataItemMask_CoordinateNoi) number+=3;
+  if (mask & MDDataItemMask_CoordinateNoi) number+=1;
   if (mask & MDDataItemMask_Velocity) number+=3;
   if (mask & MDDataItemMask_Force) number+=3;
   if (mask & MDDataItemMask_GlobalIndex) number+=1;
@@ -827,11 +827,7 @@ reinit (HostSubCellList & list,
 
   if (myMask & MDDataItemMask_CoordinateNoi){
     for (IndexType i = 0; i < ptr_list->size(); ++i){
-      (buffs)[num++] = (void*) &(ptr_list->host_ptr()->cptr_coordinateNoiX()
-				 [ptr_list->operator[](i) * numThreadsInCell]);
-      (buffs)[num++] = (void*) &(ptr_list->host_ptr()->cptr_coordinateNoiY()
-				 [ptr_list->operator[](i) * numThreadsInCell]);  
-      (buffs)[num++] = (void*) &(ptr_list->host_ptr()->cptr_coordinateNoiZ()
+      (buffs)[num++] = (void*) &(ptr_list->host_ptr()->cptr_coordinateNoi()
 				 [ptr_list->operator[](i) * numThreadsInCell]);
     }
   }
@@ -905,9 +901,7 @@ build ()
   if (myMask & MDDataItemMask_CoordinateNoi){
     for (IndexType i = 0; i < ptr_list->size(); ++i){
       size_t tmp = ptr_list->host_ptr()->cptr_numAtomInCell()
-	  [ptr_list->operator[](i)] * sizeof(IntScalorType);
-      (sizes)[count++] = tmp;
-      (sizes)[count++] = tmp;
+	  [ptr_list->operator[](i)] * sizeof(HostCoordNoiType);
       (sizes)[count++] = tmp;
     }
   }
@@ -1022,9 +1016,9 @@ add (const HostCellListedMDData & hdata,
     }
     if (mask & MDDataItemMask_CoordinateNoi){
       for (IndexType j = tmp0; j < tmp1; ++j){
-	this->cptr_coordinateNoiX()[j] = hdata.cptr_coordinateNoiX()[j-tmp2];
-	this->cptr_coordinateNoiY()[j] = hdata.cptr_coordinateNoiY()[j-tmp2];
-	this->cptr_coordinateNoiZ()[j] = hdata.cptr_coordinateNoiZ()[j-tmp2];
+	this->cptr_coordinateNoi()[j].x = hdata.cptr_coordinateNoi()[j-tmp2].x;
+	this->cptr_coordinateNoi()[j].y = hdata.cptr_coordinateNoi()[j-tmp2].y;
+	this->cptr_coordinateNoi()[j].z = hdata.cptr_coordinateNoi()[j-tmp2].z;
       }
     }
     if (mask & MDDataItemMask_Velocity){
@@ -1090,12 +1084,12 @@ add (const HostSubCellList & clist,
 
     if (mask & MDDataItemMask_CoordinateNoi){
       for (IndexType j = tmp0; j < tmp2; ++j){
-	ptr_hdata->cptr_coordinateNoiX()[j] =
-	    clist.ptr_hdata->cptr_coordinateNoiX()[j-tmp1];
-	ptr_hdata->cptr_coordinateNoiY()[j] =
-	    clist.ptr_hdata->cptr_coordinateNoiY()[j-tmp1];
-	ptr_hdata->cptr_coordinateNoiZ()[j] =
-	    clist.ptr_hdata->cptr_coordinateNoiZ()[j-tmp1];
+	ptr_hdata->cptr_coordinateNoi()[j].x =
+	    clist.ptr_hdata->cptr_coordinateNoi()[j-tmp1].x;
+	ptr_hdata->cptr_coordinateNoi()[j].y =
+	    clist.ptr_hdata->cptr_coordinateNoi()[j-tmp1].y;
+	ptr_hdata->cptr_coordinateNoi()[j].z =
+	    clist.ptr_hdata->cptr_coordinateNoi()[j-tmp1].z;
       }
     }
 
