@@ -7,6 +7,29 @@
 #include "Parallel_Statistic.h"
 
 namespace Parallel {
+  class TranslationalFreedomRemover 
+  {
+    dim3 gridDim;
+    IndexType numThreadsInCell;
+    ScalorType * sums;
+    ScalorType * sumM;
+    bool malloced;
+    IndexType sharedBuffSize;
+    SumVector<ScalorType > sum_x;
+    SumVector<ScalorType > sum_y;
+    SumVector<ScalorType > sum_z;
+    void clear ();
+public:
+    TranslationalFreedomRemover ()
+	: malloced (false) {}
+    TranslationalFreedomRemover (const DeviceCellListedMDData & data)
+	: malloced (false) { init (data);}
+    ~TranslationalFreedomRemover ();
+    void reinit (const DeviceCellListedMDData & data);
+public:
+    void remove (const DeviceCellListedMDData & data);
+  };
+    
   namespace Integrator {
     class VelocityVerlet 
     {
@@ -30,6 +53,26 @@ namespace Parallel {
   }
 
   namespace CudaGlobal{
+    __global__ void
+    prepareCalTotalMass (const IndexType * numAtomInCell,
+			 const ScalorType * mass,
+			 ScalorType * buff);
+    __global__ void
+    prepareRemoveTranslationalFreedom (const IndexType * numAtomInCell,
+				       const ScalorType * mass,
+				       const ScalorType * velox,
+				       const ScalorType * veloy,
+				       const ScalorType * veloz,
+				       ScalorType * st_buff_x,
+				       ScalorType * st_buff_y,
+				       ScalorType * st_buff_z);
+    __global__ void
+    removeTranslationalFreedom (const * numAtomInCell,
+				const ScalorType totalMassi,
+				const ScalorType * sums,
+				ScalorType * velox,
+				ScalorType * veloy,
+				ScalorType * veloz);
     __global__ void
     velocityVerlet_step1 (const IndexType * numAtomInCell,
 			  const ScalorType * forcx,
