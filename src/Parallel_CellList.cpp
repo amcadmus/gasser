@@ -444,7 +444,9 @@ unpack_add (HostCellListedMDData & hdata) const
     if (numAdded == 0) continue;
     IndexType targetCellId = cellIndex[i];
     IndexType toid = targetCellId * numThreadsInCell + hdata.numAtomInCell[targetCellId];
-    hdata.numAtomInCell[targetCellId] += numAdded;
+    if ((hdata.numAtomInCell[targetCellId] += numAdded) > numThreadsInCell){
+      throw MDExcptCellList ("HostTransferPackage::unpack_add: num Atom exceed cell limit");
+    }
     
     if (myMask & MDDataItemMask_Coordinate){
       for (IndexType j = 0; j < numAdded; ++j){
@@ -1001,7 +1003,7 @@ add (const HostCellListedMDData & hdata,
   
   for (IndexType i = 0; i < totalNumCell; ++i){
     if (numAtomInCell[i] + hdata.cptr_numAtomInCell()[i] > numThreadsInCell){
-      throw MDExcptCellList ("HostCellListedMDData.add: num Atom exceed cell limit");
+      throw MDExcptCellList ("HostCellListedMDData::add: num Atom exceed cell limit");
     }
 
     IndexType tmp0 = numAtomInCell[i] + i * numThreadsInCell;
@@ -1071,7 +1073,9 @@ add (const HostSubCellList & clist,
     IndexType tmp0 = ptr_hdata->cptr_numAtomInCell()[cellid];
     IndexType tmp1 = clist.host_ptr()->cptr_numAtomInCell()[cellid];
     IndexType tmp2 = tmp0 + tmp1;
-    ptr_hdata->cptr_numAtomInCell()[cellid] += tmp1;
+    if ((ptr_hdata->cptr_numAtomInCell()[cellid] += tmp1) > numThreadsInCell){
+      throw MDExcptCellList ("HostSubCellList::add: num Atom exceed cell limit");
+    }
     tmp1  = tmp0;
     tmp0 += cellid * numThreadsInCell;
     tmp2 += cellid * numThreadsInCell;
