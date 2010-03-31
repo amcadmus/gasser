@@ -59,7 +59,6 @@ int main(int argc, char * argv[])
   sysTop.addMolecules (mol, sys.numAtomInGroFile(filename));
   
   sys.init (filename, sysTop);
-
   SystemNonBondedInteraction sysNbInter (sysTop);
 
   Parallel::InteractionEngine interEng (sys.deviceData);
@@ -74,11 +73,13 @@ int main(int argc, char * argv[])
   dst.reinit (sys.deviceData);
 
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
+  Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
   ScalorType dt = 0.001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
-
+  
   for (IndexType i = 0; i < nstep; ++i){
+    trRemover.remove (sys.deviceData);
     dst.clearData ();
     vv.step1 (sys.deviceData, dt);
     interEng.clearInteraction (sys.deviceData);
@@ -86,8 +87,6 @@ int main(int argc, char * argv[])
     interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
     sys.clearGhost ();
     vv.step2 (sys.deviceData, dt, dst);
-    // sys.deviceData.dptr_coordinate()[124].y = -1;
-    // sys.deviceData.dptr_coordinate()[125].y = -1;
     sys.deviceData.rebuild ();
     sys.redistribute ();
     sys.deviceData.applyPeriodicBondaryCondition ();

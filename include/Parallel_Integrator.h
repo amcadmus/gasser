@@ -13,6 +13,7 @@ namespace Parallel {
     IndexType numThreadsInCell;
     ScalorType * sums;
     ScalorType * sumM;
+    ScalorType totalMassi;
     bool malloced;
     IndexType sharedBuffSize;
     SumVector<ScalorType > sum_x;
@@ -23,11 +24,11 @@ public:
     TranslationalFreedomRemover ()
 	: malloced (false) {}
     TranslationalFreedomRemover (const DeviceCellListedMDData & data)
-	: malloced (false) { init (data);}
+	: malloced (false) { reinit (data);}
     ~TranslationalFreedomRemover ();
     void reinit (const DeviceCellListedMDData & data);
 public:
-    void remove (const DeviceCellListedMDData & data);
+    void remove (DeviceCellListedMDData & data);
   };
     
   namespace Integrator {
@@ -67,7 +68,7 @@ public:
 				       ScalorType * st_buff_y,
 				       ScalorType * st_buff_z);
     __global__ void
-    removeTranslationalFreedom (const * numAtomInCell,
+    removeTranslationalFreedom (const IndexType * numAtomInCell,
 				const ScalorType totalMassi,
 				const ScalorType * sums,
 				ScalorType * velox,

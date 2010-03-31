@@ -2,6 +2,7 @@
 
 #include "Parallel_Integrator.h"
 #include "Parallel_Interface.h"
+#include "Parallel_Auxiliary.h"
 #include "compile_error_mixcode.h"
 
 Parallel::TranslationalFreedomRemover::
@@ -39,8 +40,8 @@ reinit  (const DeviceCellListedMDData & data)
 	  data.dptr_numAtomInCell(),
 	  data.dptr_mass(),
 	  sum_mass.getBuff());
-  sum_mass.sumBuff (sumM);
-  cudaMemcpy (totalMassi, sumM, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+  sum_mass.sumBuff (sumM, 0);
+  cudaMemcpy (&totalMassi, sumM, sizeof(ScalorType), cudaMemcpyDeviceToHost);
   checkCUDAError ("TranslationalFreedomRemover::reinit, cpy sumM");
   totalMassi = 1.f/totalMassi;
 }
@@ -90,7 +91,7 @@ prepareCalTotalMass (const IndexType * numAtomInCell,
     return;
   }
   extern __shared__ ScalorType buff[];
-  if (threadIdx.x < numAtomInCell[bid]){
+  if (threadIdx.x < this_numAtomInCell){
     buff[threadIdx.x] = mass[ii];
   }
   else {
@@ -101,7 +102,7 @@ prepareCalTotalMass (const IndexType * numAtomInCell,
   if (threadIdx.x == 0) mass_buff[bid] = buff[0];
 }
 
-__global__ void
+__global__ void Parallel::CudaGlobal::
 prepareRemoveTranslationalFreedom (const IndexType * numAtomInCell,
 				   const ScalorType * mass,
 				   const ScalorType * velox,
@@ -124,7 +125,7 @@ prepareRemoveTranslationalFreedom (const IndexType * numAtomInCell,
     return;
   }
 
-  extern __shared__ volatile ScalorType buff[];
+  extern __shared__  ScalorType buff[];
   if (threadIdx.x < this_numAtomInCell){
     buff[threadIdx.x] = mass[ii] * velox[ii];
   }
@@ -152,8 +153,8 @@ prepareRemoveTranslationalFreedom (const IndexType * numAtomInCell,
   if (threadIdx.x == 0) st_buff_z[bid] = buff[0];
 }
 
-__global__ void
-removeTranslationalFreedom (const * numAtomInCell,
+__global__ void Parallel::CudaGlobal::
+removeTranslationalFreedom (const IndexType * numAtomInCell,
 			    const ScalorType totalMassi,
 			    const ScalorType * sums,
 			    ScalorType * velox,
@@ -329,7 +330,7 @@ velocityVerlet_step2 (const IndexType * numAtomInCell,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
   
-  extern __shared__ volatile ScalorType buff [];
+  extern __shared__  ScalorType buff [];
   ScalorType vx(0.f), vy(0.f), vz(0.f);
   IndexType this_numAtomInCell = numAtomInCell[bid];
   
