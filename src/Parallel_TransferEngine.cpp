@@ -110,6 +110,7 @@ clearRegistered ()
 Parallel::TransferEngine::
 ~TransferEngine ()
 {
+  clearRegistered ();
   freeAPointer ((void**)&blockLength);
   freeAPointer ((void**)&shiftIndex);
 }

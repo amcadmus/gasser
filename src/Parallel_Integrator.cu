@@ -280,6 +280,9 @@ velocityVerlet_step1 (const IndexType * numAtomInCell,
   IndexType ii = tid + bid * blockDim.x;
 
   if (tid < numAtomInCell[bid]){
+    // // velox[ii] = veloy[ii] = veloz[ii] = 1;
+    // velox[ii] = 1;
+    // veloy[ii] = veloz[ii] = 0;
     ScalorType hdtmi = 0.5 * dt / mass[ii];
     velox[ii]   += hdtmi * forcx[ii];
     coord[ii].x += dt * velox[ii];

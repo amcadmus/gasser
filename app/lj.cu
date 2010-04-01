@@ -20,7 +20,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	64
+#define NThreadsPerBlockCell	96
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ);

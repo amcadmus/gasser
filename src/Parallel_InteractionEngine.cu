@@ -238,7 +238,7 @@ calNonBondedInteraction (const CoordType * coord,
   TypeType * targetType =
       (TypeType *) & targetCoord[blockDim.x];
   
-  IndexType count = 0;
+  // IndexType count = 0;
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
     target_cellIndex = neighborCellIndex[bid * stride + kk];
@@ -260,11 +260,8 @@ calNonBondedInteraction (const CoordType * coord,
 	  shortestImage (boxSize.x, boxSizei.x, &diffx);
 	  shortestImage (boxSize.y, boxSizei.y, &diffy);
 	  shortestImage (boxSize.z, boxSizei.z, &diffz);
-	  if (diffx*diffx+diffy*diffy+diffz*diffz <= rlist2) {
-	    count ++;
-	    // printf ("bid %d, tid %d, target_cell %d, ll %d\n", bid, tid, target_cellIndex, ll);
-	    // if (tid != 0)
-	    // printf ("%f %f %f\n", targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z);
+	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
+	    // count ++;
 	    IndexType fidx(0);
 	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
 		const_nonBondedInteractionTable,
@@ -278,22 +275,12 @@ calNonBondedInteraction (const CoordType * coord,
 			  diffx, diffy, diffz,
 			  &fx, &fy, &fz, &dp);
 	    myPoten += dp;
-	    // printf ("%f\n", dp);
 	    myVxx += fx * diffx;
 	    myVyy += fy * diffy;
 	    myVzz += fz * diffz;
 	    fsumx += fx;
-	    // if (bid == 31 && tid == 2){
-	    //   printf ("fsumx: %f, fx: %f, dr2: %f\n", fsumx, fx, diffx*diffx+diffy*diffy+diffz*diffz);
-	    // }
 	    fsumy += fy;
-	    // if (bid == 31 && tid == 2){
-	    //   printf ("fsumy: %f, fy: %f, dr2: %f\n", fsumy, fy, diffx*diffx+diffy*diffy+diffz*diffz);
-	    // }
 	    fsumz += fz;
-	    // if (bid == 31 && tid == 2){
-	    //   printf ("fsumz: %f, fz: %f, dr2: %f\n", fsumz, fz, diffx*diffx+diffy*diffy+diffz*diffz);
-	    // }
 	  }
 	  // __syncthreads();
 	}

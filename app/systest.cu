@@ -59,6 +59,8 @@ int main(int argc, char * argv[])
   sysTop.addMolecules (mol, sys.numAtomInGroFile(filename));
   
   sys.init (filename, sysTop);
+  sys.redistribute ();
+  sys.deviceData.applyPeriodicBondaryCondition ();
   SystemNonBondedInteraction sysNbInter (sysTop);
 
   Parallel::InteractionEngine interEng (sys.deviceData);
@@ -79,7 +81,9 @@ int main(int argc, char * argv[])
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
   
   for (IndexType i = 0; i < nstep; ++i){
-    trRemover.remove (sys.deviceData);
+    if ((i)%10 == 0){
+      trRemover.remove (sys.deviceData);
+    }
     dst.clearData ();
     vv.step1 (sys.deviceData, dt);
     interEng.clearInteraction (sys.deviceData);
@@ -94,26 +98,28 @@ int main(int argc, char * argv[])
     dst.copyToHost (hst);
     hst.collectData ();
 
-    printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
-	    (i+1),  
-	    (i+1) * dt, 
-	    hst.NonBondedEnergy(),
-	    hst.BondedEnergy(),
-	    hst.kineticEnergy(),
-	    hst.NonBondedEnergy() +
-	    hst.BondedEnergy() +
-	    hst.kineticEnergy(),
-	    hst.pressureXX(),
-	    hst.pressureYY(),
-	    hst.pressureZZ(),
-	    hst.pressure());
-    fflush (stdout);
-    if ((i+1)%1 == 0){
+    if ((i+1)%10 == 0){
+      printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	      (i+1),  
+	      (i+1) * dt, 
+	      hst.NonBondedEnergy(),
+	      hst.BondedEnergy(),
+	      hst.kineticEnergy(),
+	      hst.NonBondedEnergy() +
+	      hst.BondedEnergy() +
+	      hst.kineticEnergy(),
+	      hst.pressureXX(),
+	      hst.pressureYY(),
+	      hst.pressureZZ(),
+	      hst.pressure());
+      fflush (stdout);
+    }
+    
+    if ((i+1)%100 == 0){
       sys.updateHost ();  
       sys.collectLocalData ();
       sys.globalHostData.writeData_xtcFile (i, dt*i);
     }
-  
   }
   
   // int myRank = Parallel::Interface::myRank();

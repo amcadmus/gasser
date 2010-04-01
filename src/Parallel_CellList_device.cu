@@ -261,15 +261,15 @@ formCellStructure (const VectorType frameLow,
     targetCellx = IndexType((bk_coord[ii].x - frameLow.x) * dcellxi);
     targetCelly = IndexType((bk_coord[ii].y - frameLow.y) * dcellyi);
     targetCellz = IndexType((bk_coord[ii].z - frameLow.z) * dcellzi);
-    if (targetCellx == numCell.x){
-      targetCellx -= numCell.x;
-    }
-    if (targetCelly == numCell.y){
-      targetCelly -= numCell.y;
-    }
-    if (targetCellz == numCell.z){
-      targetCellz -= numCell.z;
-    }
+    // if (targetCellx == numCell.x){
+    //   targetCellx = numCell.x - 1;
+    // }
+    // if (targetCelly == numCell.y){
+    //   targetCelly = numCell.y - 1;
+    // }
+    // if (targetCellz == numCell.z){
+    //   targetCellz = numCell.z - 1;
+    // }
     if (ptr_de != NULL && 
 	(targetCellx >= numCell.x || 
 	 targetCelly >= numCell.y || 
@@ -281,7 +281,11 @@ formCellStructure (const VectorType frameLow,
     IndexType cellid = CudaDevice::D3toD1
 	(numCell, targetCellx, targetCelly, targetCellz);
 
-    IndexType pid = atomicInc (&numAtomInCell[cellid], blockDim.x);
+    IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
+    if (pid >= blockDim.x){
+      *ptr_de = mdErrorShortCellList;
+      pid = 0;
+    }
     targetIndex = pid + cellid * blockDim.x;
     coord[targetIndex] = bk_coord[ii];
     coordNoi[targetIndex].x = bk_coordNoi[ii].x;
@@ -303,7 +307,7 @@ rebuildCellList_step1 (const VectorType frameLow,
 		       const IntVectorType numCell,
 		       const IndexType * bk_numAtomInCell,
 		       IndexType * numAtomInCell,
-		       CoordType  * coord,
+		       CoordType * coord,
 		       CoordNoiType * coordNoi,
 		       ScalorType * velox,
 		       ScalorType * veloy,
@@ -346,15 +350,15 @@ rebuildCellList_step1 (const VectorType frameLow,
     targetCellz = IndexType((coord[ii].z - frameLow.z) * dcellzi);
     // printf ("%d %d %d %d %f %f %f\n", ii, targetCellx, targetCelly, targetCellz,
     // 	    coord[ii].x, coord[ii].y, coord[ii].z);
-    if (targetCellx == numCell.x){
-      targetCellx -= numCell.x;
-    }
-    if (targetCelly == numCell.y){
-      targetCelly -= numCell.y;
-    }
-    if (targetCellz == numCell.z){
-      targetCellz -= numCell.z;
-    }
+    // if (targetCellx == numCell.x){
+    //   targetCellx = numCell.x - 1;
+    // }
+    // if (targetCelly == numCell.y){
+    //   targetCelly = numCell.y - 1;
+    // }
+    // if (targetCellz == numCell.z){
+    //   targetCellz = numCell.z - 1;
+    // }
     if (ptr_de != NULL && 
 	(targetCellx >= numCell.x || 
 	 targetCelly >= numCell.y || 
@@ -365,10 +369,15 @@ rebuildCellList_step1 (const VectorType frameLow,
     IndexType cellid = CudaDevice::D3toD1
 	(numCell, targetCellx, targetCelly, targetCellz);
     if (cellid != bid){
+      // IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
+      // if (pid >= blockDim.x){
+      // 	*ptr_de = mdErrorShortCellList;
+      // 	pid = 0;
+      // }
       IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
-      if (pid == blockDim.x){
+      if (pid >= blockDim.x){
 	*ptr_de = mdErrorShortCellList;
-	pid -= blockDim.x;
+	pid = 0;
       }
       IndexType targetIndex = pid + cellid * blockDim.x;
       coord[targetIndex] = coord[ii];
@@ -405,6 +414,7 @@ headSort (volatile IndexType * index,
   __syncthreads();
   IndexType total1 = sumVectorBlockBuffer (sbuff, blockDim.x);
   IndexType target, mydata = index[tid];
+  __syncthreads();
   
   if (getKthBit(index[tid], k)) {
     target = blockDim.x - sbuff[tid];
@@ -453,26 +463,56 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
   __syncthreads();
   IndexType total = headSort (myIndex, &sbuff[blockDim.x]);
   total = blockDim.x - total;
+
+  IndexType fromId;
+  CoordType bk_coord;
+  CoordNoiType bk_coordNoi;
+  ScalorType bk_velox, bk_veloy, bk_veloz;
+  ScalorType bk_forcx, bk_forcy, bk_forcz;
+  IndexType bk_globalIndex;
+  TypeType bk_type;
+  ScalorType bk_mass;
+  ScalorType bk_charge;
   
   if (tid < total){
-    IndexType fromId = myIndex[tid] + bid * blockDim.x;
+    fromId = myIndex[tid] + bid * blockDim.x;
     if (ii != fromId){
-      coord[ii] = coord[fromId];
-      coordNoi[ii].x = coordNoi[fromId].x;
-      coordNoi[ii].y = coordNoi[fromId].y;
-      coordNoi[ii].z = coordNoi[fromId].z;
-      velox[ii] = velox[fromId];
-      veloy[ii] = veloy[fromId];
-      veloz[ii] = veloz[fromId];
-      forcx[ii] = forcx[fromId];
-      forcy[ii] = forcy[fromId];
-      forcz[ii] = forcz[fromId];
-      globalIndex[ii] = globalIndex[fromId];
-      type[ii] = type[fromId];
-      mass[ii] = mass[fromId];
-      charge[ii] = charge[fromId];
+      bk_coord = coord[fromId];
+      bk_coordNoi.x = coordNoi[fromId].x;
+      bk_coordNoi.y = coordNoi[fromId].y;
+      bk_coordNoi.z = coordNoi[fromId].z;
+      bk_velox = velox[fromId];
+      bk_veloy = veloy[fromId];
+      bk_veloz = veloz[fromId];
+      bk_forcx = forcx[fromId];
+      bk_forcy = forcy[fromId];
+      bk_forcz = forcz[fromId];
+      bk_globalIndex = globalIndex[fromId];
+      bk_type = type[fromId];
+      bk_mass = mass[fromId];
+      bk_charge = charge[fromId];
     }
   }
+  __syncthreads();
+
+  if (tid < total && ii != fromId){
+    coord[ii] = bk_coord;
+    coordNoi[ii].x = bk_coordNoi.x;
+    coordNoi[ii].y = bk_coordNoi.y;
+    coordNoi[ii].z = bk_coordNoi.z;
+    velox[ii] = bk_velox;
+    veloy[ii] = bk_veloy;
+    veloz[ii] = bk_veloz;
+    forcx[ii] = bk_forcx;
+    forcy[ii] = bk_forcy;
+    forcz[ii] = bk_forcz;
+    globalIndex[ii] = bk_globalIndex;
+    type[ii] = bk_type;
+    mass[ii] = bk_mass;
+    charge[ii] = bk_charge;
+  }
+
+    
   // else {
   //   globalIndex[ii] = MaxIndexValue;
   // }  
@@ -703,6 +743,8 @@ pack (const DeviceCellListedMDData & ddata,
 
   this->DeviceMDData::setGlobalBox (ddata.getGlobalBox());
   if (this->DeviceMDData::numData() > this->DeviceMDData::memSize()){
+    printf ("# DeviceTransferPackage::pack, realloc\n");
+    
     this->DeviceMDData::easyMalloc (this->DeviceMDData::numData() * MemAllocExtension);
   }
 
@@ -1045,7 +1087,7 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
 
-  __shared__ IndexType tmpbuff[2];
+  __shared__ volatile IndexType tmpbuff[2];
   if (tid < 2){
     tmpbuff[tid] = cellStartIndex[bid+tid];
   }
@@ -1063,7 +1105,7 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
   // __shared__ IndexType numAtomInThisCell;
   
   __syncthreads();
-  __shared__ bool failed ;
+  __shared__ volatile bool failed ;
   if (tid == 0){
     if (((numAtomInCell[cellIdx] += numAdded)) > blockDim.x &&
 	ptr_de != NULL){
@@ -1225,7 +1267,8 @@ clearData (const SubCellList & subList)
     tmpList[i] = subList[i];
   }
   cudaMemcpy (deviceList, tmpList, size, cudaMemcpyHostToDevice);
-
+  freeAPointer ((void**)&tmpList);
+  
   Parallel::CudaGlobal::clearCellListData
       <<<(num + DefaultNThreadPerBlock -1) / DefaultNThreadPerBlock,
       DefaultNThreadPerBlock>>> (
