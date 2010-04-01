@@ -17,8 +17,8 @@ printDeviceItem (FILE * fp,
   fprintf(fp, "%s%s%1.3es   (% 3.1f%)\n",
 	  deviceWords[item],
 	  deviceSpace[item],
-	  deviceRecord[item],
-	  deviceRecord[item] * 100 /
+	  deviceRecord[item] * 0.001,
+	  deviceRecord[item] * 100 * 0.001 /
 	  hostRecordUser[item_Total - ParallelItemShift]);
 }
 
