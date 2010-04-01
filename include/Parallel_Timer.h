@@ -2,6 +2,106 @@
 #define __Parallel_Timer_h_wanghan__
 
 #include <stdio.h>
+#include "common.h"
+#include "Stopwatch.h"
+
+
+namespace Parallel{
+  namespace Timer{  
+    typedef float TimeType;
+    const IndexType ParallelItemShift		= 10000;
+    const IndexType SizeOfTimeRecordArray	= 32;
+    const IndexType MaxWordsLength		= 1024;
+    const int       PrintStartPosition		= 64;
+    
+    extern TimeType  deviceRecord	[SizeOfTimeRecordArray];
+    extern TimeType  hostRecordReal	[SizeOfTimeRecordArray];
+    extern TimeType  hostRecordUser	[SizeOfTimeRecordArray];
+    extern char      deviceWords	[SizeOfTimeRecordArray][MaxWordsLength];
+    extern char      deviceSpace	[SizeOfTimeRecordArray][MaxWordsLength];
+    extern char      hostWords		[SizeOfTimeRecordArray][MaxWordsLength];
+    
+    extern bool hostTimerInited;
+    extern bool deviceTimerInited;
+  
+    enum timeItem {
+      item_Total				= 0 + ParallelItemShift,
+      
+      item_ApplyBondaryCondition		= 1,
+      item_BuildCellList			= 2,
+      item_Integrate				= 5,
+      item_RemoveTransFreedom			= 6,
+      item_NonBondedInteraction			= 7,
+      item_NonBondedInterStatistic		= 8,
+      item_BondedInteraction			= 9,
+      item_BondedInterStatistic			= 10,
+      item_AngleInteraction			= 11,
+      item_AngleInterStatistic			= 12,
+    
+      item_DataTransfer				= 13,
+      item_DataIO				= 20,
+
+      item_Redistribute				= 1 + ParallelItemShift,
+      item_transferGhost			= 2 + ParallelItemShift
+    };
+    typedef enum timeItem timeItem_t;
+
+    void printRecord (FILE * fp);
+    void printDeviceItem (FILE * fp, timeItem_t item);
+
+    namespace HostTimer {
+      extern Stopwatch watch [SizeOfTimeRecordArray];
+      void tic (timeItem_t item);
+      void toc (timeItem_t item);
+      void reset ();
+    }
+    
+      
+#ifdef DEVICE_CODE
+    namespace DeviceTimer{
+      extern cudaEvent_t start [SizeOfTimeRecordArray];
+      extern cudaEvent_t stop  [SizeOfTimeRecordArray];
+      void init ();
+      void finalize ();
+      void reset ();
+      void tic (timeItem_t timeItem,
+		cudaStream_t stream = 0);
+      TimeType toc (timeItem_t timeItem,
+		    cudaStream_t stream = 0);
+    }
+
+#endif
+  }
+}
+
+
+
+
+
+#ifdef DEVICE_CODE
+inline void Parallel::Timer::DeviceTimer::
+tic(Parallel::Timer::timeItem_t item,
+    cudaStream_t stream)
+{
+  cudaEventRecord(start[item], stream);
+}
+#endif
+
+#ifdef DEVICE_CODE
+inline Parallel::Timer::TimeType Parallel::Timer::DeviceTimer::
+toc(Parallel::Timer::timeItem_t item,
+    cudaStream_t stream)
+{
+  TimeType tmptime;
+  
+  cudaEventRecord(stop[item], stream);
+  cudaEventSynchronize (stop[item]);
+  cudaEventElapsedTime (&tmptime, start[item], stop[item]);
+
+  Parallel::Timer::deviceRecord[item] += tmptime;
+  return tmptime;
+}
+#endif
 
 
 #endif

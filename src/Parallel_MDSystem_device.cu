@@ -80,6 +80,7 @@ init (const char * confFileName,
 
   deviceData.initCellStructure (3.2);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
+
   cellRelation.build (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){

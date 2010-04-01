@@ -4,7 +4,7 @@
 #include "Parallel_Environment.h"
 #include "compile_error_mixcode.h"
 
-#define NUMTHREADSINCELL 64
+#define NUMTHREADSINCELL 10
 
 unsigned Parallel::Interface::
 numThreadsInCell ()

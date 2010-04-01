@@ -5,6 +5,7 @@
 #include "Parallel_CellList_device.h"
 #include "Parallel_Algorithm.h"
 #include "Auxiliary.h"
+#include "Parallel_Timer.h"
 
 #include "compile_error_mixcode.h"
 

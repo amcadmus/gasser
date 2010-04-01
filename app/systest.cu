@@ -11,11 +11,15 @@
 #include "Parallel_InteractionEngine.h"
 #include "Parallel_Integrator.h"
 #include "SystemNonBondedInteraction.h"
+#include "Parallel_Timer.h"
 
 #include "compile_error_mixcode.h"
 
+using namespace Parallel::Timer;
+
 int main(int argc, char * argv[])
 {
+  HostTimer::tic (item_Total);
   Parallel::Interface::initEnvironment (&argc, &argv);
   // int div[3];
   // div[2] = env.numProc();
@@ -36,6 +40,8 @@ int main(int argc, char * argv[])
   
   GPU::Environment genv;
   genv.setDeviceId (0);
+  
+  DeviceTimer::init ();
   
   IndexType nstep = 20;
   char * filename;  
@@ -82,15 +88,25 @@ int main(int argc, char * argv[])
   
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
+      DeviceTimer::tic (item_RemoveTransFreedom);
       trRemover.remove (sys.deviceData);
+      DeviceTimer::toc (item_RemoveTransFreedom);
     }
     dst.clearData ();
+    DeviceTimer::tic (item_Integrate);
     vv.step1 (sys.deviceData, dt);
+    DeviceTimer::toc (item_Integrate);
+    DeviceTimer::tic (item_NonBondedInterStatistic);
     interEng.clearInteraction (sys.deviceData);
+    DeviceTimer::toc (item_NonBondedInterStatistic);
     sys.transferGhost ();
+    DeviceTimer::tic (item_NonBondedInterStatistic);
     interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
+    DeviceTimer::toc (item_NonBondedInterStatistic);
     sys.clearGhost ();
+    DeviceTimer::tic (item_Integrate);
     vv.step2 (sys.deviceData, dt, dst);
+    DeviceTimer::toc (item_Integrate);
     sys.deviceData.rebuild ();
     sys.redistribute ();
     sys.deviceData.applyPeriodicBondaryCondition ();
@@ -183,6 +199,10 @@ int main(int argc, char * argv[])
   sys.globalHostData.endWriteData_xtcFile ();
   
   Parallel::Interface::finalizeEnvironment ();
+  DeviceTimer::finalize ();
+  HostTimer::toc (item_Total);
+
+  printRecord (stdout);
   
   return 0;
 }
