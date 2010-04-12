@@ -176,6 +176,21 @@ namespace Parallel{
 			   IndexType * numNeighbor,
 			   IndexType * neighborCellIndex,
 			   const IndexType stride);
+    __global__ void
+    buildCellNeighborhood (const IntVectorType numCell,
+			   const IndexType devideLevel,
+			   const ScalorType rlist,
+			   const HostVectorType globalBoxSize,
+			   const int rankx,
+			   const int ranky,
+			   const int rankz,
+			   const int nProcDimx,
+			   const int nProcDimy,
+			   const int nProcDimz,
+			   IndexType * numNeighbor,
+			   IndexType * neighborCellIndex,
+			   CoordType * neighborShift,
+			   const IndexType stride);
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

@@ -520,6 +520,28 @@ inline ScalorType LennardJones6_12::calRcut (const ScalorType * param)
 
 
 #ifdef DEVICE_CODE
+// __device__ ScalorType LennardJones6_12::forcePoten (const ScalorType * param,
+// 						    ScalorType diffx,
+// 						    ScalorType diffy,
+// 						    ScalorType diffz,
+// 						    ScalorType *fx, 
+// 						    ScalorType *fy,
+// 						    ScalorType *fz)
+// {
+//   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+//   ScalorType boolScalor;
+//   if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+//   else boolScalor = 4.f;
+//   ScalorType ri2 = 1.f/dr2;
+//   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
+//   ScalorType sri6 = sri2*sri2*sri2;
+//   ScalorType scalor = - boolScalor * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
+//   *fx = diffx * scalor;
+//   *fy = diffy * scalor;
+//   *fz = diffz * scalor;
+//   return boolScalor * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+// }
+
 __device__ void LennardJones6_12::force (const ScalorType * param,
 					 ScalorType diffx,
 					 ScalorType diffy,
@@ -528,17 +550,29 @@ __device__ void LennardJones6_12::force (const ScalorType * param,
 					 ScalorType *fy,
 					 ScalorType *fz)
 {
+  // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
+  // ScalorType boolScalor;
+  // if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  // else boolScalor = 4.f;
+  // ScalorType ri2 = 1.f/dr2;
+  // ScalorType sri2 = param[sigma] * param[sigma] * ri2;
+  // ScalorType sri6 = sri2*sri2*sri2;
+  // ScalorType scalor = - boolScalor * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
+  // *fx = diffx * scalor;
+  // *fy = diffy * scalor;
+  // *fz = diffz * scalor;
+
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   ScalorType boolScalor;
   if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
-  else boolScalor = - 24.f;
-  ScalorType ri2 = __frcp_rn(dr2);
+  else boolScalor = 4.f;
+  ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  ScalorType scalor = boolScalor * param[epsilon] * (2.f * (sri6*sri6) - sri6) * ri2;
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
+  boolScalor *= param[epsilon] * (6.f * sri6 - 12.f * sri6*sri6) * ri2;
+  *fx = diffx * boolScalor;
+  *fy = diffy * boolScalor;
+  *fz = diffz * boolScalor;
 
   // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   // ScalorType boolScalor;

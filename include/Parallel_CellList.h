@@ -335,6 +335,7 @@ public:
     bool malloced;
     IndexType * numNeighbor;
     IndexType * neighborCellIndex;
+    CoordType * neighborShift;
     IndexType MaxNeiPerCell;
     void clear ();
     void easyMalloc (const IndexType & totalNumCell,
@@ -346,8 +347,10 @@ public:
 public:
     IndexType * dptr_numNeighborCell   () {return numNeighbor;}
     IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}
+    CoordType * dptr_neighborShift     () {return neighborShift;}
     const IndexType * dptr_numNeighborCell   () const {return numNeighbor;}
     const IndexType * dptr_neighborCellIndex () const {return neighborCellIndex;}
+    const CoordType * dptr_neighborShift     () const {return neighborShift;}
     IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
   };
   

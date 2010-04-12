@@ -129,6 +129,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
+	  relation.dptr_neighborShift(),
 	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
@@ -160,6 +161,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
+	  relation.dptr_neighborShift(),
 	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
@@ -178,6 +180,7 @@ calNonBondedInteraction (const CoordType * coord,
 			 const IndexType * numAtomInCell,
 			 const IndexType * numNeighborCell,
 			 const IndexType * neighborCellIndex,
+			 const CoordType * neighborShift,
 			 const IndexType   stride,
 			 ScalorType * forcx,
 			 ScalorType * forcy,
@@ -193,8 +196,6 @@ calNonBondedInteraction (const CoordType * coord,
 
   IndexType this_numAtomInCell;
   IndexType this_numNeighborCell;  
-  IndexType target_cellIndex;
-  IndexType target_numAtomInCell;
   IndexType ii = bid * blockDim.x + tid;
 
   this_numNeighborCell = numNeighborCell[bid];
@@ -238,7 +239,11 @@ calNonBondedInteraction (const CoordType * coord,
   // IndexType count = 0;
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
+    IndexType target_cellIndex;
+    CoordType target_shift;
+    IndexType target_numAtomInCell;
     target_cellIndex = neighborCellIndex[bid * stride + kk];
+    target_shift     = neighborShift    [bid * stride + kk];
     target_numAtomInCell = numAtomInCell[target_cellIndex];
     if (target_numAtomInCell == 0) continue;
     IndexType indexShift = target_cellIndex * blockDim.x;
@@ -248,58 +253,100 @@ calNonBondedInteraction (const CoordType * coord,
       targetType[tid] = type[jj];
     }
     __syncthreads();
+    target_shift.x -= refCoord.x;
+    target_shift.y -= refCoord.y;
+    target_shift.z -= refCoord.z;
     if (tid < this_numAtomInCell){
       for (IndexType ll = 0; ll < target_numAtomInCell; ++ll){
-	if (ll + indexShift != ii) {	  
-	  ScalorType diffx = targetCoord[ll].x - refCoord.x;
-	  ScalorType diffy = targetCoord[ll].y - refCoord.y;
-	  ScalorType diffz = targetCoord[ll].z - refCoord.z;
-	  shortestImage (boxSize.x, boxSizei.x, &diffx);
-	  shortestImage (boxSize.y, boxSizei.y, &diffy);
-	  shortestImage (boxSize.z, boxSizei.z, &diffz);
-	  // shortestImage (boxSize.x, diffx);
-	  // shortestImage (boxSize.y, diffy);
-	  // shortestImage (boxSize.z, diffz);
-	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
-	    // count ++;
-	    IndexType fidx(0);
-	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
-		const_nonBondedInteractionTable,
-		const_numAtomType[0],
-		refType,
-		targetType[ll]);
-	    ScalorType fx, fy, fz, dp;
-	    nbForcePoten (nonBondedInteractionType[fidx],
-			  &nonBondedInteractionParameter
-			  [nonBondedInteractionParameterPosition[fidx]],
-			  diffx, diffy, diffz,
-			  &fx, &fy, &fz, &dp);
-	    myPoten += dp;
-	    myVxx += fx * diffx;
-	    myVyy += fy * diffy;
-	    myVzz += fz * diffz;
-	    fsumx += fx;
-	    fsumy += fy;
-	    fsumz += fz;
-	  }
-	  // __syncthreads();
+	ScalorType diffx = targetCoord[ll].x + target_shift.x;
+	ScalorType diffy = targetCoord[ll].y + target_shift.y;
+	ScalorType diffz = targetCoord[ll].z + target_shift.z;
+	if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2 && ll + indexShift != ii) {
+	  IndexType fidx(0);
+	  fidx = Parallel::CudaDevice::calNonBondedForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      refType,
+	      targetType[ll]);
+	  ScalorType fx, fy, fz, dp;
+	  nbForcePoten (nonBondedInteractionType[fidx],
+			&nonBondedInteractionParameter
+			[nonBondedInteractionParameterPosition[fidx]],
+			diffx, diffy, diffz,
+			&fx, &fy, &fz, &dp);
+	  myPoten += dp;
+	  myVxx += fx * diffx;
+	  myVyy += fy * diffy;
+	  myVzz += fz * diffz;
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
 	}
       }
     }
   }
   // printf ("bid: %d, tid: %d, num eff: %d. fsum %f\n", bid, tid, count, fsumx);
-
+  
   if (tid < this_numAtomInCell){
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
     forcz[ii] += fsumz;
   }
+
+  // __syncthreads();
+  // ScalorType * st_buff =
+  //     (ScalorType *) & pub_sbuff;
+  // if (threadIdx.x < this_numAtomInCell){
+  //   st_buff[threadIdx.x] = 0.5f * myPoten;
+  // }
+  // else {
+  //   st_buff[threadIdx.x] = 0.f;
+  // }
+  // __syncthreads();
+  // sumVectorBlockBuffer_2 (st_buff);
+  // if (threadIdx.x == 0) statistic_nb_buff0[bid] = st_buff[0];
+  // __syncthreads();
+
+  // if (threadIdx.x < this_numAtomInCell){
+  //   st_buff[threadIdx.x] = 0.5f * myVxx;
+  // }
+  // else {
+  //   st_buff[threadIdx.x] = 0.f;
+  // }
+  // __syncthreads();
+  // sumVectorBlockBuffer_2 (st_buff);
+  // if (threadIdx.x == 0) statistic_nb_buff1[bid] = st_buff[0];
+  // __syncthreads();
+
+  // if (threadIdx.x < this_numAtomInCell){
+  //   st_buff[threadIdx.x] = 0.5f * myVyy;
+  // }
+  // else {
+  //   st_buff[threadIdx.x] = 0.f;
+  // }
+  // __syncthreads();
+  // sumVectorBlockBuffer_2 (st_buff);
+  // if (threadIdx.x == 0) statistic_nb_buff2[bid] = st_buff[0];
+  // __syncthreads();
+
+  // if (threadIdx.x < this_numAtomInCell){
+  //   st_buff[threadIdx.x] = 0.5f * myVzz;
+  // }
+  // else {
+  //   st_buff[threadIdx.x] = 0.f;
+  // }
+  // __syncthreads();
+  // sumVectorBlockBuffer_2 (st_buff);
+  // if (threadIdx.x == 0) statistic_nb_buff3[bid] = st_buff[0];
   
   statistic_nb_buff0[ii] = myPoten * 0.5f;
   statistic_nb_buff1[ii] = myVxx * 0.5f;
   statistic_nb_buff2[ii] = myVyy * 0.5f;
   statistic_nb_buff3[ii] = myVzz * 0.5f;
 }
+
+
+
 
 __global__ void Parallel::CudaGlobal::
 calNonBondedInteraction (const CoordType * coord,
@@ -310,6 +357,7 @@ calNonBondedInteraction (const CoordType * coord,
 			 const IndexType * numAtomInCell,
 			 const IndexType * numNeighborCell,
 			 const IndexType * neighborCellIndex,
+			 const CoordType * neighborShift,
 			 const IndexType   stride,
 			 ScalorType * forcx,
 			 ScalorType * forcy,
@@ -321,8 +369,6 @@ calNonBondedInteraction (const CoordType * coord,
 
   IndexType this_numAtomInCell;
   IndexType this_numNeighborCell;  
-  IndexType target_cellIndex;
-  IndexType target_numAtomInCell;
   IndexType ii = bid * blockDim.x + tid;
 
   this_numNeighborCell = numNeighborCell[bid];
@@ -357,7 +403,11 @@ calNonBondedInteraction (const CoordType * coord,
   // IndexType count = 0;
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
+    IndexType target_cellIndex;
+    CoordType target_shift;
+    IndexType target_numAtomInCell;
     target_cellIndex = neighborCellIndex[bid * stride + kk];
+    target_shift     = neighborShift    [bid * stride + kk];
     target_numAtomInCell = numAtomInCell[target_cellIndex];
     if (target_numAtomInCell == 0) continue;
     IndexType indexShift = target_cellIndex * blockDim.x;
@@ -367,38 +417,32 @@ calNonBondedInteraction (const CoordType * coord,
       targetType[tid] = type[jj];
     }
     __syncthreads();
+    target_shift.x -= refCoord.x;
+    target_shift.y -= refCoord.y;
+    target_shift.z -= refCoord.z;
     if (tid < this_numAtomInCell){
       for (IndexType ll = 0; ll < target_numAtomInCell; ++ll){
-	if (ll + indexShift != ii) {	  
-	  ScalorType diffx = targetCoord[ll].x - refCoord.x;
-	  ScalorType diffy = targetCoord[ll].y - refCoord.y;
-	  ScalorType diffz = targetCoord[ll].z - refCoord.z;
-	  shortestImage (boxSize.x, boxSizei.x, &diffx);
-	  shortestImage (boxSize.y, boxSizei.y, &diffy);
-	  shortestImage (boxSize.z, boxSizei.z, &diffz);
-	  // shortestImage (boxSize.x, diffx);
-	  // shortestImage (boxSize.y, diffy);
-	  // shortestImage (boxSize.z, diffz);
-	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
-	    // count ++;
-	    // IndexType fidx(0);
-	    IndexType fidx;
-	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
-		const_nonBondedInteractionTable,
-		const_numAtomType[0],
-		refType,
-		targetType[ll]);
-	    ScalorType fx, fy, fz, dp;
-	    nbForcePoten (nonBondedInteractionType[fidx],
-			  &nonBondedInteractionParameter
-			  [nonBondedInteractionParameterPosition[fidx]],
-			  diffx, diffy, diffz,
-			  &fx, &fy, &fz, &dp);
-	    fsumx += fx;
-	    fsumy += fy;
-	    fsumz += fz;
-	  }
-	  // __syncthreads();
+	ScalorType diffx = targetCoord[ll].x + target_shift.x;
+	ScalorType diffy = targetCoord[ll].y + target_shift.y;
+	ScalorType diffz = targetCoord[ll].z + target_shift.z;
+	if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 && ll + indexShift != ii) {
+	  IndexType fidx;
+	  fidx = Parallel::CudaDevice::calNonBondedForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      refType,
+	      targetType[ll]);
+	  ScalorType fx, fy, fz;
+	  nbForce (nonBondedInteractionType[fidx],
+		   &nonBondedInteractionParameter
+		   [nonBondedInteractionParameterPosition[fidx]],
+		   diffx,
+		   diffy,
+		   diffz,
+		   &fx, &fy, &fz);
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
 	}
       }
     }
