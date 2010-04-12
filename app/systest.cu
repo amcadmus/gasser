@@ -19,7 +19,6 @@ using namespace Parallel::Timer;
 
 int main(int argc, char * argv[])
 {
-  HostTimer::tic (item_Total);
   Parallel::Interface::initEnvironment (&argc, &argv);
   // int div[3];
   // div[2] = env.numProc();
@@ -39,9 +38,11 @@ int main(int argc, char * argv[])
 
   
   GPU::Environment genv;
-  genv.setDeviceId (0);
+  genv.setDeviceId (atoi(argv[3]));
   
+  HostTimer::init();
   DeviceTimer::init ();
+  HostTimer::tic (item_Total);
   
   IndexType nstep = 20;
   char * filename;  
@@ -85,7 +86,8 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
-  
+
+  IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);
@@ -99,22 +101,39 @@ int main(int argc, char * argv[])
     DeviceTimer::tic (item_NonBondedInterStatistic);
     interEng.clearInteraction (sys.deviceData);
     DeviceTimer::toc (item_NonBondedInterStatistic);
+    HostTimer::tic (item_TransferGhost);
     sys.transferGhost ();
-    DeviceTimer::tic (item_NonBondedInterStatistic);
-    interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
-    DeviceTimer::toc (item_NonBondedInterStatistic);
+    HostTimer::toc (item_TransferGhost);
+    if ((i+1) % stFeq == 0){
+      DeviceTimer::tic (item_NonBondedInterStatistic);
+      interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
+      DeviceTimer::toc (item_NonBondedInterStatistic);
+    }
+    else {
+      DeviceTimer::tic (item_NonBondedInteraction);
+      interEng.applyNonBondedInteraction (sys.deviceData, relation);
+      DeviceTimer::toc (item_NonBondedInteraction);
+    }
+    HostTimer::tic (item_TransferGhost);
     sys.clearGhost ();
+    HostTimer::toc (item_TransferGhost);
     DeviceTimer::tic (item_Integrate);
     vv.step2 (sys.deviceData, dt, dst);
     DeviceTimer::toc (item_Integrate);
+    DeviceTimer::tic (item_BuildCellList);
     sys.deviceData.rebuild ();
+    DeviceTimer::toc (item_BuildCellList);
+    HostTimer::tic (item_Redistribute);
     sys.redistribute ();
+    HostTimer::toc (item_Redistribute);
+    DeviceTimer::tic (item_ApplyBondaryCondition);
     sys.deviceData.applyPeriodicBondaryCondition ();
+    DeviceTimer::toc (item_ApplyBondaryCondition);
   
     dst.copyToHost (hst);
     hst.collectData ();
 
-    if ((i+1)%10 == 0){
+    if ((i+1)%stFeq == 0){
       printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 	      (i+1),  
 	      (i+1) * dt, 
@@ -198,11 +217,15 @@ int main(int argc, char * argv[])
 
   sys.globalHostData.endWriteData_xtcFile ();
   
-  Parallel::Interface::finalizeEnvironment ();
-  DeviceTimer::finalize ();
+  
   HostTimer::toc (item_Total);
+  
+  printRecord (stderr);
 
-  printRecord (stdout);
+  DeviceTimer::finalize ();
+  HostTimer::finalize ();
+
+  Parallel::Interface::finalizeEnvironment ();
   
   return 0;
 }

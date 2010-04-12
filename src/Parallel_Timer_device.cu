@@ -2,13 +2,13 @@
 #include "Parallel_Timer.h"
 #include "compile_error_mixcode.h"
 
-bool
-Parallel::Timer::deviceTimerInited = false;
-Parallel::Timer::TimeType
-Parallel::Timer::deviceRecord[SizeOfTimeRecordArray];
-char
-Parallel::Timer::deviceWords[SizeOfTimeRecordArray][MaxWordsLength] = {{'\0'}};
-char		Parallel::Timer::deviceSpace[SizeOfTimeRecordArray][MaxWordsLength];
+using namespace Parallel::Timer;
+
+bool     Parallel::Timer::deviceTimerInited = false;
+TimeType Parallel::Timer::deviceRecord[SizeOfTimeRecordArray];
+char     Parallel::Timer::deviceWords[SizeOfTimeRecordArray][MaxWordsLength] = {{'\0'}};
+char	 Parallel::Timer::deviceSpace[SizeOfTimeRecordArray][MaxWordsLength];
+
 cudaEvent_t	Parallel::Timer::DeviceTimer::start [SizeOfTimeRecordArray];
 cudaEvent_t	Parallel::Timer::DeviceTimer::stop  [SizeOfTimeRecordArray];
 
@@ -18,7 +18,7 @@ init ()
   for (IndexType i = 0; i < SizeOfTimeRecordArray; ++i){
     cudaEventCreate (&start[i]);
     cudaEventCreate (&stop [i]);
-    Parallel::Timer::deviceRecord[i] = 0.f;
+    deviceRecord[i] = 0.f;
   }
   strncpy (deviceWords[item_ApplyBondaryCondition] ,
 	   "Apply bondary condition",
@@ -38,21 +38,21 @@ init ()
   strncpy (deviceWords[item_NonBondedInterStatistic],
 	   "Non bonded interaction with st",
 	   MaxWordsLength);
+
   for (IndexType i = 0; i < SizeOfTimeRecordArray; ++i){
     int wordLength = strlen (deviceWords[i]);
     int nspace = PrintStartPosition - wordLength;
-    if (nspace < 1){
-      nspace = 1;
+    if (nspace < 0){
+      nspace = 0;
     }
     int j = 0;
-    Parallel::Timer::deviceSpace[i][j++] = ':';
     for (; j < nspace; ++j){
-      Parallel::Timer::deviceSpace[i][j] = ' ';
+      deviceSpace[i][j] = ' ';
     }
-    Parallel::Timer::deviceSpace[i][j] ='\0';
+    deviceSpace[i][j] ='\0';
   }
       
-  Parallel::Timer::deviceTimerInited = true;
+  deviceTimerInited = true;
 }
 
 void Parallel::Timer::DeviceTimer::
@@ -62,7 +62,7 @@ finalize ()
     cudaEventDestroy (start[i]);
     cudaEventDestroy (stop [i]);
   }
-  Parallel::Timer::deviceTimerInited = false;
+  deviceTimerInited = false;
 }
 
 
@@ -70,7 +70,7 @@ void Parallel::Timer::DeviceTimer::
 reset ()
 {
   for (IndexType i = 0; i < SizeOfTimeRecordArray; ++i){
-    Parallel::Timer::deviceRecord[i] = 0.f;
+    deviceRecord[i] = 0.f;
   }
 }
 

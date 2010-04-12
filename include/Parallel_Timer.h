@@ -12,7 +12,7 @@ namespace Parallel{
     const IndexType ParallelItemShift		= 10000;
     const IndexType SizeOfTimeRecordArray	= 32;
     const IndexType MaxWordsLength		= 1024;
-    const int       PrintStartPosition		= 64;
+    const int       PrintStartPosition		= 64 - 3;
     
     extern TimeType  deviceRecord	[SizeOfTimeRecordArray];
     extern TimeType  hostRecordReal	[SizeOfTimeRecordArray];
@@ -20,6 +20,7 @@ namespace Parallel{
     extern char      deviceWords	[SizeOfTimeRecordArray][MaxWordsLength];
     extern char      deviceSpace	[SizeOfTimeRecordArray][MaxWordsLength];
     extern char      hostWords		[SizeOfTimeRecordArray][MaxWordsLength];
+    extern char      hostSpace		[SizeOfTimeRecordArray][MaxWordsLength];
     
     extern bool hostTimerInited;
     extern bool deviceTimerInited;
@@ -42,18 +43,22 @@ namespace Parallel{
       item_DataIO				= 20,
 
       item_Redistribute				= 1 + ParallelItemShift,
-      item_transferGhost			= 2 + ParallelItemShift
+      item_TransferGhost			= 2 + ParallelItemShift
     };
     typedef enum timeItem timeItem_t;
 
     void printRecord (FILE * fp);
     void printDeviceItem (FILE * fp, timeItem_t item);
+    void printHostItem   (FILE * fp, timeItem_t item);
+    void printTotalTime  (FILE * fp);
 
     namespace HostTimer {
       extern Stopwatch watch [SizeOfTimeRecordArray];
+      void init ();
+      void finalize ();
+      void reset ();
       void tic (timeItem_t item);
       void toc (timeItem_t item);
-      void reset ();
     }
     
       

@@ -54,6 +54,8 @@ namespace RectangularBoxGeometry{
   __device__ void shortestImage (const ScalorType boxL,
 				 const ScalorType boxLi,
 				 ScalorType * x);
+  __device__ void shortestImage (const ScalorType boxL,
+				 ScalorType & x);
     
   // needs ceil(numAtom/blockDim.x) blocks
   __global__ void normalizeSystem (RectangularBox box, 
@@ -183,7 +185,19 @@ shortestImage (const ScalorType boxL,
 	       ScalorType * x)
 {
   *x -= floorf(*x * boxLi + 0.5f) * boxL;
+  // if (*x >=  0.5f * boxL) *x -= boxL;
+  // if (*x < -0.5f * boxL) *x += boxL;
 }
+
+__device__ void RectangularBoxGeometry::
+shortestImage (const ScalorType boxL,
+	       ScalorType & x)
+{
+  ScalorType tmp = 0.5f * boxL;
+  if (x >= tmp) x -= boxL;
+  if (x < -tmp) x += boxL;
+}
+
 
 #endif // DEVICE_CODE
 

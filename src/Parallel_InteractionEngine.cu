@@ -115,33 +115,6 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 
 void Parallel::InteractionEngine::
 applyNonBondedInteraction (DeviceCellListedMDData & ddata,
-			   const DeviceCellRelation & relation)
-{
-  Parallel::CudaGlobal::calNonBondedInteraction
-      <<<gridDim, Parallel::Interface::numThreadsInCell(),
-      applyNonBondedInteraction_CellList_sbuffSize>>> (
-	  ddata.dptr_coordinate(),
-	  ddata.dptr_type(),
-	  ddata.getGlobalBox().size,
-	  ddata.getGlobalBox().sizei,
-	  ddata.getRlist(),
-	  ddata.dptr_numAtomInCell(),
-	  relation.dptr_numNeighborCell(),
-	  relation.dptr_neighborCellIndex(),
-	  relation.stride_neighborCellIndex(),
-	  ddata.dptr_forceX(),
-	  ddata.dptr_forceY(),
-	  ddata.dptr_forceZ(),
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
-	  err.ptr_de);
-  checkCUDAError ("InteractionEngine::applyNonBondedInteraction");
-}
-
-void Parallel::InteractionEngine::
-applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 			   const DeviceCellRelation & relation,
 			   DeviceStatistic & st)
 {
@@ -171,7 +144,31 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
   sum_nb_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
   sum_nb_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialZZ, 0);
 }
-	  
+
+void Parallel::InteractionEngine::
+applyNonBondedInteraction (DeviceCellListedMDData & ddata,
+			   const DeviceCellRelation & relation)
+{
+  Parallel::CudaGlobal::calNonBondedInteraction
+      <<<gridDim, Parallel::Interface::numThreadsInCell(),
+      applyNonBondedInteraction_CellList_sbuffSize>>> (
+	  ddata.dptr_coordinate(),
+	  ddata.dptr_type(),
+	  ddata.getGlobalBox().size,
+	  ddata.getGlobalBox().sizei,
+	  ddata.getRlist(),
+	  ddata.dptr_numAtomInCell(),
+	  relation.dptr_numNeighborCell(),
+	  relation.dptr_neighborCellIndex(),
+	  relation.stride_neighborCellIndex(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  err.ptr_de);
+  checkCUDAError ("InteractionEngine::applyNonBondedInteraction");
+}
+
+
 __global__ void Parallel::CudaGlobal::
 calNonBondedInteraction (const CoordType * coord,
 			 const TypeType  * type,
@@ -260,6 +257,9 @@ calNonBondedInteraction (const CoordType * coord,
 	  shortestImage (boxSize.x, boxSizei.x, &diffx);
 	  shortestImage (boxSize.y, boxSizei.y, &diffy);
 	  shortestImage (boxSize.z, boxSizei.z, &diffz);
+	  // shortestImage (boxSize.x, diffx);
+	  // shortestImage (boxSize.y, diffy);
+	  // shortestImage (boxSize.z, diffz);
 	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
 	    // count ++;
 	    IndexType fidx(0);
@@ -299,6 +299,117 @@ calNonBondedInteraction (const CoordType * coord,
   statistic_nb_buff1[ii] = myVxx * 0.5f;
   statistic_nb_buff2[ii] = myVyy * 0.5f;
   statistic_nb_buff3[ii] = myVzz * 0.5f;
+}
+
+__global__ void Parallel::CudaGlobal::
+calNonBondedInteraction (const CoordType * coord,
+			 const TypeType  * type,
+			 const HostVectorType boxSize,
+			 const HostVectorType boxSizei,
+			 const ScalorType  rlist,
+			 const IndexType * numAtomInCell,
+			 const IndexType * numNeighborCell,
+			 const IndexType * neighborCellIndex,
+			 const IndexType   stride,
+			 ScalorType * forcx,
+			 ScalorType * forcy,
+			 ScalorType * forcz,
+			 mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType this_numAtomInCell;
+  IndexType this_numNeighborCell;  
+  IndexType target_cellIndex;
+  IndexType target_numAtomInCell;
+  IndexType ii = bid * blockDim.x + tid;
+
+  this_numNeighborCell = numNeighborCell[bid];
+  if (this_numNeighborCell == 0) {
+    return;
+  }  
+  this_numAtomInCell = numAtomInCell[bid];
+  if (this_numAtomInCell == 0) {
+    return;
+  }  
+    
+  // if (tid == 0){
+  //   printf ("bid: %d, numNei: %d\n", bid, this_numNeighborCell);
+  // }    
+
+  CoordType refCoord;
+  TypeType refType;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+
+  if (tid < this_numAtomInCell){
+    refCoord = coord[ii];
+    refType = type[ii];
+  }  
+  ScalorType rlist2 = rlist * rlist;
+  
+  extern __shared__ volatile char pub_sbuff[];
+  CoordType * targetCoord =
+      (CoordType *) & pub_sbuff;
+  TypeType * targetType =
+      (TypeType *) & targetCoord[blockDim.x];
+  
+  // IndexType count = 0;
+  for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
+    __syncthreads();
+    target_cellIndex = neighborCellIndex[bid * stride + kk];
+    target_numAtomInCell = numAtomInCell[target_cellIndex];
+    if (target_numAtomInCell == 0) continue;
+    IndexType indexShift = target_cellIndex * blockDim.x;
+    IndexType jj = indexShift + tid;
+    if (tid < target_numAtomInCell) {
+      targetCoord[tid] = coord[jj];
+      targetType[tid] = type[jj];
+    }
+    __syncthreads();
+    if (tid < this_numAtomInCell){
+      for (IndexType ll = 0; ll < target_numAtomInCell; ++ll){
+	if (ll + indexShift != ii) {	  
+	  ScalorType diffx = targetCoord[ll].x - refCoord.x;
+	  ScalorType diffy = targetCoord[ll].y - refCoord.y;
+	  ScalorType diffz = targetCoord[ll].z - refCoord.z;
+	  shortestImage (boxSize.x, boxSizei.x, &diffx);
+	  shortestImage (boxSize.y, boxSizei.y, &diffy);
+	  shortestImage (boxSize.z, boxSizei.z, &diffz);
+	  // shortestImage (boxSize.x, diffx);
+	  // shortestImage (boxSize.y, diffy);
+	  // shortestImage (boxSize.z, diffz);
+	  if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2) {
+	    // count ++;
+	    // IndexType fidx(0);
+	    IndexType fidx;
+	    fidx = Parallel::CudaDevice::calNonBondedForceIndex (
+		const_nonBondedInteractionTable,
+		const_numAtomType[0],
+		refType,
+		targetType[ll]);
+	    ScalorType fx, fy, fz, dp;
+	    nbForcePoten (nonBondedInteractionType[fidx],
+			  &nonBondedInteractionParameter
+			  [nonBondedInteractionParameterPosition[fidx]],
+			  diffx, diffy, diffz,
+			  &fx, &fy, &fz, &dp);
+	    fsumx += fx;
+	    fsumy += fy;
+	    fsumz += fz;
+	  }
+	  // __syncthreads();
+	}
+      }
+    }
+  }
+  // printf ("bid: %d, tid: %d, num eff: %d. fsum %f\n", bid, tid, count, fsumx);
+
+  if (tid < this_numAtomInCell){
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }  
 }
 
 
