@@ -40,18 +40,17 @@ reinit (const DeviceCellListedMDData & ddata)
 {
   totalNumCell = ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
   devideLevel = ddata.getDevideLevel();
-  totalNumSubCell = totalNumCell * devideLevel;
-  gridDim = toGridDim (totalNumSubCell);
+  gridDim = toGridDim (totalNumCell);
   
-  sum_nb_p.reinit (totalNumSubCell, NThreadForSum);
-  sum_nb_vxx.reinit (totalNumSubCell, NThreadForSum);
-  sum_nb_vyy.reinit (totalNumSubCell, NThreadForSum);
-  sum_nb_vzz.reinit (totalNumSubCell, NThreadForSum);
-  sum_b_p.reinit (totalNumSubCell, NThreadForSum);
-  sum_b_vxx.reinit (totalNumSubCell, NThreadForSum);
-  sum_b_vyy.reinit (totalNumSubCell, NThreadForSum);
-  sum_b_vzz.reinit (totalNumSubCell, NThreadForSum);
-  sum_angle_p.reinit (totalNumSubCell, NThreadForSum);
+  sum_nb_p.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vxx.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vyy.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vzz.reinit (totalNumCell, NThreadForSum);
+  sum_b_p.reinit (totalNumCell, NThreadForSum);
+  sum_b_vxx.reinit (totalNumCell, NThreadForSum);
+  sum_b_vyy.reinit (totalNumCell, NThreadForSum);
+  sum_b_vzz.reinit (totalNumCell, NThreadForSum);
+  sum_angle_p.reinit (totalNumCell, NThreadForSum);
 }
 
 
