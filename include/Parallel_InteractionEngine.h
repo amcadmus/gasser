@@ -17,6 +17,8 @@ namespace Parallel{
   {
     dim3 gridDim;
     IndexType totalNumCell;
+    IndexType devideLevel;
+    IndexType totalNumSubCell;
     bool hasBond;
     bool hasAngle;
     IndexType calBondInteraction_sbuffSize;

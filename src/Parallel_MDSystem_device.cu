@@ -78,7 +78,7 @@ init (const char * confFileName,
   DeviceMDData & ddata (deviceData);
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
-  deviceData.initCellStructure (3.2);
+  deviceData.initCellStructure (3.2, 2);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
 
   cellRelation.build (deviceData);
