@@ -363,5 +363,6 @@ writeData_xtcFile (int step, float time)
 void Parallel::GlobalHostMDData::
 endWriteData_xtcFile ()
 {
+  free (xdx);
   xdrfile_close(xdfile);
 }

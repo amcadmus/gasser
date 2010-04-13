@@ -43,10 +43,10 @@ reinit (const DeviceCellListedMDData & ddata)
   gridDim = toGridDim (totalNumCell);
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   
-  sum_nb_p.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vxx.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vyy.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
-  sum_nb_vzz.reinit (totalNumCell*numThreadsInCell, NThreadForSum);
+  sum_nb_p.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vxx.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vyy.reinit (totalNumCell, NThreadForSum);
+  sum_nb_vzz.reinit (totalNumCell, NThreadForSum);
   sum_b_p.reinit (totalNumCell, NThreadForSum);
   sum_b_vxx.reinit (totalNumCell, NThreadForSum);
   sum_b_vyy.reinit (totalNumCell, NThreadForSum);
@@ -107,9 +107,12 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
   checkCUDAError ("InteractionEngine::init, const_nonBondedInteractionTable");
 
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  size_t tmpSize;
+  sizeof(TypeType) > sizeof(ScalorType) ?
+      tmpSize = sizeof(TypeType)   * numThreadsInCell :
+      tmpSize = sizeof(ScalorType) * numThreadsInCell ;
   applyNonBondedInteraction_CellList_sbuffSize =
-      sizeof(CoordType) * numThreadsInCell +
-      sizeof(TypeType)  * numThreadsInCell;
+      sizeof(CoordType) * numThreadsInCell + tmpSize;
   checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
 }
 
@@ -200,18 +203,22 @@ calNonBondedInteraction (const CoordType * coord,
 
   this_numNeighborCell = numNeighborCell[bid];
   if (this_numNeighborCell == 0) {
-    statistic_nb_buff0[ii] = 0.f;
-    statistic_nb_buff1[ii] = 0.f;
-    statistic_nb_buff2[ii] = 0.f;
-    statistic_nb_buff3[ii] = 0.f;
+    if (threadIdx.x == 0){
+      statistic_nb_buff0[bid] = 0.f;
+      statistic_nb_buff1[bid] = 0.f;
+      statistic_nb_buff2[bid] = 0.f;
+      statistic_nb_buff3[bid] = 0.f;
+    }
     return;
   }  
   this_numAtomInCell = numAtomInCell[bid];
   if (this_numAtomInCell == 0) {
-    statistic_nb_buff0[ii] = 0.f;
-    statistic_nb_buff1[ii] = 0.f;
-    statistic_nb_buff2[ii] = 0.f;
-    statistic_nb_buff3[ii] = 0.f;
+    if (threadIdx.x == 0){
+      statistic_nb_buff0[bid] = 0.f;
+      statistic_nb_buff1[bid] = 0.f;
+      statistic_nb_buff2[bid] = 0.f;
+      statistic_nb_buff3[bid] = 0.f;
+    }
     return;
   }  
     
@@ -232,9 +239,11 @@ calNonBondedInteraction (const CoordType * coord,
   
   extern __shared__ volatile char pub_sbuff[];
   CoordType * targetCoord =
-      (CoordType *) & pub_sbuff;
+      (CoordType *) & pub_sbuff[0];
   TypeType * targetType =
       (TypeType *) & targetCoord[blockDim.x];
+  ScalorType * st_buff =
+      (ScalorType *) & targetCoord[blockDim.x];
   
   // IndexType count = 0;
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
@@ -285,7 +294,6 @@ calNonBondedInteraction (const CoordType * coord,
       }
     }
   }
-  // printf ("bid: %d, tid: %d, num eff: %d. fsum %f\n", bid, tid, count, fsumx);
   
   if (tid < this_numAtomInCell){
     forcx[ii] += fsumx;
@@ -293,56 +301,54 @@ calNonBondedInteraction (const CoordType * coord,
     forcz[ii] += fsumz;
   }
 
-  // __syncthreads();
-  // ScalorType * st_buff =
-  //     (ScalorType *) & pub_sbuff;
-  // if (threadIdx.x < this_numAtomInCell){
-  //   st_buff[threadIdx.x] = 0.5f * myPoten;
-  // }
-  // else {
-  //   st_buff[threadIdx.x] = 0.f;
-  // }
-  // __syncthreads();
-  // sumVectorBlockBuffer_2 (st_buff);
-  // if (threadIdx.x == 0) statistic_nb_buff0[bid] = st_buff[0];
-  // __syncthreads();
+  __syncthreads();
+  if (threadIdx.x < this_numAtomInCell){
+    st_buff[threadIdx.x] = 0.5f * myPoten;
+  }
+  else {
+    st_buff[threadIdx.x] = 0.f;
+  }
+  __syncthreads();
+  sumVectorBlockBuffer_2 (st_buff);
+  if (threadIdx.x == 0) statistic_nb_buff0[bid] = st_buff[0];
+  __syncthreads();
 
-  // if (threadIdx.x < this_numAtomInCell){
-  //   st_buff[threadIdx.x] = 0.5f * myVxx;
-  // }
-  // else {
-  //   st_buff[threadIdx.x] = 0.f;
-  // }
-  // __syncthreads();
-  // sumVectorBlockBuffer_2 (st_buff);
-  // if (threadIdx.x == 0) statistic_nb_buff1[bid] = st_buff[0];
-  // __syncthreads();
+  if (threadIdx.x < this_numAtomInCell){
+    st_buff[threadIdx.x] = 0.5f * myVxx;
+  }
+  else {
+    st_buff[threadIdx.x] = 0.f;
+  }
+  __syncthreads();
+  sumVectorBlockBuffer_2 (st_buff);
+  if (threadIdx.x == 0) statistic_nb_buff1[bid] = st_buff[0];
+  __syncthreads();
 
-  // if (threadIdx.x < this_numAtomInCell){
-  //   st_buff[threadIdx.x] = 0.5f * myVyy;
-  // }
-  // else {
-  //   st_buff[threadIdx.x] = 0.f;
-  // }
-  // __syncthreads();
-  // sumVectorBlockBuffer_2 (st_buff);
-  // if (threadIdx.x == 0) statistic_nb_buff2[bid] = st_buff[0];
-  // __syncthreads();
+  if (threadIdx.x < this_numAtomInCell){
+    st_buff[threadIdx.x] = 0.5f * myVyy;
+  }
+  else {
+    st_buff[threadIdx.x] = 0.f;
+  }
+  __syncthreads();
+  sumVectorBlockBuffer_2 (st_buff);
+  if (threadIdx.x == 0) statistic_nb_buff2[bid] = st_buff[0];
+  __syncthreads();
 
-  // if (threadIdx.x < this_numAtomInCell){
-  //   st_buff[threadIdx.x] = 0.5f * myVzz;
-  // }
-  // else {
-  //   st_buff[threadIdx.x] = 0.f;
-  // }
-  // __syncthreads();
-  // sumVectorBlockBuffer_2 (st_buff);
-  // if (threadIdx.x == 0) statistic_nb_buff3[bid] = st_buff[0];
+  if (threadIdx.x < this_numAtomInCell){
+    st_buff[threadIdx.x] = 0.5f * myVzz;
+  }
+  else {
+    st_buff[threadIdx.x] = 0.f;
+  }
+  __syncthreads();
+  sumVectorBlockBuffer_2 (st_buff);
+  if (threadIdx.x == 0) statistic_nb_buff3[bid] = st_buff[0];
   
-  statistic_nb_buff0[ii] = myPoten * 0.5f;
-  statistic_nb_buff1[ii] = myVxx * 0.5f;
-  statistic_nb_buff2[ii] = myVyy * 0.5f;
-  statistic_nb_buff3[ii] = myVzz * 0.5f;
+  // statistic_nb_buff0[ii] = myPoten * 0.5f;
+  // statistic_nb_buff1[ii] = myVxx * 0.5f;
+  // statistic_nb_buff2[ii] = myVyy * 0.5f;
+  // statistic_nb_buff3[ii] = myVzz * 0.5f;
 }
 
 

@@ -1277,6 +1277,8 @@ clearData (const SubCellList & subList)
 	  num,
 	  numAtomInCell);
   checkCUDAError ("DeviceCellListedMDData::clearData, clearCellListData");
+  cudaFree (deviceList);
+  checkCUDAError ("DeviceCellListedMDData::clearData, free deviceList");  
 }
 
 
