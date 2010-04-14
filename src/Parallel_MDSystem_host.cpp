@@ -4,6 +4,7 @@
 #include "Parallel_TransferEngine.h"
 #include "Parallel_CellList.h"
 #include "Parallel_Interface.h"
+#include "Parallel_Timer.h"
 
 #include "compile_error_mixcode.h"
 
@@ -281,6 +282,7 @@ setHostData (HostCellListedMDData & hdata,
   
 }
 
+using namespace Parallel::Timer;
 
 void Parallel::SystemRedistributeTransferUtil::
 redistributeHost ()
@@ -290,17 +292,22 @@ redistributeHost ()
   
   // ptr_buff->clearData();
 
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (xsendNum0);
   recver.registerBuff (xrecvNum0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest0, 0);
   recver.Irecv (xsrc0,  0);
   sender.wait();
   recver.wait();
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   xsendData0.build ();
   xrecvData0.build ();
   sender.clearRegistered();
@@ -309,24 +316,32 @@ redistributeHost ()
   recver.registerBuff (xrecvData0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest0, 1);
   recver.Irecv (xsrc0,  1);
   sender.wait();
   recver.wait();
   xsend0.clearData();
   xrecv0h.add (xrecv0, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (xsendNum1);
   recver.registerBuff (xrecvNum1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest1, 2);
   recver.Irecv (xsrc1,  2);
   sender.wait();
   recver.wait();  
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   xsendData1.build ();
   xrecvData1.build ();
   sender.clearRegistered();
@@ -335,26 +350,34 @@ redistributeHost ()
   recver.registerBuff (xrecvData1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest1, 3);
   recver.Irecv (xsrc1,  3);
   sender.wait();
   recver.wait();
   xsend1.clearData();  
   xrecv1h.add (xrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 
   Parallel::Interface::barrier();
 
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (ysendNum0);
   recver.registerBuff (yrecvNum0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest0, 0);
   recver.Irecv (ysrc0,  0);
   sender.wait();
   recver.wait();  
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   ysendData0.build ();
   yrecvData0.build ();
   sender.clearRegistered();
@@ -363,24 +386,32 @@ redistributeHost ()
   recver.registerBuff (yrecvData0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest0, 1);
   recver.Irecv (ysrc0,  1);
   sender.wait();
   recver.wait();
   ysend0.clearData();
   yrecv0h.add (yrecv0, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (ysendNum1);
   recver.registerBuff (yrecvNum1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest1, 2);
   recver.Irecv (ysrc1,  2);
   sender.wait();
   recver.wait();  
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   ysendData1.build ();
   yrecvData1.build ();
   sender.clearRegistered();
@@ -389,26 +420,34 @@ redistributeHost ()
   recver.registerBuff (yrecvData1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest1, 3);
   recver.Irecv (ysrc1,  3);
   sender.wait();
   recver.wait();
   ysend1.clearData();
   yrecv1h.add (yrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 
   Parallel::Interface::barrier();
   
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (zsendNum0);
   recver.registerBuff (zrecvNum0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest0, 0);
   recver.Irecv (zsrc0,  0);
   sender.wait();
   recver.wait();  
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   zsendData0.build ();
   zrecvData0.build ();
   sender.clearRegistered();
@@ -417,24 +456,32 @@ redistributeHost ()
   recver.registerBuff (zrecvData0);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest0, 1);
   recver.Irecv (zsrc0,  1);
   sender.wait();
   recver.wait();
   zsend0.clearData ();
   zrecv0h.add (zrecv0, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (zsendNum1);
   recver.registerBuff (zrecvNum1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest1, 2);
   recver.Irecv (zsrc1,  2);
   sender.wait();
   recver.wait();  
+  HostTimer::toc (item_Redistribute_Transfer);
 
+  HostTimer::tic (item_Redistribute_Data);
   zsendData1.build ();
   zrecvData1.build ();
   sender.clearRegistered();
@@ -443,12 +490,15 @@ redistributeHost ()
   recver.registerBuff (zrecvData1);
   sender.build ();
   recver.build ();
+  HostTimer::toc (item_Redistribute_Data);
+  HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest1, 3);
   recver.Irecv (zsrc1,  3);
   sender.wait();
   recver.wait();
   zsend1.clearData();
   zrecv1h.add (zrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
 }
 
 

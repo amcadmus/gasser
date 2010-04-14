@@ -43,7 +43,9 @@ namespace Parallel{
       item_DataIO				= 20,
 
       item_Redistribute				= 1 + ParallelItemShift,
-      item_TransferGhost			= 2 + ParallelItemShift
+      item_Redistribute_Data			= 101 + ParallelItemShift,
+      item_Redistribute_Transfer		= 102 + ParallelItemShift,
+      item_TransferGhost			= 2 + ParallelItemShift,
     };
     typedef enum timeItem timeItem_t;
 
