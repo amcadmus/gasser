@@ -1,9 +1,11 @@
 #define DEVICE_CODE
+#include "Parallel_Timer.h"
 #include "Parallel_MDSystem.h"
 #include "Parallel_Interface.h"
 
 #include "compile_error_mixcode.h"
 
+using namespace Parallel::Timer;
 
 Parallel::MDSystem::
 MDSystem ()
@@ -78,7 +80,7 @@ init (const char * confFileName,
   DeviceMDData & ddata (deviceData);
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
-  deviceData.initCellStructure (3.2, 2);
+  deviceData.initCellStructure (3.2, 1);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
 
   cellRelation.build (deviceData);
@@ -109,11 +111,15 @@ init (const char * confFileName,
 void Parallel::MDSystem::
 redistribute ()
 {
+  HostTimer::tic(item_Redistribute_DHCopy);
   localHostData.clearData ();
   redistribcopyUtil .copyToHost ();
+  HostTimer::toc(item_Redistribute_DHCopy);
   redistribcopyUtil .clearDeviceSent ();
   redistribtransUtil.redistributeHost ();
+  HostTimer::tic(item_Redistribute_DHCopy);
   redistribcopyUtil .copyFromHost ();
+  HostTimer::toc(item_Redistribute_DHCopy);
 }
 
 void Parallel::MDSystem::
