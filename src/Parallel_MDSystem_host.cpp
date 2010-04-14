@@ -6,6 +6,20 @@
 #include "Parallel_Interface.h"
 #include "Parallel_Timer.h"
 
+Parallel::TransferEngine global_engine_xsendNum0;
+Parallel::TransferEngine global_engine_xrecvNum0;
+Parallel::TransferEngine global_engine_xsendNum1;
+Parallel::TransferEngine global_engine_xrecvNum1;
+Parallel::TransferEngine global_engine_ysendNum0;
+Parallel::TransferEngine global_engine_yrecvNum0;
+Parallel::TransferEngine global_engine_ysendNum1;
+Parallel::TransferEngine global_engine_yrecvNum1;
+Parallel::TransferEngine global_engine_zsendNum0;
+Parallel::TransferEngine global_engine_zrecvNum0;
+Parallel::TransferEngine global_engine_zsendNum1;
+Parallel::TransferEngine global_engine_zrecvNum1;    
+
+
 #include "compile_error_mixcode.h"
 
 // void Parallel::MDSystem::
@@ -279,7 +293,32 @@ setHostData (HostCellListedMDData & hdata,
   zrecvData0.reinit (zrecv0, mask);
   zsendData1.reinit (zsend1, mask);
   zrecvData1.reinit (zrecv1, mask);
-  
+
+  global_engine_xsendNum0.registerBuff (xsendNum0);
+  global_engine_xrecvNum0.registerBuff (xrecvNum0);
+  global_engine_xsendNum0.build ();
+  global_engine_xrecvNum0.build ();
+  global_engine_xsendNum1.registerBuff (xsendNum1);
+  global_engine_xrecvNum1.registerBuff (xrecvNum1);
+  global_engine_xsendNum1.build ();
+  global_engine_xrecvNum1.build ();
+  global_engine_ysendNum0.registerBuff (ysendNum0);
+  global_engine_yrecvNum0.registerBuff (yrecvNum0);
+  global_engine_ysendNum0.build ();
+  global_engine_yrecvNum0.build ();
+  global_engine_ysendNum1.registerBuff (ysendNum1);
+  global_engine_yrecvNum1.registerBuff (yrecvNum1);
+  global_engine_ysendNum1.build ();
+  global_engine_yrecvNum1.build ();
+  global_engine_zsendNum0.registerBuff (zsendNum0);
+  global_engine_zrecvNum0.registerBuff (zrecvNum0);
+  global_engine_zsendNum0.build ();
+  global_engine_zrecvNum0.build ();
+  global_engine_zsendNum1.registerBuff (zsendNum1);
+  global_engine_zrecvNum1.registerBuff (zrecvNum1);
+  global_engine_zsendNum1.build ();
+  global_engine_zrecvNum1.build ();
+
 }
 
 using namespace Parallel::Timer;
@@ -292,19 +331,19 @@ redistributeHost ()
   
   // ptr_buff->clearData();
 
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendNum0);
-  recver.registerBuff (xrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (xsendNum0);
+  // recver.registerBuff (xrecvNum0);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest0, 0);
-  recver.Irecv (xsrc0,  0);
-  sender.wait();
-  recver.wait();
+  global_engine_xsendNum0.Isend (xdest0, 0);
+  global_engine_xrecvNum0.Irecv (xsrc0,  0);
+  global_engine_xsendNum0.wait();
+  global_engine_xrecvNum0.wait();
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
@@ -326,19 +365,19 @@ redistributeHost ()
   xrecv0h.add (xrecv0, mask);
   HostTimer::toc (item_Redistribute_Transfer);
 
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendNum1);
-  recver.registerBuff (xrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (xsendNum1);
+  // recver.registerBuff (xrecvNum1);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest1, 2);
-  recver.Irecv (xsrc1,  2);
-  sender.wait();
-  recver.wait();  
+  global_engine_xsendNum1.Isend (xdest1, 2);
+  global_engine_xrecvNum1.Irecv (xsrc1,  2);
+  global_engine_xsendNum1.wait();
+  global_engine_xrecvNum1.wait();  
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
@@ -362,19 +401,19 @@ redistributeHost ()
 
   Parallel::Interface::barrier();
 
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendNum0);
-  recver.registerBuff (yrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (ysendNum0);
+  // recver.registerBuff (yrecvNum0);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest0, 0);
-  recver.Irecv (ysrc0,  0);
-  sender.wait();
-  recver.wait();  
+  global_engine_ysendNum0.Isend (ydest0, 0);
+  global_engine_yrecvNum0.Irecv (ysrc0,  0);
+  global_engine_ysendNum0.wait();
+  global_engine_yrecvNum0.wait();  
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
@@ -396,19 +435,19 @@ redistributeHost ()
   yrecv0h.add (yrecv0, mask);
   HostTimer::toc (item_Redistribute_Transfer);
 
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendNum1);
-  recver.registerBuff (yrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (ysendNum1);
+  // recver.registerBuff (yrecvNum1);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest1, 2);
-  recver.Irecv (ysrc1,  2);
-  sender.wait();
-  recver.wait();  
+  global_engine_ysendNum1.Isend (ydest1, 2);
+  global_engine_yrecvNum1.Irecv (ysrc1,  2);
+  global_engine_ysendNum1.wait();
+  global_engine_yrecvNum1.wait();  
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
@@ -432,19 +471,19 @@ redistributeHost ()
 
   Parallel::Interface::barrier();
   
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendNum0);
-  recver.registerBuff (zrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (zsendNum0);
+  // recver.registerBuff (zrecvNum0);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest0, 0);
-  recver.Irecv (zsrc0,  0);
-  sender.wait();
-  recver.wait();  
+  global_engine_zsendNum0.Isend (zdest0, 0);
+  global_engine_zrecvNum0.Irecv (zsrc0,  0);
+  global_engine_zsendNum0.wait();
+  global_engine_zrecvNum0.wait();  
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
@@ -466,19 +505,19 @@ redistributeHost ()
   zrecv0h.add (zrecv0, mask);
   HostTimer::toc (item_Redistribute_Transfer);
 
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendNum1);
-  recver.registerBuff (zrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
+  // HostTimer::tic (item_Redistribute_Data);
+  // sender.clearRegistered();
+  // recver.clearRegistered();
+  // sender.registerBuff (zsendNum1);
+  // recver.registerBuff (zrecvNum1);
+  // sender.build ();
+  // recver.build ();
+  // HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest1, 2);
-  recver.Irecv (zsrc1,  2);
-  sender.wait();
-  recver.wait();  
+  global_engine_zsendNum1.Isend (zdest1, 2);
+  global_engine_zrecvNum1.Irecv (zsrc1,  2);
+  global_engine_zsendNum1.wait();
+  global_engine_zrecvNum1.wait();  
   HostTimer::toc (item_Redistribute_Transfer);
 
   HostTimer::tic (item_Redistribute_Data);
