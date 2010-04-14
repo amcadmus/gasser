@@ -150,11 +150,11 @@ int main(int argc, char * argv[])
       fflush (stdout);
     }
     
-    // if ((i+1)%100 == 0){
-    //   sys.updateHost ();  
-    //   sys.collectLocalData ();
-    //   sys.globalHostData.writeData_xtcFile (i, dt*i);
-    // }
+    if ((i+1)%100 == 0){
+      sys.updateHost ();  
+      sys.collectLocalData ();
+      sys.globalHostData.writeData_xtcFile (i, dt*i);
+    }
   }
   
   // int myRank = Parallel::Interface::myRank();

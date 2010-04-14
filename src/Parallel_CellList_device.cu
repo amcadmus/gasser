@@ -1618,19 +1618,19 @@ buildCellNeighborhood (const IntVectorType numCell,
 	  if (rankx == 0 && myx < devideLevel) {
 	    myshift.x = - globalBoxSize.x;
 	  }
-	  else if (rankx == nProcDimx - 1 && myx >= int((numCell.x-1) * devideLevel)){
+	  else if (rankx == nProcDimx - 1 && myx >= int(numCell.x - devideLevel)){
 	    myshift.x = globalBoxSize.x;
 	  }
 	  if (ranky == 0 && myy < devideLevel) {
 	    myshift.y = - globalBoxSize.y;
 	  }
-	  else if (ranky == nProcDimy - 1 && myy >= int((numCell.y-1) * devideLevel)){
+	  else if (ranky == nProcDimy - 1 && myy >= int(numCell.y - devideLevel)){
 	    myshift.y = globalBoxSize.y;
 	  }
 	  if (rankz == 0 && myz < devideLevel) {
 	    myshift.z = - globalBoxSize.z;
 	  }
-	  else if (rankz == nProcDimz - 1 && myz >= int((numCell.z-1) * devideLevel)){
+	  else if (rankz == nProcDimz - 1 && myz >= int(numCell.z - devideLevel)){
 	    myshift.z = globalBoxSize.z;
 	  }
 	  ScalorType min = 1e9;
