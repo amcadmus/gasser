@@ -44,6 +44,7 @@ namespace Parallel{
 
       item_Redistribute				= 1 + ParallelItemShift,
       item_Redistribute_Data			= 3 + ParallelItemShift,
+      item_Redistribute_Data0			= 6 + ParallelItemShift,
       item_Redistribute_Transfer		= 4 + ParallelItemShift,
       item_Redistribute_DHCopy			= 5 + ParallelItemShift,
       item_TransferGhost			= 2 + ParallelItemShift,

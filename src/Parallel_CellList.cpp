@@ -954,8 +954,7 @@ build ()
       (sizes)[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
 	  [ptr_list->operator[](i)] * sizeof(ScalorType);
     }
-  }
-  
+  } 
 }
 
 

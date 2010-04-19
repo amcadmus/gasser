@@ -64,6 +64,7 @@ printRecord (FILE * fp)
 
   printHostItem (fp, item_Redistribute);
   printHostItem (fp, item_Redistribute_Data);
+  printHostItem (fp, item_Redistribute_Data0);
   printHostItem (fp, item_Redistribute_Transfer);
   printHostItem (fp, item_Redistribute_DHCopy);
   printHostItem (fp, item_TransferGhost);
@@ -98,6 +99,9 @@ init ()
 	   MaxWordsLength);
   strncpy (hostWords[item_Redistribute_Data - ParallelItemShift] ,
 	   "Redistribute atoms build data struct",
+	   MaxWordsLength);
+  strncpy (hostWords[item_Redistribute_Data0 - ParallelItemShift] ,
+	   "Redistribute atoms build data struct 0",
 	   MaxWordsLength);
   strncpy (hostWords[item_Redistribute_Transfer - ParallelItemShift] ,
 	   "Redistribute atoms transfer",
