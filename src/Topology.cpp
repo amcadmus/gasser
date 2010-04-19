@@ -156,7 +156,7 @@ pushAtom (const Atom & a)
   atoms.push_back(a);
 }
 
-void Topology::Molecule::
+void Topology::System::
 addNonBondedInteraction (const NonBondedInteraction & nb)
 {
   nonBondedInteractions.push_back(nb);

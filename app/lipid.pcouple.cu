@@ -50,11 +50,11 @@ int main(int argc, char * argv[])
   // nonbonded interactions
   CosTailParameter cosparam;
   cosparam.reinit (1.f, 0.95f, 0.f);
-  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, cosparam));  
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, cosparam));  
   cosparam.reinit (1.f, 0.975f, 0.f);
-  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 1, cosparam));  
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 1, cosparam));  
   cosparam.reinit (1.f, 1.f, 1.6f);
-  mol.addNonBondedInteraction (Topology::NonBondedInteraction(1, 1, cosparam));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 1, cosparam));
   // bonded interactions
   HarmonicSpringParameter hsparam;
   FENEParameter feneparam;
