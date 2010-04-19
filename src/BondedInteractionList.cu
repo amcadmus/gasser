@@ -53,11 +53,12 @@ reinit (const MDSystem & sysData,
   {
     IndexType shift0 = 0;
     for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+      shift0 = sysTop.indexShift[i];
       IndexType molSize = sysTop.molecules[i].size();
       for (unsigned j = 0; j < sysTop.numbers[i]; ++j){
 	IndexType shift1 = j * molSize;
+	IndexType indexSift = shift0 + shift1;
 	for (unsigned k = 0; k < molSize; ++k){
-	  IndexType indexSift = shift0 + shift1;
 	  for (unsigned l = 0; l < sysBdInter.bondIndex[i][k].size(); ++l){
 	    hbondlist.addBond (indexSift + k,
 			       indexSift + sysBdInter.bondNeighborIndex[i][k][l],
@@ -65,17 +66,17 @@ reinit (const MDSystem & sysData,
 	  }
 	}
       }
-      shift0 += sysTop.indexShift[i];
     }
   }
   {
     IndexType shift0 = 0;
     for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+      shift0 = sysTop.indexShift[i];
       IndexType molSize = sysTop.molecules[i].size();
       for (unsigned j = 0; j < sysTop.numbers[i]; ++j){
 	IndexType shift1 = j * molSize;
+	IndexType indexSift = shift0 + shift1;
 	for (unsigned k = 0; k < molSize; ++k){
-	  IndexType indexSift = shift0 + shift1;
 	  for (unsigned l = 0; l < sysBdInter.angleIndex[i][k].size(); ++l){
 	    hanglelist.addAngle (
 		indexSift + k,
@@ -86,7 +87,6 @@ reinit (const MDSystem & sysData,
 	  }
 	}
       }
-      shift0 += sysTop.indexShift[i];
     }
   }
   
