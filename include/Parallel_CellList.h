@@ -26,6 +26,7 @@ public:
   class DeviceTransferPackage;
   class HostSubCellList;
   class DeviceSubCellList;
+  class DeviceCellRelation;
   
   class HostCellListedMDData : public HostMDData
   {
@@ -112,6 +113,31 @@ public:
     void sub (const SubCellList & a);    
   };
 
+  class HostCellRelation
+  {
+    friend class DeviceCellRelation;
+    
+    IndexType totalNumCell;
+    IndexType MaxNeiPerCell;
+    IndexType * numNeighbor;
+    IndexType * neighborCellIndex;
+    HostCoordType * neighborShift;
+    void clear ();
+    void easyMalloc (const IndexType & totalNumCell,
+		     const IndexType & MaxNeiPerCell);
+public:
+    HostCellRelation ();
+    ~HostCellRelation ();
+public:
+    IndexType * cptr_numNeighborCell   () {return numNeighbor;}
+    IndexType * cptr_neighborCellIndex () {return neighborCellIndex;}
+    HostCoordType * cptr_neighborShift     () {return neighborShift;}
+    const IndexType * cptr_numNeighborCell   () const {return numNeighbor;}
+    const IndexType * cptr_neighborCellIndex () const {return neighborCellIndex;}
+    const HostCoordType * cptr_neighborShift     () const {return neighborShift;}
+    IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
+  };
+  
   class TransNumAtomInSubList : public TransferEngineCompatible 
   {
     void ** buffs;
@@ -336,6 +362,7 @@ public:
     IndexType * numNeighbor;
     IndexType * neighborCellIndex;
     CoordType * neighborShift;
+    IndexType totalNumCell;
     IndexType MaxNeiPerCell;
     void clear ();
     void easyMalloc (const IndexType & totalNumCell,
@@ -352,6 +379,8 @@ public:
     const IndexType * dptr_neighborCellIndex () const {return neighborCellIndex;}
     const CoordType * dptr_neighborShift     () const {return neighborShift;}
     IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
+public:
+    void copyToHost (HostCellRelation & hrelation);
   };
   
 #endif // DEVICE_CODE

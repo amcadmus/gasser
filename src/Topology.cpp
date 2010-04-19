@@ -223,3 +223,16 @@ clear()
   indexShift.clear();
 }
 
+void Topology::System::
+calMolTopPosition (const IndexType & globalIndex,
+		   IndexType & molIndex,
+		   IndexType & atomIndex)
+{
+  if (globalIndex >= indexShift.back ()){
+    throw MDExcptTopology ("wrong global index");
+  }
+  molIndex = 0;
+  while (globalIndex >= indexShift[molIndex+1]) molIndex++;
+  atomIndex = (globalIndex - indexShift[molIndex]) % numbers[molIndex];
+}
+

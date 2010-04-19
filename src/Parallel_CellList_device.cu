@@ -1336,12 +1336,15 @@ applyPeriodicBondaryCondition ()
 }
 
 void Parallel::DeviceCellRelation::
-easyMalloc (const IndexType & totalNumCell,
-	    const IndexType & MaxNeiPerCell)
+easyMalloc (const IndexType & totalNumCell_,
+	    const IndexType & MaxNeiPerCell_)
 {
   if (malloced){
     clear ();
   }
+  totalNumCell = totalNumCell_;
+  MaxNeiPerCell = MaxNeiPerCell_;
+  
   cudaMalloc ((void**)&numNeighbor, totalNumCell * sizeof(IndexType));
   cudaMalloc ((void**)&neighborCellIndex,
 	      totalNumCell * MaxNeiPerCell * sizeof (IndexType));
@@ -1372,7 +1375,7 @@ build (DeviceCellListedMDData & list)
   ptr_list = &list;
 
   IntVectorType numCell = list.getNumCell ();
-  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  totalNumCell = numCell.x * numCell.y * numCell.z;
   MaxNeiPerCell = 2 * list.getDevideLevel() + 1;
   MaxNeiPerCell = MaxNeiPerCell * MaxNeiPerCell * MaxNeiPerCell;
   int Nx, Ny, Nz;
@@ -1659,6 +1662,29 @@ buildCellNeighborhood (const IntVectorType numCell,
     }
   }
 }
+
+
+void Parallel::DeviceCellRelation::
+copyToHost (HostCellRelation & hrelation)
+{
+  hrelation.easyMalloc (totalNumCell, MaxNeiPerCell);
+  cudaMemcpy (hrelation.cptr_numNeighborCell(),
+	      numNeighbor,
+	      sizeof(IndexType) * totalNumCell,
+	      cudaMemcpyDeviceToHost);
+  cudaMemcpy (hrelation.cptr_neighborCellIndex(),
+	      neighborCellIndex,
+	      sizeof(IndexType) * totalNumCell * MaxNeiPerCell,
+	      cudaMemcpyDeviceToHost);
+  cudaMemcpy (hrelation.cptr_neighborShift(),
+	      neighborShift,
+	      sizeof(CoordType) * totalNumCell * MaxNeiPerCell,
+	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("DeviceCellRelation::copyToHost");
+}
+
+
+
 
   
 

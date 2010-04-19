@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
   Parallel::DeviceStatistic dst;
   hst.reinit (sys.localHostData);
   dst.reinit (sys.deviceData);
-
+  
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
   Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
   ScalorType dt = 0.001;

@@ -4,9 +4,20 @@
 #include "common.h"
 #include "Interaction.h"
 #include <vector> 
+#include "MDException.h"
 
 namespace Topology {
-    
+
+  class MDExcptTopology : public MDException {
+    char message[MaxExceptionMsgLength];
+public:
+    MDExcptTopology (const char * description) 
+	{strncpy (message, description, MaxExceptionMsgLength);}
+    virtual const char* what() const throw()
+	{return message;}
+  };
+
+  
     struct Atom 
     {
       char name[8];
@@ -106,7 +117,11 @@ namespace Topology {
       void addMolecules (const Molecule & mol,
 			 const IndexType & number);
       void clear();
+  public:
       IndexType numAtom () const {return indexShift.back();}
+      void calMolTopPosition (const IndexType & globalIndex,
+			      IndexType & molIndex,
+			      IndexType & atomIndex);
     };
 }
 

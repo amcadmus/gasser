@@ -1172,3 +1172,55 @@ writeData_SimpleFile (const char * filename)
   fclose (fp);
 }
 
+
+Parallel::HostCellRelation::
+HostCellRelation ()
+    : numNeighbor (NULL),
+      neighborCellIndex (NULL),
+      neighborShift (NULL)
+{
+}
+
+Parallel::HostCellRelation::
+~HostCellRelation ()
+{
+  clear ();
+}
+
+void Parallel::HostCellRelation::
+clear ()
+{
+  freeAPointer ((void**)&numNeighbor);
+  freeAPointer ((void**)&neighborCellIndex);
+  freeAPointer ((void**)&neighborShift);
+}
+
+void Parallel::HostCellRelation::
+easyMalloc (const IndexType & totalNumCell_,
+	    const IndexType & MaxNeiPerCell_)
+{
+  clear ();
+  totalNumCell = totalNumCell_;
+  MaxNeiPerCell = MaxNeiPerCell_;
+  
+  numNeighbor = (IndexType *) malloc (sizeof (IndexType) * totalNumCell);
+  if (numNeighbor == NULL){
+    throw MDExcptFailedMallocOnHost ("HostCellRelation::easyMalloc",
+				     "numNeighbor", sizeof(IndexType)*totalNumCell);
+  }
+  neighborCellIndex = (IndexType *) malloc (sizeof(IndexType) * 
+					    totalNumCell * MaxNeiPerCell);
+  if (neighborCellIndex == NULL){
+    throw MDExcptFailedMallocOnHost ("HostCellRelation::easyMalloc",
+				     "neighborCellIndex",
+				     sizeof(IndexType)*totalNumCell*MaxNeiPerCell);
+  }
+  neighborShift = (HostCoordType *) malloc (sizeof(HostCoordType) *
+					    totalNumCell * MaxNeiPerCell);
+  if (neighborShift == NULL){
+    throw MDExcptFailedMallocOnHost ("HostCellRelation::easyMalloc",
+				     "neighborShift",
+				     sizeof(HostCoordType)*totalNumCell*MaxNeiPerCell);
+  }
+}
+

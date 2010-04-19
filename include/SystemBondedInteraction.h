@@ -23,6 +23,15 @@ public:
   // HostBondList   hdblist;
   // DeviceBondList dbdlist;
   unsigned angleInteractionShift;
+public:
+  const std::vector<IndexType > &
+  getTopBondNeighborIndex (const IndexType & topMolIndex,
+			   const IndexType & topAtomIndex) const
+      {return bondNeighborIndex[topMolIndex][topAtomIndex];}
+  const std::vector<IndexType > &
+  getTopBondIndex (const IndexType & topMolIndex,
+		   const IndexType & topAtomIndex) const
+      {return bondIndex[topMolIndex][topAtomIndex];}
 private:
   bool hasBond_;
   bool hasAngle_;
