@@ -78,7 +78,6 @@ namespace Topology {
     {
       char name[8];
       std::vector<Atom > atoms;
-      std::vector<NonBondedInteraction > nonBondedInteractions;
       std::vector<Bond > bonds;
       std::vector<Angle > angles;
   public:
@@ -90,18 +89,19 @@ namespace Topology {
       const Atom & operator [] (const IndexType & i) const {return atoms[i];}
       void addBond (const Bond & bd);
       void addAngle (const Angle & ag);
-      void addNonBondedInteraction (const NonBondedInteraction & nb);
     };
 
 
     struct System
     {
       char name[8];
+      std::vector<NonBondedInteraction > nonBondedInteractions;
       std::vector<Molecule > molecules;
       std::vector<IndexType > numbers;
       std::vector<IndexType > indexShift;
   public:
       System();
+      void addNonBondedInteraction (const NonBondedInteraction & nb);
       void addMolecules (const Molecule & mol,
 			 const IndexType & number);
       void clear();

@@ -48,7 +48,7 @@ int main(int argc, char * argv[])
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
   ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
-  mol.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);

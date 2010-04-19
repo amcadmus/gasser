@@ -108,14 +108,12 @@ reinit (const Topology::System & sysTop)
   }
   std::vector<ScalorType > empty;
   add (maxType, maxType, mdForceNULL, empty, 0);
-  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
-    for (unsigned j = 0; j < sysTop.molecules[i].nonBondedInteractions.size(); ++j){
-      add (sysTop.molecules[i].nonBondedInteractions[j].atomType0,
-	   sysTop.molecules[i].nonBondedInteractions[j].atomType1,
-	   sysTop.molecules[i].nonBondedInteractions[j].type,
-	   sysTop.molecules[i].nonBondedInteractions[j].paramArray,
-	   sysTop.molecules[i].nonBondedInteractions[j].rcut);
-    }
+  for (unsigned i = 0; i < sysTop.nonBondedInteractions.size(); ++i){
+      add (sysTop.nonBondedInteractions[i].atomType0,
+	   sysTop.nonBondedInteractions[i].atomType1,
+	   sysTop.nonBondedInteractions[i].type,
+	   sysTop.nonBondedInteractions[i].paramArray,
+	   sysTop.nonBondedInteractions[i].rcut);
   }
   build ();
 }	   
