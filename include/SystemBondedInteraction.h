@@ -52,6 +52,7 @@ public:
   IndexType memBondedParameter;
 public:
   SystemBondedInteraction ();
+  SystemBondedInteraction (const Topology::System & sysTop);
   ~SystemBondedInteraction ();
   void reinit (const Topology::System & sysTop);
   void clear ();

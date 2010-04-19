@@ -10,6 +10,17 @@ SystemBondedInteraction()
 }
 
 SystemBondedInteraction::
+SystemBondedInteraction(const Topology::System & sysTop)
+    : numBondedInteraction (0), memBondedInteraction(0),
+      numBondedParameter (0), memBondedParameter (0),
+      hasBond_(false), hasAngle_(false),
+      type (NULL), bondedParameterPosition (NULL), bondedParameter (NULL)
+{
+  reinit (sysTop);
+}
+
+
+SystemBondedInteraction::
 ~SystemBondedInteraction ()
 {
   freeAPointer((void**)&type);

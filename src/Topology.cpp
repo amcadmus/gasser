@@ -156,7 +156,7 @@ pushAtom (const Atom & a)
   atoms.push_back(a);
 }
 
-void Topology::Molecule::
+void Topology::System::
 addNonBondedInteraction (const NonBondedInteraction & nb)
 {
   nonBondedInteractions.push_back(nb);
@@ -233,6 +233,6 @@ calMolTopPosition (const IndexType & globalIndex,
   }
   molIndex = 0;
   while (globalIndex >= indexShift[molIndex+1]) molIndex++;
-  atomIndex = (globalIndex - indexShift[molIndex]) % numbers[molIndex];
+  atomIndex = (globalIndex - indexShift[molIndex]) % (molecules[molIndex].size());
 }
 
