@@ -32,16 +32,15 @@ clear ()
 }
 
 void Parallel::HostBondList::
-easyMalloc (const IndexType & totalNumCell_,
-		     const IndexType & maxNumBond_)
+easyMalloc (const IndexType & stride,
+	    const IndexType & length)
 {
-  totalNumCell = totalNumCell_;
-  maxNumBond = maxNumBond_;
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  myStride = stride;
+  maxLength = length;  
   clear ();
 
-  size_t size0 = sizeof(IndexType) * totalNumCell * numThreadsInCell * maxNumBond;
-  size_t size1 = sizeof(IndexType) * totalNumCell * numThreadsInCell ;
+  size_t size0 = sizeof(IndexType) * myStride * maxLength;
+  size_t size1 = sizeof(IndexType) * myStride ;
 
   global_numBond = (IndexType*) malloc (size1);
   if (global_numBond == NULL){
@@ -74,14 +73,14 @@ inline IndexType Parallel::HostBondList::
 convertIndex (const IndexType & localIndex,
 	      const IndexType & ithBond) const
 {
-  return localIndex * stride() + ithBond;
+  return ithBond * stride() + localIndex;
 }
 
 inline IndexType Parallel::DeviceBondList::
 convertIndex (const IndexType & localIndex,
 	      const IndexType & ithBond) const
 {
-  return localIndex * stride() + ithBond;
+  return ithBond * stride() + localIndex;
 }
 
 inline IndexType & Parallel::HostBondList::
@@ -141,7 +140,7 @@ item_global_bondIndex (const IndexType & localIndex,
 
 inline const IndexType & Parallel::HostBondList::
 item_neighborIndex (const IndexType & localIndex,
-		       const IndexType & ithBond) const
+		    const IndexType & ithBond) const
 {
   return neighborIndex[convertIndex(localIndex, ithBond)];
 }
@@ -157,17 +156,13 @@ item_neighborIndex (const IndexType & localIndex,
 void Parallel::HostBondList::
 initZero ()
 {
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
-  for (unsigned i = 0; i < totalNumCell; ++i){
-    for (unsigned j = 0; j < numThreadsInCell; ++j){
-      IndexType pIndex = i * numThreadsInCell + j;
+  for (unsigned k = 0; k < maxLength; ++k){
+    for (unsigned pIndex = 0; pIndex < myStride; ++pIndex){
       item_global_numBond (pIndex) = 0;
-      for (unsigned k = 0; k < maxNumBond; ++k){
-	item_global_neighborIndex (pIndex, k) = MaxIndexValue;
-	item_global_bondIndex     (pIndex, k) = MaxIndexValue;
-	item_neighborIndex	  (pIndex, k) = MaxIndexValue;
-	// item_bondActive		  (pIndex, k) = MaxIndexValue;
-      }
+      item_global_neighborIndex (pIndex, k) = MaxIndexValue;
+      item_global_bondIndex     (pIndex, k) = MaxIndexValue;
+      item_neighborIndex	  (pIndex, k) = MaxIndexValue;
+      // item_bondActive		  (pIndex, k) = MaxIndexValue;
     }
   }
 }
@@ -177,7 +172,7 @@ reinit (HostCellListedMDData & hcellData,
 	Topology::System & sysTop,
 	SystemBondedInteraction & sysBdInter)
 {
-  maxNumBond = 0;
+  IndexType maxNumBond = 0;
   for (unsigned i = 0; i < sysBdInter.bondIndex.size(); ++i){
     for (unsigned j = 0; j < sysBdInter.bondIndex[i].size(); ++j){
       IndexType c ;
@@ -188,9 +183,11 @@ reinit (HostCellListedMDData & hcellData,
   }
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
   HostIntVectorType numCell = hcellData.getNumCell();
-  totalNumCell = numCell.x * numCell.y * numCell.z;
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  myStride = totalNumCell * numThreadsInCell;
+  maxLength = maxNumBond;
 
-  easyMalloc (totalNumCell, maxNumBond);
+  easyMalloc (myStride, maxLength);
   initZero ();
   
   for (unsigned i = 0; i < totalNumCell; ++i){
@@ -216,8 +213,21 @@ reinit (HostCellListedMDData & hcellData,
 
 Parallel::DeviceBondList::
 DeviceBondList ()
-    : malloced (false), totalNumCell(0), maxNumBond(0)
+    : malloced (false), myStride(0), maxLength(0)
 {
+}
+
+Parallel::DeviceBondList::
+DeviceBondList (const HostBondList & hbdlist)
+    : malloced (false), myStride(0), maxLength(0)
+{
+  reinit (hbdlist);
+}
+
+inline void Parallel::DeviceBondList::
+reinit (const HostBondList & hbdlist)
+{
+  copyFromHost (hbdlist);
 }
 
 Parallel::DeviceBondList::
@@ -240,17 +250,15 @@ clear ()
 }
 
 void Parallel::DeviceBondList::
-easyMalloc (const IndexType & totalNumCell_,
-	    const IndexType & maxNumBond_)
+easyMalloc (const IndexType & stride,
+	    const IndexType & length)
 {
   clear ();
-
-  totalNumCell = totalNumCell_;
-  maxNumBond = maxNumBond_;
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
-
-  size_t size0 = sizeof(IndexType) * totalNumCell * numThreadsInCell * maxNumBond;
-  size_t size1 = sizeof(IndexType) * totalNumCell * numThreadsInCell ;
+  myStride = stride;
+  maxLength = length;
+  
+  size_t size0 = sizeof(IndexType) * myStride * maxLength;
+  size_t size1 = sizeof(IndexType) * myStride ;
   
   cudaMalloc ((void**)&global_numBond, size1);
   cudaMalloc ((void**)&global_neighborIndex, size0);
@@ -263,17 +271,13 @@ easyMalloc (const IndexType & totalNumCell_,
 void Parallel::DeviceBondList::
 copyFromHost (const HostBondList & hbdlist)
 {
-  if (totalNumCell < hbdlist.totalNumCell ||
-      totalNumCell * maxNumBond < hbdlist.totalNumCell * hbdlist.maxNumBond){
-    easyMalloc (hbdlist.totalNumCell, hbdlist.maxNumBond);
-  }
-  
-  totalNumCell = hbdlist.totalNumCell;
-  maxNumBond = hbdlist.maxNumBond;
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  if (myStride < hbdlist.myStride ||
+      myStride * maxLength < hbdlist.myStride * hbdlist.maxLength){
+    easyMalloc (hbdlist.myStride, hbdlist.maxLength);
+  }  
 
-  size_t size0 = sizeof(IndexType) * totalNumCell * numThreadsInCell * maxNumBond;
-  size_t size1 = sizeof(IndexType) * totalNumCell * numThreadsInCell ;
+  size_t size0 = sizeof(IndexType) * myStride * maxLength;
+  size_t size1 = sizeof(IndexType) * myStride ;
   
   cudaMemcpy (global_numBond, hbdlist.global_numBond, size1,
 	      cudaMemcpyHostToDevice);
@@ -290,17 +294,13 @@ copyFromHost (const HostBondList & hbdlist)
 void Parallel::DeviceBondList::
 copyToHost (HostBondList & hbdlist) const 
 {
-  if (hbdlist.totalNumCell < totalNumCell ||
-      hbdlist.totalNumCell * hbdlist.maxNumBond < totalNumCell * maxNumBond){
-    hbdlist.easyMalloc (totalNumCell, maxNumBond);
+  if (hbdlist.myStride < myStride ||
+      hbdlist.myStride * hbdlist.maxLength < myStride * maxLength){
+    hbdlist.easyMalloc (myStride, maxLength);
   }
 
-  hbdlist.totalNumCell = totalNumCell;
-  hbdlist.maxNumBond = maxNumBond;
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
-
-  size_t size0 = sizeof(IndexType) * totalNumCell * numThreadsInCell * maxNumBond;
-  size_t size1 = sizeof(IndexType) * totalNumCell * numThreadsInCell ;
+  size_t size0 = sizeof(IndexType) * myStride * maxLength;
+  size_t size1 = sizeof(IndexType) * myStride ;
 
   cudaMemcpy (hbdlist.global_numBond, global_numBond, size1,
 	      cudaMemcpyDeviceToHost);
@@ -315,3 +315,87 @@ copyToHost (HostBondList & hbdlist) const
 }
 
 
+void Parallel::
+buildDeviceBondList (const DeviceCellListedMDData & ddata,
+		     const DeviceCellRelation & relation,
+		     DeviceBondList & dbdlist)
+{
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  IndexType totalNumCell = ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
+  dim3 gridDim = toGridDim (totalNumCell);
+  size_t sbuff_size = sizeof(IndexType) * numThreadsInCell;
+  
+  Parallel::CudaGlobal::buildDeviceBondList
+      <<<gridDim, numThreadsInCell, sbuff_size>>> (
+	  ddata.dptr_numAtomInCell(),
+	  ddata.dptr_globalIndex(),
+	  relation.dptr_numNeighborCell(),
+	  relation.dptr_neighborCellIndex(),
+	  relation.stride_neighborCellIndex(),
+	  dbdlist.dptr_global_neighborIndex(),
+	  dbdlist.dptr_global_numBond(),
+	  dbdlist.stride (),
+	  dbdlist.dptr_neighborIndex());  
+}
+
+
+__global__ void Parallel::CudaGlobal::
+buildDeviceBondList (const IndexType * numAtomInCell,
+		     const IndexType * globalIndex,
+		     const IndexType * numNeighborCell,
+		     const IndexType * neighborCellIndex,
+		     const IndexType   cellRelationStride,
+		     const IndexType * global_neighborIndex,
+		     const IndexType * global_numBond,
+		     const IndexType   bondListStride,
+		     IndexType * neighborIndex)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  IndexType this_numAtom = numAtomInCell[bid];
+  if (this_numAtom == 0) return;
+  IndexType this_numNeighborCell = numNeighborCell[bid];
+  if (this_numNeighborCell == 0) return;
+  IndexType my_numBond;
+  if (tid < this_numAtom) my_numBond = global_numBond[ii];
+
+  extern __shared__ ScalorType buff_globalIndex[];
+  
+
+  for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
+    __syncthreads();
+    IndexType target_cellIndex = neighborCellIndex[bid * cellRelationStride + kk];
+    IndexType indexShift = target_cellIndex * blockDim.x;
+    IndexType target_numAtomInCell = numAtomInCell[target_cellIndex];
+    IndexType jj = indexShift + tid;
+    if (tid < target_numAtomInCell){
+      buff_globalIndex[tid] = globalIndex[jj];
+    }
+    __syncthreads();
+    
+    if (tid < this_numAtom){
+      for (IndexType ll = 0; ll < my_numBond; ++ll){
+	IndexType tofind_globalIndex =
+	    global_neighborIndex[
+		Parallel::DeviceBondList_cudaDevice::
+		indexConvert(bondListStride, ii, ll)
+		];
+	for (IndexType mm = 0; mm < target_numAtomInCell; ++mm){
+	  if (tofind_globalIndex == buff_globalIndex[mm]){
+	    neighborIndex[
+		Parallel::DeviceBondList_cudaDevice::
+		indexConvert(bondListStride, ii, ll)
+		] = mm + indexShift;
+	  }
+	}
+      }
+    }
+  }
+}
+
+
+  
+
+  

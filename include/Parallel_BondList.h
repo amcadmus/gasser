@@ -12,8 +12,8 @@ namespace Parallel{
   {
     friend class DeviceBondList;
     
-    IndexType totalNumCell;
-    IndexType maxNumBond;
+    IndexType myStride;
+    IndexType maxLength;
     IndexType * global_numBond;
     IndexType * global_neighborIndex;
     IndexType * global_bondIndex;
@@ -22,8 +22,8 @@ namespace Parallel{
     // IndexType * bondActive;
 private:
     void clear ();
-    void easyMalloc (const IndexType & totalNumCell,
-		     const IndexType & maxNumBond);
+    void easyMalloc (const IndexType & stride,
+		     const IndexType & length);
     void initZero ();
     IndexType convertIndex (const IndexType & localIndex,
 			    const IndexType & ithBond) const;
@@ -35,7 +35,7 @@ public:
 		 Topology::System & sysTop,
 		 SystemBondedInteraction & sysBdInter);
 public:
-    IndexType stride () const {return maxNumBond;}
+    IndexType stride () const {return myStride;}
     IndexType & item_global_numBond      (const IndexType & localIndex); 
     IndexType & item_global_neighborIndex(const IndexType & localIndex,
 					  const IndexType & ithBond);
@@ -63,8 +63,8 @@ public:
 public:
     bool malloced;
     
-    IndexType totalNumCell;
-    IndexType maxNumBond;
+    IndexType myStride;
+    IndexType maxLength;
     IndexType * global_numBond;
     IndexType * global_neighborIndex;
     IndexType * global_bondIndex;
@@ -73,13 +73,15 @@ public:
     // IndexType * bondActive;
 private:
     void clear ();
-    void easyMalloc (const IndexType & totalNumCell,
-		     const IndexType & maxNumBond);
+    void easyMalloc (const IndexType & stride,
+		     const IndexType & length);
 public:
     DeviceBondList ();
+    DeviceBondList (const HostBondList & hbdlist);
     ~DeviceBondList ();
 public:
-    IndexType stride () const {return maxNumBond;}
+    void reinit (const HostBondList & hbdlist);
+    IndexType stride () const {return myStride;}
     IndexType convertIndex (const IndexType & localIndex,
 			    const IndexType & ithBond) const;
     IndexType * dptr_global_numBond       () {return global_numBond;}
@@ -95,14 +97,31 @@ public:
     void copyToHost (HostBondList & hbdlist) const;
   };
 
+  void buildDeviceBondList (const DeviceCellListedMDData & ddata,
+			    const DeviceCellRelation & relation,
+			    DeviceBondList & dbdlist);
+
   namespace DeviceBondList_cudaDevice {
     __device__ IndexType
     indexConvert (const IndexType & stride,
 		  const IndexType & localIndex,
 		  const IndexType & ithBond)
-    { return localIndex * stride + ithBond; }
+    { return ithBond * stride + localIndex; }
   }
   
+  namespace CudaGlobal{
+    __global__ void 
+    buildDeviceBondList (const IndexType * numAtomInCell,
+			 const IndexType * globalIndex,
+			 const IndexType * numNeighborCell,
+			 const IndexType * neighborCellIndex,
+			 const IndexType   cellRelationStride,
+			 const IndexType * global_neighborIndex,
+			 const IndexType * global_numBond,
+			 const IndexType   bondListStride,
+			 IndexType * neighborIndex);
+  }
+
 #endif
 }
 
