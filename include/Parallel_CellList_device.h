@@ -69,6 +69,42 @@ namespace Parallel{
 			   ScalorType * mass,
 			   ScalorType * charge,
 			   mdError_t * ptr_de);
+    __global__ void 
+    rebuildCellList_step1 (const VectorType frameLow,
+			   const VectorType frameUp,
+			   const IntVectorType numCell,
+			   const IndexType * bk_numAtomInCell,
+			   IndexType * numAtomInCell,
+			   CoordType * coord,
+			   CoordNoiType * coordNoi,
+			   ScalorType * velox,
+			   ScalorType * veloy,
+			   ScalorType * veloz,
+			   ScalorType * forcx,
+			   ScalorType * forcy,
+			   ScalorType * forcz,
+			   IndexType  * globalIndex,
+			   TypeType   * type,
+			   ScalorType * mass,
+			   ScalorType * charge,
+			   IndexType * forwardMap,
+			   mdError_t * ptr_de);
+    __global__ void 
+    rebuildCellList_step2 (IndexType * numAtomInCell,
+			   CoordType  * coord,
+			   CoordNoiType * coordNoi,
+			   ScalorType * velox,
+			   ScalorType * veloy,
+			   ScalorType * veloz,
+			   ScalorType * forcx,
+			   ScalorType * forcy,
+			   ScalorType * forcz,
+			   IndexType  * globalIndex,
+			   TypeType   * type,
+			   ScalorType * mass,
+			   ScalorType * charge,
+			   IndexType * forwardMap,
+			   mdError_t * ptr_de);
     __global__ void
     packDeviceMDData (const IndexType * cellIndex,
 		      const IndexType * numAtomInCell,
@@ -191,6 +227,25 @@ namespace Parallel{
 			   IndexType * neighborCellIndex,
 			   CoordType * neighborShift,
 			   const IndexType stride);
+    __global__ void
+    buildCellNeighborhood (const IntVectorType numCell,
+			   const IndexType devideLevel,
+			   const ScalorType rlist,
+			   const HostVectorType globalBoxSize,
+			   const int rankx,
+			   const int ranky,
+			   const int rankz,
+			   const int nProcDimx,
+			   const int nProcDimy,
+			   const int nProcDimz,
+			   const IndexType * subList0,
+			   const IndexType length0,
+			   const IndexType * subList1,
+			   const IndexType length1,
+			   IndexType * numNeighbor,
+			   IndexType * neighborCellIndex,
+			   const IndexType stride);
+
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

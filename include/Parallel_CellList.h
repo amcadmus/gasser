@@ -6,6 +6,7 @@
 #include "Parallel_TransferEngineCompatible.h"
 #include "MDError_interface.h"
 
+
 namespace Parallel{
   
   // class MDExcptTooFewCells	: public MDException {};
@@ -371,6 +372,9 @@ public:
     DeviceCellRelation () : ptr_list(NULL), malloced(false) {};
     ~DeviceCellRelation ();
     void build (DeviceCellListedMDData & list);
+    void build (DeviceCellListedMDData & list,
+		const SubCellList & sub0,
+		const SubCellList & sub1);
 public:
     IndexType * dptr_numNeighborCell   () {return numNeighbor;}
     IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}
