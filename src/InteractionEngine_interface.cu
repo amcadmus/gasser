@@ -182,6 +182,7 @@ registBondedInteraction (const SystemBondedInteraction & sysBdInter)
 InteractionEngine_interface::~InteractionEngine_interface()
 {
   cudaUnbindTexture(global_texRef_interaction_coord);
+  cudaUnbindTexture(global_texRef_interaction_type);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamDestroy(sum_stream[i]);
   }

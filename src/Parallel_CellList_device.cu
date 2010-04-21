@@ -4,6 +4,7 @@
 #include "Parallel_Interface.h"
 #include "Parallel_CellList_device.h"
 #include "Parallel_Algorithm.h"
+#include "Parallel_BondList.h"
 #include "Auxiliary.h"
 #include "Parallel_Timer.h"
 
@@ -696,6 +697,216 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
 }
 
 
+__global__ void Parallel::CudaGlobal::
+rebuildCellList_step1 (const VectorType frameLow,
+		       const VectorType frameUp,
+		       const IntVectorType numCell,
+		       const IndexType * bk_numAtomInCell,
+		       IndexType * numAtomInCell,
+		       CoordType * coord,
+		       CoordNoiType * coordNoi,
+		       ScalorType * velox,
+		       ScalorType * veloy,
+		       ScalorType * veloz,
+		       ScalorType * forcx,
+		       ScalorType * forcy,
+		       ScalorType * forcz,
+		       IndexType  * globalIndex,
+		       TypeType   * type,
+		       ScalorType * mass,
+		       ScalorType * charge,
+		       IndexType * global_numBond,
+		       IndexType * global_neighborIndex,
+		       IndexType * global_bondIndex,
+		       IndexType * neighborIndex,
+		       IndexType bondListStride,
+		       mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  __shared__ ScalorType dcellxi;
+  __shared__ ScalorType dcellyi;
+  __shared__ ScalorType dcellzi;
+  if (tid == 0) {
+    dcellxi = ScalorType(numCell.x) / (frameUp.x - frameLow.x);
+    dcellyi = ScalorType(numCell.y) / (frameUp.y - frameLow.y);
+    dcellzi = ScalorType(numCell.z) / (frameUp.z - frameLow.z);
+  }
+  __syncthreads();
+  
+  bool inRange = tid < bk_numAtomInCell[bid];
+  if (inRange){
+    IndexType targetCellx, targetCelly, targetCellz;
+    targetCellx = IndexType((coord[ii].x - frameLow.x) * dcellxi);
+    targetCelly = IndexType((coord[ii].y - frameLow.y) * dcellyi);
+    targetCellz = IndexType((coord[ii].z - frameLow.z) * dcellzi);
+    if (ptr_de != NULL && 
+	(targetCellx >= numCell.x || 
+	 targetCelly >= numCell.y || 
+	 targetCellz >= numCell.z)){
+      *ptr_de = mdErrorOverFlowCellIdx;
+      return;
+    }
+    IndexType cellid = CudaDevice::D3toD1
+	(numCell, targetCellx, targetCelly, targetCellz);
+    if (cellid != bid){
+      IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
+      if (pid >= blockDim.x){
+	*ptr_de = mdErrorShortCellList;
+	pid = 0;
+      }
+      IndexType targetIndex = pid + cellid * blockDim.x;
+      coord[targetIndex] = coord[ii];
+      coordNoi[targetIndex].x = coordNoi[ii].x;
+      coordNoi[targetIndex].y = coordNoi[ii].y;
+      coordNoi[targetIndex].z = coordNoi[ii].z;
+      velox[targetIndex] = velox[ii];
+      veloy[targetIndex] = veloy[ii];
+      veloz[targetIndex] = veloz[ii];
+      forcx[targetIndex] = forcx[ii];
+      forcy[targetIndex] = forcy[ii];
+      forcz[targetIndex] = forcz[ii];
+      globalIndex[targetIndex] = globalIndex[ii];
+      globalIndex[ii] = MaxIndexValue;
+      type[targetIndex] = type[ii];
+      mass[targetIndex] = mass[ii];
+      charge[targetIndex] = charge[ii];
+      IndexType numBond = (global_numBond[targetIndex] = global_numBond[ii]);
+      for (IndexType kk = 0; kk < numBond; ++kk){
+	IndexType fromListIndex = Parallel::DeviceBondList_cudaDevice::indexConvert
+	    (bondListStride, ii, kk);
+	IndexType toListIndex   = Parallel::DeviceBondList_cudaDevice::indexConvert
+	    (bondListStride, targetIndex, kk);
+	global_neighborIndex[toListIndex] = global_neighborIndex[fromListIndex];
+	global_bondIndex    [toListIndex] = global_bondIndex    [fromListIndex];
+	neighborIndex       [toListIndex] = neighborIndex       [fromListIndex];
+      }
+    }
+  }
+  return;
+}
+
+
+__global__ void Parallel::CudaGlobal::
+rebuildCellList_step2 (IndexType * numAtomInCell,
+		       CoordType  * coord,
+		       CoordNoiType * coordNoi,
+		       ScalorType * velox,
+		       ScalorType * veloy,
+		       ScalorType * veloz,
+		       ScalorType * forcx,
+		       ScalorType * forcy,
+		       ScalorType * forcz,
+		       IndexType  * globalIndex,
+		       TypeType   * type,
+		       ScalorType * mass,
+		       ScalorType * charge,
+		       IndexType * global_numBond,
+		       IndexType * global_neighborIndex,
+		       IndexType * global_bondIndex,
+		       IndexType * neighborIndex,
+		       IndexType bondListStride,
+		       IndexType maxNumBond,
+		       mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  // IndexType k = NUintBit - 1;
+  
+  extern __shared__ volatile IndexType sbuff[];
+  volatile IndexType * myIndex = (volatile IndexType * )sbuff;
+
+  if (tid >= numAtomInCell[bid] || globalIndex[ii] == MaxIndexValue){
+    myIndex[tid] = MaxIndexValue;
+  }
+  else {
+    myIndex[tid] = tid;
+  }
+  __syncthreads();
+  IndexType total = headSort (myIndex, &sbuff[blockDim.x]);
+  total = blockDim.x - total;
+
+  IndexType fromId;
+  CoordType bk_coord;
+  CoordNoiType bk_coordNoi;
+  ScalorType bk_velox, bk_veloy, bk_veloz;
+  ScalorType bk_forcx, bk_forcy, bk_forcz;
+  IndexType bk_globalIndex;
+  TypeType bk_type;
+  ScalorType bk_mass;
+  ScalorType bk_charge;
+  IndexType bk_numBond;
+  
+  if (tid < total){
+    fromId = myIndex[tid] + bid * blockDim.x;
+    if (ii != fromId){
+      bk_coord = coord[fromId];
+      bk_coordNoi.x = coordNoi[fromId].x;
+      bk_coordNoi.y = coordNoi[fromId].y;
+      bk_coordNoi.z = coordNoi[fromId].z;
+      bk_velox = velox[fromId];
+      bk_veloy = veloy[fromId];
+      bk_veloz = veloz[fromId];
+      bk_forcx = forcx[fromId];
+      bk_forcy = forcy[fromId];
+      bk_forcz = forcz[fromId];
+      bk_globalIndex = globalIndex[fromId];
+      bk_type = type[fromId];
+      bk_mass = mass[fromId];
+      bk_charge = charge[fromId];
+      bk_numBond = global_numBond[fromId];
+    }
+  }
+  __syncthreads();
+
+  bool docopy = (tid < total && ii != fromId);
+  if (docopy){
+    coord[ii] = bk_coord;
+    coordNoi[ii].x = bk_coordNoi.x;
+    coordNoi[ii].y = bk_coordNoi.y;
+    coordNoi[ii].z = bk_coordNoi.z;
+    velox[ii] = bk_velox;
+    veloy[ii] = bk_veloy;
+    veloz[ii] = bk_veloz;
+    forcx[ii] = bk_forcx;
+    forcy[ii] = bk_forcy;
+    forcz[ii] = bk_forcz;
+    globalIndex[ii] = bk_globalIndex;
+    type[ii] = bk_type;
+    mass[ii] = bk_mass;
+    charge[ii] = bk_charge;
+    global_numBond[ii] = bk_numBond;
+  }
+
+  IndexType bk_global_neighborIndex;
+  IndexType bk_global_bondIndex;
+  IndexType bk_neighborIndex;
+  
+  for (IndexType kk = 0; kk < maxNumBond; ++kk){
+    __syncthreads();
+    if (docopy){
+      bk_global_neighborIndex = global_neighborIndex[fromId];
+      bk_global_bondIndex     = global_bondIndex[fromId];
+      bk_neighborIndex        = neighborIndex[fromId];
+    }
+    __syncthreads();
+    if (docopy){
+      global_neighborIndex[ii] = bk_global_neighborIndex;
+      global_bondIndex    [ii] = bk_global_bondIndex;
+      neighborIndex       [ii] = bk_neighborIndex;
+    }
+  }
+	  
+  if (tid == 0){
+    numAtomInCell[bid] = total;
+  }
+}
+
+
+
 
 
 void Parallel::DeviceCellListedMDData::
@@ -796,7 +1007,7 @@ buildSubList (const IndexType & xIdLo,
 	      const IndexType & yIdUp,
 	      const IndexType & zIdLo,
 	      const IndexType & zIdUp,
-	      SubCellList & subList)
+	      SubCellList & subList) const
 {
   if (xIdUp > numCell.x){
     throw MDExcptCellList ("x up index exceeds number of cells on x");

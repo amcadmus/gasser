@@ -86,20 +86,20 @@ public:
 		       const IndexType & yIdUp,
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
-		       SubCellList & subList);
+		       SubCellList & subList) const;
     void buildSubList (const IndexType & xIdLo,
 		       const IndexType & xIdUp,
 		       const IndexType & yIdLo,
 		       const IndexType & yIdUp,
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
-		       HostSubCellList & subList);
-    inline void buildSubListAllCell   (SubCellList & subList);
-    inline void buildSubListRealCell  (SubCellList & subList);
-    inline void buildSubListGhostCell (SubCellList & subList);
-    inline void buildSubListAllCell   (HostSubCellList & subList);
-    inline void buildSubListRealCell  (HostSubCellList & subList);
-    inline void buildSubListGhostCell (HostSubCellList & subList);
+		       HostSubCellList & subList) ;
+    inline void buildSubListAllCell   (SubCellList & subList) const;
+    inline void buildSubListRealCell  (SubCellList & subList) const;
+    inline void buildSubListGhostCell (SubCellList & subList) const;
+    inline void buildSubListAllCell   (HostSubCellList & subList) ;
+    inline void buildSubListRealCell  (HostSubCellList & subList) ;
+    inline void buildSubListGhostCell (HostSubCellList & subList) ;
   };
   
   class SubCellList : public std::vector<IndexType > 
@@ -306,10 +306,10 @@ public:
 		       const IndexType & yIdUp,
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
-		       SubCellList & subList);
-    inline void buildSubListAllCell   (SubCellList & subList);
-    inline void buildSubListRealCell  (SubCellList & subList);
-    inline void buildSubListGhostCell (SubCellList & subList);
+		       SubCellList & subList) const;
+    inline void buildSubListAllCell   (SubCellList & subList) const;
+    inline void buildSubListRealCell  (SubCellList & subList) const;
+    inline void buildSubListGhostCell (SubCellList & subList) const;
   };
 
 
@@ -393,7 +393,7 @@ public:
 
 
 void Parallel::HostCellListedMDData::
-buildSubListAllCell (SubCellList & subList)
+buildSubListAllCell (SubCellList & subList) const
 {
   buildSubList (0, getNumCell().x,
 		0, getNumCell().y,
@@ -403,7 +403,7 @@ buildSubListAllCell (SubCellList & subList)
 
   
 void Parallel::HostCellListedMDData::
-buildSubListRealCell  (SubCellList & subList)
+buildSubListRealCell  (SubCellList & subList) const
 {
   IndexType devideLevel = getDevideLevel();
   buildSubList (devideLevel, getNumCell().x - devideLevel,
@@ -414,7 +414,7 @@ buildSubListRealCell  (SubCellList & subList)
 
       
 void Parallel::HostCellListedMDData::
-buildSubListGhostCell (SubCellList & subList)
+buildSubListGhostCell (SubCellList & subList) const
 {
   buildSubListAllCell (subList);
   SubCellList temp;
@@ -425,7 +425,7 @@ buildSubListGhostCell (SubCellList & subList)
 
 
 void Parallel::HostCellListedMDData::
-buildSubListAllCell (HostSubCellList & subList)
+buildSubListAllCell (HostSubCellList & subList) 
 {
   subList.setHostData (*this);
   buildSubList (0, getNumCell().x,
@@ -436,7 +436,7 @@ buildSubListAllCell (HostSubCellList & subList)
 
   
 void Parallel::HostCellListedMDData::
-buildSubListRealCell  (HostSubCellList & subList)
+buildSubListRealCell  (HostSubCellList & subList) 
 {
   subList.setHostData (*this);
   IndexType devideLevel = getDevideLevel();
@@ -448,7 +448,7 @@ buildSubListRealCell  (HostSubCellList & subList)
 
       
 void Parallel::HostCellListedMDData::
-buildSubListGhostCell (HostSubCellList & subList)
+buildSubListGhostCell (HostSubCellList & subList) 
 {
   subList.setHostData (*this);
   buildSubListAllCell ((SubCellList &)subList);
@@ -462,7 +462,7 @@ buildSubListGhostCell (HostSubCellList & subList)
 
 #ifdef DEVICE_CODE
 void Parallel::DeviceCellListedMDData::
-buildSubListAllCell (SubCellList & subList)
+buildSubListAllCell (SubCellList & subList) const
 {
   buildSubList (0, getNumCell().x,
 		0, getNumCell().y,
@@ -472,7 +472,7 @@ buildSubListAllCell (SubCellList & subList)
 
   
 void Parallel::DeviceCellListedMDData::
-buildSubListRealCell  (SubCellList & subList)
+buildSubListRealCell  (SubCellList & subList) const
 {
   IndexType devideLevel = getDevideLevel();
   buildSubList (devideLevel, getNumCell().x - devideLevel,
@@ -483,7 +483,7 @@ buildSubListRealCell  (SubCellList & subList)
 
       
 void Parallel::DeviceCellListedMDData::
-buildSubListGhostCell (SubCellList & subList)
+buildSubListGhostCell (SubCellList & subList) const
 {
   buildSubListAllCell (subList);
   SubCellList temp;

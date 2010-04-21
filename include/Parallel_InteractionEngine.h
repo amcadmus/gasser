@@ -6,7 +6,9 @@
 #include "Parallel_CellList.h"
 #include "SumVector.h"
 #include "Parallel_Statistic.h"
+#include "Parallel_BondList.h"
 #include "SystemNonBondedInteraction.h"
+#include "SystemBondedInteraction.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -15,9 +17,11 @@ namespace Parallel{
 #ifdef DEVICE_CODE
   class InteractionEngine
   {
+    bool inited ;
     dim3 gridDim;
     IndexType totalNumCell;
     IndexType devideLevel;
+    IndexType numThreadsInCell;
     bool hasBond;
     bool hasAngle;
     IndexType calBondInteraction_sbuffSize;
@@ -33,15 +37,18 @@ namespace Parallel{
     SumVector<ScalorType> sum_b_vzz;
     SumVector<ScalorType> sum_angle_p;
     MDError err;
+    IndexType * ghostCellIndex;
+    IndexType   numGhostCell;
 private:
+    void clear ();
     // void initNonBondedInteraction (const MDSystem & sys);
 public:
     InteractionEngine ();
     InteractionEngine (const DeviceCellListedMDData & data) ;
-    ~InteractionEngine () {}
+    ~InteractionEngine ();
     void reinit (const DeviceCellListedMDData & data);
     void registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
-    // void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
+    void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
 public:
     void clearInteraction (DeviceCellListedMDData & data);
     void applyNonBondedInteraction (DeviceCellListedMDData & data,
@@ -49,11 +56,11 @@ public:
     void applyNonBondedInteraction (DeviceCellListedMDData & data,
 				    const DeviceCellRelation & relation,
 				    DeviceStatistic & st);
-    // void applyBondedInteraction (DeviceCellListedMDData & data,
-    // 				 const BondedInteractionList & bdlist);
-    // void applyBondedInteraction (DeviceCellListedMDData & data,
-    // 				 const BondedInteractionList & bdlist,
-    // 				 MDStatistic & st);
+    void applyBondedInteraction (DeviceCellListedMDData & data,
+    				 DeviceBondList & bdlist);
+    void applyBondedInteraction (DeviceCellListedMDData & data,
+    				 DeviceBondList & bdlist,
+    				 DeviceStatistic & st);
   };
 
   namespace CudaGlobal {
@@ -91,6 +98,39 @@ public:
 			     ScalorType * statistic_nb_buff2,
 			     ScalorType * statistic_nb_buff3,
 			     mdError_t * ptr_de);
+    __global__ void 
+    clearGhostBond (const IndexType * ghostCellIndex,
+		    IndexType * myNumBond);
+    __global__ void
+    calBondedInteraction (const CoordType * coord,
+			  const HostVectorType boxSize,
+			  const HostVectorType boxSizei,
+			  const IndexType * numAtomInCell,
+			  const IndexType * numBond,
+			  const IndexType * bondNeighborIndex,
+			  const IndexType * bondIndex,
+			  const IndexType   bondStride,
+			  ScalorType * forcx,
+			  ScalorType * forcy,
+			  ScalorType * forcz,
+			  mdError_t * ptr_de);
+    __global__ void 
+    calBondedInteraction (const CoordType * coord,
+			  const HostVectorType boxSize,
+			  const HostVectorType boxSizei,
+			  const IndexType * numAtomInCell,
+			  const IndexType * numBond,
+			  const IndexType * bondNeighborIndex,
+			  const IndexType * bondIndex,
+			  const IndexType   bondStride,
+			  ScalorType * forcx,
+			  ScalorType * forcy,
+			  ScalorType * forcz,
+			  ScalorType * statistic_nb_buff0,
+			  ScalorType * statistic_nb_buff1,
+			  ScalorType * statistic_nb_buff2,
+			  ScalorType * statistic_nb_buff3,
+			  mdError_t * ptr_de);
   }
   namespace CudaDevice {
     __device__ IndexType

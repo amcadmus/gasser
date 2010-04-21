@@ -5,9 +5,11 @@
 #include "Parallel_Interface.h"
 #include "NonBondedInteraction.h"
 #include "Parallel_Auxiliary.h"
+#include "BondInteraction.h"
+
 #include "compile_error_mixcode.h"
 
-
+texture<CoordType,  1, cudaReadModeElementType> global_texRef_interaction_coord;
 __constant__
 InteractionType nonBondedInteractionType [MaxNumberNonBondedInteraction];
 __constant__
@@ -20,17 +22,23 @@ __constant__
 IndexType const_numAtomType[1];
 __constant__
 IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
+__constant__
+InteractionType bondedInteractionType [MaxNumberBondedInteraction];
+__constant__
+IndexType bondedInteractionParameterPosition [MaxNumberBondedInteraction];
+__constant__
+ScalorType bondedInteractionParameter [MaxNumberBondedInteractionParamemter];
 
 
 Parallel::InteractionEngine::
 InteractionEngine ()
-    : hasBond (false), hasAngle(false)
+    : inited(false), hasBond (false), hasAngle(false)
 {
 }
 
 Parallel::InteractionEngine::
 InteractionEngine (const DeviceCellListedMDData & ddata)
-    : hasBond (false), hasAngle(false)
+    : inited(false), hasBond (false), hasAngle(false)
 {
   reinit (ddata);
 }
@@ -38,9 +46,20 @@ InteractionEngine (const DeviceCellListedMDData & ddata)
 void Parallel::InteractionEngine::
 reinit (const DeviceCellListedMDData & ddata)
 {
+  clear ();
+  
   totalNumCell = ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
   devideLevel = ddata.getDevideLevel();
   gridDim = toGridDim (totalNumCell);
+  numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  
+  // size_t sizetype = sizeof(TypeType)*sys.ddata.numMem;
+  cudaBindTexture(0,
+		  global_texRef_interaction_coord,
+		  ddata.dptr_coordinate(),
+		  sizeof(CoordType) * totalNumCell * numThreadsInCell);
+		  
+  checkCUDAError ("InteractionEngine::init, bind texture");
   
   sum_nb_p.reinit (totalNumCell, NThreadForSum);
   sum_nb_vxx.reinit (totalNumCell, NThreadForSum);
@@ -51,8 +70,47 @@ reinit (const DeviceCellListedMDData & ddata)
   sum_b_vyy.reinit (totalNumCell, NThreadForSum);
   sum_b_vzz.reinit (totalNumCell, NThreadForSum);
   sum_angle_p.reinit (totalNumCell, NThreadForSum);
+
+  // prepare for clear ghost cell bond
+  // tell the engine who are ghost cells
+  SubCellList ghostCells;
+  ddata.buildSubListGhostCell (ghostCells);
+  numGhostCell = ghostCells.size();
+  size_t size = numGhostCell * sizeof(IndexType);
+  IndexType * host_ghostCellIndex = (IndexType *) malloc (size);
+  if (host_ghostCellIndex == NULL){
+    throw MDExcptFailedMallocOnHost ("InteractionEngine::reinit",
+				     "host_ghostCellIndex", size);
+  }
+  for (IndexType i = 0; i < numGhostCell; ++i){
+    host_ghostCellIndex[i] = ghostCells[i];
+  }
+  cudaMalloc ((void**)&ghostCellIndex, size);
+  checkCUDAError ("InteractionEngine::reinit, malloc ghostCellIndex");
+  cudaMemcpy (ghostCellIndex, host_ghostCellIndex, size, cudaMemcpyHostToDevice);
+  checkCUDAError ("InteractionEngine::reinit, copy ghostCellIndex");
+  free (host_ghostCellIndex);
+
+  inited = true;
 }
 
+void Parallel::InteractionEngine::
+clear ()
+{
+  if (inited){
+    cudaFree (ghostCellIndex);
+    cudaUnbindTexture(global_texRef_interaction_coord);
+    checkCUDAError ("InteractionEngine::clear()");
+    inited = false;
+  }
+}
+
+
+Parallel::InteractionEngine::
+~InteractionEngine ()
+{
+  clear ();
+}
 
 void Parallel::InteractionEngine::
 registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
@@ -105,7 +163,6 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
   		      sizeof (IndexType) * tableSize);
   checkCUDAError ("InteractionEngine::init, const_nonBondedInteractionTable");
 
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   size_t tmpSize;
   sizeof(TypeType) > sizeof(ScalorType) ?
       tmpSize = sizeof(TypeType)   * numThreadsInCell :
@@ -114,6 +171,48 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
       sizeof(CoordType) * numThreadsInCell + tmpSize;
   checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
 }
+
+
+void Parallel::InteractionEngine::
+registBondedInteraction (const SystemBondedInteraction & sysBdInter)
+{
+  if (sysBdInter.hasBond() ){
+    hasBond = true;
+  }
+  if (sysBdInter.hasAngle()){
+    hasAngle = true;
+  }
+
+  if (sysBdInter.numberOfInteraction() > MaxNumberBondedInteraction ){
+    throw MDExcptExceedConstantMemLimit (
+	"InteractionEngine::registBondedInteraction",
+	"bondedInteractionType",
+	MaxNumberBondedInteraction * sizeof(InteractionType));
+  }
+  if (sysBdInter.numberOfParameter() > MaxNumberBondedInteractionParamemter ){
+    throw MDExcptExceedConstantMemLimit (
+	"InteractionEngine::registBondedInteraction",
+	"bondedInteractionParameter",
+	MaxNumberBondedInteractionParamemter * sizeof(ScalorType));
+  }
+
+  if (hasBond || hasAngle){
+    cudaMemcpyToSymbol (bondedInteractionType,
+			sysBdInter.interactionType(),
+			sizeof(InteractionType) * sysBdInter.numberOfInteraction());
+    cudaMemcpyToSymbol (bondedInteractionParameterPosition,
+			sysBdInter.interactionParameterPosition(),
+			sizeof(ScalorType) * sysBdInter.numberOfInteraction());
+    cudaMemcpyToSymbol (bondedInteractionParameter,
+			sysBdInter.interactionParameter(),
+			sizeof(IndexType) * sysBdInter.numberOfParameter());
+    checkCUDAError ("InteractionEngine::init, init bond force setting");
+    // cal shared buff size
+    calBondInteraction_sbuffSize  = numThreadsInCell * sizeof(ScalorType);
+    calAngleInteraction_sbuffSize = numThreadsInCell * sizeof(ScalorType);
+  }
+}  
+
 
 void Parallel::InteractionEngine::
 applyNonBondedInteraction (DeviceCellListedMDData & ddata,
@@ -483,8 +582,224 @@ clearInteraction (DeviceCellListedMDData & data)
 	  data.dptr_forceZ(), 0.f);
   checkCUDAError ("InteractionEngine::clearInteraction");
 }
-
     
+void Parallel::InteractionEngine::
+applyBondedInteraction (DeviceCellListedMDData & ddata,
+			DeviceBondList & dbdlist)
+{
+  Parallel::CudaGlobal::clearGhostBond
+      <<<numGhostCell, numThreadsInCell>>> (
+	  ghostCellIndex,
+	  dbdlist.dptr_global_numBond());
+  Parallel::CudaGlobal::calBondedInteraction
+      <<<gridDim, numThreadsInCell>>>(
+	  ddata.dptr_coordinate(),
+	  ddata.getGlobalBox().size,
+	  ddata.getGlobalBox().sizei,
+	  ddata.dptr_numAtomInCell(),
+	  dbdlist.dptr_global_numBond(),
+	  dbdlist.dptr_neighborIndex(),
+	  dbdlist.dptr_global_bondIndex(),
+	  dbdlist.stride(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  err.ptr_de);
+  checkCUDAError ("InteractionEngine::applyBondedInteraction");
+}
+
+
+void Parallel::InteractionEngine::
+applyBondedInteraction (DeviceCellListedMDData & ddata,
+			DeviceBondList & dbdlist,
+			DeviceStatistic & st)
+{
+  Parallel::CudaGlobal::clearGhostBond
+      <<<numGhostCell, numThreadsInCell>>> (
+	  ghostCellIndex,
+	  dbdlist.dptr_global_numBond());
+  Parallel::CudaGlobal::calBondedInteraction
+      <<<gridDim, numThreadsInCell, calBondInteraction_sbuffSize>>>(
+	  ddata.dptr_coordinate(),
+	  ddata.getGlobalBox().size,
+	  ddata.getGlobalBox().sizei,
+	  ddata.dptr_numAtomInCell(),
+	  dbdlist.dptr_global_numBond(),
+	  dbdlist.dptr_neighborIndex(),
+	  dbdlist.dptr_global_bondIndex(),
+	  dbdlist.stride(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  sum_b_p.getBuff(),
+	  sum_b_vxx.getBuff(),
+	  sum_b_vyy.getBuff(),
+	  sum_b_vzz.getBuff(),
+	  err.ptr_de);
+  checkCUDAError ("InteractionEngine::applyBondedInteraction");
+  sum_b_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_BondedPotential, 0);
+  sum_b_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialXX, 0);
+  sum_b_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
+  sum_b_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialZZ, 0);
+}
+
+__global__ void Parallel::CudaGlobal::
+clearGhostBond (const IndexType * ghostCellIndex,
+		IndexType * myNumBond)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType this_cellIndex = ghostCellIndex[bid];
+  IndexType ii = this_cellIndex * blockDim.x + tid;
+  myNumBond[ii] = 0;
+}
+
+__global__ void Parallel::CudaGlobal::
+calBondedInteraction (const CoordType * coord,
+		      const HostVectorType boxSize,
+		      const HostVectorType boxSizei,
+		      const IndexType * numAtomInCell,
+		      const IndexType * numBond,
+		      const IndexType * bondNeighborIndex,
+		      const IndexType * bondIndex,
+		      const IndexType   bondStride,
+		      ScalorType * forcx,
+		      ScalorType * forcy,
+		      ScalorType * forcz,
+		      mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  
+  IndexType my_numBond = numBond[ii];
+  if (__all(my_numBond == 0)) return;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  if (tid >= this_numAtomInCell) return;
+  
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  CoordType ref = coord[ii];
+
+  for (IndexType jj = 0; jj < my_numBond; ++jj){
+    IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
+	(bondStride, ii, jj);
+    IndexType target_index = bondNeighborIndex[list_index];
+    IndexType my_bondIndex   = bondIndex[list_index];
+    CoordType target_coord = tex1Dfetch (global_texRef_interaction_coord, target_index);
+    ScalorType diffx, diffy, diffz;
+    ScalorType fx, fy, fz;
+    diffx = target_coord.x - ref.x;
+    diffy = target_coord.y - ref.y;
+    diffz = target_coord.z - ref.z;
+    shortestImage (boxSize.x, boxSizei.x, &diffx);
+    shortestImage (boxSize.y, boxSizei.y, &diffy);
+    shortestImage (boxSize.z, boxSizei.z, &diffz);
+    bondForce (bondedInteractionType[my_bondIndex],
+	       &bondedInteractionParameter
+	       [bondedInteractionParameterPosition[my_bondIndex]],
+	       diffx, diffy, diffz, &fx, &fy, &fz);
+    fsumx += fx;
+    fsumy += fy;
+    fsumz += fz;
+  }
+
+  forcx[ii] += fsumx;
+  forcy[ii] += fsumy;
+  forcz[ii] += fsumz;  
+}
+
+
+__global__ void Parallel::CudaGlobal::
+calBondedInteraction (const CoordType * coord,
+		      const HostVectorType boxSize,
+		      const HostVectorType boxSizei,
+		      const IndexType * numAtomInCell,
+		      const IndexType * numBond,
+		      const IndexType * bondNeighborIndex,
+		      const IndexType * bondIndex,
+		      const IndexType   bondStride,
+		      ScalorType * forcx,
+		      ScalorType * forcy,
+		      ScalorType * forcz,
+		      ScalorType * statistic_b_buff0,
+		      ScalorType * statistic_b_buff1,
+		      ScalorType * statistic_b_buff2,
+		      ScalorType * statistic_b_buff3,
+		      mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  extern __shared__ volatile ScalorType buff[];
+  buff[tid] = 0.f;
+  __syncthreads();
+  
+  IndexType my_numBond = numBond[ii];
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+  
+  if (tid < this_numAtomInCell){
+    CoordType ref = coord[ii];
+    for (IndexType jj = 0; jj < my_numBond; ++jj){
+      IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
+	  (bondStride, ii, jj);
+      IndexType target_index = bondNeighborIndex[list_index];
+      IndexType my_bondIndex   = bondIndex[list_index];
+      CoordType target_coord = tex1Dfetch (global_texRef_interaction_coord, target_index);
+      ScalorType diffx, diffy, diffz;
+      ScalorType fx, fy, fz, dp;
+      diffx = target_coord.x - ref.x;
+      diffy = target_coord.y - ref.y;
+      diffz = target_coord.z - ref.z;
+      // printf ("%f %f %f    %f %f %f\n",
+      // 	      target_coord.x, target_coord.y, target_coord.z,
+      // 	      ref.x, ref.y, ref.z);
+      shortestImage (boxSize.x, boxSizei.x, &diffx);
+      shortestImage (boxSize.y, boxSizei.y, &diffy);
+      shortestImage (boxSize.z, boxSizei.z, &diffz);
+      printf ("%f\t%f\n", diffz, sqrtf(diffx*diffx+diffy*diffy+diffz*diffz));
+      bondForcePoten (bondedInteractionType[my_bondIndex],
+		      &bondedInteractionParameter
+		      [bondedInteractionParameterPosition[my_bondIndex]],
+		      diffx, diffy, diffz, &fx, &fy, &fz, &dp);
+      myPoten += dp;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
+    }
+
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+  
+  buff[tid] = myPoten * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVxx * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff1[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVyy * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff2[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVzz * 0.5f;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
+  __syncthreads();
+}
 
 
 

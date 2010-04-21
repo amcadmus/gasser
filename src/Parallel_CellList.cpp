@@ -80,7 +80,7 @@ buildSubList (const IndexType & xIdLo,
 	      const IndexType & yIdUp,
 	      const IndexType & zIdLo,
 	      const IndexType & zIdUp,
-	      SubCellList & subList)
+	      SubCellList & subList) const
 {
   if (xIdUp > numCell.x){
     throw MDExcptCellList ("x up index exceeds number of cells on x");
@@ -111,7 +111,7 @@ buildSubList (const IndexType & xIdLo,
 	      const IndexType & yIdUp,
 	      const IndexType & zIdLo,
 	      const IndexType & zIdUp,
-	      HostSubCellList & subList)
+	      HostSubCellList & subList) 
 {
   subList.setHostData (*this);
   buildSubList (xIdLo, xIdUp, yIdLo, yIdUp, zIdLo, zIdUp, (SubCellList &)(subList));
