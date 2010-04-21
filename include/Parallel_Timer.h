@@ -38,8 +38,9 @@ namespace Parallel{
       item_BondedInterStatistic			= 10,
       item_AngleInteraction			= 11,
       item_AngleInterStatistic			= 12,
+      item_BuildBondList			= 13,
     
-      item_DataTransfer				= 13,
+      item_DataTransfer				= 19,
       item_DataIO				= 20,
 
       item_Redistribute				= 1 + ParallelItemShift,

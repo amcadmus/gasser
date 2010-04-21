@@ -321,7 +321,8 @@ buildDeviceBondList (const DeviceCellListedMDData & ddata,
 		     DeviceBondList & dbdlist)
 {
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
-  IndexType totalNumCell = ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
+  IndexType totalNumCell =
+      ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
   dim3 gridDim = toGridDim (totalNumCell);
   size_t sbuff_size = sizeof(IndexType) * numThreadsInCell;
   
@@ -361,8 +362,7 @@ buildDeviceBondList (const IndexType * numAtomInCell,
   IndexType my_numBond;
   if (tid < this_numAtom) my_numBond = global_numBond[ii];
 
-  extern __shared__ ScalorType buff_globalIndex[];
-  
+  extern __shared__ ScalorType buff_globalIndex[];  
 
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
@@ -389,6 +389,7 @@ buildDeviceBondList (const IndexType * numAtomInCell,
 		indexConvert(bondListStride, ii, ll)
 		] = mm + indexShift;
 	  }
+	  // __syncthreads();
 	}
       }
     }

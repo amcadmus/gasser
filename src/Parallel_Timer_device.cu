@@ -38,7 +38,10 @@ init ()
   strncpy (deviceWords[item_NonBondedInterStatistic],
 	   "Non bonded interaction with st",
 	   MaxWordsLength);
-
+  strncpy (deviceWords[item_BuildBondList],
+	   "Build bond list",
+	   MaxWordsLength);
+  
   for (IndexType i = 0; i < SizeOfTimeRecordArray; ++i){
     int wordLength = strlen (deviceWords[i]);
     int nspace = PrintStartPosition - wordLength;

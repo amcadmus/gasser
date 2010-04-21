@@ -64,21 +64,14 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
   ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   HarmonicSpringParameter hsparam;
   hsparam.reinit (10.f, 4.f);
   mol.addBond (Topology::Bond (0, 1, hsparam));
-  mol.addBond (Topology::Bond (1, 2, hsparam));
-  mol.addBond (Topology::Bond (2, 3, hsparam));
-  mol.addBond (Topology::Bond (3, 4, hsparam));
-  mol.addBond (Topology::Bond (4, 5, hsparam));
-  sysTop.addMolecules (mol, 1);
+  mol.addBond (Topology::Bond (0, 1, hsparam));
+  sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
   
   sys.init (filename, sysTop);
   sys.redistribute ();
@@ -94,11 +87,6 @@ int main(int argc, char * argv[])
   hbdlist.reinit(sys.localHostData, sysTop, sysBdInter);
   Parallel::DeviceBondList dbdlist;
   dbdlist.reinit(hbdlist);
-
-  Parallel::buildDeviceBondList (sys.deviceData,
-				 relation,
-				 dbdlist);
-  return 0;
   
   Parallel::InteractionEngine interEng (sys.deviceData);
   interEng.registNonBondedInteraction (sysNbInter);
@@ -122,6 +110,10 @@ int main(int argc, char * argv[])
       trRemover.remove (sys.deviceData);
       DeviceTimer::toc (item_RemoveTransFreedom);
     }
+    DeviceTimer::tic (item_BuildBondList);
+    Parallel::buildDeviceBondList (sys.deviceData, relation, dbdlist);
+    DeviceTimer::toc (item_BuildBondList);
+
     dst.clearData ();
     DeviceTimer::tic (item_Integrate);
     vv.step1 (sys.deviceData, dt);

@@ -61,6 +61,7 @@ printRecord (FILE * fp)
   printDeviceItem (fp, item_NonBondedInteraction);
   printDeviceItem (fp, item_NonBondedInterStatistic);
   printDeviceItem (fp, item_Integrate);
+  printDeviceItem (fp, item_BuildBondList);
 
   printHostItem (fp, item_Redistribute);
   printHostItem (fp, item_Redistribute_Data);

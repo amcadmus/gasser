@@ -123,12 +123,12 @@ int main(int argc, char * argv[])
     DeviceTimer::tic (item_BuildCellList);
     sys.deviceData.rebuild ();
     DeviceTimer::toc (item_BuildCellList);
-    HostTimer::tic (item_Redistribute);
-    sys.redistribute ();
-    HostTimer::toc (item_Redistribute);
     DeviceTimer::tic (item_ApplyBondaryCondition);
     sys.deviceData.applyPeriodicBondaryCondition ();
     DeviceTimer::toc (item_ApplyBondaryCondition);
+    HostTimer::tic (item_Redistribute);
+    sys.redistribute ();
+    HostTimer::toc (item_Redistribute);
   
     dst.copyToHost (hst);
     hst.collectData ();
