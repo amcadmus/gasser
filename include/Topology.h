@@ -120,8 +120,11 @@ public:
   public:
       IndexType numAtom () const {return indexShift.back();}
       void calMolTopPosition (const IndexType & globalIndex,
-			      IndexType & molIndex,
-			      IndexType & atomIndex);
+			      IndexType & top_molIndex,
+			      IndexType & top_atomIndex) const;
+      const Atom & getAtom (const IndexType & top_molIndex,
+			    const IndexType & top_atomIndex) const
+	  {return molecules[top_molIndex].atoms[top_atomIndex];}
     };
 }
 

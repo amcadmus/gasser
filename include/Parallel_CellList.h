@@ -5,7 +5,7 @@
 #include "Parallel_MDData.h"
 #include "Parallel_TransferEngineCompatible.h"
 #include "MDError_interface.h"
-
+#include "SystemBondedInteraction.h"
 
 namespace Parallel{
   
@@ -60,6 +60,9 @@ public:
     const ScalorType & getRlist () const {return rlist;}
     IndexType * cptr_numAtomInCell () {return numAtomInCell;}
     const IndexType * cptr_numAtomInCell () const {return numAtomInCell;}
+public:
+    void initTopology (const Topology::System & sysTop,
+		       const SystemBondedInteraction & sysBdInter);
 public:
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,

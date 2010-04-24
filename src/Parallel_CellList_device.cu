@@ -91,11 +91,10 @@ initCellStructure (const ScalorType & rlist_,
   // if (CellOnY) maxNumNeighborCell *= devideLevel * 2 + 1;
   // if (CellOnZ) maxNumNeighborCell *= devideLevel * 2 + 1;
   
-  if (numThreadsInCell * totalNumCell > DeviceMDData::memSize_){
+  if (numThreadsInCell * totalNumCell > DeviceMDData::memSize()){
     DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell);
-    DeviceMDData::initZero();
   }
-  numData_ = totalNumCell * numThreadsInCell;
+  numData() = totalNumCell * numThreadsInCell;
 
   // printf ("rank %d, numcell %d\n", Parallel::Interface::myRank(), totalNumCell);
   // getchar ();

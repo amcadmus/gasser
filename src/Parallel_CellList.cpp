@@ -303,11 +303,14 @@ pack (const HostCellListedMDData & hdata,
   for (IndexType i = 1; i < numCell+1; ++i){
     cellStartIndex[i] = cellStartIndex[i-1] + hdata.numAtomInCell[cellIndex[i-1]];
   }
-  this->numData() = cellStartIndex[numCell];  
+  this->HostMDData::numData() = cellStartIndex[numCell];  
 
   this->HostMDData::setGlobalBox (hdata.getGlobalBox());
   if (this->HostMDData::numData() > this->HostMDData::memSize()){
-    this->HostMDData::easyRealloc (this->HostMDData::numData() * MemAllocExtension);
+    this->HostMDData::easyMalloc (this->HostMDData::numData() * MemAllocExtension,
+				  hdata.HostMDData::getMaxNumBond(),
+				  hdata.HostMDData::getMaxNumAngle(),
+				  hdata.HostMDData::getMaxNumDihedral());
   }
 
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
@@ -363,7 +366,62 @@ pack (const HostCellListedMDData & hdata,
 	this->cptr_charge()[toid+j] = hdata.cptr_charge()[fromid+j];
       }
     }
-    
+    if ((mask & MDDataItemMask_Bond) && hdata.getMaxNumBond() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_numBond()[toid+j] = hdata.cptr_numBond()[fromid+j];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumBond(); ++k){
+	IndexType myfromid = k * hdata.HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * this->HostMDData::bondTopStride() + toid   ;	
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  this->cptr_bondIndex()[mytoid+j] = hdata.cptr_bondIndex()[myfromid+j];
+	  this->cptr_bondNeighbor_globalIndex()[mytoid+j] =
+	      hdata.cptr_bondNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && hdata.getMaxNumAngle() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_numAngle()[toid+j] = hdata.cptr_numAngle()[fromid+j];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumAngle(); ++k){
+	IndexType myfromid = k * hdata.HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * this->HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  this->cptr_angleIndex()[mytoid+j] = hdata.cptr_angleIndex()[myfromid+j];
+	  this->cptr_anglePosi ()[mytoid+j] = hdata.cptr_anglePosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumAngle() * 2; ++k){
+	IndexType myfromid = k * hdata.HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * this->HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  this->cptr_angleNeighbor_globalIndex()[mytoid+j] =
+	      hdata.cptr_angleNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && hdata.getMaxNumDihedral() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	this->cptr_numDihedral()[toid+j] = hdata.cptr_numDihedral()[fromid+j];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumDihedral(); ++k){
+	IndexType myfromid = k * hdata.HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * this->HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  this->cptr_dihedralIndex()[mytoid+j] = hdata.cptr_dihedralIndex()[myfromid+j];
+	  this->cptr_dihedralPosi ()[mytoid+j] = hdata.cptr_dihedralPosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumDihedral() * 3; ++k){
+	IndexType myfromid = k * hdata.HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * this->HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  this->cptr_dihedralNeighbor_globalIndex()[mytoid+j] =
+	      hdata.cptr_dihedralNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
   }  
 }
 
@@ -427,7 +485,62 @@ unpack_replace (HostCellListedMDData & hdata) const
 	hdata.cptr_charge()[toid+j] = this->cptr_charge()[fromid+j];
       }
     }
-    
+    if ((myMask & MDDataItemMask_Bond) && this->getMaxNumBond() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_numBond()[toid+j] = this->cptr_numBond()[fromid+j] ;
+      }
+      for (IndexType k = 0; k < this->getMaxNumBond(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;	
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  hdata.cptr_bondIndex()[mytoid+j] = this->cptr_bondIndex()[myfromid+j];
+	  hdata.cptr_bondNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_bondNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((myMask & MDDataItemMask_Angle) && this->getMaxNumAngle() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_numAngle()[toid+j] = this->cptr_numAngle()[fromid+j];
+      }
+      for (IndexType k = 0; k < this->getMaxNumAngle(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  hdata.cptr_angleIndex()[mytoid+j] = this->cptr_angleIndex()[myfromid+j];
+	  hdata.cptr_anglePosi ()[mytoid+j] = this->cptr_anglePosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < this->getMaxNumAngle() * 2; ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  hdata.cptr_angleNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_angleNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((myMask & MDDataItemMask_Dihedral) && this->getMaxNumDihedral() != 0){
+      for (IndexType j = 0; j < numInThisCell; ++j){
+	hdata.cptr_numDihedral()[toid+j] = this->cptr_numDihedral()[fromid+j];
+      }
+      for (IndexType k = 0; k < this->getMaxNumDihedral(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  hdata.cptr_dihedralIndex()[mytoid+j] = this->cptr_dihedralIndex()[myfromid+j];
+	  hdata.cptr_dihedralPosi ()[mytoid+j] = this->cptr_dihedralPosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < this->getMaxNumDihedral() * 3; ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numInThisCell; ++j){
+	  hdata.cptr_dihedralNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_dihedralNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }    
   }
 }
 
@@ -494,28 +607,84 @@ unpack_add (HostCellListedMDData & hdata) const
 	hdata.cptr_charge()[toid+j] = this->cptr_charge()[fromid+j];
       }
     }
-    
+    if ((myMask & MDDataItemMask_Bond) && this->getMaxNumBond() != 0){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_numBond()[toid+j] = this->cptr_numBond()[fromid+j] ;
+      }
+      for (IndexType k = 0; k < this->getMaxNumBond(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;	
+	for (IndexType j = 0; j < numAdded; ++j){
+	  hdata.cptr_bondIndex()[mytoid+j] = this->cptr_bondIndex()[myfromid+j];
+	  hdata.cptr_bondNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_bondNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((myMask & MDDataItemMask_Angle) && this->getMaxNumAngle() != 0){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_numAngle()[toid+j] = this->cptr_numAngle()[fromid+j];
+      }
+      for (IndexType k = 0; k < this->getMaxNumAngle(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numAdded; ++j){
+	  hdata.cptr_angleIndex()[mytoid+j] = this->cptr_angleIndex()[myfromid+j];
+	  hdata.cptr_anglePosi ()[mytoid+j] = this->cptr_anglePosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < this->getMaxNumAngle() * 2; ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numAdded; ++j){
+	  hdata.cptr_angleNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_angleNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }
+    if ((myMask & MDDataItemMask_Dihedral) && this->getMaxNumDihedral() != 0){
+      for (IndexType j = 0; j < numAdded; ++j){
+	hdata.cptr_numDihedral()[toid+j] = this->cptr_numDihedral()[fromid+j];
+      }
+      for (IndexType k = 0; k < this->getMaxNumDihedral(); ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numAdded; ++j){
+	  hdata.cptr_dihedralIndex()[mytoid+j] = this->cptr_dihedralIndex()[myfromid+j];
+	  hdata.cptr_dihedralPosi ()[mytoid+j] = this->cptr_dihedralPosi ()[myfromid+j];
+	}
+      }
+      for (IndexType k = 0; k < this->getMaxNumDihedral() * 3; ++k){
+	IndexType myfromid = k * this->HostMDData::bondTopStride() + fromid ;
+	IndexType mytoid   = k * hdata.HostMDData::bondTopStride() + toid   ;
+	for (IndexType j = 0; j < numAdded; ++j){
+	  hdata.cptr_dihedralNeighbor_globalIndex()[mytoid+j] =
+	      this->cptr_dihedralNeighbor_globalIndex()[myfromid+j];
+	}
+      }
+    }    
   }
 }
 
-inline static void
-reallocBuffAndSize (IndexType memSize,
-		    void *** buffs,
-		    size_t ** sizes)
-{
-  *buffs = (void **) realloc (*buffs, memSize * sizeof(void*));
-  if (*buffs == NULL){
-    throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
-				      "buffs",
-				      memSize * sizeof(void*));
-  }
-  *sizes = (size_t*) realloc (*sizes, memSize * sizeof(size_t));
-  if (*sizes == NULL){
-    throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
-				      "sizes",
-				      memSize * sizeof(size_t));
-  }
-}
+
+// inline static void
+// reallocBuffAndSize (IndexType memSize,
+// 		    void *** buffs,
+// 		    size_t ** sizes)
+// {
+//   *buffs = (void **) realloc (*buffs, memSize * sizeof(void*));
+//   if (*buffs == NULL){
+//     throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
+// 				      "buffs",
+// 				      memSize * sizeof(void*));
+//   }
+//   *sizes = (size_t*) realloc (*sizes, memSize * sizeof(size_t));
+//   if (*sizes == NULL){
+//     throw MDExcptFailedReallocOnHost ("HostSubCellList::collectBuffInfo",
+// 				      "sizes",
+// 				      memSize * sizeof(size_t));
+//   }
+// }
 
 
 // void Parallel::HostSubCellList::
@@ -752,7 +921,7 @@ reinit (HostSubCellList & list)
 				     "sizes", sizeof(size_t)*number);
   }
   
-  for (unsigned i = 0; i < number; ++i){
+  for (IndexType i = 0; i < number; ++i){
     buffs[i] = (void*) & (list.host_ptr()->cptr_numAtomInCell()[list.operator[](i)]);
     sizes[i] = sizeof(IndexType);
   }
@@ -795,6 +964,9 @@ reinit (HostSubCellList & list,
 {
   clear ();
   IndexType number = 0;
+  myMask = mask;
+  ptr_list = & list;
+
   if (mask & MDDataItemMask_Coordinate) number+=1;
   if (mask & MDDataItemMask_CoordinateNoi) number+=1;
   if (mask & MDDataItemMask_Velocity) number+=3;
@@ -803,6 +975,15 @@ reinit (HostSubCellList & list,
   if (mask & MDDataItemMask_Type) number+=1;
   if (mask & MDDataItemMask_Mass) number+=1;
   if (mask & MDDataItemMask_Charge) number+=1;
+  if ((mask & MDDataItemMask_Bond) && ptr_list->host_ptr()->getMaxNumBond()){
+    number += (1 + ptr_list->host_ptr()->getMaxNumBond() * 2);
+  }
+  if ((mask & MDDataItemMask_Angle) && ptr_list->host_ptr()->getMaxNumAngle()){
+    number += (1 + ptr_list->host_ptr()->getMaxNumAngle() * 4);
+  }
+  if ((mask & MDDataItemMask_Dihedral) && ptr_list->host_ptr()->getMaxNumDihedral()) {
+    number += (1 + ptr_list->host_ptr()->getMaxNumDihedral() * 5);
+  }
   number *= list.size();
   
   buffs = (void**) malloc (sizeof(void*) * number);
@@ -816,8 +997,6 @@ reinit (HostSubCellList & list,
 				     "sizes", sizeof(size_t)*number);
   }
 
-  myMask = mask;
-  ptr_list = & list;
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   
   if (myMask & MDDataItemMask_Coordinate){
@@ -881,6 +1060,62 @@ reinit (HostSubCellList & list,
     for (IndexType i = 0; i < ptr_list->size(); ++i){
       (buffs)[num++] = (void*) &(ptr_list->host_ptr()->cptr_charge()
 				 [ptr_list->operator[](i) * numThreadsInCell]);
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Bond) &&
+      ptr_list->host_ptr()->getMaxNumBond() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_numBond()
+			       [ptr_list->operator[](i) * numThreadsInCell]);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumBond(); ++j){
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_bondIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_bondNeighbor_globalIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+      }
+    }
+  }
+  if ((myMask & MDDataItemMask_Angle) &&
+      ptr_list->host_ptr()->getMaxNumAngle() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_numAngle()
+			       [ptr_list->operator[](i) * numThreadsInCell]);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_angleIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_anglePosi()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+      }
+      for (IndexType j = 0; j < 2 * ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_angleNeighbor_globalIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+      }
+    }
+  }
+  if ((myMask & MDDataItemMask_Dihedral) &&
+      ptr_list->host_ptr()->getMaxNumDihedral() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_numDihedral()
+			       [ptr_list->operator[](i) * numThreadsInCell]);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_dihedralIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_dihedralPosi()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+      }
+      for (IndexType j = 0; j < 3 * ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	buffs[num++] = (void*) &(ptr_list->host_ptr()->cptr_dihedralNeighbor_globalIndex()
+				 [ptr_list->operator[](i) * numThreadsInCell +
+				  ptr_list->host_ptr()->bondTopStride() * j]);
+      }
     }
   }
 
@@ -954,7 +1189,58 @@ build ()
       (sizes)[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
 	  [ptr_list->operator[](i)] * sizeof(ScalorType);
     }
-  } 
+  }
+
+  if ((myMask & MDDataItemMask_Bond) &&
+      ptr_list->host_ptr()->getMaxNumBond() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	  [ptr_list->operator[](i)] * sizeof(IndexType);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumBond(); ++j){
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+      }
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Angle) &&
+      ptr_list->host_ptr()->getMaxNumAngle() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	  [ptr_list->operator[](i)] * sizeof(IndexType);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+      }
+      for (IndexType j = 0; j < 2 * ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+      }
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Dihedral) &&
+      ptr_list->host_ptr()->getMaxNumDihedral() != 0){
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	  [ptr_list->operator[](i)] * sizeof(IndexType);
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+      }
+      for (IndexType j = 0; j < 3 * ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	sizes[count++] = ptr_list->host_ptr()->cptr_numAtomInCell()
+	    [ptr_list->operator[](i)] * sizeof(IndexType);
+      }
+    }
+  }
+      
 }
 
 
@@ -999,6 +1285,13 @@ add (const HostCellListedMDData & hdata,
 {
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+
+  if (totalNumCell != hdata.getNumCell().x * hdata.getNumCell().y * hdata.getNumCell().z ||
+      this->getMaxNumBond() != hdata.getMaxNumBond() ||
+      this->getMaxNumAngle() != hdata.getMaxNumAngle() ||
+      this->getMaxNumDihedral() != hdata.getMaxNumDihedral() ){
+    throw MDExcptCellList ("HostCellListedMDData::add, cannot add unconsistent HostCellListedMDData");
+  }
   
   for (IndexType i = 0; i < totalNumCell; ++i){
     if (numAtomInCell[i] + hdata.cptr_numAtomInCell()[i] > numThreadsInCell){
@@ -1056,6 +1349,60 @@ add (const HostCellListedMDData & hdata,
 	this->cptr_charge()[j] = hdata.cptr_charge()[j-tmp2];
       }
     }
+
+    if ((mask & MDDataItemMask_Bond) && hdata.getMaxNumBond() != 0){
+      for (IndexType j = tmp0; j < tmp1; ++j){
+	this->cptr_numBond()[j] = hdata.cptr_numBond()[j-tmp2];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumBond(); ++k){
+	IndexType mytmp0 = tmp0 + k * hdata.bondTopStride();
+	IndexType mytmp1 = tmp1 + k * hdata.bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp1; ++j){
+	  this->cptr_bondIndex()[j] = hdata.cptr_bondIndex()[j-tmp2];
+	  this->cptr_bondNeighbor_globalIndex()[j] = hdata.cptr_bondNeighbor_globalIndex()[j-tmp2];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && hdata.getMaxNumAngle() != 0){
+      for (IndexType j = tmp0; j < tmp1; ++j){
+	this->cptr_numAngle()[j] = hdata.cptr_numAngle()[j-tmp2];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumAngle(); ++k){
+	IndexType mytmp0 = tmp0 + k * hdata.bondTopStride();
+	IndexType mytmp1 = tmp1 + k * hdata.bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp1; ++j){
+	  this->cptr_angleIndex()[j] = hdata.cptr_angleIndex()[j-tmp2];
+	  this->cptr_anglePosi ()[j] = hdata.cptr_anglePosi ()[j-tmp2];
+	}
+      }
+      for (IndexType k = 0; k < 2 * hdata.getMaxNumAngle(); ++k){
+	IndexType mytmp0 = tmp0 + k * hdata.bondTopStride();
+	IndexType mytmp1 = tmp1 + k * hdata.bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp1; ++j){
+	  this->cptr_angleNeighbor_globalIndex()[j] = hdata.cptr_angleNeighbor_globalIndex()[j-tmp2];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && hdata.getMaxNumDihedral() != 0){
+      for (IndexType j = tmp0; j < tmp1; ++j){
+	this->cptr_numDihedral()[j] = hdata.cptr_numDihedral()[j-tmp2];
+      }
+      for (IndexType k = 0; k < hdata.getMaxNumDihedral(); ++k){
+	IndexType mytmp0 = tmp0 + k * hdata.bondTopStride();
+	IndexType mytmp1 = tmp1 + k * hdata.bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp1; ++j){
+	  this->cptr_dihedralIndex()[j] = hdata.cptr_dihedralIndex()[j-tmp2];
+	  this->cptr_dihedralPosi ()[j] = hdata.cptr_dihedralPosi ()[j-tmp2];
+	}
+      }
+      for (IndexType k = 0; k < 3 * hdata.getMaxNumDihedral(); ++k){
+	IndexType mytmp0 = tmp0 + k * hdata.bondTopStride();
+	IndexType mytmp1 = tmp1 + k * hdata.bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp1; ++j){
+	  this->cptr_dihedralNeighbor_globalIndex()[j] = hdata.cptr_dihedralNeighbor_globalIndex()[j-tmp2];
+	}
+      }
+    }
   }
 }
 
@@ -1065,6 +1412,15 @@ void Parallel::HostSubCellList::
 add (const HostSubCellList & clist,
      const MDDataItemMask_t mask)
 {
+  if (ptr_hdata == NULL || clist.ptr_hdata == NULL){
+    throw MDExcptCellList ("HostSubCellList::add, unset host data");
+  }
+  if (size() != clist.size() ||
+      ptr_hdata->getMaxNumBond() != clist.ptr_hdata->getMaxNumBond() ||
+      ptr_hdata->getMaxNumAngle() != clist.ptr_hdata->getMaxNumAngle() ||
+      ptr_hdata->getMaxNumDihedral() != clist.ptr_hdata->getMaxNumDihedral() ){
+    throw MDExcptCellList ("HostSubCellList::add, cannot add unconsistent HostSubCellList");
+  }
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
 
   for (IndexType i = 0; i < this->size(); ++i){
@@ -1134,6 +1490,67 @@ add (const HostSubCellList & clist,
     if (mask & MDDataItemMask_Charge){
       for (IndexType j = tmp0; j < tmp2; ++j){
 	ptr_hdata->cptr_charge()[j] = clist.ptr_hdata->cptr_charge()[j-tmp1];
+      }
+    }
+
+    if ((mask & MDDataItemMask_Bond) && ptr_hdata->getMaxNumBond() != 0){
+      for (IndexType j = tmp0; j < tmp2; ++j){
+	ptr_hdata->cptr_numBond()[j] = clist.ptr_hdata->cptr_numBond()[j-tmp1];
+      }
+      for (IndexType k = 0; k < ptr_hdata->getMaxNumBond(); ++k){
+	IndexType mytmp0 = tmp0 + k * ptr_hdata->bondTopStride();
+	IndexType mytmp2 = tmp2 + k * ptr_hdata->bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp2; ++j){
+	  ptr_hdata->cptr_bondIndex()[j] = clist.ptr_hdata->cptr_bondIndex()[j-tmp1];
+	  ptr_hdata->cptr_bondNeighbor_globalIndex()[j] =
+	      clist.ptr_hdata->cptr_bondNeighbor_globalIndex()[j-tmp1];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && ptr_hdata->getMaxNumAngle() != 0){
+      for (IndexType j = tmp0; j < tmp2; ++j){
+	ptr_hdata->cptr_numAngle()[j] = clist.ptr_hdata->cptr_numAngle()[j-tmp1];
+      }
+      for (IndexType k = 0; k < ptr_hdata->getMaxNumAngle(); ++k){
+	IndexType mytmp0 = tmp0 + k * ptr_hdata->bondTopStride();
+	IndexType mytmp2 = tmp2 + k * ptr_hdata->bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp2; ++j){
+	  ptr_hdata->cptr_angleIndex()[j] =
+	      clist.ptr_hdata->cptr_angleIndex()[j-tmp1];
+	  ptr_hdata->cptr_anglePosi ()[j] =
+	      clist.ptr_hdata->cptr_anglePosi ()[j-tmp1];
+	}
+      }
+      for (IndexType k = 0; k < 2 * ptr_hdata->getMaxNumAngle(); ++k){
+	IndexType mytmp0 = tmp0 + k * ptr_hdata->bondTopStride();
+	IndexType mytmp2 = tmp2 + k * ptr_hdata->bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp2; ++j){
+	  ptr_hdata->cptr_angleNeighbor_globalIndex()[j] =
+	      clist.ptr_hdata->cptr_angleNeighbor_globalIndex()[j-tmp1];
+	}
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && ptr_hdata->getMaxNumDihedral() != 0){
+      for (IndexType j = tmp0; j < tmp2; ++j){
+	ptr_hdata->cptr_numDihedral()[j] = clist.ptr_hdata->cptr_numDihedral()[j-tmp1];
+      }
+      for (IndexType k = 0; k < ptr_hdata->getMaxNumDihedral(); ++k){
+	IndexType mytmp0 = tmp0 + k * ptr_hdata->bondTopStride();
+	IndexType mytmp2 = tmp2 + k * ptr_hdata->bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp2; ++j){
+	  ptr_hdata->cptr_dihedralIndex()[j] =
+	      clist.ptr_hdata->cptr_dihedralIndex()[j-tmp1];
+	  ptr_hdata->cptr_dihedralPosi ()[j] =
+	      clist.ptr_hdata->cptr_dihedralPosi ()[j-tmp1];
+	}
+      }
+      for (IndexType k = 0; k < 3 * ptr_hdata->getMaxNumDihedral(); ++k){
+	IndexType mytmp0 = tmp0 + k * ptr_hdata->bondTopStride();
+	IndexType mytmp2 = tmp2 + k * ptr_hdata->bondTopStride();
+	for (IndexType j = mytmp0; j < mytmp2; ++j){
+	  ptr_hdata->cptr_dihedralNeighbor_globalIndex()[j] =
+	      clist.ptr_hdata->cptr_dihedralNeighbor_globalIndex()[j-tmp1];
+	}
       }
     }
   }
@@ -1223,4 +1640,94 @@ easyMalloc (const IndexType & totalNumCell_,
 				     sizeof(HostCoordType)*totalNumCell*MaxNeiPerCell);
   }
 }
+
+
+void Parallel::HostCellListedMDData::
+initTopology (const Topology::System & sysTop,
+	      const SystemBondedInteraction & sysBdInter)
+{
+  IndexType maxNumBond = 0;
+  for (unsigned i = 0; i < sysBdInter.bondIndex.size(); ++i){
+    for (unsigned j = 0; j < sysBdInter.bondIndex[i].size(); ++j){
+      IndexType c ;
+      if ((c=sysBdInter.bondIndex[i][j].size()) > maxNumBond){
+	maxNumBond = c;
+      }
+    }
+  }
+  IndexType maxNumAngle = 0;
+  for (unsigned i = 0; i < sysBdInter.angleIndex.size(); ++i){
+    for (unsigned j = 0; j < sysBdInter.angleIndex[i].size(); ++j){
+      IndexType c ;
+      if ((c=sysBdInter.angleIndex[i][j].size()) > maxNumAngle){
+	maxNumAngle = c;
+      }
+    }
+  }
+  IndexType maxNumDihedral = 0;
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+
+  HostCellListedMDData hdata_bk;
+  MDDataItemMask_t mask (MDDataItemMask_Coordinate |
+			 MDDataItemMask_CoordinateNoi |
+			 MDDataItemMask_Velocity |
+			 MDDataItemMask_GlobalIndex );
+  hdata_bk.copy (*this, mask);
+  this->easyMalloc (hdata_bk.HostMDData::memSize(),
+		    maxNumBond, maxNumAngle, maxNumDihedral);
+  this->copy (hdata_bk, mask);
+  
+  for (IndexType i = 0; i < totalNumCell; ++i){
+    IndexType shift = i * numThreadsInCell;
+    for (IndexType j = 0; j < numAtomInCell[i]; ++j){
+      IndexType my_index = shift + j;
+      IndexType my_globalIndex = cptr_globalIndex()[my_index];
+      IndexType top_molIndex, top_atomIndex;
+      sysTop.calMolTopPosition (my_globalIndex, top_molIndex, top_atomIndex);
+      // properties: mass charge type
+      const Topology::Atom & atom (sysTop.getAtom(top_molIndex, top_atomIndex));
+      cptr_type()[my_index] = atom.type;
+      cptr_mass()[my_index] = atom.mass;
+      cptr_charge()[my_index] = atom.charge;
+      
+      // init bond top
+      if (sysBdInter.hasBond()){
+	const std::vector<IndexType > & top_bondNeighborIndex (
+	    sysBdInter.getTopBondNeighborIndex (top_molIndex, top_atomIndex));
+	const std::vector<IndexType > & top_bondIndex (
+	    sysBdInter.getTopBondIndex (top_molIndex, top_atomIndex));
+	cptr_numBond()[my_index] = top_bondNeighborIndex.size();
+	for (IndexType k = 0; k < top_bondNeighborIndex.size(); ++k){
+	  IndexType my_bondListIndex = k * bondTopStride() + my_index;
+	  cptr_bondNeighbor_globalIndex()[my_bondListIndex] =
+	      my_globalIndex + top_bondNeighborIndex[k] - top_atomIndex;
+	  cptr_bondIndex()[my_bondListIndex] = top_bondIndex[k];
+	}
+      }
+      // init angle top
+      if (sysBdInter.hasAngle()){
+	const std::vector<IndexType > & top_angleNeighborIndex (
+	    sysBdInter.getTopAngleNeighborIndex (top_molIndex, top_atomIndex));
+	const std::vector<IndexType > & top_angleIndex (
+	    sysBdInter.getTopAngleIndex (top_molIndex, top_atomIndex));
+	const std::vector<IndexType > & top_anglePosi  (
+	    sysBdInter.getTopAnglePosi  (top_molIndex, top_atomIndex));
+	cptr_numAngle()[my_index] = top_angleIndex.size();
+	for (IndexType k = 0; k < top_angleIndex.size(); ++k){
+	  IndexType my_angleListIndex = k * bondTopStride() + my_index;
+	  cptr_angleIndex()[my_angleListIndex] = top_angleIndex[k];
+	  cptr_anglePosi ()[my_angleListIndex] = top_anglePosi [k];
+	}
+	for (IndexType k = 0; k < top_angleNeighborIndex.size(); ++k){
+	  IndexType my_angleListIndex = k * bondTopStride() + my_index;
+	  cptr_angleNeighbor_globalIndex()[my_angleListIndex] =
+	      my_globalIndex + top_angleNeighborIndex[k] - top_atomIndex;
+	}
+      }
+    }
+  }
+}
+
+
 

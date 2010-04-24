@@ -71,6 +71,7 @@ public:
 };
 
 
+#ifdef DEVICE_CODE
 __device__ IndexType
 nonBondedInteractionTableItem (IndexType * interactionTable,
 			       IndexType numAtomType,
@@ -89,7 +90,7 @@ calNonBondedInteractionTableLength (IndexType numAtomType)
 {
   return ((numAtomType * (numAtomType + 1)) >> 1);
 }
-
+#endif
 
 #endif
 

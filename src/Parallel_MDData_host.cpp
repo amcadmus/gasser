@@ -3,7 +3,6 @@
 #include "Parallel_MDData.h"
 #include "Parallel_TransferEngine.h"
 #include "Parallel_Interface.h"
-
 #include "GromacsFileManager.h"
 
 #include "compile_error_mixcode.h"
@@ -11,13 +10,27 @@
 
 Parallel::HostMDData::
 HostMDData()
-    : numData_(0), memSize_(0),
+    : _numData(0), _memSize(0),
       coord (NULL),
       coordNoi (NULL),
       velox (NULL), veloy(NULL), veloz(NULL),
       forcx (NULL), forcy(NULL), forcz(NULL),
       globalIndex (NULL),
-      type (NULL), mass (NULL), charge (NULL)
+      type (NULL), mass (NULL), charge (NULL),
+      numBond(NULL),
+      bondIndex(NULL),
+      bondNeighbor_globalIndex(NULL),
+      maxNumBond(0),
+      numAngle(NULL),
+      angleIndex(NULL),
+      anglePosi(NULL),
+      angleNeighbor_globalIndex(NULL),
+      maxNumAngle(0),
+      numDihedral(NULL),
+      dihedralIndex(NULL),
+      dihedralPosi(NULL),
+      dihedralNeighbor_globalIndex(NULL),
+      maxNumDihedral(0)
 {
 }
 
@@ -30,8 +43,8 @@ Parallel::HostMDData::
 void Parallel::HostMDData::
 clear ()
 {
-  numData_ = 0;
-  memSize_ = 0;
+  _numData = 0;
+  _memSize = 0;
   
   freeAPointer ((void**)&coord);
   freeAPointer ((void**)&coordNoi);
@@ -45,110 +58,369 @@ clear ()
   freeAPointer ((void**)&type);
   freeAPointer ((void**)&mass);
   freeAPointer ((void**)&charge);
+
+  freeAPointer ((void**)&bondNeighbor_globalIndex);
+  freeAPointer ((void**)&bondIndex);
+  freeAPointer ((void**)&numBond);
+  maxNumBond = 0;
+  freeAPointer ((void**)&angleNeighbor_globalIndex);
+  freeAPointer ((void**)&angleIndex);
+  freeAPointer ((void**)&anglePosi);
+  freeAPointer ((void**)&numAngle);
+  maxNumAngle = 0;
+  freeAPointer ((void**)&dihedralNeighbor_globalIndex);
+  freeAPointer ((void**)&dihedralIndex);
+  freeAPointer ((void**)&dihedralPosi);
+  freeAPointer ((void**)&numDihedral);
+  maxNumDihedral = 0;  
 }
 
 
-void Parallel::HostMDData::
-easyRealloc (const IndexType & memSize__)
-{
-  memSize_ = memSize__;
-  reallocCoordinate	(memSize__);
-  reallocVelocity	(memSize__);
-  reallocForce		(memSize__);
-  reallocGlobalIndex	(memSize__);
-  reallocTopProperty	(memSize__);
-  // reallocGroProperty	(memSize__);
-}
-
 
 void Parallel::HostMDData::
-reallocCoordinate (const IndexType & memSize__)
+fillZero ()
 {
-  // if (memSize_ != 0 && memSize_ != memSize__){
-  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  // }
-  if (memSize__ == 0) return ;
-  // memSize_ = memSize__;
-
-  size_t sizecoord =memSize_ * sizeof(HostCoordType);
-  size_t sizecoordNoi = memSize_ * sizeof(HostCoordNoiType);
-
-  coord = (HostCoordType *) realloc (coord, sizecoord);
-  if (coord == NULL) throw (MDExcptFailedReallocOnHost("coord", sizecoord));  
-  coordNoi = (HostCoordNoiType *) realloc (coordNoi, sizecoordNoi);
-  if (coordNoi == NULL) throw MDExcptFailedReallocOnHost ("coordNoi", sizecoordNoi);
-}
-
-void Parallel::HostMDData::
-reallocVelocity (const IndexType & memSize__)
-{
-  // if (memSize_ != 0 && memSize_ != memSize__){
-  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  // }
-  if (memSize__ == 0) return ;
-  // memSize_ = memSize__;
+  HostCoordType coord0;
+  HostCoordNoiType coordNoi0 ;
   
-  size_t sizef = memSize_ * sizeof(ScalorType);
-
-  velox = (ScalorType *) realloc (velox, sizef);
-  if (velox == NULL) throw MDExcptFailedReallocOnHost("velox", sizef);
-  veloy = (ScalorType *) realloc (veloy, sizef);
-  if (veloy == NULL) throw MDExcptFailedReallocOnHost("veloy", sizef);
-  veloz = (ScalorType *) realloc (veloz, sizef);
-  if (veloz == NULL) throw MDExcptFailedReallocOnHost("veloz", sizef);
+  for (IndexType i = 0; i < memSize(); ++i){
+    coord[i] = coord0;
+    coordNoi[i] = coordNoi0;
+    velox[i] = 0.f;
+    veloy[i] = 0.f;
+    veloz[i] = 0.f;
+    forcx[i] = 0.f;
+    forcy[i] = 0.f;
+    forcz[i] = 0.f;
+    globalIndex[i] = MaxIndexValue;
+    type[i] = 0;
+    mass[i] = 0.f;
+    charge[i] = 0.f;
+  }
+  if (maxNumBond != 0){
+    for (IndexType i = 0; i < memSize(); ++i){
+      numBond[i] = 0;
+    }
+    for (IndexType j = 0; j < maxNumBond; ++j){
+      for (IndexType i = 0; i < memSize(); ++i){
+	IndexType index = j * bondTopStride() + i;
+	bondNeighbor_globalIndex[index] = MaxIndexValue;
+	bondIndex[index] = 0;
+      }
+    }
+  }
+  if (maxNumAngle != 0){
+    for (IndexType i = 0; i < memSize(); ++i){
+      numAngle[i] = 0;
+    }
+    for (IndexType j = 0; j < maxNumAngle; ++j){
+      for (IndexType i = 0; i < memSize(); ++i){
+	IndexType index = j * bondTopStride() + i;
+	angleIndex[index] = 0;
+	anglePosi[index] = 0;
+      }
+    }
+    for (IndexType j = 0; j < 2 * maxNumAngle; ++j){
+      for (IndexType i = 0; i < memSize(); ++i){
+	IndexType index = j * bondTopStride() + i;
+    	angleNeighbor_globalIndex[index] = MaxIndexValue;
+      }
+    }
+  }
+  if (maxNumDihedral != 0){
+    for (IndexType i = 0; i < memSize(); ++i){
+      numDihedral[i] = 0;
+    }
+    for (IndexType j = 0; j < maxNumDihedral; ++j){
+      for (IndexType i = 0; i < memSize(); ++i){
+	IndexType index = j * bondTopStride() + i;
+	dihedralIndex[index] = 0;
+	dihedralPosi[index] = 0;
+      }
+    }
+    for (IndexType j = 0; j < 3 * maxNumDihedral; ++j){
+      for (IndexType i = 0; i < memSize(); ++i){
+	IndexType index = j * bondTopStride() + i;
+    	dihedralNeighbor_globalIndex[index] = MaxIndexValue;
+      }
+    }
+  }
 }
 
 void Parallel::HostMDData::
-reallocForce (const IndexType & memSize__)
+easyMalloc (const IndexType memSize_,
+	    const IndexType maxNumBond_,
+	    const IndexType maxNumAngle_,
+	    const IndexType maxNumDihedral_)
 {
-  // if (memSize_ != 0 && memSize_ != memSize__){
-  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  // }
-  if (memSize__ == 0) return ;
-  // memSize_ = memSize__;
+  printf ("# malloc HostMDData\n");
+  clear ();
+
+  _memSize = memSize_;
+  maxNumBond = maxNumBond_;
+  maxNumAngle = maxNumAngle_;
+  maxNumDihedral = maxNumDihedral_;
+
+  if (_memSize == 0) return;
+
+  size_t sizecoord = memSize() * sizeof(HostCoordType);
+  size_t sizecoordNoi = memSize() * sizeof(HostCoordNoiType);
+  size_t sizef = memSize() * sizeof(ScalorType);
+  size_t sizeidx = memSize() * sizeof(IndexType);
+  size_t sizetype = memSize() * sizeof (TypeType);
   
-  size_t sizef = memSize_ * sizeof(ScalorType);
+  coord = (HostCoordType *) malloc (sizecoord);
+  if (coord == NULL) throw MDExcptFailedMallocOnHost ("coord", sizecoord);
+  coordNoi = (HostCoordNoiType *) malloc (sizecoordNoi);
+  if (coordNoi == NULL) throw MDExcptFailedMallocOnHost ("coordNoi", sizecoordNoi);
+  velox = (ScalorType *) malloc (sizef);
+  if (velox == NULL) throw MDExcptFailedMallocOnHost ("velox", sizef);
+  veloy = (ScalorType *) malloc (sizef);
+  if (veloy == NULL) throw MDExcptFailedMallocOnHost ("veloy", sizef);
+  veloz = (ScalorType *) malloc (sizef);
+  if (veloz == NULL) throw MDExcptFailedMallocOnHost ("veloz", sizef);
+  forcx = (ScalorType *) malloc (sizef);
+  if (forcx == NULL) throw MDExcptFailedMallocOnHost ("forcx", sizef);
+  forcy = (ScalorType *) malloc (sizef);
+  if (forcy == NULL) throw MDExcptFailedMallocOnHost ("forcy", sizef);
+  forcz = (ScalorType *) malloc (sizef);
+  if (forcz == NULL) throw MDExcptFailedMallocOnHost ("forcz", sizef);
+  globalIndex = (IndexType *) malloc (sizeidx);
+  if (globalIndex == NULL) throw MDExcptFailedMallocOnHost ("globalIndex", sizeidx);
+  type = (TypeType *) malloc (sizetype);
+  if (type == NULL) throw MDExcptFailedMallocOnHost ("type", sizetype);
+  mass = (ScalorType *) malloc (sizef);
+  if (mass == NULL) throw MDExcptFailedMallocOnHost ("mass", sizef);
+  charge = (ScalorType *) malloc (sizef);
+  if (charge == NULL) throw MDExcptFailedMallocOnHost ("charge", sizef);  
+
+  size_t size0 = sizeof(IndexType) * memSize();
+
+  if (maxNumBond != 0){
+    size_t size1 = size0 * maxNumBond;
+    numBond = (IndexType *) malloc (size0);
+    if (numBond == NULL) throw MDExcptFailedMallocOnHost ("numBond", size0);
+    bondIndex = (IndexType *) malloc (size1);
+    if (bondIndex == NULL) throw MDExcptFailedMallocOnHost ("bondIndex", size1);
+    bondNeighbor_globalIndex = (IndexType *) malloc (size1);
+    if (bondNeighbor_globalIndex == NULL){
+      throw MDExcptFailedMallocOnHost ("bondNeighbor_globalIndex", size1);
+    }
+  }
+  if (maxNumAngle != 0){
+    size_t size1 = size0 * maxNumAngle;
+    size_t size2 = size0 * maxNumAngle * 2;
+    numAngle = (IndexType *) malloc (size0);
+    if (numAngle == NULL) throw MDExcptFailedMallocOnHost ("numAngle", size0);
+    angleIndex = (IndexType *) malloc (size1);
+    if (angleIndex == NULL) throw MDExcptFailedMallocOnHost ("angleIndex", size1);
+    anglePosi = (IndexType *) malloc (size1);
+    if (anglePosi == NULL) throw MDExcptFailedMallocOnHost ("anglePosi", size1);
+    angleNeighbor_globalIndex = (IndexType *) malloc (size2);
+    if (angleNeighbor_globalIndex == NULL){
+      throw MDExcptFailedMallocOnHost ("angleNeighbor_globalIndex", size2);
+    }
+  }
+  if (maxNumDihedral != 0){
+    size_t size1 = size0 * maxNumDihedral;
+    size_t size2 = size0 * maxNumDihedral * 3;
+    numDihedral = (IndexType *) malloc (size0);
+    if (numDihedral == NULL) throw MDExcptFailedMallocOnHost ("numDihedral", size0);
+    dihedralIndex = (IndexType *) malloc (size1);
+    if (dihedralIndex == NULL) throw MDExcptFailedMallocOnHost ("dihedralIndex", size1);
+    dihedralPosi = (IndexType *) malloc (size1);
+    if (dihedralPosi == NULL) throw MDExcptFailedMallocOnHost ("dihedralPosi", size1);
+    dihedralNeighbor_globalIndex = (IndexType *) malloc (size2);
+    if (dihedralNeighbor_globalIndex == NULL){
+      throw MDExcptFailedMallocOnHost ("dihedralNeighbor_globalIndex", size2);
+    }
+  }
+
+  fillZero ();
+}
+
+
+Parallel::HostMDData::
+HostMDData (const HostMDData & hdata)
+    : _numData(0), _memSize(0),
+      coord (NULL),
+      coordNoi (NULL),
+      velox (NULL), veloy(NULL), veloz(NULL),
+      forcx (NULL), forcy(NULL), forcz(NULL),
+      globalIndex (NULL),
+      type (NULL), mass (NULL), charge (NULL),
+      numBond(NULL),
+      bondIndex(NULL),
+      bondNeighbor_globalIndex(NULL),
+      maxNumBond(0),
+      numAngle(NULL),
+      angleIndex(NULL),
+      anglePosi(NULL),
+      angleNeighbor_globalIndex(NULL),
+      maxNumAngle(0),
+      numDihedral(NULL),
+      dihedralIndex(NULL),
+      dihedralPosi(NULL),
+      dihedralNeighbor_globalIndex(NULL),
+      maxNumDihedral(0)
+{
+  this->copy (hdata);
+}
+
+void Parallel::HostMDData::
+copy (const HostMDData & hdata,
+      const MDDataItemMask_t mask)
+{
+  if (!mask) return;
+  IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
+  bool copyBond = (mask & MDDataItemMask_Bond);
+  bool copyAngle = (mask & MDDataItemMask_Angle);
+  bool copyDihedral = (mask & MDDataItemMask_Dihedral);  
+  if (copyBond){
+    expectedNumBond = hdata.getMaxNumBond();
+  }
+  if (copyAngle){
+    expectedNumAngle = hdata.getMaxNumAngle();
+  }
+  if (copyDihedral){
+    expectedNumDihedral = hdata.getMaxNumDihedral();
+  }
+
+  if (memSize() < hdata.numData()){
+    easyMalloc (hdata.numData(), expectedNumBond, expectedNumAngle, expectedNumDihedral);
+  }
+  else if ((copyBond && (maxNumBond != hdata.maxNumBond)) ||
+	   (copyAngle && (maxNumAngle != hdata.maxNumAngle)) ||
+	   (copyDihedral && (maxNumDihedral != hdata.maxNumDihedral)) ){
+    easyMalloc (memSize(), expectedNumBond, expectedNumAngle, expectedNumDihedral);
+  }
+
+  _numData = hdata.numData();
+  setGlobalBox (hdata.getGlobalBox());  
   
-  forcx = (ScalorType *) realloc (forcx, sizef);
-  if (forcx == NULL) throw MDExcptFailedReallocOnHost("forcx", sizef);
-  forcy = (ScalorType *) realloc (forcy, sizef);
-  if (forcy == NULL) throw MDExcptFailedReallocOnHost("forcy", sizef);
-  forcz = (ScalorType *) realloc (forcz, sizef);
-  if (forcz == NULL) throw MDExcptFailedReallocOnHost("forcz", sizef);
+  size_t sizecoord = hdata.numData() * sizeof(HostCoordType);
+  size_t sizecoordNoi = hdata.numData() * sizeof(HostCoordNoiType);
+  size_t sizef = hdata.numData() * sizeof(ScalorType);
+  size_t sizeidx = hdata.numData() * sizeof(IndexType);
+  size_t sizetype = hdata.numData() * sizeof (TypeType);
+
+  if (mask & MDDataItemMask_Coordinate) {
+    memcpy (coord, hdata.coord, sizecoord);
+  }
+  if (mask & MDDataItemMask_CoordinateNoi){
+    memcpy (coordNoi, hdata.coordNoi, sizecoordNoi);
+  }
+  if (mask & MDDataItemMask_Velocity){
+    memcpy (velox, hdata.velox, sizef);
+    memcpy (veloy, hdata.veloy, sizef);
+    memcpy (veloz, hdata.veloz, sizef);
+  }
+  if (mask & MDDataItemMask_Force){
+    memcpy (forcx, hdata.forcx, sizef);
+    memcpy (forcy, hdata.forcy, sizef);
+    memcpy (forcz, hdata.forcz, sizef);
+  }
+  if (mask & MDDataItemMask_GlobalIndex){
+    memcpy (globalIndex, hdata.globalIndex, sizetype);
+  }
+  if (mask & MDDataItemMask_Type){
+    memcpy (type, hdata.type, sizetype);
+  }
+  if (mask & MDDataItemMask_Mass){
+    memcpy (mass, hdata.mass, sizef);
+  }
+  if (mask & MDDataItemMask_Charge){
+    memcpy (charge, hdata.charge, sizef);  
+  }
+
+  size_t size0 = sizeof(IndexType) * hdata.numData();
+
+  if (copyBond){
+    // maxNumBond = hdata.maxNumBond;
+    for (IndexType i = 0; i < maxNumBond; ++i){
+      if (i == 0) memcpy (numBond, hdata.numBond, size0);
+      memcpy (i * bondTopStride() + bondNeighbor_globalIndex,
+	      i * bondTopStride() + hdata.bondNeighbor_globalIndex,
+	      size0);
+      memcpy (i * bondTopStride() + bondIndex,
+	      i * bondTopStride() + hdata.bondIndex,
+	      size0);
+    }
+  }
+
+  if (copyAngle ){
+    // maxNumAngle = hdata.maxNumAngle;
+    for (IndexType i = 0; i < maxNumAngle; ++i){
+      if (i == 0) memcpy (numAngle, hdata.numAngle, size0);
+      memcpy (i * bondTopStride() + angleIndex,
+	      i * bondTopStride() + hdata.angleIndex,
+	      size0);
+      memcpy (i * bondTopStride() + anglePosi,
+	      i * bondTopStride() + hdata.anglePosi,
+	      size0);
+    }
+    for (IndexType i = 0; i < maxNumAngle * 2; ++i){
+      memcpy (i * bondTopStride() + angleNeighbor_globalIndex,
+	      i * bondTopStride() + hdata.angleNeighbor_globalIndex,
+	      size0);
+    }
+  }
+
+  if (copyDihedral){
+    for (IndexType i = 0; i < maxNumDihedral; ++i){
+      if (i == 0) memcpy (numDihedral, hdata.numDihedral, size0);
+      memcpy (i * size0 + dihedralIndex,
+	      i * size0 + hdata.dihedralIndex,
+	      size0);
+      memcpy (i * size0 + dihedralPosi,
+	      i * size0 + hdata.dihedralPosi,
+	      size0);
+    }
+    for (IndexType i = 0; i < maxNumDihedral * 3; ++i){
+      memcpy (i * size0 + dihedralNeighbor_globalIndex,
+	      i * size0 + hdata.dihedralNeighbor_globalIndex,
+	      size0);
+    }
+  }
+
 }
 
-void Parallel::HostMDData::
-reallocGlobalIndex (const IndexType & memSize__)
-{
-  // if (memSize_ != 0 && memSize_ != memSize__){
-  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  // }
-  if (memSize__ == 0) return ;
-  // memSize_ = memSize__;
-
-  size_t sizeidx = memSize_ * sizeof(IndexType);
-
-  globalIndex = (IndexType *) realloc (globalIndex, sizeidx);
-  if (globalIndex == NULL) throw MDExcptFailedReallocOnHost("globalIndex", sizeidx);
-}
 
 void Parallel::HostMDData::
-reallocTopProperty (const IndexType & memSize__)
+pushBackAtom  (const HostCoordType & coord_,
+	       const HostCoordNoiType & coordNoi_,
+	       const ScalorType & velox_,
+	       const ScalorType & veloy_,
+	       const ScalorType & veloz_,
+	       const IndexType & globalIndex_,
+	       const TypeType & type_,
+	       const ScalorType & mass_,
+	       const ScalorType & charge_)
 {
-  // if (memSize_ != 0 && memSize_ != memSize__){
-  //   throw MDExcptInconsistentMemorySizeOnHostMDData ();
-  // }
-  if (memSize__ == 0) return ;
-  // memSize_ = memSize__;
-
-  size_t sizef = memSize_ * sizeof(ScalorType);
-
-  type = (TypeType *) realloc (type, memSize_ * sizeof(TypeType));
-  if (type == NULL) throw MDExcptFailedReallocOnHost("type", memSize_ * sizeof(TypeType));
-  mass = (ScalorType *) realloc (mass, sizef);
-  if (mass == NULL) throw MDExcptFailedReallocOnHost("mass", sizef);
-  charge = (ScalorType *) realloc(charge, sizef);
-  if (charge == NULL) throw MDExcptFailedReallocOnHost("charge", sizef);
+  if (memSize() < numData() + 1){
+    MDDataItemMask_t mask = MDDataItemMask_All;
+    mask ^= MDDataItemMask_Bond;
+    mask ^= MDDataItemMask_Angle;
+    mask ^= MDDataItemMask_Dihedral;
+    HostMDData backup;
+    backup.copy (*this, mask);
+    _memSize ++;
+    _memSize <<=1;
+    easyMalloc (memSize(), maxNumBond, maxNumAngle, maxNumDihedral);
+    copy (backup, mask);
+  }
+  coord[numData()] = coord_;
+  coordNoi[numData()].x = coordNoi_.x;
+  coordNoi[numData()].y = coordNoi_.y;
+  coordNoi[numData()].z = coordNoi_.z;
+  velox[numData()] = velox_;
+  veloy[numData()] = veloy_;
+  veloz[numData()] = veloz_;
+  globalIndex[numData()] = globalIndex_;
+  type[numData()] = type_;
+  mass[numData()] = mass_;
+  charge[numData()] = charge_;
+  numData() ++;
 }
 
 
@@ -169,37 +441,6 @@ numAtomInGroFile (const char * filename)
   return numData;
 }
 
-void Parallel::HostMDData::
-pushBackAtom  (const HostCoordType & coord_,
-	       const HostCoordNoiType & coordNoi_,
-	       const ScalorType & velox_,
-	       const ScalorType & veloy_,
-	       const ScalorType & veloz_,
-	       const IndexType & globalIndex_,
-	       const TypeType & type_,
-	       const ScalorType & mass_,
-	       const ScalorType & charge_)
-{
-  if (numData_ == memSize_){
-    memSize_ ++;
-    memSize_ <<= 1;
-    easyRealloc (memSize_);
-  }
-  coord[numData_] = coord_;
-  coordNoi[numData_].x = coordNoi_.x;
-  coordNoi[numData_].y = coordNoi_.y;
-  coordNoi[numData_].z = coordNoi_.z;
-  velox[numData_] = velox_;
-  veloy[numData_] = veloy_;
-  veloz[numData_] = veloz_;
-  globalIndex[numData_] = globalIndex_;
-  type[numData_] = type_;
-  mass[numData_] = mass_;
-  charge[numData_] = charge_;
-  numData_ ++;
-}
-
-
 
 void Parallel::GlobalHostMDData::
 initConf_GroFile (const char * filename,
@@ -212,35 +453,35 @@ initConf_GroFile (const char * filename,
   }
   while (fgetc(fpc) != '\n');
 
-  if (fscanf (fpc, "%d", &(numData_)) != 1){
+  IndexType expectedNumAtom;
+  if (fscanf (fpc, "%d", &(expectedNumAtom)) != 1){
     throw MDExcptWrongFileFormat ("HostMDData::initConf_GroFile", filename);
   }
 
-  if (numData_ > memSize_) {
-    easyRealloc (numData_);
-    // throw MDExcptNumAtomMoreThanMemSize ();
+  if (expectedNumAtom > memSize()) {
+    easyMalloc (expectedNumAtom);
   }
-  
+  numData() = expectedNumAtom;
 
   ScalorType bx, by, bz;
   ScalorType * tmpx, * tmpy, * tmpz;
-  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData());
   if (tmpx == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpx",
-				     sizeof(ScalorType) * numData_);
+				     sizeof(ScalorType) * numData());
   }
-  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData());
   if (tmpy == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpy",
-				     sizeof(ScalorType) * numData_);
+				     sizeof(ScalorType) * numData());
   }
-  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData());
   if (tmpz == NULL){
     throw MDExcptFailedMallocOnHost ("HostMDData::initConf_GroFile",
 				     "tmpz",
-				     sizeof(ScalorType) * numData_);
+				     sizeof(ScalorType) * numData());
   }
   GromacsFileManager::readGroFile (filename,
 				   resdIndex, resdName, 
@@ -248,7 +489,7 @@ initConf_GroFile (const char * filename,
 				   tmpx, tmpy, tmpz,
 				   velox,  veloy,  veloz,
 				   &bx, &by, &bz) ;
-  for (IndexType i = 0; i < numData_; ++i){
+  for (IndexType i = 0; i < numData(); ++i){
     globalIndex[i] = i;
     coord[i].x = tmpx[i];
     coord[i].y = tmpy[i];
@@ -292,9 +533,9 @@ findMolIndex (const Topology::System & sysTop,
 
 
 void Parallel::GlobalHostMDData::
-initTopology (const Topology::System & sysTop)
+initTopology_property (const Topology::System & sysTop)
 {
-  for (IndexType i = 0; i < numData_; ++i){
+  for (IndexType i = 0; i < numData(); ++i){
     IndexType molIndex = findMolIndex (sysTop, globalIndex[i]);
     IndexType atomIndex = (globalIndex[i] - sysTop.indexShift[molIndex]) %
 	(sysTop.molecules[molIndex].size());
@@ -312,16 +553,17 @@ writeData_SimpleFile (const char * filename)
   if (fp == NULL){
     throw MDExcptCannotOpenFile(filename);
   }
-  fprintf (fp, "# %d\n", numData_);
-  for (IndexType i = 0; i < numData_; ++i){
+  fprintf (fp, "# %d\n", numData());
+  for (IndexType i = 0; i < numData(); ++i){
     fprintf (fp, "%8.3f %8.3f %8.3f\n", coord[i].x, coord[i].y, coord[i].z);
   }
   fclose (fp);
 }
 
 
-void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
-				       HostMDData & ldata)
+void Parallel::
+distributeGlobalMDData (const GlobalHostMDData & gdata,
+			HostMDData & ldata)
 {
   Parallel::TransferEngine transSend ;
   Parallel::TransferEngine transRecv ;
@@ -334,10 +576,11 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
   int myRank = Parallel::Interface::myRank();
   
   if (myRank == 0){
-    IndexType naiveLocalMemSize  = (gdata.numData() /
-				    Parallel::Interface::numProc() * 2);
-    if (naiveLocalMemSize < 100)  naiveLocalMemSize = 100 ;
-    sdata.easyRealloc (naiveLocalMemSize);
+    // IndexType naiveLocalMemSize  = (gdata.numData() /
+    // 				    Parallel::Interface::numProc() * 2);
+    IndexType naiveLocalMemSize = gdata.numData();
+    if (naiveLocalMemSize < 100) naiveLocalMemSize = 100 ;
+    sdata.easyMalloc   (naiveLocalMemSize);
     sdata.setGlobalBox (gdata.getGlobalBox());
     
     hx = (gdata.getGlobalBox().size.x) / Nx;
@@ -400,7 +643,7 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 	  transRecv.build ();
 	  transRecv.Irecv (0, 0);
 	  transRecv.wait ();
-	  ldata.easyRealloc (recvMemSize);
+	  ldata.easyMalloc (recvMemSize);
 	}
 	if (myRank == 0){
 	  transSend.wait ();
@@ -482,184 +725,6 @@ void Parallel::distributeGlobalMDData (const GlobalHostMDData & gdata,
 }
 
 
-
-
-// void Parallel::HostMDData::
-// formDataTransferBlock (const IndexType & startIndex,
-// 		       const IndexType & num,
-// 		       DataTransferBlock & block)
-// {
-//   block.pointer[0] = &coord[startIndex];
-//   block.pointer[1] = &coordNoix[startIndex];
-//   block.pointer[2] = &coordNoiy[startIndex];
-//   block.pointer[3] = &coordNoiz[startIndex];
-//   block.pointer[4] = &velox[startIndex];
-//   block.pointer[5] = &veloy[startIndex];
-//   block.pointer[6] = &veloz[startIndex];
-//   // block.pointer[7] = &forcx[startIndex];
-//   // block.pointer[8] = &forcy[startIndex];
-//   // block.pointer[9] = &forcz[startIndex];
-//   block.pointer[10] = &globalIndex[startIndex];
-//   block.pointer[11] = &type[startIndex];
-//   block.pointer[12] = &mass[startIndex];
-//   block.pointer[13] = &charge[startIndex];
-//   block.size[0] = num * sizeof(HostCoordType);
-//   block.size[1] = block.size[2] = block.size[3]
-//       = num * sizeof(IntScalorType);
-//   block.size[4] = block.size[5] = block.size[6]
-//       // = block.size[7] = block.size[8] = block.size[9]
-//       = block.size[12] = block.size[13]
-//       = num * sizeof(ScalorType);
-//   block.size[7] = block.size[8] = block.size[9] = 0;
-//   block.size[10] = num * sizeof(IndexType);
-//   block.size[11] = num * sizeof(TypeType);
-// }
-
-
-Parallel::HostMDData::
-HostMDData (const HostMDData & hdata)
-    : numData_(0), memSize_(0)
-{
-  this->copy (hdata);
-}
-
-void Parallel::HostMDData::
-copy (const HostMDData & hdata,
-      const MDDataItemMask_t mask)
-{
-  if (memSize_ < hdata.numData_){
-    easyRealloc (hdata.numData_ * MemAllocExtension);
-  }
-  numData_ = hdata.numData_;
-  setGlobalBox (hdata.getGlobalBox());
-  
-  if (mask & MDDataItemMask_Coordinate) {
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      coord[i] = hdata.coord[i];
-    }
-  }
-  if (mask & MDDataItemMask_CoordinateNoi){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      coordNoi[i].x = hdata.coordNoi[i].x;
-      coordNoi[i].y = hdata.coordNoi[i].y;
-      coordNoi[i].z = hdata.coordNoi[i].z;
-    }
-  }
-  if (mask & MDDataItemMask_Velocity){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      velox[i] = hdata.velox[i];
-      veloy[i] = hdata.veloy[i];
-      veloz[i] = hdata.veloz[i];
-    }
-  }
-  if (mask & MDDataItemMask_GlobalIndex){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){  
-      globalIndex[i] = hdata.globalIndex[i];
-    }
-  }
-  if (mask & MDDataItemMask_Type){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      type[i] = hdata.type[i];
-    }
-  }
-  if (mask & MDDataItemMask_Mass){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      mass[i] = hdata.mass[i];
-    }
-  }
-  if (mask & MDDataItemMask_Charge){
-    for (IndexType i = 0 ; i < hdata.numData_; ++i){
-      charge[i] = hdata.charge[i];
-    }
-  }
-  // return *this;
-}
-
-// void Parallel::MDSystem::
-// redistribute ()
-// {
-//   Parallel::TransferEngine tr_xsend0;
-//   Parallel::TransferEngine tr_xrecv0;
-//   Parallel::TransferEngine tr_xsend1;
-//   Parallel::TransferEngine tr_xrecv1;
-//   Parallel::TransferEngine tr_ysend0;
-//   Parallel::TransferEngine tr_yrecv0;
-//   Parallel::TransferEngine tr_ysend1;
-//   Parallel::TransferEngine tr_yrecv1;
-//   Parallel::TransferEngine tr_zsend0;
-//   Parallel::TransferEngine tr_zrecv0;
-//   Parallel::TransferEngine tr_zsend1;
-//   Parallel::TransferEngine tr_zrecv1;
-
-//   int xsend0_nei, xrecv0_nei;
-//   int xsend1_nei, xrecv1_nei;
-//   int ysend0_nei, yrecv0_nei;
-//   int ysend1_nei, yrecv1_nei;
-//   int zsend0_nei, zrecv0_nei;
-//   int zsend1_nei, zrecv1_nei;
-  
-//   Parallel::Environment env;
-//   env.neighborProcIndex (Parallel::CoordXIndex,  1, xsend0_nei, xrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordXIndex, -1, xsend1_nei, xrecv1_nei);
-//   env.neighborProcIndex (Parallel::CoordYIndex,  1, ysend0_nei, yrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordYIndex, -1, ysend1_nei, yrecv1_nei);
-//   env.neighborProcIndex (Parallel::CoordZIndex,  1, zsend0_nei, zrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordZIndex, -1, zsend1_nei, zrecv1_nei);
-  
-//   Parallel::HostCellList::iterator it;
-//   for (it = xsend0.begin(); it != xsend0.end(); ++it){
-//     tr_xsend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-//   }
-//   tr_xsend0.build();
-//   tr_xsend0.Isend(xsend0_nei, 0);
-//   IndexType * numAtomInCell =
-//       (IndexType *) malloc (sizeof(IndexType) * xrecv0.numCell());
-//   if (numAtomInCell == 0){
-//     throw MDExcptFailedMallocOnHost ("HostMDData::redistribute",
-// 				     "numAtomInCell",
-// 				     sizeof(IndexType) * xrecv0.numCell());
-//   }
-//   tr_xrecv0.registerBuff (numAtomInCell, sizeof(IndexType) * xrecv0.numCell());
-//   tr_xrecv0.build();
-//   tr_xrecv0.Irecv(xrecv0_nei, 0);
-//   tr_xrecv0.wait();
-//   tr_xsend0.wait();
-//   tr_xrecv0.clearRegistered();
-//   tr_xsend0.clearRegistered();
-//   // for (it = xsend0.begin(); it != xsend.end(); ++it){
-//   //   tr_xsend0.registerBuff (
-//   // 	it.atomIndexInCell(), sizeof(IndexType)*it.numAtomInCell());
-// }
-
-  
-  
-  
-  // for (itsend = xsend1.begin(); itsend != xsend1.end(); ++itsend){
-  //   tr_xsend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-  // }
-  // tr_xrecv0.build();
-  // tr_xsend0.Isend(xsend1_nei, 0);
-  // for (itsend = ysend0.begin(); itsend != ysend0.end(); ++itsend){
-  //   tr_ysend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-  // }
-  // tr_ysend0.build();
-  // tr_ysend0.Isend(ysend0_nei, 0);
-  // for (itsend = ysend1.begin(); itsend != ysend1.end(); ++itsend){
-  //   tr_ysend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-  // }
-  // tr_yrecv0.build();
-  // tr_ysend1.Isend(ysend1_nei, 0);
-  // for (itsend = zsend0.begin(); itsend != zsend0.end(); ++itsend){
-  //   tr_zsend0.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-  // }
-  // tr_zsend0.build();
-  // tr_zsend0.Isend(zsend0_nei, 0);
-  // for (itsend = zsend1.begin(); itsend != zsend1.end(); ++itsend){
-  //   tr_zsend1.registerBuff (&it.numAtomInCell(), sizeof(IndexType));
-  // }
-  // tr_zrecv0.build();
-  // tr_zsend1.Isend(zsend1_nei, 0);
-  
   
 void Parallel::GlobalHostMDData::
 writeData_GroFile (const char * filename,
@@ -672,28 +737,26 @@ writeData_GroFile (const char * filename,
   }
   // fprintf (fp, "# at time = %f, step = %d", time, step);
   ScalorType * tmpx, * tmpy, * tmpz;
-  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
-  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
-  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData_);
-  for (IndexType i = 0; i < numData_; ++i){
+  tmpx = (ScalorType *)malloc (sizeof(ScalorType) * numData());
+  tmpy = (ScalorType *)malloc (sizeof(ScalorType) * numData());
+  tmpz = (ScalorType *)malloc (sizeof(ScalorType) * numData());
+  for (IndexType i = 0; i < numData(); ++i){
     tmpx[i] = coord[i].x;
     tmpy[i] = coord[i].y;
     tmpz[i] = coord[i].z;
   }
   GromacsFileManager::writeGroFile (fp,
-				    numData_,
+				    numData(),
 				    resdIndex, resdName, 
 				    atomName, atomIndex,
 				    tmpx,  tmpy,  tmpz,
 				    velox, veloy, veloz,
-				    globalBox.size.x,
-				    globalBox.size.y,
-				    globalBox.size.z) ;
+				    getGlobalBox().size.x,
+				    getGlobalBox().size.y,
+				    getGlobalBox().size.z) ;
   free (tmpx);
   free (tmpy);
   free (tmpz);
   fclose (fp);
-
-
 }
 

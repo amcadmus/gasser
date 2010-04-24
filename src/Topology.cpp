@@ -224,7 +224,7 @@ clear()
 void Topology::System::
 calMolTopPosition (const IndexType & globalIndex,
 		   IndexType & molIndex,
-		   IndexType & atomIndex)
+		   IndexType & atomIndex) const
 {
   if (globalIndex >= indexShift.back ()){
     throw MDExcptTopology ("wrong global index");

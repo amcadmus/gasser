@@ -35,6 +35,7 @@ namespace RectangularBoxGeometry{
 			      IntScalorType * noix, 
 			      IntScalorType * noiy, 
 			      IntScalorType * noiz);
+  
 
 #ifdef DEVICE_CODE
   __device__ void moveParticleToBox (RectangularBox box,

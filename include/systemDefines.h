@@ -56,16 +56,19 @@ typedef uint3		IndexVectorType;
 struct floatH4 
 {
   float x, y, z, w;
+  floatH4 () : x(0.f), y(0.f), z(0.f), w(0.f) {}
   // floatH4 & operator = (const floatH4 & a) 
   //     {x = a.x; y = a.y; z = a.z; w = a.w;
 };
 struct floatH3
 {
   float x, y, z;
+  floatH3 () : x(0.f), y(0.f), z(0.f) {}
 };
 struct intH3
 {
   int x, y, z;
+  intH3 () : x(0), y(0), z(0) {}
 };
 
 typedef floatH4		HostCoordType;

@@ -49,13 +49,17 @@ void Parallel::MDSystem::
 init (const char * confFileName,
       const Topology::System & sysTop)
 {
+  MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
+				 MDDataItemMask_CoordinateNoi |
+				 MDDataItemMask_Velocity |
+				 MDDataItemMask_GlobalIndex);
   if (Parallel::Interface::myRank() == 0){
     globalNumAtom = globalHostData.numAtomInGroFile (confFileName);
     // globalHostData.reallocCoordinate (globalNumAtom);
     // globalHostData.reallocVelocity   (globalNumAtom);
     // globalHostData.reallocGroProperty(globalNumAtom);
     // globalHostData.reallocGlobalIndex(globalNumAtom);
-    globalHostData.easyRealloc (globalNumAtom);
+    globalHostData.easyMalloc (globalNumAtom);
     reallocGroProperty (globalNumAtom);
     globalHostData.initConf_GroFile (confFileName,
 				     atomName, atomIndex,
@@ -69,7 +73,7 @@ init (const char * confFileName,
 			     & (globalHostData.cptr_coordinateNoi()[i].y),
 			     & (globalHostData.cptr_coordinateNoi()[i].z));
     }
-    globalHostData.initTopology (sysTop);
+    // globalHostData.initTopology_property (sysTop);
     for (int i = 0; i < globalNumAtom; ++i){
       globalHostData.cptr_coordinate()[i].w = globalHostData.cptr_type()[i];
     }
@@ -82,7 +86,6 @@ init (const char * confFileName,
 
   deviceData.initCellStructure (2, 1);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
-
   cellRelation.build (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){
@@ -93,10 +96,49 @@ init (const char * confFileName,
   // deviceData.rebuild ();
   // printf ("rank %d\n", Parallel::Interface::myRank());
 
-  deviceData.copyToHost (localHostData, MDDataItemMask_All);
+  deviceData.copyToHost (localHostData, maskConfig);
+  SystemBondedInteraction sysBdInter (sysTop);
+  localHostData.initTopology (sysTop, sysBdInter);
+  deviceData.copyFromHost (localHostData, MDDataItemMask_All);
+
+  // MDDataItemMask_t maskWithBond = maskConfig | MDDataItemMask_Bond;
+  // MDDataItemMask_t maskWithBondAngle = maskConfig | MDDataItemMask_Bond | MDDataItemMask_Angle;
+  // HostMDData ht1 ;
+  // HostMDData ht2 ;
+  // DeviceMDData dt1;  
+  // ht1.easyMalloc (16, 7, 0, 0);
+  // ht1.numData() = 3;
+  // dt1.easyMalloc (14, 5, 0, 0);
+  // dt1.numData() = 5;
+  // dt1.copyToHost (ht1, maskWithBond);
+  // // ht2.easyMalloc (20, 1, 1, 1);
+  // // ht2.numData() = 10;
+  // // ht1.copy (ht2, maskWithBond);
+  // // ht2.copy (ht1, maskWithBond);
+
+  deviceData.dptr_coordinate()[124].x = 3;
+  deviceData.dptr_coordinate()[126].x = 4;
+  SubCellList subList;
+  localHostData.buildSubList (1, 2, 1, 2, 1, 2, subList);
+  HostSubCellList hsub ;
+  localHostData.buildSubList (1, 2, 1, 2, 1, 2, hsub);
+  hsub.setHostData (localHostData);
+  HostCellListedMDData hdata (localHostData);
+  localHostData.add (hdata);
+  
+  // hsub.add (hsub);
+  // DeviceTransferPackage dpkg;
+  // dpkg.reinit (subList);
+  // dpkg.pack (deviceData);
+  // HostTransferPackage hpkg;
+  // hpkg.reinit (subList);
+  // dpkg.copyToHost (hpkg);
+  // hpkg.unpack_replace (localHostData);  
+
+
   hostBuff.copy (localHostData, MDDataItemMask_All);
   hostBuff.clearData ();
-
+  
   redistribtransUtil  .setHostData (localHostData, hostBuff);
   redistribcopyUtil   .setData     (localHostData, deviceData);
   transCoordstransUtil.setHostData (localHostData, hostBuff);
