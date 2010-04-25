@@ -1119,18 +1119,35 @@ pack (const DeviceCellListedMDData & ddata,
   for (IndexType i = 1; i < numCell+1; ++i){
     hcellStartIndex[i] = hcellStartIndex[i-1] + numAtomInCell[hcellIndex[i-1]];
   }
-  this->numData() = hcellStartIndex[numCell];
+  DeviceMDData::numData() = hcellStartIndex[numCell];
   cudaMemcpy (cellStartIndex, hcellStartIndex, (numCell+1) * sizeof(IndexType),
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("DeviceTransferPackage::pack cpy cellStartIndex to device");
   
   free (numAtomInCell);
 
-  this->DeviceMDData::setGlobalBox (ddata.getGlobalBox());
-  if (this->DeviceMDData::numData() > this->DeviceMDData::memSize()){
+  IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
+  bool copyBond = (mask & MDDataItemMask_Bond);
+  bool copyAngle = (mask & MDDataItemMask_Angle);
+  bool copyDihedral = (mask & MDDataItemMask_Dihedral);  
+  if (copyBond) expectedNumBond = ddata.getMaxNumBond();
+  if (copyAngle) expectedNumAngle = ddata.getMaxNumAngle();
+  if (copyDihedral) expectedNumDihedral = ddata.getMaxNumDihedral();  
+
+  DeviceMDData::setGlobalBox (ddata.getGlobalBox());
+  if (DeviceMDData::numData() > DeviceMDData::memSize() ){
     printf ("# DeviceTransferPackage::pack, realloc\n");
-    
-    this->DeviceMDData::easyMalloc (this->DeviceMDData::numData() * MemAllocExtension);
+    DeviceMDData::easyMalloc(
+	DeviceMDData::numData() * MemAllocExtension,
+	expectedNumBond, expectedNumAngle, expectedNumDihedral);
+  }
+  else if ((copyBond && (getMaxNumBond() != ddata.getMaxNumBond())) ||
+	   (copyAngle && (getMaxNumAngle() != ddata.getMaxNumAngle())) ||
+	   (copyDihedral && (getMaxNumDihedral() != ddata.getMaxNumDihedral())) ){
+    printf ("# DeviceTransferPackage::pack, realloc\n");
+    DeviceMDData::easyMalloc(
+	DeviceMDData::memSize(),
+	expectedNumBond, expectedNumAngle, expectedNumDihedral);
   }
 
   checkCUDAError ("DeviceTransferPackage::pack, packDeviceMDData, before");
@@ -1164,6 +1181,40 @@ pack (const DeviceCellListedMDData & ddata,
 	  this->dptr_type(),
 	  this->dptr_mass(),
 	  this->dptr_charge());
+  Parallel::CudaGlobal::packDeviceMDData_bondTop
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
+	  cellIndex,
+	  ddata.dptr_numAtomInCell(),
+	  cellStartIndex,
+	  mask,
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondIndex(),
+	  ddata.dptr_bondNeighbor_globalIndex(),
+	  ddata.dptr_numAngle(),
+	  ddata.dptr_angleIndex(),
+	  ddata.dptr_anglePosi(),
+	  ddata.dptr_angleNeighbor_globalIndex(),
+	  ddata.dptr_numDihedral(),
+	  ddata.dptr_dihedralIndex(),
+	  ddata.dptr_dihedralPosi(),
+	  ddata.dptr_dihedralNeighbor_globalIndex(),
+	  ddata.bondTopStride(),
+	  ddata.getMaxNumBond(),
+	  ddata.getMaxNumAngle(),
+	  ddata.getMaxNumDihedral(),
+	  this->dptr_numBond(),
+	  this->dptr_bondIndex(),
+	  this->dptr_bondNeighbor_globalIndex(),
+	  this->dptr_numAngle(),
+	  this->dptr_angleIndex(),
+	  this->dptr_anglePosi(),
+	  this->dptr_angleNeighbor_globalIndex(),
+	  this->dptr_numDihedral(),
+	  this->dptr_dihedralIndex(),
+	  this->dptr_dihedralPosi(),
+	  this->dptr_dihedralNeighbor_globalIndex(),
+	  this->bondTopStride()
+	  );
   checkCUDAError ("DeviceTransferPackage::pack, packDeviceMDData");
 }
 
@@ -1236,6 +1287,100 @@ packDeviceMDData (const IndexType * cellIndex,
     }
   }
 }
+
+
+__global__ void Parallel::CudaGlobal::
+packDeviceMDData_bondTop (const IndexType * cellIndex,
+			  const IndexType * numAtomInCell,
+			  const IndexType * cellStartIndex,
+			  const MDDataItemMask_t mask,
+			  const IndexType * source_numBond,
+			  const IndexType * source_bondIndex,
+			  const IndexType * source_bondNeighbor_globalIndex,
+			  const IndexType * source_numAngle,
+			  const IndexType * source_angleIndex,
+			  const IndexType * source_anglePosi ,
+			  const IndexType * source_angleNeighbor_globalIndex,
+			  const IndexType * source_numDihedral,
+			  const IndexType * source_dihedralIndex,
+			  const IndexType * source_dihedralPosi ,
+			  const IndexType * source_dihedralNeighbor_globalIndex,
+			  const IndexType   source_bondTopStride,
+			  const IndexType   maxNumBond,
+			  const IndexType   maxNumAngle,
+			  const IndexType   maxNumDihedral,
+			  IndexType * numBond,
+			  IndexType * bondIndex,
+			  IndexType * bondNeighbor_globalIndex,
+			  IndexType * numAngle,
+			  IndexType * angleIndex,
+			  IndexType * anglePosi ,
+			  IndexType * angleNeighbor_globalIndex,
+			  IndexType * numDihedral,
+			  IndexType * dihedralIndex,
+			  IndexType * dihedralPosi ,
+			  IndexType * dihedralNeighbor_globalIndex,
+			  const IndexType bondTopStride)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType cellIdx = cellIndex[bid];
+  IndexType fromid = tid + cellIdx * blockDim.x;
+  IndexType toid = tid + cellStartIndex[bid];
+
+  if (tid < numAtomInCell[cellIdx]){
+    if ((mask & MDDataItemMask_Bond) && maxNumBond != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numBond[toid] = source_numBond[fromid];
+      for (IndexType k = 0; k < maxNumBond; ++k){
+	bondIndex[my_toid] = source_bondIndex[my_fromid];
+	bondNeighbor_globalIndex[my_toid] = source_bondNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && maxNumAngle != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numAngle[toid] = source_numAngle[fromid];
+      for (IndexType k = 0; k < maxNumAngle; ++k){
+	angleIndex[my_toid] = source_angleIndex[my_fromid];
+	anglePosi [my_toid] = source_anglePosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumAngle * 2; ++k){
+	angleNeighbor_globalIndex[my_toid] = source_angleNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && maxNumDihedral != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numDihedral[toid] = source_numDihedral[fromid];
+      for (IndexType k = 0; k < maxNumDihedral; ++k){
+	dihedralIndex[my_toid] = source_dihedralIndex[my_fromid];
+	dihedralPosi [my_toid] = source_dihedralPosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumDihedral * 3; ++k){
+	dihedralNeighbor_globalIndex[my_toid] = source_dihedralNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+  }
+}
+
+	
 
 
 void Parallel::DeviceTransferPackage::
@@ -1316,13 +1461,55 @@ unpack_replace (DeviceCellListedMDData & ddata) const
 	  ddata.dptr_type(),
 	  ddata.dptr_mass(),
 	  ddata.dptr_charge());
+  Parallel::CudaGlobal::unpackDeviceMDData_bondTop_replace
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>>(
+	  cellIndex,
+	  cellStartIndex,
+	  myMask,
+	  this->dptr_numBond(),
+	  this->dptr_bondIndex(),
+	  this->dptr_bondNeighbor_globalIndex(),
+	  this->dptr_numAngle(),
+	  this->dptr_angleIndex(),
+	  this->dptr_anglePosi(),
+	  this->dptr_angleNeighbor_globalIndex(),
+	  this->dptr_numDihedral(),
+	  this->dptr_dihedralIndex(),
+	  this->dptr_dihedralPosi(),
+	  this->dptr_dihedralNeighbor_globalIndex(),
+	  this->bondTopStride(),
+	  this->getMaxNumBond(),
+	  this->getMaxNumAngle(),
+	  this->getMaxNumDihedral(),
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondIndex(),
+	  ddata.dptr_bondNeighbor_globalIndex(),
+	  ddata.dptr_numAngle(),
+	  ddata.dptr_angleIndex(),
+	  ddata.dptr_anglePosi(),
+	  ddata.dptr_angleNeighbor_globalIndex(),
+	  ddata.dptr_numDihedral(),
+	  ddata.dptr_dihedralIndex(),
+	  ddata.dptr_dihedralPosi(),
+	  ddata.dptr_dihedralNeighbor_globalIndex(),
+	  ddata.bondTopStride());
   checkCUDAError ("DeviceTransferPackage::unpack_replace");
 }
+
 
 
 void Parallel::DeviceTransferPackage::
 unpack_add (DeviceCellListedMDData & ddata) const
 {
+  IndexType totalNumInCell = ddata.getNumCell().x * ddata.getNumCell().y * ddata.getNumCell().z;
+  IndexType * oldNumAtomInCell;
+  size_t size = totalNumInCell * sizeof(IndexType);
+  cudaMalloc ((void**)&oldNumAtomInCell, size);
+  checkCUDAError ("DeviceTransferPackage::unpack_add, malloc oldNumAtomInCell");
+  cudaMemcpy (oldNumAtomInCell, ddata.dptr_numAtomInCell(), size,
+	      cudaMemcpyDeviceToDevice);
+  checkCUDAError ("DeviceTransferPackage::unpack_add, copy oldNumAtomInCell");
+  
   Parallel::CudaGlobal::unpackDeviceMDData_add
       <<<numCell, Parallel::Interface::numThreadsInCell()>>> (
 	  cellIndex,
@@ -1340,7 +1527,7 @@ unpack_add (DeviceCellListedMDData & ddata) const
 	  this->dptr_type(),
 	  this->dptr_mass(),
 	  this->dptr_charge(),
-	  ddata.numAtomInCell,
+	  ddata.dptr_numAtomInCell(),
 	  ddata.dptr_coordinate(),
 	  ddata.dptr_coordinateNoi(),
 	  ddata.dptr_velocityX(),
@@ -1354,8 +1541,43 @@ unpack_add (DeviceCellListedMDData & ddata) const
 	  ddata.dptr_mass(),
 	  ddata.dptr_charge(),
 	  err.ptr_de);
+  Parallel::CudaGlobal::unpackDeviceMDData_bondTop_add
+      <<<numCell, Parallel::Interface::numThreadsInCell()>>>(
+	  cellIndex,
+	  cellStartIndex,
+	  oldNumAtomInCell,
+	  myMask,
+	  this->dptr_numBond(),
+	  this->dptr_bondIndex(),
+	  this->dptr_bondNeighbor_globalIndex(),
+	  this->dptr_numAngle(),
+	  this->dptr_angleIndex(),
+	  this->dptr_anglePosi(),
+	  this->dptr_angleNeighbor_globalIndex(),
+	  this->dptr_numDihedral(),
+	  this->dptr_dihedralIndex(),
+	  this->dptr_dihedralPosi(),
+	  this->dptr_dihedralNeighbor_globalIndex(),
+	  this->bondTopStride(),
+	  this->getMaxNumBond(),
+	  this->getMaxNumAngle(),
+	  this->getMaxNumDihedral(),
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondIndex(),
+	  ddata.dptr_bondNeighbor_globalIndex(),
+	  ddata.dptr_numAngle(),
+	  ddata.dptr_angleIndex(),
+	  ddata.dptr_anglePosi(),
+	  ddata.dptr_angleNeighbor_globalIndex(),
+	  ddata.dptr_numDihedral(),
+	  ddata.dptr_dihedralIndex(),
+	  ddata.dptr_dihedralPosi(),
+	  ddata.dptr_dihedralNeighbor_globalIndex(),
+	  ddata.bondTopStride(),
+	  err.ptr_de);	  
   checkCUDAError ("DeviceTransferPackage::unpack_add");
   err.updateHost ();
+  cudaFree (oldNumAtomInCell);
   err.check ("DeviceTransferPackage::unpack_add");
 }
 
@@ -1436,6 +1658,99 @@ unpackDeviceMDData_replace (const IndexType * cellIndex,
     }
   }
 }
+
+__global__ void Parallel::CudaGlobal::
+unpackDeviceMDData_bondTop_replace (const IndexType * cellIndex,
+				    const IndexType * cellStartIndex,
+				    const MDDataItemMask_t mask,
+				    const IndexType * source_numBond,
+				    const IndexType * source_bondIndex,
+				    const IndexType * source_bondNeighbor_globalIndex,
+				    const IndexType * source_numAngle,
+				    const IndexType * source_angleIndex,
+				    const IndexType * source_anglePosi ,
+				    const IndexType * source_angleNeighbor_globalIndex,
+				    const IndexType * source_numDihedral,
+				    const IndexType * source_dihedralIndex,
+				    const IndexType * source_dihedralPosi ,
+				    const IndexType * source_dihedralNeighbor_globalIndex,
+				    const IndexType source_bondTopStride,
+				    const IndexType maxNumBond,
+				    const IndexType maxNumAngle,
+				    const IndexType maxNumDihedral,
+				    IndexType * numBond,
+				    IndexType * bondIndex,
+				    IndexType * bondNeighbor_globalIndex,
+				    IndexType * numAngle,
+				    IndexType * angleIndex,
+				    IndexType * anglePosi ,
+				    IndexType * angleNeighbor_globalIndex,
+				    IndexType * numDihedral,
+				    IndexType * dihedralIndex,
+				    IndexType * dihedralPosi ,
+				    IndexType * dihedralNeighbor_globalIndex,
+				    const IndexType bondTopStride)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  IndexType cellIdx = cellIndex[bid];
+  IndexType startIdx = cellStartIndex[bid];
+  IndexType numAtomInThisCell = cellStartIndex[bid+1] - startIdx;
+  IndexType toid   = tid + cellIdx * blockDim.x;
+  IndexType fromid = tid + startIdx;
+  
+  if (tid < numAtomInThisCell){
+    if ((mask & MDDataItemMask_Bond) && maxNumBond != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numBond[toid] = source_numBond[fromid];
+      for (IndexType k = 0; k < maxNumBond; ++k){
+	bondIndex[my_toid] = source_bondIndex[my_fromid];
+	bondNeighbor_globalIndex[my_toid] = source_bondNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && maxNumAngle != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numAngle[toid] = source_numAngle[fromid];
+      for (IndexType k = 0; k < maxNumAngle; ++k){
+	angleIndex[my_toid] = source_angleIndex[my_fromid];
+	anglePosi [my_toid] = source_anglePosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumAngle * 2; ++k){
+	angleNeighbor_globalIndex[my_toid] = source_angleNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && maxNumDihedral != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numDihedral[toid] = source_numDihedral[fromid];
+      for (IndexType k = 0; k < maxNumDihedral; ++k){
+	dihedralIndex[my_toid] = source_dihedralIndex[my_fromid];
+	dihedralPosi [my_toid] = source_dihedralPosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumDihedral * 3; ++k){
+	dihedralNeighbor_globalIndex[my_toid] = source_dihedralNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+  }
+}
+
 
 
 __global__ void Parallel::CudaGlobal::
@@ -1537,6 +1852,108 @@ unpackDeviceMDData_add (const IndexType * cellIndex,
     }
   }
 }
+
+__global__ void Parallel::CudaGlobal::
+unpackDeviceMDData_bondTop_add (const IndexType * cellIndex,
+				const IndexType * cellStartIndex,
+				const IndexType * oldNumAtomInCell,
+				const MDDataItemMask_t mask,
+				const IndexType * source_numBond,
+				const IndexType * source_bondIndex,
+				const IndexType * source_bondNeighbor_globalIndex,
+				const IndexType * source_numAngle,
+				const IndexType * source_angleIndex,
+				const IndexType * source_anglePosi ,
+				const IndexType * source_angleNeighbor_globalIndex,
+				const IndexType * source_numDihedral,
+				const IndexType * source_dihedralIndex,
+				const IndexType * source_dihedralPosi ,
+				const IndexType * source_dihedralNeighbor_globalIndex,
+				const IndexType source_bondTopStride,
+				const IndexType maxNumBond,
+				const IndexType maxNumAngle,
+				const IndexType maxNumDihedral,
+				IndexType * numBond,
+				IndexType * bondIndex,
+				IndexType * bondNeighbor_globalIndex,
+				IndexType * numAngle,
+				IndexType * angleIndex,
+				IndexType * anglePosi ,
+				IndexType * angleNeighbor_globalIndex,
+				IndexType * numDihedral,
+				IndexType * dihedralIndex,
+				IndexType * dihedralPosi ,
+				IndexType * dihedralNeighbor_globalIndex,
+				const IndexType bondTopStride,
+				mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  __shared__ volatile IndexType tmpbuff[2];
+  if (tid < 2){
+    tmpbuff[tid] = cellStartIndex[bid+tid];
+  }
+  __syncthreads();
+  IndexType startIdx = tmpbuff[0];
+  IndexType numAdded = tmpbuff[1] - startIdx;
+  if (numAdded == 0) return;
+  
+  IndexType cellIdx = cellIndex[bid];
+  IndexType toid   = tid + cellIdx * blockDim.x + oldNumAtomInCell[cellIdx];
+  IndexType fromid = tid + startIdx;
+  
+  if (tid < numAdded){
+    if ((mask & MDDataItemMask_Bond) && maxNumBond != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numBond[toid] = source_numBond[fromid];
+      for (IndexType k = 0; k < maxNumBond; ++k){
+	bondIndex[my_toid] = source_bondIndex[my_fromid];
+	bondNeighbor_globalIndex[my_toid] = source_bondNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Angle) && maxNumAngle != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numAngle[toid] = source_numAngle[fromid];
+      for (IndexType k = 0; k < maxNumAngle; ++k){
+	angleIndex[my_toid] = source_angleIndex[my_fromid];
+	anglePosi [my_toid] = source_anglePosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumAngle * 2; ++k){
+	angleNeighbor_globalIndex[my_toid] = source_angleNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+    if ((mask & MDDataItemMask_Dihedral) && maxNumDihedral != 0) {
+      IndexType my_fromid = fromid;
+      IndexType my_toid   = toid;
+      numDihedral[toid] = source_numDihedral[fromid];
+      for (IndexType k = 0; k < maxNumDihedral; ++k){
+	dihedralIndex[my_toid] = source_dihedralIndex[my_fromid];
+	dihedralPosi [my_toid] = source_dihedralPosi [my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+      my_fromid = fromid;
+      my_toid   = toid;
+      for (IndexType k = 0; k < maxNumDihedral * 3; ++k){
+	dihedralNeighbor_globalIndex[my_toid] = source_dihedralNeighbor_globalIndex[my_fromid];
+	my_fromid += source_bondTopStride;
+	my_toid   += bondTopStride;
+      }
+    }
+  }
+}
+
 
 
 void Parallel::DeviceCellListedMDData::
