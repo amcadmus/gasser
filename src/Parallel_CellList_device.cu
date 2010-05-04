@@ -326,7 +326,7 @@ rebuild (DeviceBondList & dbdlist)
     checkCUDAError ("Parallel::rebuild map top step1");
     Parallel::CudaGlobal::rebuildCellList_step2_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
-	    forwardMap_step1,
+	    forwardMap_step2,
 	    getMaxNumBond(),
 	    dptr_numBond(),
 	    dptr_bondIndex(),
@@ -808,6 +808,7 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
   ScalorType bk_charge;
 
   forwardMap[ii] = MaxIndexValue;
+  __syncthreads();
   
   if (tid < total){
     fromId = myIndex[tid] + bid * blockDim.x;
@@ -964,8 +965,8 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
   bool docopy = (toIndex != MaxIndexValue);
 
 
-    IndexType bk_num, bk_Index, bk_Posi;
-    IndexType bk_Neighbor_globalIndex, bk_Neighbor_localIndex;
+  IndexType bk_num, bk_Index, bk_Posi;
+  IndexType bk_Neighbor_globalIndex, bk_Neighbor_localIndex;
   if (maxNumBond != 0){
     if (docopy){
       bk_num = numBond[fromIndex];
@@ -975,9 +976,9 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       numBond[toIndex] = bk_num;
     }
     __syncthreads();
+    IndexType my_fromIndex = fromIndex;
+    IndexType my_toIndex = toIndex;
     for (IndexType kk = 0; kk < maxNumBond; ++kk){
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex = toIndex;
       if (docopy){
 	bk_Index = bondIndex[my_fromIndex];
 	bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
@@ -1004,9 +1005,9 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       numAngle[toIndex] = bk_num;
     }
     __syncthreads();
+    IndexType my_fromIndex = fromIndex;
+    IndexType my_toIndex = toIndex;
     for (IndexType kk = 0; kk < maxNumAngle; ++kk){
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex = toIndex;
       if (docopy){
 	bk_Index = angleIndex[my_fromIndex];
 	bk_Posi  = anglePosi [my_fromIndex];
@@ -1020,9 +1021,9 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       my_fromIndex += bondTopStride;
       my_toIndex   += bondTopStride;
     }
+    my_fromIndex = fromIndex;
+    my_toIndex = toIndex;
     for (IndexType kk = 0; kk < maxNumAngle * 2; ++kk){
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex = toIndex;
       if (docopy){
 	bk_Neighbor_globalIndex = angleNeighbor_globalIndex[my_fromIndex];
 	bk_Neighbor_localIndex  = angleNeighbor_localIndex [my_fromIndex];
@@ -1047,9 +1048,9 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       numDihedral[toIndex] = bk_num;
     }
     __syncthreads();
+    IndexType my_fromIndex = fromIndex;
+    IndexType my_toIndex = toIndex;
     for (IndexType kk = 0; kk < maxNumDihedral; ++kk){
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex = toIndex;
       if (docopy){
 	bk_Index = dihedralIndex[my_fromIndex];
 	bk_Posi  = dihedralPosi [my_fromIndex];
@@ -1063,9 +1064,9 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       my_fromIndex += bondTopStride;
       my_toIndex   += bondTopStride;
     }
+    my_fromIndex = fromIndex;
+    my_toIndex = toIndex;
     for (IndexType kk = 0; kk < maxNumDihedral * 3; ++kk){
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex = toIndex;
       if (docopy){
 	bk_Neighbor_globalIndex = dihedralNeighbor_globalIndex[my_fromIndex];
 	bk_Neighbor_localIndex  = dihedralNeighbor_localIndex [my_fromIndex];

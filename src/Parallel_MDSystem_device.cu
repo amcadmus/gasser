@@ -119,8 +119,8 @@ init (const char * confFileName,
 
   // deviceData.dptr_coordinate()[124].x = 3;
   // deviceData.dptr_coordinate()[126].x = 4;
-  SubCellList subList;
-  localHostData.buildSubList (1, 2, 1, 2, 1, 3, subList);
+  // SubCellList subList;
+  // localHostData.buildSubList (1, 2, 1, 2, 1, 3, subList);
   // HostSubCellList hsub ;
   // localHostData.buildSubList (1, 2, 1, 2, 1, 2, hsub);
   // hsub.setHostData (localHostData);
@@ -136,12 +136,12 @@ init (const char * confFileName,
   // dpkg.unpack_add (deviceData);
   // hpkg.unpack_replace (localHostData);
 
-  DeviceCellRelation relation;
-  relation.build (deviceData);
-  DeviceBondList dbdlist (deviceData);
-  buildDeviceBondList (deviceData, relation, dbdlist);
-  HostBondList hdblist;
-  dbdlist.copyToHost (hdblist);
+  // DeviceCellRelation relation;
+  // relation.build (deviceData);
+  // DeviceBondList dbdlist (deviceData);
+  // buildDeviceBondList (deviceData, relation, dbdlist);
+  // HostBondList hdblist;
+  // dbdlist.copyToHost (hdblist);
   
   // HostCellListedMDData hdata1;
   // hdata1.copy (localHostData,
