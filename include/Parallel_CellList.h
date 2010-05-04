@@ -241,6 +241,7 @@ public:
 #ifdef DEVICE_CODE
   class SubCellList;
   class DeviceTransferPackage ;
+  class DeviceBondList;
   
   class DeviceCellListedMDData : public DeviceMDData 
   {
@@ -294,6 +295,7 @@ public:
 			    const IndexType & devideLevel = 1,
 			    const BoxDirection_t & bdir = 7);
     void rebuild ();
+    void rebuild (DeviceBondList & dbdlist);
     void applyPeriodicBondaryCondition ();
 public:
     void clearData (const SubCellList & subList);

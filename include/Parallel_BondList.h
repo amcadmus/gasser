@@ -12,49 +12,40 @@ namespace Parallel{
   {
     friend class DeviceBondList;
     
-    IndexType myStride;
-    IndexType maxLength;
-    IndexType * global_numBond;
-    IndexType * global_neighborIndex;
-    IndexType * global_bondIndex;
-
-    IndexType * neighborIndex;
-    // IndexType * bondActive;
+    IndexType stride;
+    IndexType maxNumBond;
+    IndexType maxNumAngle;
+    IndexType maxNumDihedral;
+    IndexType * bondNeighbor_localIndex;
+    IndexType * angleNeighbor_localIndex;
+    IndexType * dihedralNeighbor_localIndex;
 private:
     void clear ();
     void easyMalloc (const IndexType & stride,
-		     const IndexType & length);
-    void initZero ();
-    IndexType convertIndex (const IndexType & localIndex,
-			    const IndexType & ithBond) const;
+		     const IndexType & maxNumBond,
+		     const IndexType & maxNumAngle,
+		     const IndexType & maxNumDihedral);
+    void fillzero ();
 public:
     HostBondList ();
     ~HostBondList ();
 public:
-    void reinit (HostCellListedMDData & hcellData,
-		 Topology::System & sysTop,
-		 SystemBondedInteraction & sysBdInter);
-public:
-    IndexType stride () const {return myStride;}
-    IndexType & item_global_numBond      (const IndexType & localIndex); 
-    IndexType & item_global_neighborIndex(const IndexType & localIndex,
-					  const IndexType & ithBond);
-    IndexType & item_global_bondIndex    (const IndexType & localIndex,
-					  const IndexType & ithBond);
-    IndexType & item_neighborIndex       (const IndexType & localIndex,
-					  const IndexType & ithBond);
-    // IndexType & item_bondActive          (const IndexType & localIndex,
-    // 					  const IndexType & ithBond);
-
-    const IndexType & item_global_numBond      (const IndexType & localIndex) const; 
-    const IndexType & item_global_neighborIndex(const IndexType & localIndex,
-						const IndexType & ithBond) const;
-    const IndexType & item_global_bondIndex    (const IndexType & localIndex,
-						const IndexType & ithBond) const;
-    const IndexType & item_neighborIndex       (const IndexType & localIndex,
-						const IndexType & ithBond) const;
-    // const IndexType & item_bondActive          (const IndexType & localIndex,
-    // 						const IndexType & ithBond) const;
+    IndexType getStride () const {return stride;}
+    IndexType getMaxNumBond () const {return maxNumBond;}
+    IndexType getMaxNumAngle () const {return maxNumAngle;}
+    IndexType getMaxNumDihedral () const {return maxNumDihedral;}
+    IndexType * cptr_bondNeighbor_localIndex ()
+	{return bondNeighbor_localIndex;}
+    IndexType * cptr_angleNeighbor_localIndex ()
+	{return angleNeighbor_localIndex;}
+    IndexType * cptr_dihedralNeighbor_localIndex ()
+	{return dihedralNeighbor_localIndex;}
+    const IndexType * cptr_bondNeighbor_localIndex () const
+	{return bondNeighbor_localIndex;}
+    const IndexType * cptr_angleNeighbor_localIndex () const
+	{return angleNeighbor_localIndex;}
+    const IndexType * cptr_dihedralNeighbor_localIndex () const
+	{return dihedralNeighbor_localIndex;}
   };					  
 
 #ifdef DEVICE_CODE
@@ -63,35 +54,38 @@ public:
 public:
     bool malloced;
     
-    IndexType myStride;
-    IndexType maxLength;
-    IndexType * global_numBond;
-    IndexType * global_neighborIndex;
-    IndexType * global_bondIndex;
-
-    IndexType * neighborIndex;
-    // IndexType * bondActive;
+    IndexType stride;
+    IndexType maxNumBond;
+    IndexType maxNumAngle;
+    IndexType maxNumDihedral;
+    IndexType * bondNeighbor_localIndex;
+    IndexType * angleNeighbor_localIndex;
+    IndexType * dihedralNeighbor_localIndex;
 private:
     void clear ();
     void easyMalloc (const IndexType & stride,
-		     const IndexType & length);
+		     const IndexType & maxNumBond,
+		     const IndexType & maxNumAngle,
+		     const IndexType & maxNumDihedral);
 public:
     DeviceBondList ();
-    DeviceBondList (const HostBondList & hbdlist);
+    DeviceBondList (const DeviceCellListedMDData & data);
     ~DeviceBondList ();
 public:
-    void reinit (const HostBondList & hbdlist);
-    IndexType stride () const {return myStride;}
-    IndexType convertIndex (const IndexType & localIndex,
-			    const IndexType & ithBond) const;
-    IndexType * dptr_global_numBond       () {return global_numBond;}
-    IndexType * dptr_global_neighborIndex () {return global_neighborIndex;}
-    IndexType * dptr_global_bondIndex     () {return global_bondIndex;}
-    IndexType * dptr_neighborIndex        () {return neighborIndex;}
-    const IndexType * dptr_global_numBond       () const {return global_numBond;}
-    const IndexType * dptr_global_neighborIndex () const {return global_neighborIndex;}
-    const IndexType * dptr_global_bondIndex     () const {return global_bondIndex;}
-    const IndexType * dptr_neighborIndex        () const {return neighborIndex;}
+    void reinit (const DeviceCellListedMDData & data);
+    IndexType getStride () const {return stride;}
+    IndexType getMaxNumBond () const {return maxNumBond;}
+    IndexType getMaxNumAngle () const {return maxNumAngle;}
+    IndexType getMaxNumDihedral () const {return maxNumDihedral;}
+    IndexType * dptr_bondNeighbor_localIndex () {return bondNeighbor_localIndex;}
+    IndexType * dptr_angleNeighbor_localIndex () {return angleNeighbor_localIndex;}
+    IndexType * dptr_dihedralNeighbor_localIndex () {return dihedralNeighbor_localIndex;}
+    const IndexType * dptr_bondNeighbor_localIndex () const
+	{return bondNeighbor_localIndex;}
+    const IndexType * dptr_angleNeighbor_localIndex () const
+	{return angleNeighbor_localIndex;}
+    const IndexType * dptr_dihedralNeighbor_localIndex () const
+	{return dihedralNeighbor_localIndex;}
 public:
     void copyFromHost (const HostBondList & hbdlist);
     void copyToHost (HostBondList & hbdlist) const;
@@ -100,14 +94,6 @@ public:
   void buildDeviceBondList (const DeviceCellListedMDData & ddata,
 			    const DeviceCellRelation & relation,
 			    DeviceBondList & dbdlist);
-
-  namespace DeviceBondList_cudaDevice {
-    __device__ IndexType
-    indexConvert (const IndexType & stride,
-		  const IndexType & localIndex,
-		  const IndexType & ithBond)
-    { return ithBond * stride + localIndex; }
-  }
   
   namespace CudaGlobal{
     __global__ void 
@@ -116,10 +102,20 @@ public:
 			 const IndexType * numNeighborCell,
 			 const IndexType * neighborCellIndex,
 			 const IndexType   cellRelationStride,
-			 const IndexType * global_neighborIndex,
-			 const IndexType * global_numBond,
-			 const IndexType   bondListStride,
-			 IndexType * neighborIndex);
+			 const IndexType   maxNumBond,
+			 const IndexType * numBond,
+			 const IndexType * bondNeighbor_globalIndex,
+			 IndexType * bondNeighbor_localIndex,
+			 const IndexType   maxNumAngle,
+			 const IndexType * numAngle,
+			 const IndexType * angleNeighbor_globalIndex,
+			 IndexType * angleNeighbor_localIndex,
+			 const IndexType   maxNumDihedral,
+			 const IndexType * numDihedral,
+			 const IndexType * dihedralNeighbor_globalIndex,
+			 IndexType * dihedralNeighbor_localIndex,
+			 const IndexType   bondTopStride,
+			 const IndexType   listTopStride);
   }
 
 #endif

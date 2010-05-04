@@ -590,17 +590,18 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
   Parallel::CudaGlobal::clearGhostBond
       <<<numGhostCell, numThreadsInCell>>> (
 	  ghostCellIndex,
-	  dbdlist.dptr_global_numBond());
-  Parallel::CudaGlobal::calBondedInteraction
+	  ddata.dptr_numBond());
+  Parallel::CudaGlobal::calBondInteraction
       <<<gridDim, numThreadsInCell>>>(
 	  ddata.dptr_coordinate(),
 	  ddata.getGlobalBox().size,
 	  ddata.getGlobalBox().sizei,
 	  ddata.dptr_numAtomInCell(),
-	  dbdlist.dptr_global_numBond(),
-	  dbdlist.dptr_neighborIndex(),
-	  dbdlist.dptr_global_bondIndex(),
-	  dbdlist.stride(),
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondIndex(),
+	  ddata.bondTopStride(),
+	  dbdlist.dptr_bondNeighbor_localIndex(),
+	  dbdlist.getStride(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
@@ -617,17 +618,18 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
   Parallel::CudaGlobal::clearGhostBond
       <<<numGhostCell, numThreadsInCell>>> (
 	  ghostCellIndex,
-	  dbdlist.dptr_global_numBond());
-  Parallel::CudaGlobal::calBondedInteraction
+	  ddata.dptr_numBond());
+  Parallel::CudaGlobal::calBondInteraction
       <<<gridDim, numThreadsInCell, calBondInteraction_sbuffSize>>>(
 	  ddata.dptr_coordinate(),
 	  ddata.getGlobalBox().size,
 	  ddata.getGlobalBox().sizei,
 	  ddata.dptr_numAtomInCell(),
-	  dbdlist.dptr_global_numBond(),
-	  dbdlist.dptr_neighborIndex(),
-	  dbdlist.dptr_global_bondIndex(),
-	  dbdlist.stride(),
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondIndex(),
+	  ddata.bondTopStride(),
+	  dbdlist.dptr_bondNeighbor_localIndex(),
+	  dbdlist.getStride(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
@@ -655,18 +657,19 @@ clearGhostBond (const IndexType * ghostCellIndex,
 }
 
 __global__ void Parallel::CudaGlobal::
-calBondedInteraction (const CoordType * coord,
-		      const HostVectorType boxSize,
-		      const HostVectorType boxSizei,
-		      const IndexType * numAtomInCell,
-		      const IndexType * numBond,
-		      const IndexType * bondNeighborIndex,
-		      const IndexType * bondIndex,
-		      const IndexType   bondStride,
-		      ScalorType * forcx,
-		      ScalorType * forcy,
-		      ScalorType * forcz,
-		      mdError_t * ptr_de)
+calBondInteraction (const CoordType * coord,
+		    const HostVectorType boxSize,
+		    const HostVectorType boxSizei,
+		    const IndexType * numAtomInCell,
+		    const IndexType * numBond,
+		    const IndexType * bondIndex,
+		    const IndexType   bondTopStride,
+		    const IndexType * bondNeighbor_localIndex,
+		    const IndexType   bondListStride,
+		    ScalorType * forcx,
+		    ScalorType * forcy,
+		    ScalorType * forcz,
+		    mdError_t * ptr_de)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -683,10 +686,10 @@ calBondedInteraction (const CoordType * coord,
   CoordType ref = coord[ii];
 
   for (IndexType jj = 0; jj < my_numBond; ++jj){
-    IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
-	(bondStride, ii, jj);
-    IndexType target_index = bondNeighborIndex[list_index];
-    IndexType my_bondIndex   = bondIndex[list_index];
+    IndexType list_index = bondListStride * jj + ii;
+    IndexType top_index = bondTopStride * jj + ii;
+    IndexType target_index = bondNeighbor_localIndex[list_index];
+    IndexType my_bondIndex   = bondIndex[top_index];
     CoordType target_coord = tex1Dfetch (global_texRef_interaction_coord, target_index);
     ScalorType diffx, diffy, diffz;
     ScalorType fx, fy, fz;
@@ -712,22 +715,23 @@ calBondedInteraction (const CoordType * coord,
 
 
 __global__ void Parallel::CudaGlobal::
-calBondedInteraction (const CoordType * coord,
-		      const HostVectorType boxSize,
-		      const HostVectorType boxSizei,
-		      const IndexType * numAtomInCell,
-		      const IndexType * numBond,
-		      const IndexType * bondNeighborIndex,
-		      const IndexType * bondIndex,
-		      const IndexType   bondStride,
-		      ScalorType * forcx,
-		      ScalorType * forcy,
-		      ScalorType * forcz,
-		      ScalorType * statistic_b_buff0,
-		      ScalorType * statistic_b_buff1,
-		      ScalorType * statistic_b_buff2,
-		      ScalorType * statistic_b_buff3,
-		      mdError_t * ptr_de)
+calBondInteraction (const CoordType * coord,
+		    const HostVectorType boxSize,
+		    const HostVectorType boxSizei,
+		    const IndexType * numAtomInCell,
+		    const IndexType * numBond,
+		    const IndexType * bondIndex,
+		    const IndexType   bondTopStride,
+		    const IndexType * bondNeighbor_localIndex,
+		    const IndexType   bondListStride,
+		    ScalorType * forcx,
+		    ScalorType * forcy,
+		    ScalorType * forcz,
+		    ScalorType * statistic_b_buff0,
+		    ScalorType * statistic_b_buff1,
+		    ScalorType * statistic_b_buff2,
+		    ScalorType * statistic_b_buff3,
+		    mdError_t * ptr_de)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -748,10 +752,12 @@ calBondedInteraction (const CoordType * coord,
   if (tid < this_numAtomInCell){
     CoordType ref = coord[ii];
     for (IndexType jj = 0; jj < my_numBond; ++jj){
-      IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
-	  (bondStride, ii, jj);
-      IndexType target_index = bondNeighborIndex[list_index];
-      IndexType my_bondIndex   = bondIndex[list_index];
+      IndexType list_index = bondListStride * jj + ii;
+      IndexType top_index = bondTopStride * jj + ii;
+      // IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
+      // 	  (bondStride, ii, jj);
+      IndexType target_index = bondNeighbor_localIndex[list_index];
+      IndexType my_bondIndex   = bondIndex[top_index];
       CoordType target_coord = tex1Dfetch (global_texRef_interaction_coord, target_index);
       ScalorType diffx, diffy, diffz;
       ScalorType fx, fy, fz, dp;

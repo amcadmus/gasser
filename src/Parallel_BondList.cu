@@ -2,16 +2,19 @@
 
 #include "Parallel_BondList.h"
 #include "Parallel_Interface.h"
+#include "Parallel_Auxiliary.h"
 
 #include "compile_error_mixcode.h"
 
 Parallel::HostBondList::
 HostBondList ()
-    : global_numBond (NULL),
-      global_neighborIndex (NULL),
-      global_bondIndex (NULL),
-      neighborIndex (NULL)
-      // bondActive (NULL)
+    : stride(0),
+      maxNumBond(0),
+      maxNumAngle(0),
+      maxNumDihedral(0),
+      bondNeighbor_localIndex(NULL),
+      angleNeighbor_localIndex(NULL),
+      dihedralNeighbor_localIndex(NULL)
 {
 }
 
@@ -24,210 +27,113 @@ Parallel::HostBondList::
 void Parallel::HostBondList::
 clear ()
 {
-  freeAPointer ((void**)&global_numBond);
-  freeAPointer ((void**)&global_neighborIndex);
-  freeAPointer ((void**)&global_bondIndex);
-  freeAPointer ((void**)&neighborIndex);
-  // freeAPointer ((void**)&bondActive);
+  stride = 0;
+  maxNumBond = 0;
+  maxNumAngle = 0;
+  maxNumDihedral = 0;
+  
+  freeAPointer ((void**)&bondNeighbor_localIndex);
+  freeAPointer ((void**)&angleNeighbor_localIndex);
+  freeAPointer ((void**)&dihedralNeighbor_localIndex);
 }
 
 void Parallel::HostBondList::
-easyMalloc (const IndexType & stride,
-	    const IndexType & length)
+easyMalloc (const IndexType & stride_,
+	    const IndexType & maxNumBond_,
+	    const IndexType & maxNumAngle_,
+	    const IndexType & maxNumDihedral_)
 {
-  myStride = stride;
-  maxLength = length;  
   clear ();
 
-  size_t size0 = sizeof(IndexType) * myStride * maxLength;
-  size_t size1 = sizeof(IndexType) * myStride ;
+  stride = stride_;
+  maxNumBond = maxNumBond_;
+  maxNumAngle = maxNumAngle_;
+  maxNumDihedral = maxNumDihedral_;
 
-  global_numBond = (IndexType*) malloc (size1);
-  if (global_numBond == NULL){
+  size_t size;
+  size = sizeof(IndexType) * stride * maxNumBond;
+  bondNeighbor_localIndex = (IndexType*) malloc (size);
+  if (bondNeighbor_localIndex == NULL){
     throw MDExcptFailedMallocOnHost ("HostBondList::easyMalloc",
-				     "global_numBond", size1);
+				     "bondNeighbor_localIndex", size);
   }
-  global_neighborIndex = (IndexType*) malloc (size0);
-  if (global_neighborIndex == NULL){
+  size = sizeof(IndexType) * stride * maxNumAngle * 2;
+  angleNeighbor_localIndex = (IndexType*) malloc (size);
+  if (angleNeighbor_localIndex == NULL){
     throw MDExcptFailedMallocOnHost ("HostBondList::easyMalloc",
-				     "global_neighborIndex", size0);
+				     "angleNeighbor_localIndex", size);
   }
-  global_bondIndex = (IndexType*) malloc (size0);
-  if (global_bondIndex == NULL){
+  size = sizeof(IndexType) * stride * maxNumDihedral * 3;
+  dihedralNeighbor_localIndex = (IndexType*) malloc (size);
+  if (dihedralNeighbor_localIndex == NULL){
     throw MDExcptFailedMallocOnHost ("HostBondList::easyMalloc",
-				     "global_bondIndex", size0);
+				     "dihedralNeighbor_localIndex", size);
   }
-  neighborIndex = (IndexType*) malloc (size0);
-  if (neighborIndex == NULL){
-    throw MDExcptFailedMallocOnHost ("HostBondList::easyMalloc",
-				     "neighborIndex", size0);
-  }
-  // bondActive = (IndexType*) malloc (size0);
-  // if (bondActive == NULL){
-  //   throw MDExcptFailedMallocOnHost ("HostBondList::easyMalloc",
-  // 				     "bondActive", size0);
-  // }
 }
-
-inline IndexType Parallel::HostBondList::
-convertIndex (const IndexType & localIndex,
-	      const IndexType & ithBond) const
-{
-  return ithBond * stride() + localIndex;
-}
-
-inline IndexType Parallel::DeviceBondList::
-convertIndex (const IndexType & localIndex,
-	      const IndexType & ithBond) const
-{
-  return ithBond * stride() + localIndex;
-}
-
-inline IndexType & Parallel::HostBondList::
-item_global_numBond (const IndexType & localIndex)
-{
-  return global_numBond[localIndex];
-}
-
-inline IndexType & Parallel::HostBondList::
-item_global_neighborIndex (const IndexType & localIndex,
-			   const IndexType & ithBond)
-{
-  return global_neighborIndex[convertIndex(localIndex, ithBond)];
-}
-
-inline IndexType & Parallel::HostBondList::
-item_global_bondIndex (const IndexType & localIndex,
-		       const IndexType & ithBond)
-{
-  return global_bondIndex[convertIndex(localIndex, ithBond)];
-}
-
-inline IndexType & Parallel::HostBondList::
-item_neighborIndex (const IndexType & localIndex,
-		       const IndexType & ithBond)
-{
-  return neighborIndex[convertIndex(localIndex, ithBond)];
-}
-
-// inline IndexType & Parallel::HostBondList::
-// item_bondActive (const IndexType & localIndex,
-// 		       const IndexType & ithBond)
-// {
-//   return bondActive[convertIndex(localIndex, ithBond)];
-// }
-
-
-inline const IndexType & Parallel::HostBondList::
-item_global_numBond (const IndexType & localIndex) const
-{
-  return global_numBond[localIndex];
-}
-
-inline const IndexType & Parallel::HostBondList::
-item_global_neighborIndex (const IndexType & localIndex,
-			   const IndexType & ithBond) const
-{
-  return global_neighborIndex[convertIndex(localIndex, ithBond)];
-}
-
-inline const IndexType & Parallel::HostBondList::
-item_global_bondIndex (const IndexType & localIndex,
-		       const IndexType & ithBond) const
-{
-  return global_bondIndex[convertIndex(localIndex, ithBond)];
-}
-
-inline const IndexType & Parallel::HostBondList::
-item_neighborIndex (const IndexType & localIndex,
-		    const IndexType & ithBond) const
-{
-  return neighborIndex[convertIndex(localIndex, ithBond)];
-}
-
-// inline const IndexType & Parallel::HostBondList::
-// item_bondActive (const IndexType & localIndex,
-// 		       const IndexType & ithBond) const
-// {
-//   return bondActive[convertIndex(localIndex, ithBond)];
-// }
 
 
 void Parallel::HostBondList::
-initZero ()
+fillzero ()
 {
-  for (unsigned k = 0; k < maxLength; ++k){
-    for (unsigned pIndex = 0; pIndex < myStride; ++pIndex){
-      item_global_numBond (pIndex) = 0;
-      item_global_neighborIndex (pIndex, k) = MaxIndexValue;
-      item_global_bondIndex     (pIndex, k) = MaxIndexValue;
-      item_neighborIndex	  (pIndex, k) = MaxIndexValue;
-      // item_bondActive		  (pIndex, k) = MaxIndexValue;
-    }
+  for (unsigned i = 0; i < maxNumBond * stride; ++i){
+      bondNeighbor_localIndex[i] = 0;
   }
+  for (unsigned i = 0; i < maxNumAngle * stride; ++i){
+      angleNeighbor_localIndex[i] = 0;
+  }
+  for (unsigned i = 0; i < maxNumDihedral * stride; ++i){
+      dihedralNeighbor_localIndex[i] = 0;
+  }  
 }
 
-void Parallel::HostBondList::
-reinit (HostCellListedMDData & hcellData,
-	Topology::System & sysTop,
-	SystemBondedInteraction & sysBdInter)
-{
-  IndexType maxNumBond = 0;
-  for (unsigned i = 0; i < sysBdInter.bondIndex.size(); ++i){
-    for (unsigned j = 0; j < sysBdInter.bondIndex[i].size(); ++j){
-      IndexType c ;
-      if ((c=sysBdInter.bondIndex[i][j].size()) > maxNumBond){
-	maxNumBond = c;
-      }
-    }
-  }
-  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
-  HostIntVectorType numCell = hcellData.getNumCell();
-  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
-  myStride = totalNumCell * numThreadsInCell;
-  maxLength = maxNumBond;
-
-  easyMalloc (myStride, maxLength);
-  initZero ();
-  
-  for (unsigned i = 0; i < totalNumCell; ++i){
-    for (unsigned j = 0; j < hcellData.cptr_numAtomInCell()[i]; ++j){
-      IndexType pIndex  = i * numThreadsInCell + j;
-      IndexType pGlobal = hcellData.cptr_globalIndex()[pIndex];
-      IndexType pTopMolIndex;
-      IndexType pTopAtomIndex;
-      sysTop.calMolTopPosition (pGlobal, pTopMolIndex, pTopAtomIndex);
-      const std::vector<IndexType > & topNeighborIndex (
-	  sysBdInter.getTopBondNeighborIndex (pTopMolIndex, pTopAtomIndex));
-      const std::vector<IndexType > & topBondIndex (
-	  sysBdInter.getTopBondIndex (pTopMolIndex, pTopAtomIndex));
-      for (unsigned k = 0; k < topNeighborIndex.size(); ++k){
-	item_global_neighborIndex(pIndex, k) = pGlobal + topNeighborIndex[k] - pTopAtomIndex;
-	item_global_bondIndex(pIndex, k) = topBondIndex[k];
-      }
-      item_global_numBond(pIndex) = topNeighborIndex.size();
-    }
-  }
-}
 
 
 Parallel::DeviceBondList::
 DeviceBondList ()
-    : malloced (false), myStride(0), maxLength(0)
+    : malloced (false),
+      stride(0),
+      maxNumBond(0), 
+      maxNumAngle(0), 
+      maxNumDihedral(0)
 {
 }
 
 Parallel::DeviceBondList::
-DeviceBondList (const HostBondList & hbdlist)
-    : malloced (false), myStride(0), maxLength(0)
+DeviceBondList (const DeviceCellListedMDData & data)
+    : malloced (false),
+      stride(0),
+      maxNumBond(0), 
+      maxNumAngle(0), 
+      maxNumDihedral(0)
 {
-  reinit (hbdlist);
+  reinit (data);
 }
 
 inline void Parallel::DeviceBondList::
-reinit (const HostBondList & hbdlist)
+reinit (const DeviceCellListedMDData & data)
 {
-  copyFromHost (hbdlist);
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
+  dim3 gridDim;
+
+  easyMalloc (data.DeviceMDData::memSize(),
+	      data.getMaxNumBond(),
+	      data.getMaxNumAngle(),
+	      data.getMaxNumDihedral());
+  gridDim = toGridDim (maxNumBond * stride / numThreadsInCell + 1);
+  Parallel::Auxiliary::setValue <<<gridDim, numThreadsInCell>>> (
+      bondNeighbor_localIndex,
+      maxNumBond * stride,
+      IndexType (0));
+  gridDim = toGridDim (maxNumAngle * stride * 2 / numThreadsInCell + 1);
+  Parallel::Auxiliary::setValue <<<gridDim, numThreadsInCell>>> (
+      angleNeighbor_localIndex,
+      maxNumAngle * stride * 2,
+      IndexType (0));
+  gridDim = toGridDim (maxNumDihedral * stride * 3 / numThreadsInCell + 1);
+  Parallel::Auxiliary::setValue <<<gridDim, numThreadsInCell>>> (
+      dihedralNeighbor_localIndex,
+      maxNumDihedral * stride * 3,
+      IndexType (0));
 }
 
 Parallel::DeviceBondList::
@@ -240,79 +146,110 @@ void Parallel::DeviceBondList::
 clear ()
 {
   if (malloced){
-    cudaFree (global_numBond);
-    cudaFree (global_neighborIndex);
-    cudaFree (global_bondIndex);
-    cudaFree (neighborIndex);
+    stride = 0;
+    maxNumBond = 0;
+    maxNumAngle = 0;
+    maxNumDihedral = 0;
+    cudaFree(bondNeighbor_localIndex);
+    cudaFree(angleNeighbor_localIndex);
+    cudaFree(dihedralNeighbor_localIndex);
     checkCUDAError ("DeviceBondList::clear");
     malloced = false;
   }
 }
 
 void Parallel::DeviceBondList::
-easyMalloc (const IndexType & stride,
-	    const IndexType & length)
+easyMalloc (const IndexType & stride_,
+	    const IndexType & maxNumBond_,
+	    const IndexType & maxNumAngle_,
+	    const IndexType & maxNumDihedral_)
 {
   clear ();
-  myStride = stride;
-  maxLength = length;
-  
-  size_t size0 = sizeof(IndexType) * myStride * maxLength;
-  size_t size1 = sizeof(IndexType) * myStride ;
-  
-  cudaMalloc ((void**)&global_numBond, size1);
-  cudaMalloc ((void**)&global_neighborIndex, size0);
-  cudaMalloc ((void**)&global_bondIndex, size0);
-  cudaMalloc ((void**)&neighborIndex, size0);
 
+  stride = stride_;
+  maxNumBond = maxNumBond_;
+  maxNumAngle = maxNumAngle_;
+  maxNumDihedral = maxNumDihedral_;
+  
+  cudaMalloc ((void**)&bondNeighbor_localIndex,
+	      sizeof(IndexType) * maxNumBond * stride);
+  cudaMalloc ((void**)&angleNeighbor_localIndex,
+	      sizeof(IndexType) * maxNumAngle * stride * 2);
+  cudaMalloc ((void**)&dihedralNeighbor_localIndex,
+	      sizeof(IndexType) * maxNumDihedral * stride * 3);
+  
   checkCUDAError ("DeviceBondList::easyMalloc");
+  malloced = true;
 }
 
 void Parallel::DeviceBondList::
 copyFromHost (const HostBondList & hbdlist)
 {
-  if (myStride < hbdlist.myStride ||
-      myStride * maxLength < hbdlist.myStride * hbdlist.maxLength){
-    easyMalloc (hbdlist.myStride, hbdlist.maxLength);
+  if (getStride() != hbdlist.getStride() ||
+      getMaxNumBond() != hbdlist.getMaxNumBond() ||
+      getMaxNumAngle() != hbdlist.getMaxNumAngle() ||
+      getMaxNumDihedral() != hbdlist.getMaxNumDihedral() ){
+    easyMalloc (hbdlist.getStride(),
+		hbdlist.getMaxNumBond(),
+		hbdlist.getMaxNumAngle(),
+		hbdlist.getMaxNumDihedral());
   }  
 
-  size_t size0 = sizeof(IndexType) * myStride * maxLength;
-  size_t size1 = sizeof(IndexType) * myStride ;
-  
-  cudaMemcpy (global_numBond, hbdlist.global_numBond, size1,
+  size_t size;
+  size = sizeof(IndexType) * stride * getMaxNumBond();
+  cudaMemcpy (bondNeighbor_localIndex,
+	      hbdlist.cptr_bondNeighbor_localIndex(),
+	      size,
 	      cudaMemcpyHostToDevice);
-  cudaMemcpy (global_neighborIndex, hbdlist.global_neighborIndex, size0,
+  checkCUDAError ("DeviceBondList::copyFromHost, bondNeighbor_localIndex");
+  size = sizeof(IndexType) * stride * getMaxNumAngle() * 2;
+  cudaMemcpy (angleNeighbor_localIndex,
+	      hbdlist.cptr_angleNeighbor_localIndex(),
+	      size,
 	      cudaMemcpyHostToDevice);
-  cudaMemcpy (global_bondIndex, hbdlist.global_bondIndex, size0,
+  checkCUDAError ("DeviceBondList::copyFromHost, angleNeighbor_localIndex");
+  size = sizeof(IndexType) * stride * getMaxNumDihedral() * 3;
+  cudaMemcpy (dihedralNeighbor_localIndex,
+	      hbdlist.cptr_dihedralNeighbor_localIndex(),
+	      size,
 	      cudaMemcpyHostToDevice);
-  cudaMemcpy (neighborIndex, hbdlist.neighborIndex, size0,
-	      cudaMemcpyHostToDevice);
-
-  checkCUDAError ("DeviceBondList::copyFromHost");
+  checkCUDAError ("DeviceBondList::copyFromHost, dihedralNeighbor_localIndex");
 }
 
 void Parallel::DeviceBondList::
 copyToHost (HostBondList & hbdlist) const 
 {
-  if (hbdlist.myStride < myStride ||
-      hbdlist.myStride * hbdlist.maxLength < myStride * maxLength){
-    hbdlist.easyMalloc (myStride, maxLength);
+  if (getStride() != hbdlist.getStride() ||
+      getMaxNumBond() != hbdlist.getMaxNumBond() ||
+      getMaxNumAngle() != hbdlist.getMaxNumAngle() ||
+      getMaxNumDihedral() != hbdlist.getMaxNumDihedral() ){
+    hbdlist.easyMalloc (getStride(),
+			getMaxNumBond(),
+			getMaxNumAngle(),
+			getMaxNumDihedral());
   }
 
-  size_t size0 = sizeof(IndexType) * myStride * maxLength;
-  size_t size1 = sizeof(IndexType) * myStride ;
-
-  cudaMemcpy (hbdlist.global_numBond, global_numBond, size1,
+  size_t size;
+  size = sizeof(IndexType) * stride * getMaxNumBond();
+  cudaMemcpy (hbdlist.cptr_bondNeighbor_localIndex(),
+	      bondNeighbor_localIndex,
+	      size,
 	      cudaMemcpyDeviceToHost);
-  cudaMemcpy (hbdlist.global_neighborIndex, global_neighborIndex, size0,
+  checkCUDAError ("DeviceBondList::copyFromHost, bondNeighbor_localIndex");
+  size = sizeof(IndexType) * stride * getMaxNumAngle() * 2;
+  cudaMemcpy (hbdlist.cptr_angleNeighbor_localIndex(),
+	      angleNeighbor_localIndex,
+	      size,
 	      cudaMemcpyDeviceToHost);
-  cudaMemcpy (hbdlist.global_bondIndex, global_bondIndex, size0,
+  checkCUDAError ("DeviceBondList::copyFromHost, angleNeighbor_localIndex");
+  size = sizeof(IndexType) * stride * getMaxNumDihedral() * 3;
+  cudaMemcpy (hbdlist.cptr_dihedralNeighbor_localIndex(),
+	      dihedralNeighbor_localIndex,
+	      size,
 	      cudaMemcpyDeviceToHost);
-  cudaMemcpy (hbdlist.neighborIndex, neighborIndex, size0,
-	      cudaMemcpyDeviceToHost);
-
-  checkCUDAError ("DeviceBondList::copyToHost");
+  checkCUDAError ("DeviceBondList::copyFromHost, dihedralNeighbor_localIndex");
 }
+
 
 
 void Parallel::
@@ -333,10 +270,20 @@ buildDeviceBondList (const DeviceCellListedMDData & ddata,
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
 	  relation.stride_neighborCellIndex(),
-	  dbdlist.dptr_global_neighborIndex(),
-	  dbdlist.dptr_global_numBond(),
-	  dbdlist.stride (),
-	  dbdlist.dptr_neighborIndex());  
+	  ddata.getMaxNumBond(),
+	  ddata.dptr_numBond(),
+	  ddata.dptr_bondNeighbor_globalIndex(),
+	  dbdlist.dptr_bondNeighbor_localIndex(),
+	  ddata.getMaxNumAngle(),
+	  ddata.dptr_numAngle(),
+	  ddata.dptr_angleNeighbor_globalIndex(),
+	  dbdlist.dptr_angleNeighbor_localIndex(),
+	  ddata.getMaxNumDihedral(),
+	  ddata.dptr_numDihedral(),
+	  ddata.dptr_dihedralNeighbor_globalIndex(),
+	  dbdlist.dptr_dihedralNeighbor_localIndex(),
+	  ddata.bondTopStride(),
+	  dbdlist.getStride());  
 }
 
 
@@ -346,24 +293,39 @@ buildDeviceBondList (const IndexType * numAtomInCell,
 		     const IndexType * numNeighborCell,
 		     const IndexType * neighborCellIndex,
 		     const IndexType   cellRelationStride,
-		     const IndexType * global_neighborIndex,
-		     const IndexType * global_numBond,
-		     const IndexType   bondListStride,
-		     IndexType * neighborIndex)
+		     const IndexType   maxNumBond,
+		     const IndexType * numBond,
+		     const IndexType * bondNeighbor_globalIndex,
+		     IndexType * bondNeighbor_localIndex,
+		     const IndexType   maxNumAngle,
+		     const IndexType * numAngle,
+		     const IndexType * angleNeighbor_globalIndex,
+		     IndexType * angleNeighbor_localIndex,
+		     const IndexType   maxNumDihedral,
+		     const IndexType * numDihedral,
+		     const IndexType * dihedralNeighbor_globalIndex,
+		     IndexType * dihedralNeighbor_localIndex,
+		     const IndexType   bondTopStride,
+		     const IndexType   listTopStride)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
   IndexType ii = tid + bid * blockDim.x;
+  extern __shared__ ScalorType buff_globalIndex[];  
+  bool hasBond = (maxNumBond != 0);
+  bool hasAngle = (maxNumAngle != 0);
+  bool hasDihedral = (maxNumDihedral != 0);
 
+  if (hasBond && hasAngle && hasDihedral) return;
   IndexType this_numAtom = numAtomInCell[bid];
   if (this_numAtom == 0) return;
   IndexType this_numNeighborCell = numNeighborCell[bid];
   if (this_numNeighborCell == 0) return;
-  IndexType my_numBond;
-  if (tid < this_numAtom) my_numBond = global_numBond[ii];
-
-  extern __shared__ ScalorType buff_globalIndex[];  
-
+  IndexType my_numBond(0), my_numAngle(0), my_numDihedral(0);
+  if (hasBond && tid < this_numAtom) my_numBond = numBond[ii];
+  if (hasAngle && tid < this_numAtom) my_numAngle = numAngle[ii];
+  if (hasDihedral && tid < this_numAtom) my_numDihedral = numDihedral[ii];
+  
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
     IndexType target_cellIndex = neighborCellIndex[bid * cellRelationStride + kk];
@@ -374,27 +336,108 @@ buildDeviceBondList (const IndexType * numAtomInCell,
       buff_globalIndex[tid] = globalIndex[jj];
     }
     __syncthreads();
-    
-    if (tid < this_numAtom){
+    if (hasBond && tid < this_numAtom){
+      IndexType topIndexShift = 0;
+      IndexType listIndexShift = 0;
       for (IndexType ll = 0; ll < my_numBond; ++ll){
-	IndexType tofind_globalIndex =
-	    global_neighborIndex[
-		Parallel::DeviceBondList_cudaDevice::
-		indexConvert(bondListStride, ii, ll)
-		];
+	IndexType tofind_globalIndex = bondNeighbor_globalIndex[topIndexShift + ii];
 	for (IndexType mm = 0; mm < target_numAtomInCell; ++mm){
 	  if (tofind_globalIndex == buff_globalIndex[mm]){
-	    neighborIndex[
-		Parallel::DeviceBondList_cudaDevice::
-		indexConvert(bondListStride, ii, ll)
-		] = mm + indexShift;
+	    bondNeighbor_localIndex[listIndexShift + ii] = mm + indexShift;
 	  }
-	  // __syncthreads();
 	}
+	topIndexShift += bondTopStride;
+	listIndexShift += listTopStride;
+      }
+    }
+    if (hasAngle && tid < this_numAtom){
+      IndexType topIndexShift = 0;
+      IndexType listIndexShift = 0;
+      for (IndexType ll = 0; ll < my_numAngle * 2; ++ll){
+	IndexType tofind_globalIndex = angleNeighbor_globalIndex[topIndexShift + ii];
+	for (IndexType mm = 0; mm < target_numAtomInCell; ++mm){
+	  if (tofind_globalIndex == buff_globalIndex[mm]){
+	    angleNeighbor_localIndex[topIndexShift + ii] = mm + indexShift;
+	  }
+	}
+	topIndexShift += bondTopStride;
+	listIndexShift += listTopStride;
+      }
+    }
+    if (hasDihedral && tid < this_numAtom){
+      IndexType topIndexShift = 0;
+      IndexType listIndexShift = 0;
+      for (IndexType ll = 0; ll < my_numDihedral * 3; ++ll){
+	IndexType tofind_globalIndex = dihedralNeighbor_globalIndex[topIndexShift + ii];
+	for (IndexType mm = 0; mm < target_numAtomInCell; ++mm){
+	  if (tofind_globalIndex == buff_globalIndex[mm]){
+	    dihedralNeighbor_localIndex[topIndexShift + ii] = mm + indexShift;
+	  }
+	}
+	topIndexShift += bondTopStride;
+	listIndexShift += listTopStride;
       }
     }
   }
 }
+
+
+
+
+// buildDeviceBondList (const IndexType * numAtomInCell,
+// 		     const IndexType * globalIndex,
+// 		     const IndexType * numNeighborCell,
+// 		     const IndexType * neighborCellIndex,
+// 		     const IndexType   cellRelationStride,
+// 		     const IndexType * global_neighborIndex,
+// 		     const IndexType * global_numBond,
+// 		     const IndexType   bondListStride,
+// 		     IndexType * neighborIndex)
+// {
+//   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+//   IndexType tid = threadIdx.x;
+//   IndexType ii = tid + bid * blockDim.x;
+
+//   IndexType this_numAtom = numAtomInCell[bid];
+//   if (this_numAtom == 0) return;
+//   IndexType this_numNeighborCell = numNeighborCell[bid];
+//   if (this_numNeighborCell == 0) return;
+//   IndexType my_numBond;
+//   if (tid < this_numAtom) my_numBond = global_numBond[ii];
+
+//   extern __shared__ ScalorType buff_globalIndex[];  
+
+//   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
+//     __syncthreads();
+//     IndexType target_cellIndex = neighborCellIndex[bid * cellRelationStride + kk];
+//     IndexType indexShift = target_cellIndex * blockDim.x;
+//     IndexType target_numAtomInCell = numAtomInCell[target_cellIndex];
+//     IndexType jj = indexShift + tid;
+//     if (tid < target_numAtomInCell){
+//       buff_globalIndex[tid] = globalIndex[jj];
+//     }
+//     __syncthreads();
+    
+//     if (tid < this_numAtom){
+//       for (IndexType ll = 0; ll < my_numBond; ++ll){
+// 	IndexType tofind_globalIndex =
+// 	    global_neighborIndex[
+// 		Parallel::DeviceBondList_cudaDevice::
+// 		indexConvert(bondListStride, ii, ll)
+// 		];
+// 	for (IndexType mm = 0; mm < target_numAtomInCell; ++mm){
+// 	  if (tofind_globalIndex == buff_globalIndex[mm]){
+// 	    neighborIndex[
+// 		Parallel::DeviceBondList_cudaDevice::
+// 		indexConvert(bondListStride, ii, ll)
+// 		] = mm + indexShift;
+// 	  }
+// 	  // __syncthreads();
+// 	}
+//       }
+//     }
+//   }
+// }
 
 
   

@@ -101,36 +101,38 @@ public:
     __global__ void 
     clearGhostBond (const IndexType * ghostCellIndex,
 		    IndexType * myNumBond);
-    __global__ void
-    calBondedInteraction (const CoordType * coord,
-			  const HostVectorType boxSize,
-			  const HostVectorType boxSizei,
-			  const IndexType * numAtomInCell,
-			  const IndexType * numBond,
-			  const IndexType * bondNeighborIndex,
-			  const IndexType * bondIndex,
-			  const IndexType   bondStride,
-			  ScalorType * forcx,
-			  ScalorType * forcy,
-			  ScalorType * forcz,
-			  mdError_t * ptr_de);
     __global__ void 
-    calBondedInteraction (const CoordType * coord,
-			  const HostVectorType boxSize,
-			  const HostVectorType boxSizei,
-			  const IndexType * numAtomInCell,
-			  const IndexType * numBond,
-			  const IndexType * bondNeighborIndex,
-			  const IndexType * bondIndex,
-			  const IndexType   bondStride,
-			  ScalorType * forcx,
-			  ScalorType * forcy,
-			  ScalorType * forcz,
-			  ScalorType * statistic_nb_buff0,
-			  ScalorType * statistic_nb_buff1,
-			  ScalorType * statistic_nb_buff2,
-			  ScalorType * statistic_nb_buff3,
-			  mdError_t * ptr_de);
+    calBondInteraction (const CoordType * coord,
+			const HostVectorType boxSize,
+			const HostVectorType boxSizei,
+			const IndexType * numAtomInCell,
+			const IndexType * numBond,
+			const IndexType * bondIndex,
+			const IndexType   bondTopStride,
+			const IndexType * bondNeighbor_localIndex,
+			const IndexType   bondListStride,
+			ScalorType * forcx,
+			ScalorType * forcy,
+			ScalorType * forcz,
+			mdError_t * ptr_de);
+    __global__ void 
+    calBondInteraction (const CoordType * coord,
+			const HostVectorType boxSize,
+			const HostVectorType boxSizei,
+			const IndexType * numAtomInCell,
+			const IndexType * numBond,
+			const IndexType * bondIndex,
+			const IndexType   bondTopStride,
+			const IndexType * bondNeighbor_localIndex,
+			const IndexType   bondListStride,
+			ScalorType * forcx,
+			ScalorType * forcy,
+			ScalorType * forcz,
+			ScalorType * statistic_b_buff0,
+			ScalorType * statistic_b_buff1,
+			ScalorType * statistic_b_buff2,
+			ScalorType * statistic_b_buff3,
+			mdError_t * ptr_de);
   }
   namespace CudaDevice {
     __device__ IndexType

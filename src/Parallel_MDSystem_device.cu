@@ -2,6 +2,7 @@
 #include "Parallel_Timer.h"
 #include "Parallel_MDSystem.h"
 #include "Parallel_Interface.h"
+#include "Parallel_BondList.h"
 
 #include "compile_error_mixcode.h"
 
@@ -116,8 +117,8 @@ init (const char * confFileName,
   // // ht1.copy (ht2, maskWithBond);
   // // ht2.copy (ht1, maskWithBond);
 
-  deviceData.dptr_coordinate()[124].x = 3;
-  deviceData.dptr_coordinate()[126].x = 4;
+  // deviceData.dptr_coordinate()[124].x = 3;
+  // deviceData.dptr_coordinate()[126].x = 4;
   SubCellList subList;
   localHostData.buildSubList (1, 2, 1, 2, 1, 3, subList);
   // HostSubCellList hsub ;
@@ -126,15 +127,22 @@ init (const char * confFileName,
   // HostCellListedMDData hdata (localHostData);
   // localHostData.add (hdata);
 
-  HostTransferPackage hpkg;
-  hpkg.reinit (subList);
-  DeviceTransferPackage dpkg;
-  dpkg.reinit (subList);
-  hpkg.pack (localHostData);
-  dpkg.copyFromHost (hpkg);
-  dpkg.unpack_add (deviceData);
+  // HostTransferPackage hpkg;
+  // hpkg.reinit (subList);
+  // DeviceTransferPackage dpkg;
+  // dpkg.reinit (subList);
+  // hpkg.pack (localHostData);
+  // dpkg.copyFromHost (hpkg);
+  // dpkg.unpack_add (deviceData);
   // hpkg.unpack_replace (localHostData);
 
+  DeviceCellRelation relation;
+  relation.build (deviceData);
+  DeviceBondList dbdlist (deviceData);
+  buildDeviceBondList (deviceData, relation, dbdlist);
+  HostBondList hdblist;
+  dbdlist.copyToHost (hdblist);
+  
   // HostCellListedMDData hdata1;
   // hdata1.copy (localHostData,
   // 	       MDDataItemMask_All ^
@@ -155,8 +163,7 @@ init (const char * confFileName,
   // HostTransferPackage hpkg;
   // hpkg.reinit (subList);
   // dpkg.copyToHost (hpkg);
-  // hpkg.unpack_replace (localHostData);  
-
+  // hpkg.unpack_replace (localHostData);
 
   hostBuff.copy (localHostData, MDDataItemMask_All);
   hostBuff.clearData ();

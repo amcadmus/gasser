@@ -7,16 +7,17 @@
 #include "Parallel_BondList.h"
 #include "Auxiliary.h"
 #include "Parallel_Timer.h"
+#include "Parallel_Interface.h"
 
 #include "compile_error_mixcode.h"
 
 void Parallel::DeviceCellListedMDData::
 initZeroCell ()
 {
-  IndexType numThreadBlock = Parallel::Interface::numThreadsInCell();
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   dim3 gridDim = toGridDim(numCell.x*numCell.y*numCell.z);
   Parallel::CudaGlobal::initZeroCell
-      <<<gridDim, numThreadBlock>>>(
+      <<<gridDim, numThreadsInCell>>>(
 	  numCell, 
 	  numAtomInCell);
   checkCUDAError ("DeviceCellListedMDData::initZeroCell");
@@ -258,7 +259,7 @@ rebuild (DeviceBondList & dbdlist)
   }
   else {
     Parallel::CudaGlobal::rebuildCellList_step1
-	<<< gridDim, numAtomInCell>>> (
+	<<< gridDim, numThreadBlock>>> (
 	    frameLow,
 	    frameUp,
 	    numCell,
@@ -276,7 +277,7 @@ rebuild (DeviceBondList & dbdlist)
 	    type,
 	    mass,
 	    charge,
-	    forwardMap,
+	    forwardMap_step1,
 	    err.ptr_de);
     checkCUDAError ("Parallel::rebuild step1");
     err.updateHost();
@@ -296,12 +297,12 @@ rebuild (DeviceBondList & dbdlist)
 	    type,
 	    mass,
 	    charge,
-	    forwardMap,
+	    forwardMap_step2,
 	    err.ptr_de);
     checkCUDAError ("Parallel::rebuild step2");
     err.updateHost();
     err.check ("Parallel::rebuild step2");
-    Parallel::CudaGlobal::rebuildCellList_step1
+    Parallel::CudaGlobal::rebuildCellList_step1_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step1,
 	    getMaxNumBond(),
@@ -323,7 +324,7 @@ rebuild (DeviceBondList & dbdlist)
 	    dbdlist.dptr_dihedralNeighbor_localIndex(),
 	    bondTopStride());
     checkCUDAError ("Parallel::rebuild map top step1");
-    Parallel::CudaGlobal::rebuildCellList_step2
+    Parallel::CudaGlobal::rebuildCellList_step2_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step1,
 	    getMaxNumBond(),
@@ -1298,9 +1299,9 @@ easyMallocCell (const IndexType & totalNumCell)
   clearCell ();
   cudaMalloc ((void**)&numAtomInCell, sizeof(IndexType) * totalNumCell);
   cudaMalloc ((void**)&forwardMap_step1,
-	      sizeof(IndexType) * totalNumCell * Parallel::Interface::numThreadBlock());
+	      sizeof(IndexType) * totalNumCell * Parallel::Interface::numThreadsInCell());
   cudaMalloc ((void**)&forwardMap_step2,
-	      sizeof(IndexType) * totalNumCell * Parallel::Interface::numThreadBlock());
+	      sizeof(IndexType) * totalNumCell * Parallel::Interface::numThreadsInCell());
   // cudaMalloc ((void**)&numNeighborCell, sizeof(IndexType) * totalNumCell);
   // cudaMalloc ((void**)&neighborCellIndex,
   // 	      sizeof(IndexType) * totalNumCell * maxNumNeighborCell);

@@ -83,10 +83,10 @@ int main(int argc, char * argv[])
   SystemNonBondedInteraction sysNbInter (sysTop);
   SystemBondedInteraction    sysBdInter (sysTop);
 
-  Parallel::HostBondList hbdlist;
-  hbdlist.reinit(sys.localHostData, sysTop, sysBdInter);
+  // Parallel::HostBondList hbdlist;
+  // hbdlist.reinit(sys.localHostData, sysTop, sysBdInter);
   Parallel::DeviceBondList dbdlist;
-  dbdlist.reinit(hbdlist);
+  dbdlist.reinit(sys.deviceData);
   
   Parallel::InteractionEngine interEng (sys.deviceData);
   interEng.registNonBondedInteraction (sysNbInter);
