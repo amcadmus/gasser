@@ -255,6 +255,8 @@ public:
     VectorType frameUp;
 
     IndexType * numAtomInCell;
+    IndexType * forwardMap_step1;
+    IndexType * forwardMap_step2;
     IndexType memSize;
     
     // IndexType * numNeighborCell;

@@ -119,12 +119,34 @@ init (const char * confFileName,
   deviceData.dptr_coordinate()[124].x = 3;
   deviceData.dptr_coordinate()[126].x = 4;
   SubCellList subList;
-  localHostData.buildSubList (1, 2, 1, 2, 1, 2, subList);
-  HostSubCellList hsub ;
-  localHostData.buildSubList (1, 2, 1, 2, 1, 2, hsub);
-  hsub.setHostData (localHostData);
-  HostCellListedMDData hdata (localHostData);
-  localHostData.add (hdata);
+  localHostData.buildSubList (1, 2, 1, 2, 1, 3, subList);
+  // HostSubCellList hsub ;
+  // localHostData.buildSubList (1, 2, 1, 2, 1, 2, hsub);
+  // hsub.setHostData (localHostData);
+  // HostCellListedMDData hdata (localHostData);
+  // localHostData.add (hdata);
+
+  HostTransferPackage hpkg;
+  hpkg.reinit (subList);
+  DeviceTransferPackage dpkg;
+  dpkg.reinit (subList);
+  hpkg.pack (localHostData);
+  dpkg.copyFromHost (hpkg);
+  dpkg.unpack_add (deviceData);
+  // hpkg.unpack_replace (localHostData);
+
+  // HostCellListedMDData hdata1;
+  // hdata1.copy (localHostData,
+  // 	       MDDataItemMask_All ^
+  // 	       MDDataItemMask_Bond ^
+  // 	       MDDataItemMask_Angle);
+  // hpkg.unpack_replace (hdata1);
+  // DeviceCellListedMDData ddata1;
+  // ddata1.copyFromDevice (deviceData,
+  // 			 MDDataItemMask_All ^
+  // 			 MDDataItemMask_Bond ^
+  // 			 MDDataItemMask_Angle);
+  // dpkg.unpack_replace (ddata1);
   
   // hsub.add (hsub);
   // DeviceTransferPackage dpkg;

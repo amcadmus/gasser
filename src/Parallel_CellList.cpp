@@ -303,15 +303,16 @@ pack (const HostCellListedMDData & hdata,
   for (IndexType i = 1; i < numCell+1; ++i){
     cellStartIndex[i] = cellStartIndex[i-1] + hdata.numAtomInCell[cellIndex[i-1]];
   }
-  this->HostMDData::numData() = cellStartIndex[numCell];  
+  IndexType & expectedNumData (cellStartIndex[numCell]);
 
   this->HostMDData::setGlobalBox (hdata.getGlobalBox());
-  if (this->HostMDData::numData() > this->HostMDData::memSize()){
-    this->HostMDData::easyMalloc (this->HostMDData::numData() * MemAllocExtension,
+  if (expectedNumData > this->HostMDData::memSize()){
+    this->HostMDData::easyMalloc (expectedNumData * MemAllocExtension,
 				  hdata.HostMDData::getMaxNumBond(),
 				  hdata.HostMDData::getMaxNumAngle(),
 				  hdata.HostMDData::getMaxNumDihedral());
   }
+  this->HostMDData::numData() = expectedNumData;
 
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();
   // IndexType toid = 0;
