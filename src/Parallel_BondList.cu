@@ -329,6 +329,9 @@ buildDeviceBondList (const IndexType * numAtomInCell,
   for (IndexType kk = 0; kk < this_numNeighborCell; ++kk){
     __syncthreads();
     IndexType target_cellIndex = neighborCellIndex[bid * cellRelationStride + kk];
+    // if (bid == 31 && tid == 0) {
+    //   printf ("targetcell id: %d\n", target_cellIndex);
+    // }
     IndexType indexShift = target_cellIndex * blockDim.x;
     IndexType target_numAtomInCell = numAtomInCell[target_cellIndex];
     IndexType jj = indexShift + tid;

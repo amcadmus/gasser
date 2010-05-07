@@ -127,7 +127,7 @@ int main(int argc, char * argv[])
   relation.build (sys.deviceData);
   Parallel::DeviceBondList dbdlist;
   dbdlist.reinit (sys.deviceData);
-
+  buildDeviceBondList (sys.deviceData, relation, dbdlist);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
   hst.reinit (sys.localHostData);
@@ -156,6 +156,9 @@ int main(int argc, char * argv[])
     HostTimer::tic (item_TransferGhost);
     sys.transferGhost ();
     HostTimer::toc (item_TransferGhost);
+
+    buildDeviceBondList (sys.deviceData, relation, dbdlist);
+
     // if ((i+1) % stFeq == 0){
     //   DeviceTimer::tic (item_NonBondedInterStatistic);
     //   interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
@@ -186,8 +189,6 @@ int main(int argc, char * argv[])
     HostTimer::tic (item_Redistribute);
     sys.redistribute ();
     HostTimer::toc (item_Redistribute);
-
-    buildDeviceBondList (sys.deviceData, relation, dbdlist);
     
     dst.copyToHost (hst);
     hst.collectData ();

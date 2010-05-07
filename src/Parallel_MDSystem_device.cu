@@ -51,9 +51,9 @@ init (const char * confFileName,
       const Topology::System & sysTop)
 {
   MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
-				 MDDataItemMask_CoordinateNoi |
-				 MDDataItemMask_Velocity |
-				 MDDataItemMask_GlobalIndex);
+  				 MDDataItemMask_CoordinateNoi |
+  				 MDDataItemMask_Velocity |
+  				 MDDataItemMask_GlobalIndex);
   if (Parallel::Interface::myRank() == 0){
     globalNumAtom = globalHostData.numAtomInGroFile (confFileName);
     // globalHostData.reallocCoordinate (globalNumAtom);
@@ -265,7 +265,8 @@ setData (HostCellListedMDData & hdata,
 
 Parallel::SystemTransCoordsCopyUtil::
 SystemTransCoordsCopyUtil ()
-    : mask (MDDataItemMask_Coordinate | MDDataItemMask_GlobalIndex)
+    : mask (MDDataItemMask_Coordinate |
+	    MDDataItemMask_GlobalIndex)
 {
 }
 
