@@ -12,6 +12,7 @@
 #include "Parallel_Integrator.h"
 #include "Parallel_BondList.h"
 #include "SystemNonBondedInteraction.h"
+#include "SystemBondedInteraction.h"
 #include "Parallel_Timer.h"
 #include "BondInteraction.h"
 #include "AngleInteraction.h"
@@ -86,7 +87,7 @@ int main(int argc, char * argv[])
 
   Topology::System sysTop;
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
@@ -96,7 +97,7 @@ int main(int argc, char * argv[])
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   HarmonicSpringParameter hsparam;
-  hsparam.reinit (10.f, 1.f);
+  hsparam.reinit (10.f, 1.2f);
   mol.addBond (Topology::Bond (0, 1, hsparam));
   hsparam.reinit (11.f, 1.f);
   mol.addBond (Topology::Bond (0, 1, hsparam));
@@ -119,9 +120,11 @@ int main(int argc, char * argv[])
   sys.redistribute ();
   sys.deviceData.applyPeriodicBondaryCondition ();
   SystemNonBondedInteraction sysNbInter (sysTop);
+  SystemBondedInteraction    sysBdInter (sysTop);
 
   Parallel::InteractionEngine interEng (sys.deviceData);
   interEng.registNonBondedInteraction (sysNbInter);
+  interEng.registBondedInteraction    (sysBdInter);
   interEng.clearInteraction (sys.deviceData);
   Parallel::DeviceCellRelation relation;
   relation.build (sys.deviceData);
@@ -159,16 +162,18 @@ int main(int argc, char * argv[])
 
     buildDeviceBondList (sys.deviceData, relation, dbdlist);
 
-    // if ((i+1) % stFeq == 0){
-    //   DeviceTimer::tic (item_NonBondedInterStatistic);
-    //   interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
-    //   DeviceTimer::toc (item_NonBondedInterStatistic);
-    // }
-    // else {
-    //   DeviceTimer::tic (item_NonBondedInteraction);
-    //   interEng.applyNonBondedInteraction (sys.deviceData, relation);
-    //   DeviceTimer::toc (item_NonBondedInteraction);
-    // }
+    if ((i+1) % stFeq == 0){
+      DeviceTimer::tic (item_NonBondedInterStatistic);
+      interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
+      DeviceTimer::toc (item_NonBondedInterStatistic);
+      interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
+    }
+    else {
+      DeviceTimer::tic (item_NonBondedInteraction);
+      interEng.applyNonBondedInteraction (sys.deviceData, relation);
+      DeviceTimer::toc (item_NonBondedInteraction);
+      interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
+    }
     HostTimer::tic (item_TransferGhost);
     sys.clearGhost ();
     HostTimer::toc (item_TransferGhost);
@@ -176,9 +181,9 @@ int main(int argc, char * argv[])
     vv.step2 (sys.deviceData, dt, dst);
     DeviceTimer::toc (item_Integrate);
 
-    for (IndexType j = 0; j < sys.deviceData.DeviceMDData::memSize(); ++j){
-      sys.deviceData.dptr_coordinate()[j].z -= 1.;
-    }
+    // for (IndexType j = 0; j < sys.deviceData.DeviceMDData::memSize(); ++j){
+    //   sys.deviceData.dptr_coordinate()[j].z -= 1.;
+    // }
 
     DeviceTimer::tic (item_BuildCellList);
     sys.deviceData.rebuild (dbdlist);

@@ -770,7 +770,7 @@ calBondInteraction (const CoordType * coord,
       shortestImage (boxSize.x, boxSizei.x, &diffx);
       shortestImage (boxSize.y, boxSizei.y, &diffy);
       shortestImage (boxSize.z, boxSizei.z, &diffz);
-      printf ("%f\t%f\n", diffz, sqrtf(diffx*diffx+diffy*diffy+diffz*diffz));
+      // printf ("%f\t%f\n", diffz, sqrtf(diffx*diffx+diffy*diffy+diffz*diffz));
       bondForcePoten (bondedInteractionType[my_bondIndex],
 		      &bondedInteractionParameter
 		      [bondedInteractionParameterPosition[my_bondIndex]],
