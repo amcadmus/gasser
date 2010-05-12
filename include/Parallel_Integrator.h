@@ -1,10 +1,36 @@
 #ifndef __Parallel_Integrator_h_wanghan__
 #define __Parallel_Integrator_h_wanghan__
 
-#define DEVICE_CODE
-#include "SumVector.h"
+#ifdef DEVICE_CODE
+#include "common.h"
 #include "Parallel_CellList.h"
 #include "Parallel_Statistic.h"
+#include "SumVector.h"
+#else
+#include "common.h"
+#endif
+
+namespace Parallel {
+  class HostSystemMomentum
+  {
+    double * p;
+    double * sump;
+    ScalorType * p_f;
+public:
+    HostSystemMomentum ();
+    ~HostSystemMomentum ();
+public:
+    void sumAll ();
+    void setMomentunX (const ScalorType & x) {p_f[0] = x;}
+    void setMomentunY (const ScalorType & y) {p_f[1] = y;}
+    void setMomentunZ (const ScalorType & z) {p_f[2] = z;}
+    const ScalorType & getMomentumX () const {return p_f[0];}
+    const ScalorType & getMomentumY () const {return p_f[1];}
+    const ScalorType & getMomentumZ () const {return p_f[2];}
+  }; 
+}
+
+#ifdef DEVICE_CODE
 
 namespace Parallel {
   class TranslationalFreedomRemover 
@@ -12,6 +38,8 @@ namespace Parallel {
     dim3 gridDim;
     IndexType numThreadsInCell;
     ScalorType * sums;
+    ScalorType * hsums;
+    HostSystemMomentum hmomentum;
     ScalorType * sumM;
     ScalorType totalMassi;
     bool malloced;
@@ -110,5 +138,7 @@ public:
 			  ScalorType * statistic_buffzz);
   }
 }
+
+#endif
 
 #endif

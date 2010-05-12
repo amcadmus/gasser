@@ -8,14 +8,25 @@
 Parallel::TranslationalFreedomRemover::
 ~TranslationalFreedomRemover ()
 {
+  clear();
+}
+
+void Parallel::TranslationalFreedomRemover::
+clear ()
+{
   if (malloced){
     cudaFree (sums);
+    cudaFree (sumM);
+    free (hsums);
+    malloced = false;
   }
 }
 
 void Parallel::TranslationalFreedomRemover::
 reinit  (const DeviceCellListedMDData & data)
 {
+  clear ();
+  
   IndexType totalNumCell = data.getNumCell().x * data.getNumCell().y * data.getNumCell().z;
   gridDim = toGridDim (totalNumCell);
   numThreadsInCell = Parallel::Interface::numThreadsInCell();
@@ -30,6 +41,11 @@ reinit  (const DeviceCellListedMDData & data)
     Parallel::Auxiliary::setValue <<<1, 3>>> (sums, 3, ScalorType (0.f));
     cudaMalloc ((void**)&sumM, 1 * sizeof(ScalorType));
     checkCUDAError ("TranslationalFreedomRemover::reinit, malloc sums");
+    hsums = (ScalorType *) malloc (3 * sizeof(ScalorType));
+    if (hsums == NULL) {
+      throw MDExcptFailedMallocOnHost ("TranslationalFreedomRemover::reinit",
+				       "hsums", 3 * sizeof(ScalorType));
+    }				       
     malloced = true;
   }
 
@@ -63,6 +79,17 @@ remove (DeviceCellListedMDData & data)
   sum_x.sumBuff (sums, 0);
   sum_y.sumBuff (sums, 1);
   sum_z.sumBuff (sums, 2);
+  cudaMemcpy (hsums, sums, 3 * sizeof(ScalorType), cudaMemcpyDeviceToHost);
+  checkCUDAError ("TranslationalFreedomRemover::remove, cpy p to host");
+  hmomentum.setMomentunX (hsums[0]);
+  hmomentum.setMomentunY (hsums[1]);
+  hmomentum.setMomentunZ (hsums[2]);
+  hmomentum.sumAll ();
+  hsums[0] = hmomentum.getMomentumX();
+  hsums[1] = hmomentum.getMomentumY();
+  hsums[2] = hmomentum.getMomentumZ();
+  cudaMemcpy (sums, hsums, 3 * sizeof(ScalorType), cudaMemcpyHostToDevice);
+  checkCUDAError ("TranslationalFreedomRemover::remove, cpy p to device");
   Parallel::CudaGlobal::removeTranslationalFreedom
       <<<gridDim, numThreadsInCell>>> (
 	  data.dptr_numAtomInCell(),

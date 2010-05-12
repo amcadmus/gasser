@@ -77,6 +77,9 @@ public:
     void sum (IndexType * data,
 	      int num,
 	      IndexType * result);    
+    void sum (double * data,
+	      int num,
+	      double * result);    
     void sumAll (ScalorType * data,
 		 int num,
 		 ScalorType * result);
@@ -86,6 +89,9 @@ public:
     void sumAll (IndexType * data,
 		 int num,
 		 IndexType * result);  
+    void sumAll (double * data,
+		 int num,
+		 double * result);  
   };
 }
 

@@ -171,24 +171,38 @@ sum (IndexType * data, int num, IndexType * result)
 }
 
 void Parallel::SummationEngine::
+sum (double * data, int num, double * result)
+{
+  MPI_Reduce (data, result, num, MPI_DOUBLE, MPI_SUM, 0,
+	      Parallel::Environment::communicator());
+}
+
+void Parallel::SummationEngine::
 sumAll (ScalorType * data, int num, ScalorType * result)
 {
   MPI_Allreduce (data, result, num, MPI_FLOAT, MPI_SUM, 
-	      Parallel::Environment::communicator());
+		 Parallel::Environment::communicator());
 }
 
 void Parallel::SummationEngine::
 sumAll (IntScalorType * data, int num, IntScalorType * result)
 {
   MPI_Allreduce (data, result, num, MPI_INT, MPI_SUM, 
-	      Parallel::Environment::communicator());
+		 Parallel::Environment::communicator());
 }
 
 void Parallel::SummationEngine::
 sumAll (IndexType * data, int num, IndexType * result)
 {
   MPI_Allreduce (data, result, num, MPI_UNSIGNED, MPI_SUM, 
-	      Parallel::Environment::communicator());
+		 Parallel::Environment::communicator());
+}
+
+void Parallel::SummationEngine::
+sumAll (double * data, int num, double * result)
+{
+  MPI_Allreduce (data, result, num, MPI_DOUBLE, MPI_SUM, 
+		 Parallel::Environment::communicator());
 }
 
 

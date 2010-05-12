@@ -65,6 +65,7 @@ printRecord (FILE * fp)
   totalPercent += printDeviceItem (fp, item_BuildCellList);
   totalPercent += printDeviceItem (fp, item_BuildBondList);
   totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
+  totalPercent += printDeviceItem (fp, item_RemoveTransFreedom);
   totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
   totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
   totalPercent += printDeviceItem (fp, item_BondedInteraction);
@@ -79,11 +80,11 @@ printRecord (FILE * fp)
   printHostItem (fp, item_Redistribute_DHCopy);
   totalPercent += printHostItem (fp, item_TransferGhost);
 
-  printf ("# Total percentage:");
+  fprintf (fp, "# Total percentage:");
   for (int i = 0; i < PrintStartPosition - 16; ++i){
-    printf (" ");
+    fprintf (fp, " ");
   }
-  printf ("%3.1f \%\n", totalPercent);
+  fprintf (fp, "%3.1f \%\n", totalPercent);
   printTotalTime (fp);
 }
 
