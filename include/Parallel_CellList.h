@@ -97,12 +97,14 @@ public:
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
 		       HostSubCellList & subList) ;
-    inline void buildSubListAllCell   (SubCellList & subList) const;
-    inline void buildSubListRealCell  (SubCellList & subList) const;
-    inline void buildSubListGhostCell (SubCellList & subList) const;
-    inline void buildSubListAllCell   (HostSubCellList & subList) ;
-    inline void buildSubListRealCell  (HostSubCellList & subList) ;
-    inline void buildSubListGhostCell (HostSubCellList & subList) ;
+    inline void buildSubListAllCell    (SubCellList & subList) const;
+    inline void buildSubListRealCell   (SubCellList & subList) const;
+    inline void buildSubListGhostCell  (SubCellList & subList) const;
+    inline void buildSubListInnerShell (SubCellList & subList) const;
+    inline void buildSubListAllCell    (HostSubCellList & subList) ;
+    inline void buildSubListRealCell   (HostSubCellList & subList) ;
+    inline void buildSubListGhostCell  (HostSubCellList & subList) ;
+    inline void buildSubListInnerShell (HostSubCellList & subList) ;
   };
   
   class SubCellList : public std::vector<IndexType > 
@@ -314,9 +316,10 @@ public:
 		       const IndexType & zIdLo,
 		       const IndexType & zIdUp,
 		       SubCellList & subList) const;
-    inline void buildSubListAllCell   (SubCellList & subList) const;
-    inline void buildSubListRealCell  (SubCellList & subList) const;
-    inline void buildSubListGhostCell (SubCellList & subList) const;
+    inline void buildSubListAllCell    (SubCellList & subList) const;
+    inline void buildSubListRealCell   (SubCellList & subList) const;
+    inline void buildSubListGhostCell  (SubCellList & subList) const;
+    inline void buildSubListInnerShell (SubCellList & subList) const;
   };
 
 
@@ -429,6 +432,22 @@ buildSubListGhostCell (SubCellList & subList) const
   subList.sub(temp);
 }
 
+void Parallel::HostCellListedMDData::
+buildSubListInnerShell (SubCellList & subList) const
+{
+  IndexType devideLevel = getDevideLevel();
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		subList);
+  SubCellList temp;
+  devideLevel *= 2;
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		temp);
+  subList.sub (temp);
+}
 
 
 void Parallel::HostCellListedMDData::
@@ -464,7 +483,23 @@ buildSubListGhostCell (HostSubCellList & subList)
   subList.sub(temp);
 }
 
-
+void Parallel::HostCellListedMDData::
+buildSubListInnerShell (HostSubCellList & subList)
+{
+  subList.setHostData (*this);
+  IndexType devideLevel = getDevideLevel();
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		(SubCellList &)subList);
+  SubCellList temp;
+  devideLevel *= 2;
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		temp);
+  subList.sub (temp);
+}
 
 
 #ifdef DEVICE_CODE
@@ -504,6 +539,25 @@ buildSubListGhostCell (SubCellList & subList) const
   //   printf ("%d %d %d %d\n", ++count, ix, iy, iz);
   // }  
 }
+
+void Parallel::DeviceCellListedMDData::
+buildSubListInnerShell (SubCellList & subList) const
+{
+  IndexType devideLevel = getDevideLevel();
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		subList);
+  SubCellList temp;
+  devideLevel *= 2;
+  buildSubList (devideLevel, getNumCell().x - devideLevel,
+		devideLevel, getNumCell().y - devideLevel,
+		devideLevel, getNumCell().z - devideLevel,
+		temp);
+  subList.sub (temp);
+}
+
+
 #endif // DEVICE_CODE
 
 
