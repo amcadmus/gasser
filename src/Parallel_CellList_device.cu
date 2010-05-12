@@ -283,6 +283,33 @@ rebuild (DeviceBondList & dbdlist)
     checkCUDAError ("Parallel::rebuild step1");
     err.updateHost();
     err.check ("Parallel::rebuild step1");
+    Parallel::CudaGlobal::rebuildCellList_step1_mapBondTop
+	<<<gridDim, numThreadBlock>>> (
+	    forwardMap_step1,
+	    bk_numAtomInCell,
+	    getMaxNumBond(),
+	    dptr_numBond(),
+	    dptr_bondIndex(),
+	    dptr_bondNeighbor_globalIndex(),
+	    dbdlist.dptr_bondNeighbor_localIndex(),
+	    getMaxNumAngle(),
+	    dptr_numAngle(),
+	    dptr_angleIndex(),
+	    dptr_anglePosi(),
+	    dptr_angleNeighbor_globalIndex(),
+	    dbdlist.dptr_angleNeighbor_localIndex(),
+	    getMaxNumDihedral(),
+	    dptr_numDihedral(),
+	    dptr_dihedralIndex(),
+	    dptr_dihedralPosi(),
+	    dptr_angleNeighbor_globalIndex(),
+	    dbdlist.dptr_dihedralNeighbor_localIndex(),
+	    bondTopStride());
+    checkCUDAError ("Parallel::rebuild map top step1");
+
+    cudaMemcpy (bk_numAtomInCell, dptr_numAtomInCell(),
+		totalNumCell * sizeof(IndexType), cudaMemcpyDeviceToDevice);
+    
     Parallel::CudaGlobal::rebuildCellList_step2
 	<<<gridDim, numThreadBlock, numThreadBlock*sizeof(IndexType)*3>>> (
 	    numAtomInCell,
@@ -303,31 +330,10 @@ rebuild (DeviceBondList & dbdlist)
     checkCUDAError ("Parallel::rebuild step2");
     err.updateHost();
     err.check ("Parallel::rebuild step2");
-    Parallel::CudaGlobal::rebuildCellList_step1_mapBondTop
-	<<<gridDim, numThreadBlock>>> (
-	    forwardMap_step1,
-	    getMaxNumBond(),
-	    dptr_numBond(),
-	    dptr_bondIndex(),
-	    dptr_bondNeighbor_globalIndex(),
-	    dbdlist.dptr_bondNeighbor_localIndex(),
-	    getMaxNumAngle(),
-	    dptr_numAngle(),
-	    dptr_angleIndex(),
-	    dptr_anglePosi(),
-	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_angleNeighbor_localIndex(),
-	    getMaxNumDihedral(),
-	    dptr_numDihedral(),
-	    dptr_dihedralIndex(),
-	    dptr_dihedralPosi(),
-	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_dihedralNeighbor_localIndex(),
-	    bondTopStride());
-    checkCUDAError ("Parallel::rebuild map top step1");
     Parallel::CudaGlobal::rebuildCellList_step2_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step2,
+	    bk_numAtomInCell,
 	    getMaxNumBond(),
 	    dptr_numBond(),
 	    dptr_bondIndex(),
@@ -733,6 +739,7 @@ rebuildCellList_step1 (const VectorType frameLow,
     }
     IndexType cellid = CudaDevice::D3toD1
 	(numCell, targetCellx, targetCelly, targetCellz);
+    forwardMap[ii] = ii;
     if (cellid != bid){
       IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
       if (pid >= blockDim.x){
@@ -783,11 +790,20 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
   IndexType tid = threadIdx.x;
   IndexType ii = tid + bid * blockDim.x;
   // IndexType k = NUintBit - 1;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  if (tid < this_numAtomInCell) {
+    forwardMap[ii] = ii;
+  }
+  else {
+    forwardMap[ii] = MaxIndexValue;
+  }
+  __syncthreads();
+  if (this_numAtomInCell == 0) return;
   
   extern __shared__ volatile IndexType sbuff[];
   volatile IndexType * myIndex = (volatile IndexType * )sbuff;
 
-  if (tid >= numAtomInCell[bid] || globalIndex[ii] == MaxIndexValue){
+  if (tid >= this_numAtomInCell || globalIndex[ii] == MaxIndexValue){
     myIndex[tid] = MaxIndexValue;
   }
   else {
@@ -807,7 +823,6 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
   ScalorType bk_mass;
   ScalorType bk_charge;
 
-  forwardMap[ii] = MaxIndexValue;
   __syncthreads();
   
   if (tid < total){
@@ -857,6 +872,7 @@ rebuildCellList_step2 (IndexType * numAtomInCell,
 
 __global__ void Parallel::CudaGlobal::
 rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
+				  const IndexType * bk_numAtomInCell,
 				  IndexType maxNumBond,
 				  IndexType * numBond,
 				  IndexType * bondIndex,
@@ -878,89 +894,125 @@ rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
+  IndexType this_numAtomInCell = bk_numAtomInCell[bid];
+  if (this_numAtomInCell == 0) return;
   IndexType fromIndex = tid + bid * blockDim.x;
   IndexType toIndex   = forwardMap[fromIndex];
   
-  if (toIndex != MaxIndexValue){
-    if (maxNumBond != 0){
-      IndexType my_numBond = (numBond[toIndex] = numBond[fromIndex]);
+  if (maxNumBond != 0){
+    IndexType my_numBond;
+    if (tid < this_numAtomInCell){
+      my_numBond = (numBond[fromIndex]);
+      IndexType my_index = fromIndex;
+      for (IndexType i = 0; i < my_numBond; ++i){
+	IndexType tmp0 = bondNeighbor_localIndex[my_index];
+	IndexType tmp1 = forwardMap[tmp0];
+	if (tmp1 != MaxIndexValue){
+	  bondNeighbor_localIndex[my_index] = tmp1;
+	}    
+	my_index += bondTopStride;
+      }
+    }
+    __syncthreads();
+    if (toIndex != MaxIndexValue && toIndex != fromIndex){
+      numBond[toIndex] = my_numBond;
+      numBond[fromIndex] = 0;
       IndexType my_fromIndex = fromIndex;
       IndexType my_toIndex   = toIndex;
       for (IndexType i = 0; i < my_numBond; ++i){
 	bondIndex[my_toIndex] = bondIndex[my_fromIndex];
 	bondNeighbor_globalIndex[my_toIndex] =
 	    bondNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = bondNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  bondNeighbor_localIndex [my_toIndex] = tmpIndex0;
-	}
-	else {
-	  bondNeighbor_localIndex [my_toIndex] = tmpIndex1;
-	}
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-    }
-    if (maxNumAngle != 0){
-      IndexType my_numAngle = (numAngle[toIndex] = numAngle[fromIndex]);
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numAngle; ++i){
-	angleIndex[my_toIndex] = angleIndex[my_fromIndex];
-	anglePosi [my_toIndex] = anglePosi [my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-      my_fromIndex = fromIndex;
-      my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numAngle * 2; ++i){      
-	angleNeighbor_globalIndex[my_toIndex] =
-	    angleNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = angleNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  angleNeighbor_localIndex [my_toIndex] = tmpIndex0;
-	}
-	else {
-	  angleNeighbor_localIndex [my_toIndex] = tmpIndex1;
-	}
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-    }
-    if (maxNumDihedral != 0){
-      IndexType my_numDihedral = (numDihedral[toIndex] = numDihedral[fromIndex]);
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numDihedral; ++i){
-	dihedralIndex[my_toIndex] = dihedralIndex[my_fromIndex];
-	dihedralPosi [my_toIndex] = dihedralPosi [my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-      my_fromIndex = fromIndex;
-      my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numDihedral * 3; ++i){      
-	dihedralNeighbor_globalIndex[my_toIndex] =
-	    dihedralNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = dihedralNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  dihedralNeighbor_localIndex [my_toIndex] = tmpIndex0;
-	}
-	else {
-	  dihedralNeighbor_localIndex [my_toIndex] = tmpIndex1;
-	}
+	bondNeighbor_localIndex [my_toIndex] =
+	    bondNeighbor_localIndex [my_fromIndex];
 	my_fromIndex += bondTopStride;
 	my_toIndex   += bondTopStride;
       }
     }
   }
+  
+      
+  // if (toIndex != MaxIndexValue){
+  //   if (maxNumBond != 0){
+  //     IndexType my_numBond = (numBond[toIndex] = numBond[fromIndex]);
+  //     IndexType my_fromIndex = fromIndex;
+  //     IndexType my_toIndex   = toIndex;
+  //     for (IndexType i = 0; i < my_numBond; ++i){
+  // 	bondIndex[my_toIndex] = bondIndex[my_fromIndex];
+  // 	bondNeighbor_globalIndex[my_toIndex] =
+  // 	    bondNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = bondNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  bondNeighbor_localIndex [my_toIndex] = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  bondNeighbor_localIndex [my_toIndex] = tmpIndex1;
+  // 	}
+  // 	my_fromIndex += bondTopStride;
+  // 	my_toIndex   += bondTopStride;
+  //     }
+  //   }
+  //   if (maxNumAngle != 0){
+  //     IndexType my_numAngle = (numAngle[toIndex] = numAngle[fromIndex]);
+  //     IndexType my_fromIndex = fromIndex;
+  //     IndexType my_toIndex   = toIndex;
+  //     for (IndexType i = 0; i < my_numAngle; ++i){
+  // 	angleIndex[my_toIndex] = angleIndex[my_fromIndex];
+  // 	anglePosi [my_toIndex] = anglePosi [my_fromIndex];
+  // 	my_fromIndex += bondTopStride;
+  // 	my_toIndex   += bondTopStride;
+  //     }
+  //     my_fromIndex = fromIndex;
+  //     my_toIndex   = toIndex;
+  //     for (IndexType i = 0; i < my_numAngle * 2; ++i){      
+  // 	angleNeighbor_globalIndex[my_toIndex] =
+  // 	    angleNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = angleNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  angleNeighbor_localIndex [my_toIndex] = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  angleNeighbor_localIndex [my_toIndex] = tmpIndex1;
+  // 	}
+  // 	my_fromIndex += bondTopStride;
+  // 	my_toIndex   += bondTopStride;
+  //     }
+  //   }
+  //   if (maxNumDihedral != 0){
+  //     IndexType my_numDihedral = (numDihedral[toIndex] = numDihedral[fromIndex]);
+  //     IndexType my_fromIndex = fromIndex;
+  //     IndexType my_toIndex   = toIndex;
+  //     for (IndexType i = 0; i < my_numDihedral; ++i){
+  // 	dihedralIndex[my_toIndex] = dihedralIndex[my_fromIndex];
+  // 	dihedralPosi [my_toIndex] = dihedralPosi [my_fromIndex];
+  // 	my_fromIndex += bondTopStride;
+  // 	my_toIndex   += bondTopStride;
+  //     }
+  //     my_fromIndex = fromIndex;
+  //     my_toIndex   = toIndex;
+  //     for (IndexType i = 0; i < my_numDihedral * 3; ++i){      
+  // 	dihedralNeighbor_globalIndex[my_toIndex] =
+  // 	    dihedralNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = dihedralNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  dihedralNeighbor_localIndex [my_toIndex] = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  dihedralNeighbor_localIndex [my_toIndex] = tmpIndex1;
+  // 	}
+  // 	my_fromIndex += bondTopStride;
+  // 	my_toIndex   += bondTopStride;
+  //     }
+  //   }
+  // }
 }
 
 __global__ void Parallel::CudaGlobal::
 rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
+				  const IndexType * bk_numAtomInCell,
 				  IndexType maxNumBond,
 				  IndexType * numBond,
 				  IndexType * bondIndex,
@@ -982,364 +1034,410 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
+  IndexType this_numAtomInCell = bk_numAtomInCell[bid];
+  if (this_numAtomInCell == 0) return;
   IndexType fromIndex = tid + bid * blockDim.x;
   IndexType toIndex = forwardMap[fromIndex];
-  bool docopy = (toIndex != MaxIndexValue);
-
+  bool docopy = (toIndex != MaxIndexValue && fromIndex != toIndex);
 
   IndexType bk_num, bk_Index, bk_Posi;
   IndexType bk_Neighbor_globalIndex, bk_Neighbor_localIndex;
+
   if (maxNumBond != 0){
-    if (docopy){
-      bk_num = numBond[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numBond[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumBond; ++kk){
-      if (docopy){
-	bk_Index = bondIndex[my_fromIndex];
-	bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = bondNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  bk_Neighbor_localIndex = tmpIndex0;
-	}
-	else {
-	  bk_Neighbor_localIndex = tmpIndex1;
-	}
-      }
-      __syncthreads();
-      if (docopy){
-	bondIndex[my_toIndex] = bk_Index;
-	bondNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-	bondNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
-  
-  if (maxNumAngle != 0){
-    if (docopy){
-      bk_num = numAngle[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numAngle[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumAngle; ++kk){
-      if (docopy){
-	bk_Index = angleIndex[my_fromIndex];
-	bk_Posi  = anglePosi [my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	angleIndex[my_toIndex] = bk_Index;
-	anglePosi [my_toIndex] = bk_Posi ;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-    my_fromIndex = fromIndex;
-    my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumAngle * 2; ++kk){
-      if (docopy){
-	bk_Neighbor_globalIndex = angleNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = angleNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  bk_Neighbor_localIndex = tmpIndex0;
-	}
-	else {
-	  bk_Neighbor_localIndex = tmpIndex1;
-	}
-      }
-      __syncthreads();
-      if (docopy){
-	angleNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-	angleNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
-
-  if (maxNumDihedral != 0){
-    if (docopy){
-      bk_num = numDihedral[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numDihedral[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumDihedral; ++kk){
-      if (docopy){
-	bk_Index = dihedralIndex[my_fromIndex];
-	bk_Posi  = dihedralPosi [my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	dihedralIndex[my_toIndex] = bk_Index;
-	dihedralPosi [my_toIndex] = bk_Posi ;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-    my_fromIndex = fromIndex;
-    my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumDihedral * 3; ++kk){
-      if (docopy){
-	bk_Neighbor_globalIndex = dihedralNeighbor_globalIndex[my_fromIndex];
-	IndexType tmpIndex0 = dihedralNeighbor_localIndex[my_fromIndex];
-	IndexType tmpIndex1 = forwardMap[tmpIndex0];
-	if (tmpIndex1 == MaxIndexValue){
-	  bk_Neighbor_localIndex = tmpIndex0;
-	}
-	else {
-	  bk_Neighbor_localIndex = tmpIndex1;
-	}
-      }
-      __syncthreads();
-      if (docopy){
-	dihedralNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-	dihedralNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
-}
-
-
-__global__ void Parallel::CudaGlobal::
-rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
-				  IndexType maxNumBond,
-				  IndexType * numBond,
-				  IndexType * bondIndex,
-				  IndexType * bondNeighbor_globalIndex,
-				  IndexType maxNumAngle,
-				  IndexType * numAngle,
-				  IndexType * angleIndex,
-				  IndexType * anglePosi,
-				  IndexType * angleNeighbor_globalIndex,
-				  IndexType maxNumDihedral,
-				  IndexType * numDihedral,
-				  IndexType * dihedralIndex,
-				  IndexType * dihedralPosi,
-				  IndexType * dihedralNeighbor_globalIndex,
-				  IndexType bondTopStride)
-{
-  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-  IndexType tid = threadIdx.x;
-  IndexType fromIndex = tid + bid * blockDim.x;
-  IndexType toIndex   = forwardMap[fromIndex];
-  
-  if (toIndex != MaxIndexValue){
-    if (maxNumBond != 0){
-      IndexType my_numBond = (numBond[toIndex] = numBond[fromIndex]);
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex   = toIndex;
+    IndexType my_numBond;
+    if (tid < this_numAtomInCell){
+      my_numBond = (numBond[fromIndex]);
+      IndexType my_index = fromIndex;
       for (IndexType i = 0; i < my_numBond; ++i){
-	bondIndex[my_toIndex] = bondIndex[my_fromIndex];
-	bondNeighbor_globalIndex[my_toIndex] =
-	    bondNeighbor_globalIndex[my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
+	IndexType tmp0 = bondNeighbor_localIndex[my_index];
+	IndexType tmp1 = forwardMap[tmp0];
+	if (tmp1 != MaxIndexValue){
+	  bondNeighbor_localIndex[my_index] = tmp1;
+	}
+	my_index += bondTopStride;
       }
     }
-    if (maxNumAngle != 0){
-      IndexType my_numAngle = (numAngle[toIndex] = numAngle[fromIndex]);
+    __syncthreads();
+    if (maxNumBond != 0){
+      if (docopy){
+	bk_num = my_numBond;
+      }
+      __syncthreads();
+      if (docopy){
+	numBond[toIndex] = bk_num;
+      }
+      __syncthreads();
       IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numAngle; ++i){
-	angleIndex[my_toIndex] = angleIndex[my_fromIndex];
-	anglePosi [my_toIndex] = anglePosi [my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-      my_fromIndex = fromIndex;
-      my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numAngle * 2; ++i){      
-	angleNeighbor_globalIndex[my_toIndex] =
-	    angleNeighbor_globalIndex[my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-    }
-    if (maxNumDihedral != 0){
-      IndexType my_numDihedral = (numDihedral[toIndex] = numDihedral[fromIndex]);
-      IndexType my_fromIndex = fromIndex;
-      IndexType my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numDihedral; ++i){
-	dihedralIndex[my_toIndex] = dihedralIndex[my_fromIndex];
-	dihedralPosi [my_toIndex] = dihedralPosi [my_fromIndex];
-	my_fromIndex += bondTopStride;
-	my_toIndex   += bondTopStride;
-      }
-      my_fromIndex = fromIndex;
-      my_toIndex   = toIndex;
-      for (IndexType i = 0; i < my_numDihedral * 3; ++i){      
-	dihedralNeighbor_globalIndex[my_toIndex] =
-	    dihedralNeighbor_globalIndex[my_fromIndex];
+      IndexType my_toIndex = toIndex;
+      for (IndexType kk = 0; kk < maxNumBond; ++kk){
+	if (docopy){
+	  bk_Index = bondIndex[my_fromIndex];
+	  bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
+	  bk_Neighbor_localIndex  = bondNeighbor_localIndex [my_fromIndex];
+	}
+	__syncthreads();
+	if (docopy){
+	  bondIndex[my_toIndex] = bk_Index;
+	  bondNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+	  bondNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
+	}
+	__syncthreads();
 	my_fromIndex += bondTopStride;
 	my_toIndex   += bondTopStride;
       }
     }
   }
-}
-
-__global__ void Parallel::CudaGlobal::
-rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
-				  IndexType maxNumBond,
-				  IndexType * numBond,
-				  IndexType * bondIndex,
-				  IndexType * bondNeighbor_globalIndex,
-				  IndexType maxNumAngle,
-				  IndexType * numAngle,
-				  IndexType * angleIndex,
-				  IndexType * anglePosi,
-				  IndexType * angleNeighbor_globalIndex,
-				  IndexType maxNumDihedral,
-				  IndexType * numDihedral,
-				  IndexType * dihedralIndex,
-				  IndexType * dihedralPosi,
-				  IndexType * dihedralNeighbor_globalIndex,
-				  IndexType bondTopStride)
-{
-  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-  IndexType tid = threadIdx.x;
-  IndexType fromIndex = tid + bid * blockDim.x;
-  IndexType toIndex = forwardMap[fromIndex];
-  bool docopy = (toIndex != MaxIndexValue);
-
-
-  IndexType bk_num, bk_Index, bk_Posi;
-  IndexType bk_Neighbor_globalIndex;
-  if (maxNumBond != 0){
-    if (docopy){
-      bk_num = numBond[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numBond[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumBond; ++kk){
-      if (docopy){
-	bk_Index = bondIndex[my_fromIndex];
-	bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	bondIndex[my_toIndex] = bk_Index;
-	bondNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
+  // if (maxNumBond != 0){
+  //   if (docopy){
+  //     bk_num = numBond[fromIndex];
+  //   }
+  //   __syncthreads();
+  //   if (docopy){
+  //     numBond[toIndex] = bk_num;
+  //   }
+  //   __syncthreads();
+  //   IndexType my_fromIndex = fromIndex;
+  //   IndexType my_toIndex = toIndex;
+  //   for (IndexType kk = 0; kk < maxNumBond; ++kk){
+  //     if (docopy){
+  // 	bk_Index = bondIndex[my_fromIndex];
+  // 	bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = bondNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  bk_Neighbor_localIndex = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  bk_Neighbor_localIndex = tmpIndex1;
+  // 	}
+  //     }
+  //     __syncthreads();
+  //     if (docopy){
+  // 	bondIndex[my_toIndex] = bk_Index;
+  // 	bondNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+  // 	bondNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
+  //     }
+  //     __syncthreads();
+  //     my_fromIndex += bondTopStride;
+  //     my_toIndex   += bondTopStride;
+  //   }
+  // }
   
-  if (maxNumAngle != 0){
-    if (docopy){
-      bk_num = numAngle[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numAngle[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumAngle; ++kk){
-      if (docopy){
-	bk_Index = angleIndex[my_fromIndex];
-	bk_Posi  = anglePosi [my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	angleIndex[my_toIndex] = bk_Index;
-	anglePosi [my_toIndex] = bk_Posi ;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-    my_fromIndex = fromIndex;
-    my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumAngle * 2; ++kk){
-      if (docopy){
-	bk_Neighbor_globalIndex = angleNeighbor_globalIndex[my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	angleNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
+  // if (maxNumAngle != 0){
+  //   if (docopy){
+  //     bk_num = numAngle[fromIndex];
+  //   }
+  //   __syncthreads();
+  //   if (docopy){
+  //     numAngle[toIndex] = bk_num;
+  //   }
+  //   __syncthreads();
+  //   IndexType my_fromIndex = fromIndex;
+  //   IndexType my_toIndex = toIndex;
+  //   for (IndexType kk = 0; kk < maxNumAngle; ++kk){
+  //     if (docopy){
+  // 	bk_Index = angleIndex[my_fromIndex];
+  // 	bk_Posi  = anglePosi [my_fromIndex];
+  //     }
+  //     __syncthreads();
+  //     if (docopy){
+  // 	angleIndex[my_toIndex] = bk_Index;
+  // 	anglePosi [my_toIndex] = bk_Posi ;
+  //     }
+  //     __syncthreads();
+  //     my_fromIndex += bondTopStride;
+  //     my_toIndex   += bondTopStride;
+  //   }
+  //   my_fromIndex = fromIndex;
+  //   my_toIndex = toIndex;
+  //   for (IndexType kk = 0; kk < maxNumAngle * 2; ++kk){
+  //     if (docopy){
+  // 	bk_Neighbor_globalIndex = angleNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = angleNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  bk_Neighbor_localIndex = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  bk_Neighbor_localIndex = tmpIndex1;
+  // 	}
+  //     }
+  //     __syncthreads();
+  //     if (docopy){
+  // 	angleNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+  // 	angleNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
+  //     }
+  //     __syncthreads();
+  //     my_fromIndex += bondTopStride;
+  //     my_toIndex   += bondTopStride;
+  //   }
+  // }
 
-  if (maxNumDihedral != 0){
-    if (docopy){
-      bk_num = numDihedral[fromIndex];
-    }
-    __syncthreads();
-    if (docopy){
-      numDihedral[toIndex] = bk_num;
-    }
-    __syncthreads();
-    IndexType my_fromIndex = fromIndex;
-    IndexType my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumDihedral; ++kk){
-      if (docopy){
-	bk_Index = dihedralIndex[my_fromIndex];
-	bk_Posi  = dihedralPosi [my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	dihedralIndex[my_toIndex] = bk_Index;
-	dihedralPosi [my_toIndex] = bk_Posi ;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-    my_fromIndex = fromIndex;
-    my_toIndex = toIndex;
-    for (IndexType kk = 0; kk < maxNumDihedral * 3; ++kk){
-      if (docopy){
-	bk_Neighbor_globalIndex = dihedralNeighbor_globalIndex[my_fromIndex];
-      }
-      __syncthreads();
-      if (docopy){
-	dihedralNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
-      }
-      __syncthreads();
-      my_fromIndex += bondTopStride;
-      my_toIndex   += bondTopStride;
-    }
-  }
+  // if (maxNumDihedral != 0){
+  //   if (docopy){
+  //     bk_num = numDihedral[fromIndex];
+  //   }
+  //   __syncthreads();
+  //   if (docopy){
+  //     numDihedral[toIndex] = bk_num;
+  //   }
+  //   __syncthreads();
+  //   IndexType my_fromIndex = fromIndex;
+  //   IndexType my_toIndex = toIndex;
+  //   for (IndexType kk = 0; kk < maxNumDihedral; ++kk){
+  //     if (docopy){
+  // 	bk_Index = dihedralIndex[my_fromIndex];
+  // 	bk_Posi  = dihedralPosi [my_fromIndex];
+  //     }
+  //     __syncthreads();
+  //     if (docopy){
+  // 	dihedralIndex[my_toIndex] = bk_Index;
+  // 	dihedralPosi [my_toIndex] = bk_Posi ;
+  //     }
+  //     __syncthreads();
+  //     my_fromIndex += bondTopStride;
+  //     my_toIndex   += bondTopStride;
+  //   }
+  //   my_fromIndex = fromIndex;
+  //   my_toIndex = toIndex;
+  //   for (IndexType kk = 0; kk < maxNumDihedral * 3; ++kk){
+  //     if (docopy){
+  // 	bk_Neighbor_globalIndex = dihedralNeighbor_globalIndex[my_fromIndex];
+  // 	IndexType tmpIndex0 = dihedralNeighbor_localIndex[my_fromIndex];
+  // 	IndexType tmpIndex1 = forwardMap[tmpIndex0];
+  // 	if (tmpIndex1 == MaxIndexValue){
+  // 	  bk_Neighbor_localIndex = tmpIndex0;
+  // 	}
+  // 	else {
+  // 	  bk_Neighbor_localIndex = tmpIndex1;
+  // 	}
+  //     }
+  //     __syncthreads();
+  //     if (docopy){
+  // 	dihedralNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+  // 	dihedralNeighbor_localIndex [my_toIndex] = bk_Neighbor_localIndex;
+  //     }
+  //     __syncthreads();
+  //     my_fromIndex += bondTopStride;
+  //     my_toIndex   += bondTopStride;
+  //   }
+  // }
 }
+
+
+// __global__ void Parallel::CudaGlobal::
+// rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
+// 				  IndexType maxNumBond,
+// 				  IndexType * numBond,
+// 				  IndexType * bondIndex,
+// 				  IndexType * bondNeighbor_globalIndex,
+// 				  IndexType maxNumAngle,
+// 				  IndexType * numAngle,
+// 				  IndexType * angleIndex,
+// 				  IndexType * anglePosi,
+// 				  IndexType * angleNeighbor_globalIndex,
+// 				  IndexType maxNumDihedral,
+// 				  IndexType * numDihedral,
+// 				  IndexType * dihedralIndex,
+// 				  IndexType * dihedralPosi,
+// 				  IndexType * dihedralNeighbor_globalIndex,
+// 				  IndexType bondTopStride)
+// {
+//   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+//   IndexType tid = threadIdx.x;
+//   IndexType fromIndex = tid + bid * blockDim.x;
+//   IndexType toIndex   = forwardMap[fromIndex];
+  
+//   if (toIndex != MaxIndexValue){
+//     if (maxNumBond != 0){
+//       IndexType my_numBond = (numBond[toIndex] = numBond[fromIndex]);
+//       IndexType my_fromIndex = fromIndex;
+//       IndexType my_toIndex   = toIndex;
+//       for (IndexType i = 0; i < my_numBond; ++i){
+// 	bondIndex[my_toIndex] = bondIndex[my_fromIndex];
+// 	bondNeighbor_globalIndex[my_toIndex] =
+// 	    bondNeighbor_globalIndex[my_fromIndex];
+// 	my_fromIndex += bondTopStride;
+// 	my_toIndex   += bondTopStride;
+//       }
+//     }
+//     if (maxNumAngle != 0){
+//       IndexType my_numAngle = (numAngle[toIndex] = numAngle[fromIndex]);
+//       IndexType my_fromIndex = fromIndex;
+//       IndexType my_toIndex   = toIndex;
+//       for (IndexType i = 0; i < my_numAngle; ++i){
+// 	angleIndex[my_toIndex] = angleIndex[my_fromIndex];
+// 	anglePosi [my_toIndex] = anglePosi [my_fromIndex];
+// 	my_fromIndex += bondTopStride;
+// 	my_toIndex   += bondTopStride;
+//       }
+//       my_fromIndex = fromIndex;
+//       my_toIndex   = toIndex;
+//       for (IndexType i = 0; i < my_numAngle * 2; ++i){      
+// 	angleNeighbor_globalIndex[my_toIndex] =
+// 	    angleNeighbor_globalIndex[my_fromIndex];
+// 	my_fromIndex += bondTopStride;
+// 	my_toIndex   += bondTopStride;
+//       }
+//     }
+//     if (maxNumDihedral != 0){
+//       IndexType my_numDihedral = (numDihedral[toIndex] = numDihedral[fromIndex]);
+//       IndexType my_fromIndex = fromIndex;
+//       IndexType my_toIndex   = toIndex;
+//       for (IndexType i = 0; i < my_numDihedral; ++i){
+// 	dihedralIndex[my_toIndex] = dihedralIndex[my_fromIndex];
+// 	dihedralPosi [my_toIndex] = dihedralPosi [my_fromIndex];
+// 	my_fromIndex += bondTopStride;
+// 	my_toIndex   += bondTopStride;
+//       }
+//       my_fromIndex = fromIndex;
+//       my_toIndex   = toIndex;
+//       for (IndexType i = 0; i < my_numDihedral * 3; ++i){      
+// 	dihedralNeighbor_globalIndex[my_toIndex] =
+// 	    dihedralNeighbor_globalIndex[my_fromIndex];
+// 	my_fromIndex += bondTopStride;
+// 	my_toIndex   += bondTopStride;
+//       }
+//     }
+//   }
+// }
+
+// __global__ void Parallel::CudaGlobal::
+// rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
+// 				  IndexType maxNumBond,
+// 				  IndexType * numBond,
+// 				  IndexType * bondIndex,
+// 				  IndexType * bondNeighbor_globalIndex,
+// 				  IndexType maxNumAngle,
+// 				  IndexType * numAngle,
+// 				  IndexType * angleIndex,
+// 				  IndexType * anglePosi,
+// 				  IndexType * angleNeighbor_globalIndex,
+// 				  IndexType maxNumDihedral,
+// 				  IndexType * numDihedral,
+// 				  IndexType * dihedralIndex,
+// 				  IndexType * dihedralPosi,
+// 				  IndexType * dihedralNeighbor_globalIndex,
+// 				  IndexType bondTopStride)
+// {
+//   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+//   IndexType tid = threadIdx.x;
+//   IndexType fromIndex = tid + bid * blockDim.x;
+//   IndexType toIndex = forwardMap[fromIndex];
+//   bool docopy = (toIndex != MaxIndexValue);
+
+
+//   IndexType bk_num, bk_Index, bk_Posi;
+//   IndexType bk_Neighbor_globalIndex;
+//   if (maxNumBond != 0){
+//     if (docopy){
+//       bk_num = numBond[fromIndex];
+//     }
+//     __syncthreads();
+//     if (docopy){
+//       numBond[toIndex] = bk_num;
+//     }
+//     __syncthreads();
+//     IndexType my_fromIndex = fromIndex;
+//     IndexType my_toIndex = toIndex;
+//     for (IndexType kk = 0; kk < maxNumBond; ++kk){
+//       if (docopy){
+// 	bk_Index = bondIndex[my_fromIndex];
+// 	bk_Neighbor_globalIndex = bondNeighbor_globalIndex[my_fromIndex];
+//       }
+//       __syncthreads();
+//       if (docopy){
+// 	bondIndex[my_toIndex] = bk_Index;
+// 	bondNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+//       }
+//       __syncthreads();
+//       my_fromIndex += bondTopStride;
+//       my_toIndex   += bondTopStride;
+//     }
+//   }
+  
+//   if (maxNumAngle != 0){
+//     if (docopy){
+//       bk_num = numAngle[fromIndex];
+//     }
+//     __syncthreads();
+//     if (docopy){
+//       numAngle[toIndex] = bk_num;
+//     }
+//     __syncthreads();
+//     IndexType my_fromIndex = fromIndex;
+//     IndexType my_toIndex = toIndex;
+//     for (IndexType kk = 0; kk < maxNumAngle; ++kk){
+//       if (docopy){
+// 	bk_Index = angleIndex[my_fromIndex];
+// 	bk_Posi  = anglePosi [my_fromIndex];
+//       }
+//       __syncthreads();
+//       if (docopy){
+// 	angleIndex[my_toIndex] = bk_Index;
+// 	anglePosi [my_toIndex] = bk_Posi ;
+//       }
+//       __syncthreads();
+//       my_fromIndex += bondTopStride;
+//       my_toIndex   += bondTopStride;
+//     }
+//     my_fromIndex = fromIndex;
+//     my_toIndex = toIndex;
+//     for (IndexType kk = 0; kk < maxNumAngle * 2; ++kk){
+//       if (docopy){
+// 	bk_Neighbor_globalIndex = angleNeighbor_globalIndex[my_fromIndex];
+//       }
+//       __syncthreads();
+//       if (docopy){
+// 	angleNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+//       }
+//       __syncthreads();
+//       my_fromIndex += bondTopStride;
+//       my_toIndex   += bondTopStride;
+//     }
+//   }
+
+//   if (maxNumDihedral != 0){
+//     if (docopy){
+//       bk_num = numDihedral[fromIndex];
+//     }
+//     __syncthreads();
+//     if (docopy){
+//       numDihedral[toIndex] = bk_num;
+//     }
+//     __syncthreads();
+//     IndexType my_fromIndex = fromIndex;
+//     IndexType my_toIndex = toIndex;
+//     for (IndexType kk = 0; kk < maxNumDihedral; ++kk){
+//       if (docopy){
+// 	bk_Index = dihedralIndex[my_fromIndex];
+// 	bk_Posi  = dihedralPosi [my_fromIndex];
+//       }
+//       __syncthreads();
+//       if (docopy){
+// 	dihedralIndex[my_toIndex] = bk_Index;
+// 	dihedralPosi [my_toIndex] = bk_Posi ;
+//       }
+//       __syncthreads();
+//       my_fromIndex += bondTopStride;
+//       my_toIndex   += bondTopStride;
+//     }
+//     my_fromIndex = fromIndex;
+//     my_toIndex = toIndex;
+//     for (IndexType kk = 0; kk < maxNumDihedral * 3; ++kk){
+//       if (docopy){
+// 	bk_Neighbor_globalIndex = dihedralNeighbor_globalIndex[my_fromIndex];
+//       }
+//       __syncthreads();
+//       if (docopy){
+// 	dihedralNeighbor_globalIndex[my_toIndex] = bk_Neighbor_globalIndex;
+//       }
+//       __syncthreads();
+//       my_fromIndex += bondTopStride;
+//       my_toIndex   += bondTopStride;
+//     }
+//   }
+// }
 
 
 // __global__ void Parallel::CudaGlobal::

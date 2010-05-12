@@ -152,6 +152,7 @@ namespace Parallel{
     // 			   mdError_t * ptr_de);
     __global__ void 
     rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
+				      const IndexType * bk_numAtomInCell,
 				      IndexType maxNumBond,
 				      IndexType * numBond,
 				      IndexType * bondIndex,
@@ -172,6 +173,7 @@ namespace Parallel{
 				      IndexType bondTopStride);
     __global__ void 
     rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
+				      const IndexType * bk_numAtomInCell,
 				      IndexType maxNumBond,
 				      IndexType * numBond,
 				      IndexType * bondIndex,
