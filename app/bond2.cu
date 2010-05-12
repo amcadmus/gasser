@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
   HarmonicSpringParameter hsparam;
   FENEParameter feneparam;
   hsparam.reinit (10.f, 1.f);
-  feneparam.reinit (30.f, 2.f);
+  feneparam.reinit (30.f, 2.5f);
   mol.addBond (Topology::Bond (0, 1, hsparam));
   mol.addBond (Topology::Bond (0, 1, feneparam));
   sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
@@ -102,6 +102,7 @@ int main(int argc, char * argv[])
   Parallel::SubCellList ghost, innerShell;
   sys.deviceData.buildSubListGhostCell (ghost);
   sys.deviceData.buildSubListInnerShell (innerShell);
+  ghost.add (innerShell);
   relation_buildBdList.build (sys.deviceData, innerShell, ghost);
   Parallel::DeviceBondList dbdlist;
   dbdlist.reinit (sys.deviceData);
@@ -117,13 +118,13 @@ int main(int argc, char * argv[])
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 
-  IndexType stFeq = 1;
+  IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
-    if ((i)%10 == 0){
-      DeviceTimer::tic (item_RemoveTransFreedom);
-      trRemover.remove (sys.deviceData);
-      DeviceTimer::toc (item_RemoveTransFreedom);
-    }
+    // if ((i)%10 == 0){
+    //   DeviceTimer::tic (item_RemoveTransFreedom);
+    //   trRemover.remove (sys.deviceData);
+    //   DeviceTimer::toc (item_RemoveTransFreedom);
+    // }
     dst.clearData ();
     DeviceTimer::tic (item_Integrate);
     vv.step1 (sys.deviceData, dt);

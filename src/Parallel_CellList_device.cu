@@ -905,12 +905,12 @@ rebuildCellList_step1_mapBondTop (const IndexType * forwardMap,
       my_numBond = (numBond[fromIndex]);
       IndexType my_index = fromIndex;
       for (IndexType i = 0; i < my_numBond; ++i){
-	IndexType tmp0 = bondNeighbor_localIndex[my_index];
-	IndexType tmp1 = forwardMap[tmp0];
-	if (tmp1 != MaxIndexValue){
-	  bondNeighbor_localIndex[my_index] = tmp1;
-	}    
-	my_index += bondTopStride;
+      	IndexType tmp0 = bondNeighbor_localIndex[my_index];
+      	IndexType tmp1 = forwardMap[tmp0];
+      	if (tmp1 != MaxIndexValue){
+      	  bondNeighbor_localIndex[my_index] = tmp1;
+      	}    
+      	my_index += bondTopStride;
       }
     }
     __syncthreads();
@@ -1049,12 +1049,12 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
       my_numBond = (numBond[fromIndex]);
       IndexType my_index = fromIndex;
       for (IndexType i = 0; i < my_numBond; ++i){
-	IndexType tmp0 = bondNeighbor_localIndex[my_index];
-	IndexType tmp1 = forwardMap[tmp0];
-	if (tmp1 != MaxIndexValue){
-	  bondNeighbor_localIndex[my_index] = tmp1;
-	}
-	my_index += bondTopStride;
+      	IndexType tmp0 = bondNeighbor_localIndex[my_index];
+      	IndexType tmp1 = forwardMap[tmp0];
+      	if (tmp1 != MaxIndexValue){
+      	  bondNeighbor_localIndex[my_index] = tmp1;
+      	}
+      	my_index += bondTopStride;
       }
     }
     __syncthreads();

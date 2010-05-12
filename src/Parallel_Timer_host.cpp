@@ -63,13 +63,13 @@ printRecord (FILE * fp)
 
   float totalPercent (0);
   totalPercent += printDeviceItem (fp, item_BuildCellList);
+  totalPercent += printDeviceItem (fp, item_BuildBondList);
   totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
   totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
   totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
   totalPercent += printDeviceItem (fp, item_BondedInteraction);
   totalPercent += printDeviceItem (fp, item_BondedInterStatistic);
   totalPercent += printDeviceItem (fp, item_Integrate);
-  totalPercent += printDeviceItem (fp, item_BuildBondList);
   totalPercent += printDeviceItem (fp, item_DataIO);
 
   totalPercent += printHostItem (fp, item_Redistribute);
