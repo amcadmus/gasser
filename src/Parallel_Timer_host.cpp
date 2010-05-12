@@ -1,4 +1,5 @@
 #include "Parallel_Timer.h"
+// #include "common.h"
 #include <stdlib.h>
 #include "compile_error_mixcode.h"
 
@@ -12,31 +13,35 @@ char     Parallel::Timer::hostWords[SizeOfTimeRecordArray][MaxWordsLength] = {{'
 char	 Parallel::Timer::hostSpace[SizeOfTimeRecordArray][MaxWordsLength];
 
 
-void Parallel::Timer::
+float Parallel::Timer::
 printDeviceItem (FILE * fp,
 		 timeItem_t item)
 {
+  float tmp;
   fprintf(fp, "# %s:%s%1.3es   ( % 3.1f% )\n",
 	  deviceWords[item],
 	  deviceSpace[item],
 	  deviceRecord[item] * 0.001,
-	  deviceRecord[item] * 100 * 0.001 /
-	  hostRecordUser[item_Total - ParallelItemShift]);
+	  tmp = (deviceRecord[item] * 100 * 0.001 /
+		 hostRecordUser[item_Total - ParallelItemShift]));
+  return tmp;
 }
 
-void Parallel::Timer::
+float Parallel::Timer::
 printHostItem (FILE * fp,
 	       timeItem_t item)
 {
+  float tmp;
   fprintf(fp, "# %s:%s%1.3es (User), %1.3es (Real)  (% 3.1f%, % 3.1f% )\n",
 	  hostWords[item - ParallelItemShift],
 	  hostSpace[item - ParallelItemShift],
 	  hostRecordUser[item - ParallelItemShift],
 	  hostRecordReal[item - ParallelItemShift],
-	  hostRecordUser[item - ParallelItemShift] * 100 /
-	  hostRecordUser[item_Total - ParallelItemShift],
+	  tmp = (hostRecordUser[item - ParallelItemShift] * 100 /
+		 hostRecordUser[item_Total - ParallelItemShift]),
 	  hostRecordReal[item - ParallelItemShift] * 100 /
 	  hostRecordUser[item_Total - ParallelItemShift]);
+  return tmp;
 }
 
 void Parallel::Timer::
@@ -56,20 +61,29 @@ printRecord (FILE * fp)
   if (!hostTimerInited && !deviceTimerInited) return;
   if (hostRecordUser[item_Total - ParallelItemShift] == 0) return;
 
-  printDeviceItem (fp, item_BuildCellList);
-  printDeviceItem (fp, item_ApplyBondaryCondition);
-  printDeviceItem (fp, item_NonBondedInteraction);
-  printDeviceItem (fp, item_NonBondedInterStatistic);
-  printDeviceItem (fp, item_Integrate);
-  printDeviceItem (fp, item_BuildBondList);
+  float totalPercent (0);
+  totalPercent += printDeviceItem (fp, item_BuildCellList);
+  totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
+  totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
+  totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
+  totalPercent += printDeviceItem (fp, item_BondedInteraction);
+  totalPercent += printDeviceItem (fp, item_BondedInterStatistic);
+  totalPercent += printDeviceItem (fp, item_Integrate);
+  totalPercent += printDeviceItem (fp, item_BuildBondList);
+  totalPercent += printDeviceItem (fp, item_DataIO);
 
-  printHostItem (fp, item_Redistribute);
+  totalPercent += printHostItem (fp, item_Redistribute);
   printHostItem (fp, item_Redistribute_Data);
   printHostItem (fp, item_Redistribute_Data0);
   printHostItem (fp, item_Redistribute_Transfer);
   printHostItem (fp, item_Redistribute_DHCopy);
-  printHostItem (fp, item_TransferGhost);
+  totalPercent += printHostItem (fp, item_TransferGhost);
 
+  printf ("# Total percentage:");
+  for (int i = 0; i < PrintStartPosition - 16; ++i){
+    printf (" ");
+  }
+  printf ("%3.1f \%\n", totalPercent);
   printTotalTime (fp);
 }
 

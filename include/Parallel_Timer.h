@@ -52,10 +52,10 @@ namespace Parallel{
     };
     typedef enum timeItem timeItem_t;
 
-    void printRecord (FILE * fp);
-    void printDeviceItem (FILE * fp, timeItem_t item);
-    void printHostItem   (FILE * fp, timeItem_t item);
-    void printTotalTime  (FILE * fp);
+    void  printRecord (FILE * fp);
+    float printDeviceItem (FILE * fp, timeItem_t item);
+    float printHostItem   (FILE * fp, timeItem_t item);
+    void  printTotalTime  (FILE * fp);
 
     namespace HostTimer {
       extern Stopwatch watch [SizeOfTimeRecordArray];
@@ -71,7 +71,8 @@ namespace Parallel{
     namespace DeviceTimer{
       extern cudaEvent_t start [SizeOfTimeRecordArray];
       extern cudaEvent_t stop  [SizeOfTimeRecordArray];
-      void init ();
+      void
+ init ();
       void finalize ();
       void reset ();
       void tic (timeItem_t timeItem,

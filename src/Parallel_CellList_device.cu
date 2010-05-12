@@ -1765,7 +1765,7 @@ pack (const DeviceCellListedMDData & ddata,
   for (IndexType i = 1; i < numCell+1; ++i){
     hcellStartIndex[i] = hcellStartIndex[i-1] + numAtomInCell[hcellIndex[i-1]];
   }
-  IndexType & expectedNumData (cellStartIndex[numCell]);
+  IndexType & expectedNumData (hcellStartIndex[numCell]);
   cudaMemcpy (cellStartIndex, hcellStartIndex, (numCell+1) * sizeof(IndexType),
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("DeviceTransferPackage::pack cpy cellStartIndex to device");
