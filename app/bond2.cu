@@ -102,7 +102,7 @@ int main(int argc, char * argv[])
   Parallel::SubCellList ghost, innerShell;
   sys.deviceData.buildSubListGhostCell (ghost);
   sys.deviceData.buildSubListInnerShell (innerShell);
-  relation_buildBdList.build (sys.deviceData, ghost, innerShell);
+  relation_buildBdList.build (sys.deviceData, innerShell, ghost);
   Parallel::DeviceBondList dbdlist;
   dbdlist.reinit (sys.deviceData);
   buildDeviceBondList (sys.deviceData, relation, dbdlist);
@@ -117,7 +117,7 @@ int main(int argc, char * argv[])
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 
-  IndexType stFeq = 10;
+  IndexType stFeq = 1;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);

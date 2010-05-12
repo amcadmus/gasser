@@ -459,6 +459,7 @@ namespace Parallel{
 			   const IndexType length1,
 			   IndexType * numNeighbor,
 			   IndexType * neighborCellIndex,
+			   CoordType * neighborShift,
 			   const IndexType stride);
 
   }

@@ -85,35 +85,49 @@ int main(int argc, char * argv[])
   // sysTop.addMolecules (mol, 10);
   // sysTop.addMolecules (mol1, sys.numAtomInGroFile(filename) - 20);
 
+  // // conf.bond2.gro
+  // Topology::System sysTop;
+  // LennardJones6_12Parameter ljparam;
+  // ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
+  // sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  // Topology::Molecule mol;
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // HarmonicSpringParameter hsparam;
+  // hsparam.reinit (10.f, 1.2f);
+  // mol.addBond (Topology::Bond (0, 1, hsparam));
+  // hsparam.reinit (11.f, 1.f);
+  // mol.addBond (Topology::Bond (0, 1, hsparam));
+  // mol.addBond (Topology::Bond (1, 2, hsparam));
+  // mol.addBond (Topology::Bond (2, 3, hsparam));
+  // mol.addBond (Topology::Bond (3, 4, hsparam));
+  // mol.addBond (Topology::Bond (4, 5, hsparam));
+  // AngleHarmonicParameter angleparam;
+  // angleparam.reinit (10, M_PI / 2.);
+  // mol.addAngle (Topology::Angle (0, 1, 2, angleparam));
+  // angleparam.reinit (11, M_PI / 2.);
+  // mol.addAngle (Topology::Angle (0, 1, 2, angleparam));
+  // mol.addAngle (Topology::Angle (1, 2, 3, angleparam));
+  // mol.addAngle (Topology::Angle (2, 3, 4, angleparam));
+  // mol.addAngle (Topology::Angle (3, 4, 5, angleparam));
+  // sysTop.addMolecules (mol, 2);
+
   Topology::System sysTop;
-  LennardJones6_12Parameter ljparam;
-  ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  LennardJones6_12Parameter ljparam;
+  ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   HarmonicSpringParameter hsparam;
-  hsparam.reinit (10.f, 1.2f);
+  hsparam.reinit (10.f, .7f);
   mol.addBond (Topology::Bond (0, 1, hsparam));
-  hsparam.reinit (11.f, 1.f);
-  mol.addBond (Topology::Bond (0, 1, hsparam));
-  mol.addBond (Topology::Bond (1, 2, hsparam));
-  mol.addBond (Topology::Bond (2, 3, hsparam));
-  mol.addBond (Topology::Bond (3, 4, hsparam));
-  mol.addBond (Topology::Bond (4, 5, hsparam));
-  AngleHarmonicParameter angleparam;
-  angleparam.reinit (10, M_PI / 2.);
-  mol.addAngle (Topology::Angle (0, 1, 2, angleparam));
-  angleparam.reinit (11, M_PI / 2.);
-  mol.addAngle (Topology::Angle (0, 1, 2, angleparam));
-  mol.addAngle (Topology::Angle (1, 2, 3, angleparam));
-  mol.addAngle (Topology::Angle (2, 3, 4, angleparam));
-  mol.addAngle (Topology::Angle (3, 4, 5, angleparam));
-  sysTop.addMolecules (mol, 2);
+  // mol.addBond (Topology::Bond (0, 1, hsparam));
+  sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
   
   sys.init (filename, sysTop);
 
@@ -215,10 +229,14 @@ int main(int argc, char * argv[])
       fflush (stdout);
     }
     
-    if ((i+1)%1 == 0){
+    if ((i+1)%100 == 0){
       sys.updateHost ();  
       sys.collectLocalData ();
       sys.globalHostData.writeData_xtcFile (i, dt*i);
+      // printf ("%e %e %e\n",
+      // 	      sys.globalHostData.cptr_coordinate()[1].x,
+      // 	      sys.globalHostData.cptr_coordinate()[1].y,
+      // 	      sys.globalHostData.cptr_coordinate()[1].z);
     }
   }
   
