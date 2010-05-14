@@ -52,7 +52,6 @@ private:
   bool findAngle (const Topology::Angle & ag, IndexType & i);
   void reallocInteraction ();
   void reallocParameter ();
-  void printEverything ();
   void sortBond ();
   void sortAngle ();
 public:
@@ -69,6 +68,7 @@ public:
   ~SystemBondedInteraction ();
   void reinit (const Topology::System & sysTop);
   void clear ();
+  void printEverything ();
 public:
   bool hasBond () const {return hasBond_;}
   bool hasAngle () const {return hasAngle_;}

@@ -309,13 +309,13 @@ redistributeHost ()
 
   xsendData0.build ();
   xrecvData0.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (xsendData0);
   recver.registerBuff (xrecvData0);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest0, 1);
@@ -343,13 +343,13 @@ redistributeHost ()
 
   xsendData1.build ();
   xrecvData1.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (xsendData1);
   recver.registerBuff (xrecvData1);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (xdest1, 3);
@@ -379,13 +379,13 @@ redistributeHost ()
 
   ysendData0.build ();
   yrecvData0.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (ysendData0);
   recver.registerBuff (yrecvData0);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest0, 1);
@@ -413,13 +413,13 @@ redistributeHost ()
 
   ysendData1.build ();
   yrecvData1.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (ysendData1);
   recver.registerBuff (yrecvData1);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (ydest1, 3);
@@ -449,13 +449,13 @@ redistributeHost ()
 
   zsendData0.build ();
   zrecvData0.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (zsendData0);
   recver.registerBuff (zrecvData0);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest0, 1);
@@ -483,13 +483,13 @@ redistributeHost ()
 
   zsendData1.build ();
   zrecvData1.build ();
+  HostTimer::tic (item_Redistribute_Data);
   sender.clearRegistered();
   recver.clearRegistered();
   sender.registerBuff (zsendData1);
   recver.registerBuff (zrecvData1);
   sender.build ();
   recver.build ();
-  HostTimer::tic (item_Redistribute_Data);
   HostTimer::toc (item_Redistribute_Data);
   HostTimer::tic (item_Redistribute_Transfer);
   sender.Isend (zdest1, 3);

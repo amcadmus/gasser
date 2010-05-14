@@ -91,6 +91,7 @@ int main(int argc, char * argv[])
   sys.deviceData.applyPeriodicBondaryCondition ();
   SystemNonBondedInteraction sysNbInter (sysTop);
   SystemBondedInteraction    sysBdInter (sysTop);
+  if (Parallel::Interface::myRank() == 0) sysBdInter.printEverything ();
 
   Parallel::InteractionEngine interEng (sys.deviceData);
   interEng.registNonBondedInteraction (sysNbInter);
@@ -117,18 +118,18 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.0001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
-  printf ("# numCell: %d %d %d\n",
-	  sys.deviceData.getNumCell().x,
-	  sys.deviceData.getNumCell().y,
-	  sys.deviceData.getNumCell().z);
-  printf ("# frameUp: %f %f %f\n",
-	  sys.deviceData.getFrameUp().x,
-	  sys.deviceData.getFrameUp().y,
-	  sys.deviceData.getFrameUp().z);
-  printf ("# frameLow: %f %f %f\n",
-	  sys.deviceData.getFrameLow().x,
-	  sys.deviceData.getFrameLow().y,
-	  sys.deviceData.getFrameLow().z);  
+  // printf ("# numCell: %d %d %d\n",
+  // 	  sys.deviceData.getNumCell().x,
+  // 	  sys.deviceData.getNumCell().y,
+  // 	  sys.deviceData.getNumCell().z);
+  // printf ("# frameUp: %f %f %f\n",
+  // 	  sys.deviceData.getFrameUp().x,
+  // 	  sys.deviceData.getFrameUp().y,
+  // 	  sys.deviceData.getFrameUp().z);
+  // printf ("# frameLow: %f %f %f\n",
+  // 	  sys.deviceData.getFrameLow().x,
+  // 	  sys.deviceData.getFrameLow().y,
+  // 	  sys.deviceData.getFrameLow().z);  
   IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){

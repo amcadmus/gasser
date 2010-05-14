@@ -706,20 +706,20 @@ calBondInteraction (const CoordType * coord,
     shortestImage (boxSize.z, boxSizei.z, &diffz);
     if (bondedInteractionType[my_bondIndex] == mdForceFENE){
       ScalorType rinf2 = bondedInteractionParameter
-	  [bondedInteractionParameterPosition[my_bondIndex] + 1];
+    	  [bondedInteractionParameterPosition[my_bondIndex] + 1];
       ScalorType diff2 = diffx*diffx + diffy*diffy + diffz*diffz;
       if (diff2 > rinf2){
-	*ptr_de = mdErrorBreakFENEBond;
-	errsrc[0] = target_coord.x;
-	errsrc[1] = target_coord.y;
-	errsrc[2] = target_coord.z;
-	errsrc[3] = ref.x;
-	errsrc[4] = ref.y;
-	errsrc[5] = ref.z;
-	errsrc[6] = diffx;
-	errsrc[7] = diffy;
-	errsrc[8] = diffz;
-	continue;
+    	*ptr_de = mdErrorBreakFENEBond;
+    	errsrc[0] = target_coord.x;
+    	errsrc[1] = target_coord.y;
+    	errsrc[2] = target_coord.z;
+    	errsrc[3] = ref.x;
+    	errsrc[4] = ref.y;
+    	errsrc[5] = ref.z;
+    	errsrc[6] = diffx;
+    	errsrc[7] = diffy;
+    	errsrc[8] = diffz;
+    	continue;
       }
     }	  
     bondForce (bondedInteractionType[my_bondIndex],

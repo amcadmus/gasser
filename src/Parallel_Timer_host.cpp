@@ -1,6 +1,8 @@
 #include "Parallel_Timer.h"
+#include "Parallel_Interface.h"
 // #include "common.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include "compile_error_mixcode.h"
 
 using namespace Parallel::Timer;
@@ -61,31 +63,42 @@ printRecord (FILE * fp)
   if (!hostTimerInited && !deviceTimerInited) return;
   if (hostRecordUser[item_Total - ParallelItemShift] == 0) return;
 
-  float totalPercent (0);
-  totalPercent += printDeviceItem (fp, item_BuildCellList);
-  totalPercent += printDeviceItem (fp, item_BuildBondList);
-  totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
-  totalPercent += printDeviceItem (fp, item_RemoveTransFreedom);
-  totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
-  totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
-  totalPercent += printDeviceItem (fp, item_BondedInteraction);
-  totalPercent += printDeviceItem (fp, item_BondedInterStatistic);
-  totalPercent += printDeviceItem (fp, item_Integrate);
-  totalPercent += printDeviceItem (fp, item_DataIO);
+  for (int i = 0; i < Parallel::Interface::numProc(); ++i){
+    if (i == Parallel::Interface::myRank()){
+      for (unsigned j = 0; j < PrintStartPosition + 32; ++j){
+	// fprintf (fp, "##################################################\n");
+	fputc ('#', fp);
+      }
+      fputc ('\n', fp);
+      fprintf (fp, "# Summary for efficiency, rank %d\n", i);      
+      float totalPercent (0);
+      totalPercent += printDeviceItem (fp, item_BuildCellList);
+      totalPercent += printDeviceItem (fp, item_BuildBondList);
+      totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
+      totalPercent += printDeviceItem (fp, item_RemoveTransFreedom);
+      totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
+      totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
+      totalPercent += printDeviceItem (fp, item_BondedInteraction);
+      totalPercent += printDeviceItem (fp, item_BondedInterStatistic);
+      totalPercent += printDeviceItem (fp, item_Integrate);
+      totalPercent += printDeviceItem (fp, item_DataIO);
 
-  totalPercent += printHostItem (fp, item_Redistribute);
-  printHostItem (fp, item_Redistribute_Data);
-  printHostItem (fp, item_Redistribute_Data0);
-  printHostItem (fp, item_Redistribute_Transfer);
-  printHostItem (fp, item_Redistribute_DHCopy);
-  totalPercent += printHostItem (fp, item_TransferGhost);
+      totalPercent += printHostItem (fp, item_Redistribute);
+      printHostItem (fp, item_Redistribute_Data);
+      printHostItem (fp, item_Redistribute_Data0);
+      printHostItem (fp, item_Redistribute_Transfer);
+      printHostItem (fp, item_Redistribute_DHCopy);
+      totalPercent += printHostItem (fp, item_TransferGhost);
 
-  fprintf (fp, "# Total percentage:");
-  for (int i = 0; i < PrintStartPosition - 16; ++i){
-    fprintf (fp, " ");
+      fprintf (fp, "# Total percentage:");
+      for (int i = 0; i < PrintStartPosition - 16; ++i){
+	fprintf (fp, " ");
+      }
+      fprintf (fp, "%3.1f \%\n", totalPercent);
+      printTotalTime (fp);
+    }
+    Parallel::Interface::barrier();
   }
-  fprintf (fp, "%3.1f \%\n", totalPercent);
-  printTotalTime (fp);
 }
 
 void Parallel::Timer::HostTimer::

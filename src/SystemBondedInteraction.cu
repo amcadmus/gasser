@@ -228,8 +228,6 @@ reinit (const Topology::System & sysTop)
     bondedParameterPosition[numBondedInteraction] = numBondedParameter;
     sortAngle();
   }
-  
-  printEverything();
 }
 
 void SystemBondedInteraction::
