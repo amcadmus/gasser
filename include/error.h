@@ -20,7 +20,8 @@ enum mdError{
   mdSuccess			= 0,
   mdErrorShortCellList		= 1,
   mdErrorShortNeighborList	= 2,
-  mdErrorOverFlowCellIdx	= 3
+  mdErrorOverFlowCellIdx	= 3,
+  mdErrorBreakFENEBond		= 4
 };
 typedef enum mdError mdError_t;
 

@@ -299,6 +299,7 @@ public:
     void rebuild ();
     void rebuild (DeviceBondList & dbdlist);
     void applyPeriodicBondaryCondition ();
+    void applyPeriodicBondaryConditionOnGhostCells ();
 public:
     void clearData (const SubCellList & subList);
 public:

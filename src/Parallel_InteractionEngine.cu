@@ -605,8 +605,10 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
-	  err.ptr_de);
+	  err.ptr_de,
+	  err.ptr_dscalor);
   checkCUDAError ("InteractionEngine::applyBondedInteraction");
+  err.check ("InteractionEngine::applyBondedInteraction no st");
 }
 
 
@@ -637,8 +639,10 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
 	  sum_b_vxx.getBuff(),
 	  sum_b_vyy.getBuff(),
 	  sum_b_vzz.getBuff(),
-	  err.ptr_de);
+	  err.ptr_de,
+	  err.ptr_dscalor);
   checkCUDAError ("InteractionEngine::applyBondedInteraction");
+  err.check ("InteractionEngine::applyBondedInteraction with st");
   sum_b_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_BondedPotential, 0);
   sum_b_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialXX, 0);
   sum_b_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
@@ -669,7 +673,8 @@ calBondInteraction (const CoordType * coord,
 		    ScalorType * forcx,
 		    ScalorType * forcy,
 		    ScalorType * forcz,
-		    mdError_t * ptr_de)
+		    mdError_t * ptr_de,
+		    ScalorType * errsrc)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -699,6 +704,24 @@ calBondInteraction (const CoordType * coord,
     shortestImage (boxSize.x, boxSizei.x, &diffx);
     shortestImage (boxSize.y, boxSizei.y, &diffy);
     shortestImage (boxSize.z, boxSizei.z, &diffz);
+    if (bondedInteractionType[my_bondIndex] == mdForceFENE){
+      ScalorType rinf2 = bondedInteractionParameter
+	  [bondedInteractionParameterPosition[my_bondIndex] + 1];
+      ScalorType diff2 = diffx*diffx + diffy*diffy + diffz*diffz;
+      if (diff2 > rinf2){
+	*ptr_de = mdErrorBreakFENEBond;
+	errsrc[0] = target_coord.x;
+	errsrc[1] = target_coord.y;
+	errsrc[2] = target_coord.z;
+	errsrc[3] = ref.x;
+	errsrc[4] = ref.y;
+	errsrc[5] = ref.z;
+	errsrc[6] = diffx;
+	errsrc[7] = diffy;
+	errsrc[8] = diffz;
+	continue;
+      }
+    }	  
     bondForce (bondedInteractionType[my_bondIndex],
 	       &bondedInteractionParameter
 	       [bondedInteractionParameterPosition[my_bondIndex]],
@@ -731,18 +754,20 @@ calBondInteraction (const CoordType * coord,
 		    ScalorType * statistic_b_buff1,
 		    ScalorType * statistic_b_buff2,
 		    ScalorType * statistic_b_buff3,
-		    mdError_t * ptr_de)
+		    mdError_t * ptr_de,
+		    ScalorType * errsrc)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
   IndexType ii = tid + bid * blockDim.x;
+  
+  IndexType my_numBond = numBond[ii];
+  if (__all(my_numBond == 0)) return;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
 
   extern __shared__ volatile ScalorType buff[];
   buff[tid] = 0.f;
   __syncthreads();
-  
-  IndexType my_numBond = numBond[ii];
-  IndexType this_numAtomInCell = numAtomInCell[bid];
   
   ScalorType fsumx = 0.0f;
   ScalorType fsumy = 0.0f;
@@ -753,11 +778,9 @@ calBondInteraction (const CoordType * coord,
     CoordType ref = coord[ii];
     for (IndexType jj = 0; jj < my_numBond; ++jj){
       IndexType list_index = bondListStride * jj + ii;
-      IndexType top_index = bondTopStride * jj + ii;
-      // IndexType list_index = Parallel::DeviceBondList_cudaDevice::indexConvert
-      // 	  (bondStride, ii, jj);
+      IndexType top_index  = bondTopStride  * jj + ii;
       IndexType target_index = bondNeighbor_localIndex[list_index];
-      IndexType my_bondIndex   = bondIndex[top_index];
+      IndexType my_bondIndex = bondIndex[top_index];
       CoordType target_coord = tex1Dfetch (global_texRef_interaction_coord, target_index);
       ScalorType diffx, diffy, diffz;
       ScalorType fx, fy, fz, dp;
@@ -770,6 +793,28 @@ calBondInteraction (const CoordType * coord,
       shortestImage (boxSize.x, boxSizei.x, &diffx);
       shortestImage (boxSize.y, boxSizei.y, &diffy);
       shortestImage (boxSize.z, boxSizei.z, &diffz);
+      if (bondedInteractionType[my_bondIndex] == mdForceFENE){
+	ScalorType rinf2 = bondedInteractionParameter
+	    [bondedInteractionParameterPosition[my_bondIndex] + 1];
+	ScalorType diff2 = diffx*diffx + diffy*diffy + diffz*diffz;
+	if (diff2 > rinf2){
+	  *ptr_de = mdErrorBreakFENEBond;
+	  errsrc[0] = target_coord.x;
+	  errsrc[1] = target_coord.y;
+	  errsrc[2] = target_coord.z;
+	  errsrc[3] = ref.x;
+	  errsrc[4] = ref.y;
+	  errsrc[5] = ref.z;
+	  errsrc[6] = diffx;
+	  errsrc[7] = diffy;
+	  errsrc[8] = diffz;
+	  errsrc[9] = my_numBond;
+	  errsrc[10] = this_numAtomInCell;
+	  errsrc[11] = bid;
+	  errsrc[12] = tid;
+	  continue;
+	}
+      }	  
       bondForcePoten (bondedInteractionType[my_bondIndex],
 		      &bondedInteractionParameter
 		      [bondedInteractionParameterPosition[my_bondIndex]],
@@ -788,7 +833,8 @@ calBondInteraction (const CoordType * coord,
     forcy[ii] += fsumy;
     forcz[ii] += fsumz;
   }
-  
+
+  __syncthreads();
   buff[tid] = myPoten * 0.5f;
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];

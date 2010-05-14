@@ -133,9 +133,9 @@ initCellStructure (const ScalorType & rlist_,
 	  mass,
 	  charge,
 	  err.ptr_de);
-  checkCUDAError ("Parallel::formCellStructure");
+  checkCUDAError ("DeviceCellListedMDData::formCellStructure");
   err.updateHost();
-  err.check ("Parallel::formCellSturcture");
+  err.check ("DeviceCellListedMDData::formCellSturcture");
 }
 
 void Parallel::DeviceCellListedMDData::
@@ -149,7 +149,7 @@ rebuild ()
   cudaMalloc ((void**)&bk_numAtomInCell, totalNumCell * sizeof(IndexType));
   cudaMemcpy (bk_numAtomInCell, numAtomInCell, totalNumCell * sizeof(IndexType),
 	      cudaMemcpyDeviceToDevice);
-  checkCUDAError ("Parallel::rebuild malloc backup");
+  checkCUDAError ("DeviceCellListedMDData::rebuild malloc backup");
 
   if (getMaxNumBond() == 0 &&
       getMaxNumAngle() == 0 &&
@@ -174,9 +174,9 @@ rebuild ()
 	    mass,
 	    charge,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step1");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step1");
     err.updateHost();
-    err.check ("Parallel::rebuild step1");
+    err.check ("DeviceCellListedMDData::rebuild step1");
     Parallel::CudaGlobal::rebuildCellList_step2
 	<<<gridDim, numThreadBlock, numThreadBlock*sizeof(IndexType)*3>>> (
 	    numAtomInCell,
@@ -193,9 +193,9 @@ rebuild ()
 	    mass,
 	    charge,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step2");
     err.updateHost();
-    err.check ("Parallel::rebuild step2");  
+    err.check ("DeviceCellListedMDData::rebuild step2");  
   }
   else{
     Parallel::CudaGlobal::rebuildCellList_step1
@@ -218,10 +218,12 @@ rebuild ()
 	    mass,
 	    charge,
 	    forwardMap_step1,
-	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step1");
+	    err.ptr_de,
+	    err.ptr_dindex,
+	    err.ptr_dscalor);
+    checkCUDAError ("DeviceCellListedMDData::rebuild step1");
     err.updateHost();
-    err.check ("Parallel::rebuild step1");
+    err.check ("DeviceCellListedMDData::rebuild step1");
     Parallel::CudaGlobal::rebuildCellList_step1_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step1,
@@ -241,7 +243,7 @@ rebuild ()
 	    dptr_dihedralPosi(),
 	    dptr_angleNeighbor_globalIndex(),
 	    bondTopStride());
-    checkCUDAError ("Parallel::rebuild map top step1");
+    checkCUDAError ("DeviceCellListedMDData::rebuild map top step1");
 
     cudaMemcpy (bk_numAtomInCell, dptr_numAtomInCell(),
 		totalNumCell * sizeof(IndexType), cudaMemcpyDeviceToDevice);
@@ -263,9 +265,9 @@ rebuild ()
 	    charge,
 	    forwardMap_step2,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step2");
     err.updateHost();
-    err.check ("Parallel::rebuild step2");
+    err.check ("DeviceCellListedMDData::rebuild step2");
     Parallel::CudaGlobal::rebuildCellList_step2_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step2,
@@ -285,11 +287,11 @@ rebuild ()
 	    dptr_dihedralPosi(),
 	    dptr_angleNeighbor_globalIndex(),
 	    bondTopStride());
-    checkCUDAError ("Parallel::rebuild map top step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild map top step2");
   }
 
   cudaFree (bk_numAtomInCell);
-  checkCUDAError ("Parallel::rebuild free backup");  
+  checkCUDAError ("DeviceCellListedMDData::rebuild free backup");  
 }
 
 
@@ -304,7 +306,7 @@ rebuild (DeviceBondList & dbdlist)
   cudaMalloc ((void**)&bk_numAtomInCell, totalNumCell * sizeof(IndexType));
   cudaMemcpy (bk_numAtomInCell, numAtomInCell, totalNumCell * sizeof(IndexType),
 	      cudaMemcpyDeviceToDevice);
-  checkCUDAError ("Parallel::rebuild malloc backup");
+  checkCUDAError ("DeviceCellListedMDData::rebuild malloc backup");
 
   if (getMaxNumBond() == 0 &&
       getMaxNumAngle() == 0 &&
@@ -329,9 +331,9 @@ rebuild (DeviceBondList & dbdlist)
 	    mass,
 	    charge,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step1");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step1");
     err.updateHost();
-    err.check ("Parallel::rebuild step1");
+    err.check ("DeviceCellListedMDData::rebuild step1");
     Parallel::CudaGlobal::rebuildCellList_step2
 	<<<gridDim, numThreadBlock, numThreadBlock*sizeof(IndexType)*3>>> (
 	    numAtomInCell,
@@ -348,9 +350,9 @@ rebuild (DeviceBondList & dbdlist)
 	    mass,
 	    charge,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step2");
     err.updateHost();
-    err.check ("Parallel::rebuild step2");
+    err.check ("DeviceCellListedMDData::rebuild step2");
   }
   else {
     Parallel::CudaGlobal::rebuildCellList_step1
@@ -373,10 +375,12 @@ rebuild (DeviceBondList & dbdlist)
 	    mass,
 	    charge,
 	    forwardMap_step1,
-	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step1");
+	    err.ptr_de,
+	    err.ptr_dindex,
+	    err.ptr_dscalor);
+    checkCUDAError ("DeviceCellListedMDData::rebuild step1");
     err.updateHost();
-    err.check ("Parallel::rebuild step1");
+    err.check ("DeviceCellListedMDData::rebuild step1");
     Parallel::CudaGlobal::rebuildCellList_step1_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step1,
@@ -399,7 +403,7 @@ rebuild (DeviceBondList & dbdlist)
 	    dptr_angleNeighbor_globalIndex(),
 	    dbdlist.dptr_dihedralNeighbor_localIndex(),
 	    bondTopStride());
-    checkCUDAError ("Parallel::rebuild map top step1");
+    checkCUDAError ("DeviceCellListedMDData::rebuild map top step1");
 
     cudaMemcpy (bk_numAtomInCell, dptr_numAtomInCell(),
 		totalNumCell * sizeof(IndexType), cudaMemcpyDeviceToDevice);
@@ -421,9 +425,9 @@ rebuild (DeviceBondList & dbdlist)
 	    charge,
 	    forwardMap_step2,
 	    err.ptr_de);
-    checkCUDAError ("Parallel::rebuild step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild step2");
     err.updateHost();
-    err.check ("Parallel::rebuild step2");
+    err.check ("DeviceCellListedMDData::rebuild step2");
     Parallel::CudaGlobal::rebuildCellList_step2_mapBondTop
 	<<<gridDim, numThreadBlock>>> (
 	    forwardMap_step2,
@@ -446,11 +450,11 @@ rebuild (DeviceBondList & dbdlist)
 	    dptr_angleNeighbor_globalIndex(),
 	    dbdlist.dptr_dihedralNeighbor_localIndex(),
 	    bondTopStride());
-    checkCUDAError ("Parallel::rebuild map top step2");
+    checkCUDAError ("DeviceCellListedMDData::rebuild map top step2");
   }
 
   cudaFree (bk_numAtomInCell);
-  checkCUDAError ("Parallel::rebuild free backup");  
+  checkCUDAError ("DeviceCellListedMDData::rebuild free backup");  
 }
 
   
@@ -801,7 +805,9 @@ rebuildCellList_step1 (const VectorType frameLow,
 		       ScalorType * mass,
 		       ScalorType * charge,
 		       IndexType * forwardMap,
-		       mdError_t * ptr_de)
+		       mdError_t * ptr_de,
+		       IndexType * erridx,
+		       ScalorType * errsrc)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -829,6 +835,30 @@ rebuildCellList_step1 (const VectorType frameLow,
 	 targetCelly >= numCell.y || 
 	 targetCellz >= numCell.z)){
       *ptr_de = mdErrorOverFlowCellIdx;
+      if (targetCellx >= numCell.x){
+	*erridx = targetCellx;
+	*errsrc = coord[ii].x;
+	errsrc[1] = 0;
+	errsrc[2] = frameLow.x;
+	errsrc[3] = dcellxi;
+	errsrc[4] = numCell.x;
+      }
+      if (targetCelly >= numCell.y) {
+	*erridx = targetCelly;
+	*errsrc = coord[ii].y;
+	errsrc[1] = 1;
+	errsrc[2] = frameLow.y;
+	errsrc[3] = dcellyi;
+	errsrc[4] = numCell.y;
+      }
+      if (targetCellz >= numCell.z) {
+	*erridx = targetCellz;      
+	*errsrc = coord[ii].z;
+	errsrc[1] = 2;
+	errsrc[2] = frameLow.z;
+	errsrc[3] = dcellzi;
+	errsrc[4] = numCell.z;
+      }
       return;
     }
     IndexType cellid = CudaDevice::D3toD1
@@ -3408,6 +3438,101 @@ applyPeriodicBondaryCondition ()
 	  coordNoi);
   checkCUDAError ("DeviceCellListedMDData::applyPeriodicBondaryCondition");
 }
+
+__global__ void Parallel::CudaGlobal::
+normalizeSystemOnGhost_CellListed (RectangularBox box,
+				   const IndexType * numAtomInCell,
+				   const IntVectorType numCell,
+				   const IndexType divideLevel,
+				   const int nx,
+				   const int ny,
+				   const int nz,
+				   const int rankx,
+				   const int ranky,
+				   const int rankz,
+				   CoordType * coord,
+				   CoordNoiType * coordNoi)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  
+  IndexType ix, iy, iz;
+  Parallel::CudaDevice::D1toD3 (numCell, bid, ix, iy, iz);
+
+  if (rankx == 0 && ix < divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].x += box.size.x;
+      coordNoi[ii].x -= 1;
+    }
+  }
+  if (rankx == nx - 1 && ix >= numCell.x - divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].x -= box.size.x;
+      coordNoi[ii].x += 1;
+    }
+  }
+  if (ranky == 0 && iy < divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].y += box.size.y;
+      coordNoi[ii].y -= 1;
+    }
+  }
+  if (ranky == ny - 1 && iy >= numCell.y - divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].y -= box.size.y;
+      coordNoi[ii].y += 1;
+    }
+  }
+  if (rankz == 0 && iz < divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].z += box.size.z;
+      coordNoi[ii].z -= 1;
+    }
+  }
+  if (rankz == nz - 1 && iz >= numCell.z - divideLevel){
+    if (tid < this_numAtomInCell){
+      coord[ii].z -= box.size.z;
+      coordNoi[ii].z += 1;
+    }
+  }
+  // if (tid < numAtomInCell[bid]) {
+  //   RectangularBoxGeometry::moveParticleToBox_1image (
+  // 	box.size.x, &(coord[ii].x), &(coordNoi[ii].x));
+  //   RectangularBoxGeometry::moveParticleToBox_1image (
+  // 	box.size.y, &(coord[ii].y), &(coordNoi[ii].y));
+  //   RectangularBoxGeometry::moveParticleToBox_1image (
+  // 	box.size.z, &(coord[ii].z), &(coordNoi[ii].z));
+  // }
+}
+
+
+
+void Parallel::DeviceCellListedMDData::
+applyPeriodicBondaryConditionOnGhostCells ()
+{
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
+  int Nx, Ny, Nz;
+  Parallel::Interface::numProcDim (Nx, Ny, Nz);
+  int rankx, ranky, rankz;
+  Parallel::Interface::rankToCartCoord (Parallel::Interface::myRank(),
+					rankx, ranky, rankz);
+
+  Parallel::CudaGlobal::normalizeSystemOnGhost_CellListed
+      <<<totalNumCell, numThreadsInCell>>> (
+	  globalBox,
+	  numAtomInCell,
+	  numCell,
+	  devideLevel,
+	  Nx, Ny, Nz,
+	  rankx, ranky, rankz,
+	  coord,
+	  coordNoi);
+  checkCUDAError ("DeviceCellListedMDData::applyPeriodicBondaryCondition");
+}
+
 
 void Parallel::DeviceCellRelation::
 easyMalloc (const IndexType & totalNumCell_,

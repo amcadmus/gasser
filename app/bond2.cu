@@ -117,7 +117,18 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.0001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
-
+  printf ("# numCell: %d %d %d\n",
+	  sys.deviceData.getNumCell().x,
+	  sys.deviceData.getNumCell().y,
+	  sys.deviceData.getNumCell().z);
+  printf ("# frameUp: %f %f %f\n",
+	  sys.deviceData.getFrameUp().x,
+	  sys.deviceData.getFrameUp().y,
+	  sys.deviceData.getFrameUp().z);
+  printf ("# frameLow: %f %f %f\n",
+	  sys.deviceData.getFrameLow().x,
+	  sys.deviceData.getFrameLow().y,
+	  sys.deviceData.getFrameLow().z);  
   IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
@@ -170,9 +181,9 @@ int main(int argc, char * argv[])
     DeviceTimer::tic (item_BuildCellList);
     sys.deviceData.rebuild (dbdlist);
     DeviceTimer::toc (item_BuildCellList);
-    DeviceTimer::tic (item_ApplyBondaryCondition);
-    sys.deviceData.applyPeriodicBondaryCondition ();
-    DeviceTimer::toc (item_ApplyBondaryCondition);
+    // DeviceTimer::tic (item_ApplyBondaryCondition);
+    // sys.deviceData.applyPeriodicBondaryCondition ();
+    // DeviceTimer::toc (item_ApplyBondaryCondition);
     HostTimer::tic (item_Redistribute);
     sys.redistribute ();
     HostTimer::toc (item_Redistribute);
@@ -197,7 +208,7 @@ int main(int argc, char * argv[])
       fflush (stdout);
     }
     
-    if ((i+1)%100 == 0){
+    if ((i+1)%1000 == 0){
       DeviceTimer::tic (item_DataIO);
       sys.updateHost ();  
       sys.collectLocalData ();

@@ -182,6 +182,9 @@ init (const char * confFileName,
 void Parallel::MDSystem::
 redistribute ()
 {
+  DeviceTimer::tic (item_ApplyBondaryCondition);
+  deviceData.applyPeriodicBondaryConditionOnGhostCells ();
+  DeviceTimer::toc (item_ApplyBondaryCondition);
   HostTimer::tic(item_Redistribute_DHCopy);
   localHostData.clearData ();
   redistribcopyUtil .copyToHost ();

@@ -912,4 +912,6 @@ transCoords ()
   recver.Irecv (zsrc1,  3);
   sender.wait();
   recver.wait();
+
+  Parallel::Interface::barrier();
 }

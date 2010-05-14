@@ -114,7 +114,8 @@ public:
 			ScalorType * forcx,
 			ScalorType * forcy,
 			ScalorType * forcz,
-			mdError_t * ptr_de);
+			mdError_t * ptr_de,
+			ScalorType * errsrc);
     __global__ void 
     calBondInteraction (const CoordType * coord,
 			const HostVectorType boxSize,
@@ -132,7 +133,8 @@ public:
 			ScalorType * statistic_b_buff1,
 			ScalorType * statistic_b_buff2,
 			ScalorType * statistic_b_buff3,
-			mdError_t * ptr_de);
+			mdError_t * ptr_de,
+			ScalorType * errsrc);
   }
   namespace CudaDevice {
     __device__ IndexType

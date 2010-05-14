@@ -88,7 +88,9 @@ namespace Parallel{
 			   ScalorType * mass,
 			   ScalorType * charge,
 			   IndexType * forwardMap,
-			   mdError_t * ptr_de);
+			   mdError_t * ptr_de,
+			   IndexType * erridx,
+			   ScalorType * errsrc);
     __global__ void 
     rebuildCellList_step2 (IndexType * numAtomInCell,
 			   CoordType  * coord,
@@ -423,6 +425,19 @@ namespace Parallel{
 				const IndexType * numAtomInCell,
 				CoordType * coord,
 				CoordNoiType * coordNoi);
+    __global__ void
+    normalizeSystemOnGhost_CellListed (RectangularBox box,
+				       const IndexType * numAtomInCell,
+				       const IntVectorType numCell,
+				       const IndexType divideLevel,
+				       const int nx,
+				       const int ny,
+				       const int nz,
+				       const int rankx,
+				       const int ranky,
+				       const int rankz,
+				       CoordType * coord,
+				       CoordNoiType * coordNoi);
     __global__ void
     buildCellNeighborhood (const IntVectorType numCell,
 			   const IndexType devideLevel,
