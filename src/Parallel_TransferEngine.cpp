@@ -13,10 +13,10 @@ TransferEngine ()
     : buff (NULL),
       blockLength(NULL),
       shiftIndex(NULL),
-      dataTypeBuilt (false),
       count (0),
       memSize (0),
-      request (MPI_REQUEST_NULL)
+      request (MPI_REQUEST_NULL),
+      dataType (MPI_DATATYPE_NULL)
 {
 }
 
@@ -53,9 +53,9 @@ registerBuff (void * ptr, size_t size)
 void Parallel::TransferEngine::
 build ()
 {
+  if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
   MPI_Type_hindexed (count, blockLength, shiftIndex, MPI_BYTE, &dataType);
   MPI_Type_commit (&dataType);
-  dataTypeBuilt = true;
 }
 
 void Parallel::TransferEngine::
@@ -75,9 +75,9 @@ Irecv (int src,  int tag)
 void Parallel::TransferEngine::
 buildPersistentSend (int dest, int tag)
 {
+  if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
   MPI_Type_hindexed (count, blockLength, shiftIndex, MPI_BYTE, &dataType);
   MPI_Type_commit (&dataType);
-  dataTypeBuilt = true;
   if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Send_init (buff, 1, dataType, dest, tag, Parallel::Environment::communicator(),
 		 &request);
@@ -86,9 +86,9 @@ buildPersistentSend (int dest, int tag)
 void Parallel::TransferEngine::
 buildPersistentRecv (int src,  int tag)
 {
+  if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
   MPI_Type_hindexed (count, blockLength, shiftIndex, MPI_BYTE, &dataType);
   MPI_Type_commit (&dataType);
-  dataTypeBuilt = true;
   if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Recv_init (buff, 1, dataType, src, tag, Parallel::Environment::communicator(),
 		 &request);
@@ -120,10 +120,7 @@ clear ()
   freeAPointer ((void**)&blockLength);
   freeAPointer ((void**)&shiftIndex);
   buff = NULL;
-  if (dataTypeBuilt){
-    MPI_Type_free (&dataType);
-    dataTypeBuilt = false;
-  }
+  if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
   count = memSize = 0;
 }
 
@@ -132,10 +129,7 @@ clearRegistered ()
 {
   count = 0;
   buff = NULL;
-  if (dataTypeBuilt){
-    MPI_Type_free (&dataType);
-    dataTypeBuilt = false;
-  }
+  if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
 }
 
 Parallel::TransferEngine::

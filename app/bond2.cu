@@ -141,9 +141,9 @@ int main(int argc, char * argv[])
     DeviceTimer::tic (item_Integrate);
     vv.step1 (sys.deviceData, dt);
     DeviceTimer::toc (item_Integrate);
-    DeviceTimer::tic (item_NonBondedInterStatistic);
+    DeviceTimer::tic (item_ClearInteraction);
     interEng.clearInteraction (sys.deviceData);
-    DeviceTimer::toc (item_NonBondedInterStatistic);
+    DeviceTimer::toc (item_ClearInteraction);
     HostTimer::tic (item_TransferGhost);
     sys.transferGhost ();
     HostTimer::toc (item_TransferGhost);
@@ -165,7 +165,7 @@ int main(int argc, char * argv[])
       interEng.applyNonBondedInteraction (sys.deviceData, relation);
       DeviceTimer::toc (item_NonBondedInteraction);
       DeviceTimer::tic (item_BondedInteraction);
-      interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
+      interEng.applyBondedInteraction (sys.deviceData, dbdlist);
       DeviceTimer::toc (item_BondedInteraction);
     }
     HostTimer::tic (item_TransferGhost);

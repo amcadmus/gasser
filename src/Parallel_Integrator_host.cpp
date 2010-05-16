@@ -30,6 +30,7 @@ Parallel::HostSystemMomentum::
 ~HostSystemMomentum()
 {
   free (p);
+  free (sump);
   free (p_f);
 }
 

@@ -100,7 +100,9 @@ namespace Parallel {
     IndexType thisNum_zrecv1;
 
 private:
-    void calTransNum ();
+    void calTransNumX ();
+    void calTransNumY ();
+    void calTransNumZ ();
 public:
     SystemRedistributeTransferUtil ();
     ~SystemRedistributeTransferUtil ();
@@ -197,7 +199,9 @@ public:
     IndexType thisNum_zrecv1;
 
 private:
-    void calTransNum ();
+    void calTransNumX ();
+    void calTransNumY ();
+    void calTransNumZ ();
 public:
     SystemTransCoordsTransferUtil ();
     ~SystemTransCoordsTransferUtil ();

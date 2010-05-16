@@ -76,6 +76,7 @@ printRecord (FILE * fp)
       totalPercent += printDeviceItem (fp, item_BuildBondList);
       totalPercent += printDeviceItem (fp, item_ApplyBondaryCondition);
       totalPercent += printDeviceItem (fp, item_RemoveTransFreedom);
+      totalPercent += printDeviceItem (fp, item_ClearInteraction);
       totalPercent += printDeviceItem (fp, item_NonBondedInteraction);
       totalPercent += printDeviceItem (fp, item_NonBondedInterStatistic);
       totalPercent += printDeviceItem (fp, item_BondedInteraction);

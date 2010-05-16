@@ -302,7 +302,7 @@ setHostData (HostCellListedMDData & hdata,
 }
 
 void Parallel::SystemRedistributeTransferUtil::
-calTransNum ()
+calTransNumX ()
 {
   thisNum_xsend0 = xsendNum0.getMaxNum();
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_xsend0.Isend (xdest0, 0);
@@ -314,7 +314,11 @@ calTransNum ()
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_xrecv1.Irecv (xsrc1,  0);
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_xsend1.wait();
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_xrecv1.wait();
-  
+}
+
+void Parallel::SystemRedistributeTransferUtil::
+calTransNumY ()
+{
   thisNum_ysend0 = ysendNum0.getMaxNum();
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_ysend0.Isend (ydest0, 0);
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_yrecv0.Irecv (ysrc0,  0);
@@ -325,7 +329,11 @@ calTransNum ()
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_yrecv1.Irecv (ysrc1,  0);
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_ysend1.wait();
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_yrecv1.wait();
+}
 
+void Parallel::SystemRedistributeTransferUtil::
+calTransNumZ ()
+{
   thisNum_zsend0 = zsendNum0.getMaxNum();
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_zsend0.Isend (zdest0, 0);
   SystemRedistributeTransferUtil_globalEngine::thisNum_engine_zrecv0.Irecv (zsrc0,  0);
@@ -385,9 +393,8 @@ void Parallel::SystemRedistributeTransferUtil::
 redistributeHost ()
 {
   HostTimer::tic (item_Redistribute_SyncNum);
-  calTransNum ();
+  calTransNumX ();
   HostTimer::toc (item_Redistribute_SyncNum);
-
   HostTimer::tic (item_Redistribute_BuildEngine);
   if (thisNum_xsend0 > maxNum_xsend0){
     maxNum_xsend0 = thisNum_xsend0;
@@ -409,6 +416,28 @@ redistributeHost ()
     rebuildEnginePersistentRecv (maxNum_xrecv1, xrecvNum1, xrecvData1,
 				 xsrc1,  1, SystemRedistributeTransferUtil_globalEngine::engine_xrecv1);
   }
+  HostTimer::toc (item_Redistribute_BuildEngine);
+  HostTimer::tic (item_Redistribute_Transfer);
+  if (thisNum_xsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend0.startPersistentRequest();
+  if (thisNum_xrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv0.startPersistentRequest();
+  if (thisNum_xsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend0.wait();
+  if (thisNum_xrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv0.wait();
+  if (thisNum_xsend0 != 0) xsend0.clearData();
+  if (thisNum_xrecv0 != 0) xrecv0h.add (xrecv0, mask);
+  if (thisNum_xsend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend1.startPersistentRequest();
+  if (thisNum_xrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv1.startPersistentRequest();
+  if (thisNum_xsend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend1.wait();
+  if (thisNum_xrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv1.wait();
+  if (thisNum_xsend1 != 0) xsend1.clearData();
+  if (thisNum_xrecv1 != 0) xrecv1h.add (xrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
+
+  Parallel::Interface::barrier();
+
+  HostTimer::tic (item_Redistribute_SyncNum);
+  calTransNumY ();
+  HostTimer::toc (item_Redistribute_SyncNum);
+  HostTimer::tic (item_Redistribute_BuildEngine);
   if (thisNum_ysend0 > maxNum_ysend0){
     maxNum_ysend0 = thisNum_ysend0;
     rebuildEnginePersistentSend (maxNum_ysend0, ysendNum0, ysendData0,
@@ -429,6 +458,28 @@ redistributeHost ()
     rebuildEnginePersistentRecv (maxNum_yrecv1, yrecvNum1, yrecvData1,
 				 ysrc1,  1, SystemRedistributeTransferUtil_globalEngine::engine_yrecv1);
   }
+  HostTimer::toc (item_Redistribute_BuildEngine);
+  HostTimer::tic (item_Redistribute_Transfer);
+  if (thisNum_ysend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend0.startPersistentRequest();
+  if (thisNum_yrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv0.startPersistentRequest();
+  if (thisNum_ysend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend0.wait();
+  if (thisNum_yrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv0.wait();
+  if (thisNum_ysend0 != 0) ysend0.clearData();
+  if (thisNum_yrecv0 != 0) yrecv0h.add (yrecv0, mask);
+  if (thisNum_ysend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend1.startPersistentRequest();
+  if (thisNum_yrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv1.startPersistentRequest();
+  if (thisNum_ysend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend1.wait();
+  if (thisNum_yrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv1.wait();
+  if (thisNum_ysend1 != 0) ysend1.clearData();
+  if (thisNum_yrecv1 != 0) yrecv1h.add (yrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
+
+  Parallel::Interface::barrier();
+
+  HostTimer::tic (item_Redistribute_SyncNum);
+  calTransNumZ ();
+  HostTimer::toc (item_Redistribute_SyncNum);
+  HostTimer::tic (item_Redistribute_BuildEngine);  
   if (thisNum_zsend0 > maxNum_zsend0){
     maxNum_zsend0 = thisNum_zsend0;
     rebuildEnginePersistentSend (maxNum_zsend0, zsendNum0, zsendData0,
@@ -450,38 +501,7 @@ redistributeHost ()
 				 zsrc1,  1, SystemRedistributeTransferUtil_globalEngine::engine_zrecv1);
   }
   HostTimer::toc (item_Redistribute_BuildEngine);
-
   HostTimer::tic (item_Redistribute_Transfer);
-  if (thisNum_xsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend0.startPersistentRequest();
-  if (thisNum_xrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv0.startPersistentRequest();
-  if (thisNum_xsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend0.wait();
-  if (thisNum_xrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv0.wait();
-  if (thisNum_xsend0 != 0) xsend0.clearData();
-  if (thisNum_xrecv0 != 0) xrecv0h.add (xrecv0, mask);
-  if (thisNum_xsend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend1.startPersistentRequest();
-  if (thisNum_xrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv1.startPersistentRequest();
-  if (thisNum_xsend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xsend1.wait();
-  if (thisNum_xrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_xrecv1.wait();
-  if (thisNum_xsend1 != 0) xsend1.clearData();
-  if (thisNum_xrecv1 != 0) xrecv1h.add (xrecv1, mask);
-
-  Parallel::Interface::barrier();
-
-  if (thisNum_ysend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend0.startPersistentRequest();
-  if (thisNum_yrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv0.startPersistentRequest();
-  if (thisNum_ysend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend0.wait();
-  if (thisNum_yrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv0.wait();
-  if (thisNum_ysend0 != 0) ysend0.clearData();
-  if (thisNum_yrecv0 != 0) yrecv0h.add (yrecv0, mask);
-  if (thisNum_ysend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend1.startPersistentRequest();
-  if (thisNum_yrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv1.startPersistentRequest();
-  if (thisNum_ysend1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_ysend1.wait();
-  if (thisNum_yrecv1 != 0) SystemRedistributeTransferUtil_globalEngine::engine_yrecv1.wait();
-  if (thisNum_ysend1 != 0) ysend1.clearData();
-  if (thisNum_yrecv1 != 0) yrecv1h.add (yrecv1, mask);
-
-  Parallel::Interface::barrier();
-
   if (thisNum_zsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_zsend0.startPersistentRequest();
   if (thisNum_zrecv0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_zrecv0.startPersistentRequest();
   if (thisNum_zsend0 != 0) SystemRedistributeTransferUtil_globalEngine::engine_zsend0.wait();
@@ -844,7 +864,7 @@ setHostData (HostCellListedMDData & hdata,
 }
 
 void Parallel::SystemTransCoordsTransferUtil::
-calTransNum ()
+calTransNumX ()
 {
   thisNum_xsend0 = xsendNum0.getMaxNum();
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_xsend0.Isend (xdest0, 0);
@@ -856,7 +876,11 @@ calTransNum ()
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_xrecv1.Irecv (xsrc1,  0);
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_xsend1.wait();
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_xrecv1.wait();
-  
+}
+
+void Parallel::SystemTransCoordsTransferUtil::
+calTransNumY ()
+{
   thisNum_ysend0 = ysendNum0.getMaxNum();
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_ysend0.Isend (ydest0, 0);
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_yrecv0.Irecv (ysrc0,  0);
@@ -867,7 +891,11 @@ calTransNum ()
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_yrecv1.Irecv (ysrc1,  0);
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_ysend1.wait();
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_yrecv1.wait();
+}
 
+void Parallel::SystemTransCoordsTransferUtil::
+calTransNumZ ()
+{
   thisNum_zsend0 = zsendNum0.getMaxNum();
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_zsend0.Isend (zdest0, 0);
   SystemTransCoordsTransferUtil_globalEngine::thisNum_engine_zrecv0.Irecv (zsrc0,  0);
@@ -881,12 +909,10 @@ calTransNum ()
 }
 
 
-
 void Parallel::SystemTransCoordsTransferUtil::
 transCoords ()
 {
-  calTransNum ();
-
+  calTransNumX ();
   if (thisNum_xsend0 > maxNum_xsend0){
     maxNum_xsend0 = thisNum_xsend0;
     rebuildEnginePersistentSend (maxNum_xsend0, xsendNum0, xsendData0,
@@ -907,6 +933,18 @@ transCoords ()
     rebuildEnginePersistentRecv (maxNum_xrecv1, xrecvNum1, xrecvData1,
 				 xsrc1,  1, SystemTransCoordsTransferUtil_globalEngine::engine_xrecv1);
   }
+  SystemTransCoordsTransferUtil_globalEngine::engine_xsend0.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv0.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xsend0.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv0.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xsend1.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv1.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xsend1.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv1.wait();
+
+  Parallel::Interface::barrier();
+  
+  calTransNumY ();
   if (thisNum_ysend0 > maxNum_ysend0){
     maxNum_ysend0 = thisNum_ysend0;
     rebuildEnginePersistentSend (maxNum_ysend0, ysendNum0, ysendData0,
@@ -927,6 +965,18 @@ transCoords ()
     rebuildEnginePersistentRecv (maxNum_yrecv1, yrecvNum1, yrecvData1,
 				 ysrc1,  1, SystemTransCoordsTransferUtil_globalEngine::engine_yrecv1);
   }
+  SystemTransCoordsTransferUtil_globalEngine::engine_ysend0.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv0.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_ysend0.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv0.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_ysend1.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv1.startPersistentRequest();
+  SystemTransCoordsTransferUtil_globalEngine::engine_ysend1.wait();
+  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv1.wait();
+
+  Parallel::Interface::barrier();
+
+  calTransNumZ ();
   if (thisNum_zsend0 > maxNum_zsend0){
     maxNum_zsend0 = thisNum_zsend0;
     rebuildEnginePersistentSend (maxNum_zsend0, zsendNum0, zsendData0,
@@ -947,30 +997,6 @@ transCoords ()
     rebuildEnginePersistentRecv (maxNum_zrecv1, zrecvNum1, zrecvData1,
 				 zsrc1,  1, SystemTransCoordsTransferUtil_globalEngine::engine_zrecv1);
   }
-
-
-  SystemTransCoordsTransferUtil_globalEngine::engine_xsend0.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv0.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xsend0.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv0.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xsend1.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv1.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xsend1.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_xrecv1.wait();
-
-  Parallel::Interface::barrier();
-
-  SystemTransCoordsTransferUtil_globalEngine::engine_ysend0.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv0.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_ysend0.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv0.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_ysend1.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv1.startPersistentRequest();
-  SystemTransCoordsTransferUtil_globalEngine::engine_ysend1.wait();
-  SystemTransCoordsTransferUtil_globalEngine::engine_yrecv1.wait();
-
-  Parallel::Interface::barrier();
-
   SystemTransCoordsTransferUtil_globalEngine::engine_zsend0.startPersistentRequest();
   SystemTransCoordsTransferUtil_globalEngine::engine_zrecv0.startPersistentRequest();
   SystemTransCoordsTransferUtil_globalEngine::engine_zsend0.wait();

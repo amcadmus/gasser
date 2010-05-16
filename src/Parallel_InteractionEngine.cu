@@ -762,7 +762,7 @@ calBondInteraction (const CoordType * coord,
   IndexType ii = tid + bid * blockDim.x;
   
   IndexType my_numBond = numBond[ii];
-  if (__all(my_numBond == 0)) return;
+  // if (__all(my_numBond == 0)) return;
   IndexType this_numAtomInCell = numAtomInCell[bid];
 
   extern __shared__ volatile ScalorType buff[];

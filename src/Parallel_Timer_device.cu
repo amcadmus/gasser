@@ -50,6 +50,9 @@ init ()
   strncpy (deviceWords[item_DataIO],
 	   "Data IO",
 	   MaxWordsLength);
+  strncpy (deviceWords[item_ClearInteraction],
+	   "Clear interaction",
+	   MaxWordsLength);
   
   for (IndexType i = 0; i < SizeOfTimeRecordArray; ++i){
     int wordLength = strlen (deviceWords[i]);

@@ -18,13 +18,11 @@ namespace Parallel{
     MPI_Aint * shiftIndex;
     void * buff;
     MPI_Aint add_buff;
-    bool dataTypeBuilt;
     MPI_Datatype dataType;
     unsigned count;
     unsigned memSize;
     MPI_Request request;
     MPI_Status status;
-    bool persistentInited;
 private:
     void resize (unsigned memSize);
 public:
