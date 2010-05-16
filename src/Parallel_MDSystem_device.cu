@@ -236,6 +236,7 @@ void Parallel::MDSystem::
 finalize ()
 {
   redistribtransUtil.clear ();
+  transCoordstransUtil.clear ();
 }
 
 Parallel::SystemRedistributeCopyUtil::

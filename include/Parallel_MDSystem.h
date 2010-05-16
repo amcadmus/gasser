@@ -120,22 +120,16 @@ public:
 
     HostSubCellList xsend0;
     HostSubCellList xrecv0;
-    HostSubCellList xrecv0h;
     HostSubCellList xsend1;
     HostSubCellList xrecv1;
-    HostSubCellList xrecv1h;
     HostSubCellList ysend0;
     HostSubCellList yrecv0;
-    HostSubCellList yrecv0h;
     HostSubCellList ysend1;
     HostSubCellList yrecv1;
-    HostSubCellList yrecv1h;
     HostSubCellList zsend0;
     HostSubCellList zrecv0;
-    HostSubCellList zrecv0h;
     HostSubCellList zsend1;
     HostSubCellList zrecv1;
-    HostSubCellList zrecv1h;
     
     int xdest0;
     int xsrc0;
@@ -176,9 +170,38 @@ public:
     TransSubListData zsendData1;
     TransSubListData zrecvData1;
 
+    IndexType maxNum_xsend0;
+    IndexType maxNum_xrecv0;
+    IndexType maxNum_xsend1;
+    IndexType maxNum_xrecv1;
+    IndexType maxNum_ysend0;
+    IndexType maxNum_yrecv0;
+    IndexType maxNum_ysend1;
+    IndexType maxNum_yrecv1;
+    IndexType maxNum_zsend0;
+    IndexType maxNum_zrecv0;
+    IndexType maxNum_zsend1;
+    IndexType maxNum_zrecv1;
+
+    IndexType thisNum_xsend0;
+    IndexType thisNum_xrecv0;
+    IndexType thisNum_xsend1;
+    IndexType thisNum_xrecv1;
+    IndexType thisNum_ysend0;
+    IndexType thisNum_yrecv0;
+    IndexType thisNum_ysend1;
+    IndexType thisNum_yrecv1;
+    IndexType thisNum_zsend0;
+    IndexType thisNum_zrecv0;
+    IndexType thisNum_zsend1;
+    IndexType thisNum_zrecv1;
+
 private:
+    void calTransNum ();
 public:
     SystemTransCoordsTransferUtil ();
+    ~SystemTransCoordsTransferUtil ();
+    void clear ();
     void setHostData (HostCellListedMDData & hdata,
 		      HostCellListedMDData & buffdata);
     void transCoords ();

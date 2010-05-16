@@ -61,13 +61,13 @@ int main(int argc, char * argv[])
 
   Parallel::MDSystem sys;
   
-  // Topology::System sysTop;
-  // Topology::Molecule mol;
-  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  // LennardJones6_12Parameter ljparam;
-  // ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
-  // sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
-  // sysTop.addMolecules (mol, sys.numAtomInGroFile(filename));
+  Topology::System sysTop;
+  Topology::Molecule mol;
+  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  LennardJones6_12Parameter ljparam;
+  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  sysTop.addMolecules (mol, sys.numAtomInGroFile(filename));
 
   // Topology::System sysTop;
   // LennardJones6_12Parameter ljparam;
@@ -116,18 +116,18 @@ int main(int argc, char * argv[])
   // mol.addAngle (Topology::Angle (3, 4, 5, angleparam));
   // sysTop.addMolecules (mol, 2);
 
-  Topology::System sysTop;
-  Topology::Molecule mol;
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  LennardJones6_12Parameter ljparam;
-  ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
-  HarmonicSpringParameter hsparam;
-  hsparam.reinit (10.f, .7f);
-  mol.addBond (Topology::Bond (0, 1, hsparam));
+  // Topology::System sysTop;
+  // Topology::Molecule mol;
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // LennardJones6_12Parameter ljparam;
+  // ljparam.reinit (0.f, 1.f, 0.f, 3.2f);
+  // sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  // HarmonicSpringParameter hsparam;
+  // hsparam.reinit (10.f, .7f);
   // mol.addBond (Topology::Bond (0, 1, hsparam));
-  sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
+  // // mol.addBond (Topology::Bond (0, 1, hsparam));
+  // sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
   
   sys.init (filename, sysTop);
 
@@ -142,9 +142,9 @@ int main(int argc, char * argv[])
   interEng.clearInteraction (sys.deviceData);
   Parallel::DeviceCellRelation relation;
   relation.build (sys.deviceData);
-  Parallel::DeviceBondList dbdlist;
-  dbdlist.reinit (sys.deviceData);
-  buildDeviceBondList (sys.deviceData, relation, dbdlist);
+  // Parallel::DeviceBondList dbdlist;
+  // dbdlist.reinit (sys.deviceData);
+  // buildDeviceBondList (sys.deviceData, relation, dbdlist);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
   hst.reinit (sys.localHostData);
@@ -156,7 +156,7 @@ int main(int argc, char * argv[])
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 
-  IndexType stFeq = 1;
+  IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);
@@ -174,19 +174,19 @@ int main(int argc, char * argv[])
     sys.transferGhost ();
     HostTimer::toc (item_TransferGhost);
 
-    buildDeviceBondList (sys.deviceData, relation, dbdlist);
+    // buildDeviceBondList (sys.deviceData, relation, dbdlist);
 
     if ((i+1) % stFeq == 0){
       DeviceTimer::tic (item_NonBondedInterStatistic);
       interEng.applyNonBondedInteraction (sys.deviceData, relation, dst);
       DeviceTimer::toc (item_NonBondedInterStatistic);
-      interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
+      // interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
     }
     else {
       DeviceTimer::tic (item_NonBondedInteraction);
       interEng.applyNonBondedInteraction (sys.deviceData, relation);
       DeviceTimer::toc (item_NonBondedInteraction);
-      interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
+      // interEng.applyBondedInteraction (sys.deviceData, dbdlist, dst);
     }
     HostTimer::tic (item_TransferGhost);
     sys.clearGhost ();
@@ -200,11 +200,11 @@ int main(int argc, char * argv[])
     // }
 
     DeviceTimer::tic (item_BuildCellList);
-    sys.deviceData.rebuild (dbdlist);
+    sys.deviceData.rebuild ();
     DeviceTimer::toc (item_BuildCellList);
-    DeviceTimer::tic (item_ApplyBondaryCondition);
-    sys.deviceData.applyPeriodicBondaryCondition ();
-    DeviceTimer::toc (item_ApplyBondaryCondition);
+    // DeviceTimer::tic (item_ApplyBondaryCondition);
+    // sys.deviceData.applyPeriodicBondaryCondition ();
+    // DeviceTimer::toc (item_ApplyBondaryCondition);
     HostTimer::tic (item_Redistribute);
     sys.redistribute ();
     HostTimer::toc (item_Redistribute);
@@ -212,7 +212,7 @@ int main(int argc, char * argv[])
     dst.copyToHost (hst);
     hst.collectData ();
 
-    if ((i+1)%stFeq == 0){
+    if ((i+1)%stFeq == 0 && Parallel::Interface::myRank() == 0){
       printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
   	      (i+1),  
   	      (i+1) * dt, 
@@ -229,7 +229,7 @@ int main(int argc, char * argv[])
       fflush (stdout);
     }
     
-    if ((i+1)%100 == 0){
+    if ((i+1)%1000 == 0){
       sys.updateHost ();  
       sys.collectLocalData ();
       sys.globalHostData.writeData_xtcFile (i, dt*i);
@@ -300,6 +300,8 @@ int main(int argc, char * argv[])
 
   sys.globalHostData.endWriteData_xtcFile ();
   
+  Parallel::Interface::barrier();
+  sys.finalize();
   
   HostTimer::toc (item_Total);
   
