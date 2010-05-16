@@ -42,7 +42,15 @@ int main(int argc, char * argv[])
 
   
   GPU::Environment genv;
-  genv.setDeviceId (atoi(argv[3]));
+  if (Parallel::Interface::numProc() == 1){
+    genv.setDeviceId (atoi(argv[3]));
+  }
+  else if (Parallel::Interface::myRank() == 0){
+    genv.setDeviceId (0);
+  }
+  else{
+    genv.setDeviceId(2);
+  }
   
   HostTimer::init();
   DeviceTimer::init ();
