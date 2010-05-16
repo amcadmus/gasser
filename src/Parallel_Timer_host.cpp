@@ -84,10 +84,11 @@ printRecord (FILE * fp)
       totalPercent += printDeviceItem (fp, item_DataIO);
 
       totalPercent += printHostItem (fp, item_Redistribute);
-      printHostItem (fp, item_Redistribute_Data);
-      printHostItem (fp, item_Redistribute_Data0);
+      printHostItem (fp, item_Redistribute_SyncNum);
+      printHostItem (fp, item_Redistribute_BuildEngine);
       printHostItem (fp, item_Redistribute_Transfer);
       printHostItem (fp, item_Redistribute_DHCopy);
+      printHostItem (fp, item_Redistribute_Barrier);
       totalPercent += printHostItem (fp, item_TransferGhost);
 
       fprintf (fp, "# Total percentage:");
@@ -126,17 +127,20 @@ init ()
   strncpy (hostWords[item_Redistribute - ParallelItemShift] ,
 	   "Redistribute atoms",
 	   MaxWordsLength);
-  strncpy (hostWords[item_Redistribute_Data - ParallelItemShift] ,
-	   "Redistribute atoms build data struct",
+  strncpy (hostWords[item_Redistribute_SyncNum - ParallelItemShift] ,
+	   "Redistribute atoms sync number to trans",
 	   MaxWordsLength);
-  strncpy (hostWords[item_Redistribute_Data0 - ParallelItemShift] ,
-	   "Redistribute atoms build data struct 0",
+  strncpy (hostWords[item_Redistribute_BuildEngine - ParallelItemShift] ,
+	   "Redistribute atoms build engine",
 	   MaxWordsLength);
   strncpy (hostWords[item_Redistribute_Transfer - ParallelItemShift] ,
 	   "Redistribute atoms transfer",
 	   MaxWordsLength);
   strncpy (hostWords[item_Redistribute_DHCopy - ParallelItemShift] ,
 	   "Redistribute atoms device-host copy",
+	   MaxWordsLength);
+  strncpy (hostWords[item_Redistribute_Barrier - ParallelItemShift] ,
+	   "Redistribute barrier",
 	   MaxWordsLength);
   strncpy (hostWords[item_TransferGhost - ParallelItemShift] ,
 	   "Transfer Ghosts",

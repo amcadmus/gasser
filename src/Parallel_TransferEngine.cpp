@@ -69,6 +69,26 @@ Irecv (int src,  int tag)
   MPI_Irecv (buff, 1, dataType, src,  tag, Parallel::Environment::communicator(), &request);
 }
 
+void Parallel::TransferEngine::
+buildPersistentSend (int dest, int tag)
+{
+  MPI_Send_init (buff, 1, dataType, dest, tag, Parallel::Environment::communicator(),
+		 &request);
+}
+
+void Parallel::TransferEngine::
+buildPersistentRecv (int src,  int tag)
+{
+  MPI_Recv_init (buff, 1, dataType, src, tag, Parallel::Environment::communicator(),
+		 &request);
+}
+
+void Parallel::TransferEngine::
+startPersistentRequest ()
+{
+  MPI_Start (&request);
+}
+
 bool Parallel::TransferEngine::
 test ()
 {
@@ -114,6 +134,7 @@ Parallel::TransferEngine::
   freeAPointer ((void**)&blockLength);
   freeAPointer ((void**)&shiftIndex);
 }
+
 
 
 // // Parallel::SummationEngine::

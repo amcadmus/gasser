@@ -277,7 +277,9 @@ int main(int argc, char * argv[])
 
 
   sys.globalHostData.endWriteData_xtcFile ();
-  
+
+  Parallel::Interface::barrier();
+  sys.finalize();
   
   HostTimer::toc (item_Total);
   

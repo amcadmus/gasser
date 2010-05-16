@@ -928,6 +928,18 @@ reinit (HostSubCellList & list)
   }
 }
 
+IndexType Parallel::TransNumAtomInSubList::
+getMaxNum () const 
+{
+  IndexType max = 0;
+  for (IndexType i = 0; i < num; ++i){
+    if (*((IndexType *)buffs[i]) > max){
+      max = *((IndexType *)buffs[i]);
+    }
+  }
+  return max;
+}
+
 void Parallel::TransNumAtomInSubList::
 getTransBuffs  (IndexType * num_,
 		void *** buffs_,
@@ -1125,6 +1137,7 @@ reinit (HostSubCellList & list,
   }
 }
 
+
 void Parallel::TransSubListData::
 build ()
 {
@@ -1242,6 +1255,114 @@ build ()
     }
   }
       
+}
+
+
+void Parallel::TransSubListData::
+build (const IndexType & maxNumTrans)
+{
+  IndexType count  = 0;
+  if (myMask & MDDataItemMask_Coordinate){
+    size_t tmp = maxNumTrans * sizeof (HostCoordType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_CoordinateNoi){
+    size_t tmp = maxNumTrans * sizeof(HostCoordNoiType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_Velocity){
+    size_t tmp = maxNumTrans * sizeof(ScalorType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+      (sizes)[count++] = tmp;
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_Force){
+    size_t tmp = maxNumTrans * sizeof(ScalorType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+      (sizes)[count++] = tmp;
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_GlobalIndex){
+    size_t tmp = maxNumTrans * sizeof(IndexType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_Type){
+    size_t tmp = maxNumTrans * sizeof(TypeType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_Mass){
+    size_t tmp = maxNumTrans * sizeof(ScalorType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if (myMask & MDDataItemMask_Charge){
+    size_t tmp = maxNumTrans * sizeof(ScalorType);
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      (sizes)[count++] = tmp;
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Bond) &&
+      ptr_list->host_ptr()->getMaxNumBond() != 0){
+    size_t tmp = maxNumTrans * sizeof(IndexType);    
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = tmp;
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumBond(); ++j){
+	sizes[count++] = tmp;
+	sizes[count++] = tmp;
+      }
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Angle) &&
+      ptr_list->host_ptr()->getMaxNumAngle() != 0){
+    size_t tmp = maxNumTrans * sizeof(IndexType);    
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = tmp;
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	sizes[count++] = tmp;
+	sizes[count++] = tmp;
+      }
+      for (IndexType j = 0; j < 2 * ptr_list->host_ptr()->getMaxNumAngle(); ++j){
+	sizes[count++] = tmp;
+      }
+    }
+  }
+
+  if ((myMask & MDDataItemMask_Dihedral) &&
+      ptr_list->host_ptr()->getMaxNumDihedral() != 0){
+    size_t tmp = maxNumTrans * sizeof(IndexType);    
+    for (IndexType i = 0; i < ptr_list->size(); ++i){
+      sizes[count++] = tmp;
+      for (IndexType j = 0; j < ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	sizes[count++] = tmp;
+	sizes[count++] = tmp;
+      }
+      for (IndexType j = 0; j < 3 * ptr_list->host_ptr()->getMaxNumDihedral(); ++j){
+	sizes[count++] = tmp;
+      }
+    }
+  }      
 }
 
 

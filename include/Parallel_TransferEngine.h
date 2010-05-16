@@ -33,13 +33,13 @@ public:
     void clear ();
     void clearRegistered ();
     void registerBuff (void * buff, size_t size);
-    // void registerBuff (const DataTransferBlock & block);
-    void registerBuff (HostSubCellList & hsubCell,
-		       const MDDataItemMask_t mask);
     void registerBuff (TransferEngineCompatible & data);
     void build ();
     void Isend (int dest, int tag);
     void Irecv (int src,  int tag);
+    void buildPersistentSend (int dest, int tag);
+    void buildPersistentRecv (int src,  int tag);
+    void startPersistentRequest ();
     bool test ();
     void wait ();
   };

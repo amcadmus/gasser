@@ -188,8 +188,8 @@ redistribute ()
   HostTimer::tic(item_Redistribute_DHCopy);
   localHostData.clearData ();
   redistribcopyUtil .copyToHost ();
-  HostTimer::toc(item_Redistribute_DHCopy);
   redistribcopyUtil .clearDeviceSent ();
+  HostTimer::toc(item_Redistribute_DHCopy);
   redistribtransUtil.redistributeHost ();
   HostTimer::tic(item_Redistribute_DHCopy);
   redistribcopyUtil .copyFromHost ();
@@ -226,6 +226,11 @@ writeGlobalData_GroFile (const char * filename)
   }
 }
 
+void Parallel::MDSystem::
+finalize ()
+{
+  redistribtransUtil.clear ();
+}
 
 Parallel::SystemRedistributeCopyUtil::
 SystemRedistributeCopyUtil ()

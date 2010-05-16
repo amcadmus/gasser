@@ -8,147 +8,98 @@
 
 #include "compile_error_mixcode.h"
 
-// void Parallel::MDSystem::
-// redistribute()
+namespace SystemRedistributeTransferUtil_globalEngine{
+  Parallel::TransferEngine engine_xsend0;
+  Parallel::TransferEngine engine_xrecv0;
+  Parallel::TransferEngine engine_xsend1;
+  Parallel::TransferEngine engine_xrecv1;
+  Parallel::TransferEngine engine_ysend0;
+  Parallel::TransferEngine engine_yrecv0;
+  Parallel::TransferEngine engine_ysend1;
+  Parallel::TransferEngine engine_yrecv1;
+  Parallel::TransferEngine engine_zsend0;
+  Parallel::TransferEngine engine_zrecv0;
+  Parallel::TransferEngine engine_zsend1;
+  Parallel::TransferEngine engine_zrecv1;
+
+  Parallel::TransferEngine thisNum_engine_xsend0;
+  Parallel::TransferEngine thisNum_engine_xrecv0;
+  Parallel::TransferEngine thisNum_engine_xsend1;
+  Parallel::TransferEngine thisNum_engine_xrecv1;
+  Parallel::TransferEngine thisNum_engine_ysend0;
+  Parallel::TransferEngine thisNum_engine_yrecv0;
+  Parallel::TransferEngine thisNum_engine_ysend1;
+  Parallel::TransferEngine thisNum_engine_yrecv1;
+  Parallel::TransferEngine thisNum_engine_zsend0;
+  Parallel::TransferEngine thisNum_engine_zrecv0;
+  Parallel::TransferEngine thisNum_engine_zsend1;
+  Parallel::TransferEngine thisNum_engine_zrecv1;
+}
+
+using namespace SystemRedistributeTransferUtil_globalEngine;
+
+using namespace Parallel::Timer;
+
+static void
+rebuildEngine (IndexType & maxSend,
+	       Parallel::TransNumAtomInSubList & sendNum,
+	       Parallel::TransSubListData & sendData,
+	       Parallel::TransferEngine & engine_send);
+
+
+// static void 
+// rebuildEngine (Parallel::TransNumAtomInSubList & sendNum,
+// 	       Parallel::TransNumAtomInSubList & recvNum,
+// 	       Parallel::TransSubListData & sendData,
+// 	       Parallel::TransSubListData & recvData,
+// 	       int & dest,
+// 	       int & src,
+// 	       IndexType & maxSend,
+// 	       IndexType & maxRecv,
+// 	       Parallel::TransferEngine & engine_send,
+// 	       Parallel::TransferEngine & engine_recv)
 // {
-//   Parallel::TransferEngine tr_send;
-//   Parallel::TransferEngine tr_recv;
+//   printf ("# rebuild engine: rank %d, maxNum %d\n",
+// 	  Parallel::Interface::myRank(), maxSend);
 
-//   int xsend0_nei, xrecv0_nei;
-//   int xsend1_nei, xrecv1_nei;
-//   int ysend0_nei, yrecv0_nei;
-//   int ysend1_nei, yrecv1_nei;
-//   int zsend0_nei, zrecv0_nei;
-//   int zsend1_nei, zrecv1_nei;
+//   Parallel::TransferEngine tmp_send;
+//   Parallel::TransferEngine tmp_recv;
   
-//   Parallel::Environment env;
-//   env.neighborProcIndex (Parallel::CoordXIndex,  1, xsend0_nei, xrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordXIndex, -1, xsend1_nei, xrecv1_nei);
-//   env.neighborProcIndex (Parallel::CoordYIndex,  1, ysend0_nei, yrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordYIndex, -1, ysend1_nei, yrecv1_nei);
-//   env.neighborProcIndex (Parallel::CoordZIndex,  1, zsend0_nei, zrecv0_nei);
-//   env.neighborProcIndex (Parallel::CoordZIndex, -1, zsend1_nei, zrecv1_nei);
+//   tmp_send.clearRegistered();
+//   tmp_recv.clearRegistered();
+//   tmp_send.registerBuff ((void*)&maxSend, sizeof(IndexType));
+//   tmp_recv.registerBuff ((void*)&maxRecv, sizeof(IndexType));
+//   tmp_send.build ();
+//   tmp_recv.build ();
+//   tmp_send.Isend (dest, 100);
+//   tmp_recv.Irecv (src,  100);
+//   tmp_send.wait ();
+//   tmp_recv.wait ();  
 
-//   IndexType i = 0;
-
+//   Parallel::Interface::barrier();
   
-//   for (Parallel::SubHostCellList::iterator it = xsend0.begin();
-//        it != xsend0.end(); ++it){
-//     tr_send.registerBuff (&xsend0.numAtomInCell(), sizeof(IndexType));
-//   }
-//   tr_send.build ();
-//   tr_recv.registerBuff (recv0Num, sizeof(IndexType)*xrecv0.numCell());
-//   tr_recv.build ();
-//   tr_send.Isend (xsend0_nei, 0);
-//   tr_recv.Irecv (xrecv0_nei, 0);
-//   tr_send.wait();
-//   tr_send.clearRegistered();
-//   tr_recv.wait();
-//   tr_recv.clearRegistered();
-//   for (Parallel::SubHostCellList::iterator it = xsend0.begin();
-//        it != xsend0.end(); ++it){
-//     DataTransferBlock block;
-//     localHostData.formDataTransferBlock (it.cellStartIndex(),
-//   					 it.numAtomInCell(),
-//   					 block);
-//     tr_send.registerBuff (block);
-//   }
-//   tr_send.build();
-//   for (Parallel::SubHostCellList::iterator it = xrecv0.begin(), i = 0;
-//        it != xrecv0.end(); ++it, ++i){
-//     DataTransferBlock block;
-//     localHostData.formDataTransferBlock (it.cellStartIndex() + it.numAtomInCell(),
-//   					 recv0Num[i],
-// 					 block);
-//     it.cellStartIndex() += recv0Num[i];
-//     if (it.cellStartIndex() > Parallel::Environment::cellSize()){
-//       throw MDExcptTooSmallCell ("Parallel::MDSystem::redistribute");
-//     }
-//     tr_recv.registerBuff (block);
-//   }
-//   tr_recv.build ();
-//   tr_send.Isend(xsend0_nei, 1);
-//   tr_recv.Irecv (xrecv0_nei, 1);
-//   tr_send.wait();
-//   tr_send.clearRegistered();
-//   tr_recv.wait();
-//   tr_recv.clearRegistered();
-
-
-
-//   for (Parallel::SubHostCellList::iterator it = xsend1.begin();
-//        it != xsend1.end(); ++it){
-//     tr_send.registerBuff (&xsend1.numAtomInCell(), sizeof(IndexType));
-//   }
-//   tr_send.build ();
-//   tr_recv.registerBuff (recv1Num, sizeof(IndexType)*xrecv1.numCell());
-//   tr_recv.build ();
-//   tr_send.Isend (xsend1_nei, 2);
-//   tr_recv.Irecv (xrecv1_nei, 2);
-//   tr_send.wait();
-//   tr_send.clearRegistered();
-//   tr_recv.wait();
-//   tr_recv.clearRegistered();
-//   for (Parallel::SubHostCellList::iterator it = xsend1.begin();
-//        it != xsend1.end(); ++it){
-//     DataTransferBlock block;
-//     localHostData.formDataTransferBlock (it.cellStartIndex(),
-//   					 it.numAtomInCell(),
-//   					 block);
-//     tr_send.registerBuff (block);
-//   }
-//   tr_send.build();
-//   for (Parallel::SubHostCellList::iterator it = xrecv1.begin(), i = 0;
-//        it != xrecv1.end(); ++it, ++i){
-//     DataTransferBlock block;
-//     localHostData.formDataTransferBlock (it.cellStartIndex() + it.numAtomInCell(),
-//   					 recv1Num[i],
-// 					 block);
-//     it.cellStartIndex() += recv1Num[i];
-//     if (it.cellStartIndex() > Parallel::Environment::cellSize()){
-//       throw MDExcptTooSmallCell ("Parallel::MDSystem::redistribute");
-//     }
-//     tr_recv.registerBuff (block);
-//   }
-//   tr_recv.build ();
-//   tr_send.Isend (xsend1_nei, 3);
-//   tr_recv.Irecv (xrecv1_nei, 3);
-//   tr_send.wait();
-//   tr_send.clearRegistered();
-//   tr_recv.wait();
-//   tr_recv.clearRegistered();
-
+//   engine_send.clearRegistered();
+//   engine_recv.clearRegistered();
+//   engine_send.registerBuff (sendNum);
+//   engine_recv.registerBuff (recvNum);
+//   sendData.build (maxSend);
+//   recvData.build (maxRecv);
+//   engine_send.registerBuff (sendData);
+//   engine_recv.registerBuff (recvData);
+//   engine_send.build ();
+//   engine_recv.build ();
 // }
 
-	
-
-// void Parallel::MDSystem::
-// tryHostSend ()
-// {
-//   HostSubCellList sublist0;
-//   HostSubCellList sublist1;
-
-//   localHostData.buildSubListAllCell (sublist0);
-//   localHostData1.buildSubListAllCell (sublist1);
-  
-//   Parallel::TransferEngine tran0;
-//   Parallel::TransferEngine tran1;
-  
-//   tran0.registerBuff (sublist0, MDDataItemMask_All);
-//   tran1.registerBuff (sublist1, MDDataItemMask_All);
-  
-//   tran0.Isend (0, 0);
-//   tran1.Irecv (0, 0);
-
-//   tran0.wait();
-//   tran1.wait();
-
-//   return;
-// }
 
 Parallel::SystemRedistributeTransferUtil::
 SystemRedistributeTransferUtil ()
-    : ptr_hdata (NULL), ptr_buff(NULL), mask (MDDataItemMask_All)
+    : ptr_hdata (NULL), ptr_buff(NULL), mask (MDDataItemMask_All),
+      maxNum_xsend0(0), maxNum_xrecv0(0),
+      maxNum_xsend1(0), maxNum_xrecv1(0),
+      maxNum_ysend0(0), maxNum_yrecv0(0),
+      maxNum_ysend1(0), maxNum_yrecv1(0),
+      maxNum_zsend0(0), maxNum_zrecv0(0),
+      maxNum_zsend1(0), maxNum_zrecv1(0)
 {
   Parallel::Interface::shiftNeighbor (CoordXIndex,  1, xsrc0, xdest0);
   Parallel::Interface::shiftNeighbor (CoordXIndex, -1, xsrc1, xdest1);
@@ -156,6 +107,67 @@ SystemRedistributeTransferUtil ()
   Parallel::Interface::shiftNeighbor (CoordYIndex, -1, ysrc1, ydest1);
   Parallel::Interface::shiftNeighbor (CoordZIndex,  1, zsrc0, zdest0);
   Parallel::Interface::shiftNeighbor (CoordZIndex, -1, zsrc1, zdest1);
+
+  thisNum_engine_xsend0.registerBuff ((void*)&thisNum_xsend0, sizeof(IndexType));
+  thisNum_engine_xrecv0.registerBuff ((void*)&thisNum_xrecv0, sizeof(IndexType));
+  thisNum_engine_xsend1.registerBuff ((void*)&thisNum_xsend1, sizeof(IndexType));
+  thisNum_engine_xrecv1.registerBuff ((void*)&thisNum_xrecv1, sizeof(IndexType));
+  thisNum_engine_ysend0.registerBuff ((void*)&thisNum_ysend0, sizeof(IndexType));
+  thisNum_engine_yrecv0.registerBuff ((void*)&thisNum_yrecv0, sizeof(IndexType));
+  thisNum_engine_ysend1.registerBuff ((void*)&thisNum_ysend1, sizeof(IndexType));
+  thisNum_engine_yrecv1.registerBuff ((void*)&thisNum_yrecv1, sizeof(IndexType));
+  thisNum_engine_zsend0.registerBuff ((void*)&thisNum_zsend0, sizeof(IndexType));
+  thisNum_engine_zrecv0.registerBuff ((void*)&thisNum_zrecv0, sizeof(IndexType));
+  thisNum_engine_zsend1.registerBuff ((void*)&thisNum_zsend1, sizeof(IndexType));
+  thisNum_engine_zrecv1.registerBuff ((void*)&thisNum_zrecv1, sizeof(IndexType));
+  thisNum_engine_xsend0.build();
+  thisNum_engine_xrecv0.build();
+  thisNum_engine_xsend1.build();
+  thisNum_engine_xrecv1.build();
+  thisNum_engine_ysend0.build();
+  thisNum_engine_yrecv0.build();
+  thisNum_engine_ysend1.build();
+  thisNum_engine_yrecv1.build();
+  thisNum_engine_zsend0.build();
+  thisNum_engine_zrecv0.build();
+  thisNum_engine_zsend1.build();
+  thisNum_engine_zrecv1.build();
+}
+
+void Parallel::SystemRedistributeTransferUtil::
+clear ()
+{
+  engine_xsend0.clearRegistered();
+  engine_xrecv0.clearRegistered();
+  engine_xsend1.clearRegistered();
+  engine_xrecv1.clearRegistered();
+  engine_ysend0.clearRegistered();
+  engine_yrecv0.clearRegistered();
+  engine_ysend1.clearRegistered();
+  engine_yrecv1.clearRegistered();
+  engine_zsend0.clearRegistered();
+  engine_zrecv0.clearRegistered();
+  engine_zsend1.clearRegistered();
+  engine_zrecv1.clearRegistered();
+
+  thisNum_engine_xsend0.clearRegistered();
+  thisNum_engine_xrecv0.clearRegistered();
+  thisNum_engine_xsend1.clearRegistered();
+  thisNum_engine_xrecv1.clearRegistered();
+  thisNum_engine_ysend0.clearRegistered();
+  thisNum_engine_yrecv0.clearRegistered();
+  thisNum_engine_ysend1.clearRegistered();
+  thisNum_engine_yrecv1.clearRegistered();
+  thisNum_engine_zsend0.clearRegistered();
+  thisNum_engine_zrecv0.clearRegistered();
+  thisNum_engine_zsend1.clearRegistered();
+  thisNum_engine_zrecv1.clearRegistered();
+}
+
+Parallel::SystemRedistributeTransferUtil::
+~SystemRedistributeTransferUtil ()
+{
+  clear ();
 }
 
 void Parallel::SystemRedistributeTransferUtil::
@@ -279,227 +291,580 @@ setHostData (HostCellListedMDData & hdata,
   zrecvData0.reinit (zrecv0, mask);
   zsendData1.reinit (zsend1, mask);
   zrecvData1.reinit (zrecv1, mask);
+
+
+  rebuildEngine (maxNum_xsend0, xsendNum0, xsendData0, engine_xsend0);
+  rebuildEngine (maxNum_xrecv0, xrecvNum0, xrecvData0, engine_xrecv0);
+  rebuildEngine (maxNum_ysend0, ysendNum0, ysendData0, engine_ysend0);
+  rebuildEngine (maxNum_yrecv0, yrecvNum0, yrecvData0, engine_yrecv0);
+  rebuildEngine (maxNum_zsend0, zsendNum0, zsendData0, engine_zsend0);
+  rebuildEngine (maxNum_zrecv0, zrecvNum0, zrecvData0, engine_zrecv0);
+  rebuildEngine (maxNum_xsend1, xsendNum1, xsendData1, engine_xsend1);
+  rebuildEngine (maxNum_xrecv1, xrecvNum1, xrecvData1, engine_xrecv1);
+  rebuildEngine (maxNum_ysend1, ysendNum1, ysendData1, engine_ysend1);
+  rebuildEngine (maxNum_yrecv1, yrecvNum1, yrecvData1, engine_yrecv1);
+  rebuildEngine (maxNum_zsend1, zsendNum1, zsendData1, engine_zsend1);
+  rebuildEngine (maxNum_zrecv1, zrecvNum1, zrecvData1, engine_zrecv1);
   
+  // rebuildEngine (xsendNum0,  xrecvNum0,
+  // 		 xsendData0, xrecvData0,
+  // 		 xdest0, xsrc0,
+  // 		 maxNum_xsend0,
+  // 		 maxNum_xrecv0,
+  // 		 engine_xsend0,
+  // 		 engine_xrecv0);
+  // rebuildEngine (xsendNum1,  xrecvNum1,
+  // 		 xsendData1, xrecvData1,
+  // 		 xdest1, xsrc1,
+  // 		 maxNum_xsend1,
+  // 		 maxNum_xrecv1,
+  // 		 engine_xsend1,
+  // 		 engine_xrecv1);
+  // rebuildEngine (ysendNum0,  yrecvNum0,
+  // 		 ysendData0, yrecvData0,
+  // 		 ydest0, ysrc0,
+  // 		 maxNum_ysend0,
+  // 		 maxNum_yrecv0,
+  // 		 engine_ysend0,
+  // 		 engine_yrecv0);
+  // rebuildEngine (ysendNum1,  yrecvNum1,
+  // 		 ysendData1, yrecvData1,
+  // 		 ydest1, ysrc1,
+  // 		 maxNum_ysend1,
+  // 		 maxNum_yrecv1,
+  // 		 engine_ysend1,
+  // 		 engine_yrecv1);
+  // rebuildEngine (zsendNum0,  zrecvNum0,
+  // 		 zsendData0, zrecvData0,
+  // 		 zdest0, zsrc0,
+  // 		 maxNum_zsend0,
+  // 		 maxNum_zrecv0,
+  // 		 engine_zsend0,
+  // 		 engine_zrecv0);
+  // rebuildEngine (zsendNum1,  zrecvNum1, zsendData1, zrecvData1, zdest1, zsrc1,
+  // 		 maxNum_zsend1,
+  // 		 maxNum_zrecv1,
+  // 		 engine_zsend1,
+  // 		 engine_zrecv1);
 }
 
-using namespace Parallel::Timer;
+void Parallel::SystemRedistributeTransferUtil::
+calTransNum ()
+{
+  thisNum_xsend0 = xsendNum0.getMaxNum();
+  thisNum_engine_xsend0.Isend (xdest0, 0);
+  thisNum_engine_xrecv0.Irecv (xsrc0,  0);
+  thisNum_engine_xsend0.wait();
+  thisNum_engine_xrecv0.wait();
+  thisNum_xsend1 = xsendNum1.getMaxNum();
+  thisNum_engine_xsend1.Isend (xdest1, 0);
+  thisNum_engine_xrecv1.Irecv (xsrc1,  0);
+  thisNum_engine_xsend1.wait();
+  thisNum_engine_xrecv1.wait();
+  
+  thisNum_ysend0 = ysendNum0.getMaxNum();
+  thisNum_engine_ysend0.Isend (ydest0, 0);
+  thisNum_engine_yrecv0.Irecv (ysrc0,  0);
+  thisNum_engine_ysend0.wait();
+  thisNum_engine_yrecv0.wait();
+  thisNum_ysend1 = ysendNum1.getMaxNum();
+  thisNum_engine_ysend1.Isend (ydest1, 0);
+  thisNum_engine_yrecv1.Irecv (ysrc1,  0);
+  thisNum_engine_ysend1.wait();
+  thisNum_engine_yrecv1.wait();
+
+  thisNum_zsend0 = zsendNum0.getMaxNum();
+  thisNum_engine_zsend0.Isend (zdest0, 0);
+  thisNum_engine_zrecv0.Irecv (zsrc0,  0);
+  thisNum_engine_zsend0.wait();
+  thisNum_engine_zrecv0.wait();
+  thisNum_zsend1 = zsendNum1.getMaxNum();
+  thisNum_engine_zsend1.Isend (zdest1, 0);
+  thisNum_engine_zrecv1.Irecv (zsrc1,  0);
+  thisNum_engine_zsend1.wait();
+  thisNum_engine_zrecv1.wait();
+}
+
+static void
+rebuildEngine (IndexType & maxSend,
+	       Parallel::TransNumAtomInSubList & sendNum,
+	       Parallel::TransSubListData & sendData,
+	       Parallel::TransferEngine & engine_send)
+{
+  engine_send.clearRegistered();
+  engine_send.registerBuff (sendNum);
+  sendData.build (maxSend);
+  engine_send.registerBuff (sendData);
+  engine_send.build ();
+}
 
 void Parallel::SystemRedistributeTransferUtil::
 redistributeHost ()
 {
-  Parallel::TransferEngine sender;
-  Parallel::TransferEngine recver;
+  HostTimer::tic (item_Redistribute_SyncNum);
+  calTransNum ();
+  HostTimer::toc (item_Redistribute_SyncNum);
+
+  HostTimer::tic (item_Redistribute_BuildEngine);
+  if (thisNum_xsend0 > maxNum_xsend0){
+    maxNum_xsend0 = thisNum_xsend0;
+    rebuildEngine (maxNum_xsend0, xsendNum0, xsendData0, engine_xsend0);
+  }
+  if (thisNum_xrecv0 > maxNum_xrecv0){
+    maxNum_xrecv0 = thisNum_xrecv0;
+    rebuildEngine (maxNum_xrecv0, xrecvNum0, xrecvData0, engine_xrecv0);
+  }
+  if (thisNum_xsend1 > maxNum_xsend1){
+    maxNum_xsend1 = thisNum_xsend1;
+    rebuildEngine (maxNum_xsend1, xsendNum1, xsendData1, engine_xsend1);
+  }
+  if (thisNum_xrecv1 > maxNum_xrecv1){
+    maxNum_xrecv1 = thisNum_xrecv1;
+    rebuildEngine (maxNum_xrecv1, xrecvNum1, xrecvData1, engine_xrecv1);
+  }
+
+  if (thisNum_ysend0 > maxNum_ysend0){
+    maxNum_ysend0 = thisNum_ysend0;
+    rebuildEngine (maxNum_ysend0, ysendNum0, ysendData0, engine_ysend0);
+  }
+  if (thisNum_yrecv0 > maxNum_yrecv0){
+    maxNum_yrecv0 = thisNum_yrecv0;
+    rebuildEngine (maxNum_yrecv0, yrecvNum0, yrecvData0, engine_yrecv0);
+  }
+  if (thisNum_ysend1 > maxNum_ysend1){
+    maxNum_ysend1 = thisNum_ysend1;
+    rebuildEngine (maxNum_ysend1, ysendNum1, ysendData1, engine_ysend1);
+  }
+  if (thisNum_yrecv1 > maxNum_yrecv1){
+    maxNum_yrecv1 = thisNum_yrecv1;
+    rebuildEngine (maxNum_yrecv1, yrecvNum1, yrecvData1, engine_yrecv1);
+  }
+
+  if (thisNum_zsend0 > maxNum_zsend0){
+    maxNum_zsend0 = thisNum_zsend0;
+    rebuildEngine (maxNum_zsend0, zsendNum0, zsendData0, engine_zsend0);
+  }
+  if (thisNum_zrecv0 > maxNum_zrecv0){
+    maxNum_zrecv0 = thisNum_zrecv0;
+    rebuildEngine (maxNum_zrecv0, zrecvNum0, zrecvData0, engine_zrecv0);
+  }
+  if (thisNum_zsend1 > maxNum_zsend1){
+    maxNum_zsend1 = thisNum_zsend1;
+    rebuildEngine (maxNum_zsend1, zsendNum1, zsendData1, engine_zsend1);
+  }
+  if (thisNum_zrecv1 > maxNum_zrecv1){
+    maxNum_zrecv1 = thisNum_zrecv1;
+    rebuildEngine (maxNum_zrecv1, zrecvNum1, zrecvData1, engine_zrecv1);
+  }
+  HostTimer::toc (item_Redistribute_BuildEngine);
+
+  HostTimer::tic (item_Redistribute_Transfer);
+  if (thisNum_xsend0 != 10000) engine_xsend0.Isend (xdest0, 0);
+  if (thisNum_xrecv0 != 10000) engine_xrecv0.Irecv (xsrc0,  0);
+  if (thisNum_xsend0 != 10000) engine_xsend0.wait();
+  if (thisNum_xrecv0 != 10000) engine_xrecv0.wait();
+  if (thisNum_xsend0 != 10000) xsend0.clearData();
+  if (thisNum_xrecv0 != 10000) xrecv0h.add (xrecv0, mask);
+
+  if (thisNum_xsend1 != 10000) engine_xsend1.Isend (xdest1, 1);
+  if (thisNum_xrecv1 != 10000) engine_xrecv1.Irecv (xsrc1,  1);
+  if (thisNum_xsend1 != 10000) engine_xsend1.wait();
+  if (thisNum_xrecv1 != 10000) engine_xrecv1.wait();
+  if (thisNum_xsend1 != 10000) xsend1.clearData();
+  if (thisNum_xrecv1 != 10000) xrecv1h.add (xrecv1, mask);
+
+  if (thisNum_ysend0 != 10000) engine_ysend0.Isend (ydest0, 0);
+  if (thisNum_yrecv0 != 10000) engine_yrecv0.Irecv (ysrc0,  0);
+  if (thisNum_ysend0 != 10000) engine_ysend0.wait();
+  if (thisNum_yrecv0 != 10000) engine_yrecv0.wait();
+  if (thisNum_ysend0 != 10000) ysend0.clearData();
+  if (thisNum_yrecv0 != 10000) yrecv0h.add (yrecv0, mask);
+
+  if (thisNum_ysend1 != 10000) engine_ysend1.Isend (ydest1, 1);
+  if (thisNum_yrecv1 != 10000) engine_yrecv1.Irecv (ysrc1,  1);
+  if (thisNum_ysend1 != 10000) engine_ysend1.wait();
+  if (thisNum_yrecv1 != 10000) engine_yrecv1.wait();
+  if (thisNum_ysend1 != 10000) ysend1.clearData();
+  if (thisNum_yrecv1 != 10000) yrecv1h.add (yrecv1, mask);
+
+  if (thisNum_zsend0 != 10000) engine_zsend0.Isend (zdest0, 0);
+  if (thisNum_zrecv0 != 10000) engine_zrecv0.Irecv (zsrc0,  0);
+  if (thisNum_zsend0 != 10000) engine_zsend0.wait();
+  if (thisNum_zrecv0 != 10000) engine_zrecv0.wait();
+  if (thisNum_zsend0 != 10000) zsend0.clearData();
+  if (thisNum_zrecv0 != 10000) zrecv0h.add (zrecv0, mask);
+
+  if (thisNum_zsend1 != 10000) engine_zsend1.Isend (zdest1, 1);
+  if (thisNum_zrecv1 != 10000) engine_zrecv1.Irecv (zsrc1,  1);
+  if (thisNum_zsend1 != 10000) engine_zsend1.wait();
+  if (thisNum_zrecv1 != 10000) engine_zrecv1.wait();
+  if (thisNum_zsend1 != 10000) zsend1.clearData();
+  if (thisNum_zrecv1 != 10000) zrecv1h.add (zrecv1, mask);
+  HostTimer::toc (item_Redistribute_Transfer);
+
   
-  // ptr_buff->clearData();
-
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendNum0);
-  recver.registerBuff (xrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest0, 0);
-  recver.Irecv (xsrc0,  0);
-  sender.wait();
-  recver.wait();
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  xsendData0.build ();
-  xrecvData0.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendData0);
-  recver.registerBuff (xrecvData0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest0, 1);
-  recver.Irecv (xsrc0,  1);
-  sender.wait();
-  recver.wait();
-  xsend0.clearData();
-  xrecv0h.add (xrecv0, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendNum1);
-  recver.registerBuff (xrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest1, 2);
-  recver.Irecv (xsrc1,  2);
-  sender.wait();
-  recver.wait();  
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  xsendData1.build ();
-  xrecvData1.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (xsendData1);
-  recver.registerBuff (xrecvData1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (xdest1, 3);
-  recver.Irecv (xsrc1,  3);
-  sender.wait();
-  recver.wait();
-  xsend1.clearData();  
-  xrecv1h.add (xrecv1, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  Parallel::Interface::barrier();
-
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendNum0);
-  recver.registerBuff (yrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest0, 0);
-  recver.Irecv (ysrc0,  0);
-  sender.wait();
-  recver.wait();  
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  ysendData0.build ();
-  yrecvData0.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendData0);
-  recver.registerBuff (yrecvData0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest0, 1);
-  recver.Irecv (ysrc0,  1);
-  sender.wait();
-  recver.wait();
-  ysend0.clearData();
-  yrecv0h.add (yrecv0, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendNum1);
-  recver.registerBuff (yrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest1, 2);
-  recver.Irecv (ysrc1,  2);
-  sender.wait();
-  recver.wait();  
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  ysendData1.build ();
-  yrecvData1.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (ysendData1);
-  recver.registerBuff (yrecvData1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (ydest1, 3);
-  recver.Irecv (ysrc1,  3);
-  sender.wait();
-  recver.wait();
-  ysend1.clearData();
-  yrecv1h.add (yrecv1, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  Parallel::Interface::barrier();
+  // engine_xsend1.Isend (xdest1, 1);
+  // engine_xrecv1.Irecv (xsrc1,  1);
+  // engine_xsend1.wait();
+  // engine_xrecv1.wait();
+  // xsend1.clearData();
+  // xrecv1h.add (xrecv1, mask);
   
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendNum0);
-  recver.registerBuff (zrecvNum0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest0, 0);
-  recver.Irecv (zsrc0,  0);
-  sender.wait();
-  recver.wait();  
-  HostTimer::toc (item_Redistribute_Transfer);
+  // engine_ysend0.Isend (ydest0, 0);
+  // engine_yrecv0.Irecv (ysrc0,  0);
+  // engine_ysend0.wait();
+  // engine_yrecv0.wait();
+  // ysend0.clearData();
+  // yrecv0h.add (yrecv0, mask);
+  // engine_ysend1.Isend (ydest1, 1);
+  // engine_yrecv1.Irecv (ysrc1,  1);
+  // engine_ysend1.wait();
+  // engine_yrecv1.wait();
+  // ysend1.clearData();
+  // yrecv1h.add (yrecv1, mask);
 
-  zsendData0.build ();
-  zrecvData0.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendData0);
-  recver.registerBuff (zrecvData0);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest0, 1);
-  recver.Irecv (zsrc0,  1);
-  sender.wait();
-  recver.wait();
-  zsend0.clearData ();
-  zrecv0h.add (zrecv0, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  HostTimer::tic (item_Redistribute_Data0);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendNum1);
-  recver.registerBuff (zrecvNum1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data0);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest1, 2);
-  recver.Irecv (zsrc1,  2);
-  sender.wait();
-  recver.wait();  
-  HostTimer::toc (item_Redistribute_Transfer);
-
-  zsendData1.build ();
-  zrecvData1.build ();
-  HostTimer::tic (item_Redistribute_Data);
-  sender.clearRegistered();
-  recver.clearRegistered();
-  sender.registerBuff (zsendData1);
-  recver.registerBuff (zrecvData1);
-  sender.build ();
-  recver.build ();
-  HostTimer::toc (item_Redistribute_Data);
-  HostTimer::tic (item_Redistribute_Transfer);
-  sender.Isend (zdest1, 3);
-  recver.Irecv (zsrc1,  3);
-  sender.wait();
-  recver.wait();
-  zsend1.clearData();
-  zrecv1h.add (zrecv1, mask);
-  HostTimer::toc (item_Redistribute_Transfer);
+  // engine_zsend0.Isend (zdest0, 0);
+  // engine_zrecv0.Irecv (zsrc0,  0);
+  // engine_zsend0.wait();
+  // engine_zrecv0.wait();
+  // zsend0.clearData();
+  // zrecv0h.add (zrecv0, mask);
+  // engine_zsend1.Isend (zdest1, 1);
+  // engine_zrecv1.Irecv (zsrc1,  1);
+  // engine_zsend1.wait();
+  // engine_zrecv1.wait();
+  // zsend1.clearData();
+  // zrecv1h.add (zrecv1, mask);
 }
+
+
+//   IndexType max;
+  
+//   if ((max  = xsendNum0.getMaxNum()) > maxNum_xsend0 ){
+//     maxNum_xsend0 = max;    
+//     rebuildEngine (xsendNum0,  xrecvNum0,
+// 		   xsendData0, xrecvData0,
+// 		   xdest0, xsrc0,
+// 		   maxNum_xsend0,
+// 		   maxNum_xrecv0,
+// 		   engine_xsend0,
+// 		   engine_xrecv0);
+//   }
+//   engine_xsend0.Isend (xdest0, 0);
+//   engine_xrecv0.Irecv (xsrc0,  0);
+//   engine_xsend0.wait();
+//   engine_xrecv0.wait();
+//   xsend0.clearData();
+//   xrecv0h.add (xrecv0, mask);
+
+//   if ((max  = xsendNum1.getMaxNum()) > maxNum_xsend1 ){
+//     maxNum_xsend1 = max;
+//     rebuildEngine (xsendNum1,  xrecvNum1,
+// 		   xsendData1, xrecvData1,
+// 		   xdest1, xsrc1,
+// 		   maxNum_xsend1,
+// 		   maxNum_xrecv1,
+// 		   engine_xsend1,
+// 		   engine_xrecv1);
+//   }
+//   engine_xsend1.Isend (xdest1, 1);
+//   engine_xrecv1.Irecv (xsrc1,  1);
+//   engine_xsend1.wait();
+//   engine_xrecv1.wait();
+//   xsend1.clearData();
+//   xrecv1h.add (xrecv1, mask);
+
+//   Parallel::Interface::barrier();
+  
+//   if ((max  = ysendNum0.getMaxNum()) > maxNum_ysend0 ){
+//     maxNum_ysend0 = max;    
+//     rebuildEngine (ysendNum0,  yrecvNum0,
+// 		   ysendData0, yrecvData0,
+// 		   ydest0, ysrc0,
+// 		   maxNum_ysend0,
+// 		   maxNum_yrecv0,
+// 		   engine_ysend0,
+// 		   engine_yrecv0);
+//   }
+//   engine_ysend0.Isend (ydest0, 3);
+//   engine_yrecv0.Irecv (ysrc0,  3);
+//   engine_ysend0.wait();
+//   engine_yrecv0.wait();
+//   ysend0.clearData();
+//   yrecv0h.add (yrecv0, mask);
+
+//   if ((max  = ysendNum1.getMaxNum()) > maxNum_ysend1 ){
+//     maxNum_ysend1 = max;    
+//     rebuildEngine (ysendNum1,  yrecvNum1,
+// 		   ysendData1, yrecvData1,
+// 		   ydest1, ysrc1,
+// 		   maxNum_ysend1,
+// 		   maxNum_yrecv1,
+// 		   engine_ysend1,
+// 		   engine_yrecv1);
+//   }
+//   engine_ysend1.Isend (ydest1, 4);
+//   engine_yrecv1.Irecv (ysrc1,  4);
+//   engine_ysend1.wait();
+//   engine_yrecv1.wait();
+//   ysend1.clearData();
+//   yrecv1h.add (yrecv1, mask);
+
+//   Parallel::Interface::barrier();
+
+//   if ((max  = zsendNum0.getMaxNum()) > maxNum_zsend0 ){
+//     maxNum_zsend0 = max;    
+//     rebuildEngine (zsendNum0,  zrecvNum0,
+// 		   zsendData0, zrecvData0,
+// 		   zdest0, zsrc0,
+// 		   maxNum_zsend0,
+// 		   maxNum_zrecv0,
+// 		   engine_zsend0,
+// 		   engine_zrecv0);
+//   }
+//   engine_zsend0.Isend (zdest0, 5);
+//   engine_zrecv0.Irecv (zsrc0,  5);
+//   engine_zsend0.wait();
+//   engine_zrecv0.wait();
+//   zsend0.clearData();
+//   zrecv0h.add (zrecv0, mask);
+
+//   if ((max  = zsendNum1.getMaxNum()) > maxNum_zsend1 ){
+//     maxNum_zsend1 = max;    
+//     rebuildEngine (zsendNum1,  zrecvNum1,
+// 		   zsendData1, zrecvData1,
+// 		   zdest1, zsrc1,
+// 		   maxNum_zsend1,
+// 		   maxNum_zrecv1,
+// 		   engine_zsend1,
+// 		   engine_zrecv1);
+//   }
+//   engine_zsend1.Isend (zdest1, 6);
+//   engine_zrecv1.Irecv (zsrc1,  6);
+//   engine_zsend1.wait();
+//   engine_zrecv1.wait();
+//   zsend1.clearData();
+//   zrecv1h.add (zrecv1, mask);
+
+// }  
+
+//   Parallel::TransferEngine sender;
+//   Parallel::TransferEngine recver;
+  
+//   // ptr_buff->clearData();
+
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (xsendNum0);
+//   recver.registerBuff (xrecvNum0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (xdest0, 0);
+//   recver.Irecv (xsrc0,  0);
+//   sender.wait();
+//   recver.wait();
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   xsendData0.build ();
+//   xrecvData0.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (xsendData0);
+//   recver.registerBuff (xrecvData0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (xdest0, 1);
+//   recver.Irecv (xsrc0,  1);
+//   sender.wait();
+//   recver.wait();
+//   xsend0.clearData();
+//   xrecv0h.add (xrecv0, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (xsendNum1);
+//   recver.registerBuff (xrecvNum1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (xdest1, 2);
+//   recver.Irecv (xsrc1,  2);
+//   sender.wait();
+//   recver.wait();  
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   xsendData1.build ();
+//   xrecvData1.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (xsendData1);
+//   recver.registerBuff (xrecvData1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (xdest1, 3);
+//   recver.Irecv (xsrc1,  3);
+//   sender.wait();
+//   recver.wait();
+//   xsend1.clearData();  
+//   xrecv1h.add (xrecv1, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Barrier);
+//   Parallel::Interface::barrier();
+//   HostTimer::toc (item_Redistribute_Barrier);
+
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (ysendNum0);
+//   recver.registerBuff (yrecvNum0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (ydest0, 0);
+//   recver.Irecv (ysrc0,  0);
+//   sender.wait();
+//   recver.wait();  
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   ysendData0.build ();
+//   yrecvData0.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (ysendData0);
+//   recver.registerBuff (yrecvData0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (ydest0, 1);
+//   recver.Irecv (ysrc0,  1);
+//   sender.wait();
+//   recver.wait();
+//   ysend0.clearData();
+//   yrecv0h.add (yrecv0, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (ysendNum1);
+//   recver.registerBuff (yrecvNum1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (ydest1, 2);
+//   recver.Irecv (ysrc1,  2);
+//   sender.wait();
+//   recver.wait();  
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   ysendData1.build ();
+//   yrecvData1.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (ysendData1);
+//   recver.registerBuff (yrecvData1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (ydest1, 3);
+//   recver.Irecv (ysrc1,  3);
+//   sender.wait();
+//   recver.wait();
+//   ysend1.clearData();
+//   yrecv1h.add (yrecv1, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Barrier);
+//   Parallel::Interface::barrier();
+//   HostTimer::toc (item_Redistribute_Barrier);
+  
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (zsendNum0);
+//   recver.registerBuff (zrecvNum0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (zdest0, 0);
+//   recver.Irecv (zsrc0,  0);
+//   sender.wait();
+//   recver.wait();  
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   zsendData0.build ();
+//   zrecvData0.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (zsendData0);
+//   recver.registerBuff (zrecvData0);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (zdest0, 1);
+//   recver.Irecv (zsrc0,  1);
+//   sender.wait();
+//   recver.wait();
+//   zsend0.clearData ();
+//   zrecv0h.add (zrecv0, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data0);
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (zsendNum1);
+//   recver.registerBuff (zrecvNum1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data0);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (zdest1, 2);
+//   recver.Irecv (zsrc1,  2);
+//   sender.wait();
+//   recver.wait();  
+//   HostTimer::toc (item_Redistribute_Transfer);
+
+//   HostTimer::tic (item_Redistribute_Data);
+//   zsendData1.build ();
+//   zrecvData1.build ();
+//   sender.clearRegistered();
+//   recver.clearRegistered();
+//   sender.registerBuff (zsendData1);
+//   recver.registerBuff (zrecvData1);
+//   sender.build ();
+//   recver.build ();
+//   HostTimer::toc (item_Redistribute_Data);
+//   HostTimer::tic (item_Redistribute_Transfer);
+//   sender.Isend (zdest1, 3);
+//   recver.Irecv (zsrc1,  3);
+//   sender.wait();
+//   recver.wait();
+//   zsend1.clearData();
+//   zrecv1h.add (zrecv1, mask);
+//   HostTimer::toc (item_Redistribute_Transfer);
+// }
 
 
 

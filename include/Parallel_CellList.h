@@ -154,6 +154,7 @@ public:
     TransNumAtomInSubList ();
     ~TransNumAtomInSubList ();
     void reinit (HostSubCellList & list);
+    IndexType getMaxNum () const ;
     virtual void getTransBuffs (IndexType * num,
 				void *** buffs,
 				size_t ** sizes);
@@ -173,6 +174,7 @@ public:
     void reinit (HostSubCellList & list,
 		 const MDDataItemMask_t mask = MDDataItemMask_All);
     void build ();
+    void build (const IndexType & maxNumTrans);
     virtual void getTransBuffs (IndexType * num,
 				void *** buffs,
 				size_t ** sizes);
