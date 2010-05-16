@@ -15,7 +15,8 @@ TransferEngine ()
       shiftIndex(NULL),
       dataTypeBuilt (false),
       count (0),
-      memSize (0)
+      memSize (0),
+      request (MPI_REQUEST_NULL)
 {
 }
 
@@ -60,18 +61,24 @@ build ()
 void Parallel::TransferEngine::
 Isend (int dest, int tag)
 {
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Isend (buff, 1, dataType, dest, tag, Parallel::Environment::communicator(), &request);
 }
 
 void Parallel::TransferEngine::
 Irecv (int src,  int tag)
 {
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Irecv (buff, 1, dataType, src,  tag, Parallel::Environment::communicator(), &request);
 }
 
 void Parallel::TransferEngine::
 buildPersistentSend (int dest, int tag)
 {
+  MPI_Type_hindexed (count, blockLength, shiftIndex, MPI_BYTE, &dataType);
+  MPI_Type_commit (&dataType);
+  dataTypeBuilt = true;
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Send_init (buff, 1, dataType, dest, tag, Parallel::Environment::communicator(),
 		 &request);
 }
@@ -79,6 +86,10 @@ buildPersistentSend (int dest, int tag)
 void Parallel::TransferEngine::
 buildPersistentRecv (int src,  int tag)
 {
+  MPI_Type_hindexed (count, blockLength, shiftIndex, MPI_BYTE, &dataType);
+  MPI_Type_commit (&dataType);
+  dataTypeBuilt = true;
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   MPI_Recv_init (buff, 1, dataType, src, tag, Parallel::Environment::communicator(),
 		 &request);
 }
@@ -130,9 +141,10 @@ clearRegistered ()
 Parallel::TransferEngine::
 ~TransferEngine ()
 {
-  clearRegistered ();
-  freeAPointer ((void**)&blockLength);
-  freeAPointer ((void**)&shiftIndex);
+  // clearRegistered ();
+  // freeAPointer ((void**)&blockLength);
+  // freeAPointer ((void**)&shiftIndex);
+  clear ();
 }
 
 

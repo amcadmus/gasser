@@ -24,6 +24,7 @@ namespace Parallel{
     unsigned memSize;
     MPI_Request request;
     MPI_Status status;
+    bool persistentInited;
 private:
     void resize (unsigned memSize);
 public:

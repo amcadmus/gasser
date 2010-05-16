@@ -50,6 +50,8 @@ namespace Parallel{
       item_Redistribute_DHCopy			= 5 + ParallelItemShift,
       item_Redistribute_Barrier			= 7 + ParallelItemShift,
       item_TransferGhost			= 2 + ParallelItemShift,
+      item_TransferGhost_Tranfer		= 9 + ParallelItemShift,
+      item_TransferGhost_DHCopy			= 8 + ParallelItemShift,
     };
     typedef enum timeItem timeItem_t;
 

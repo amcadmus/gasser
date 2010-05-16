@@ -45,7 +45,20 @@ rebuildEngine (IndexType & maxSend,
 	       Parallel::TransNumAtomInSubList & sendNum,
 	       Parallel::TransSubListData & sendData,
 	       Parallel::TransferEngine & engine_send);
-
+static void
+rebuildEnginePersistentSend (IndexType & maxSend,
+			     Parallel::TransNumAtomInSubList & sendNum,
+			     Parallel::TransSubListData & sendData,
+			     const int dest,
+			     const int tag,
+			     Parallel::TransferEngine & engine_send);
+static void
+rebuildEnginePersistentRecv (IndexType & maxRecv,
+			     Parallel::TransNumAtomInSubList & recvNum,
+			     Parallel::TransSubListData & recvData,
+			     const int dest,
+			     const int tag,
+			     Parallel::TransferEngine & engine_recv);
 
 // static void 
 // rebuildEngine (Parallel::TransNumAtomInSubList & sendNum,
@@ -292,19 +305,43 @@ setHostData (HostCellListedMDData & hdata,
   zsendData1.reinit (zsend1, mask);
   zrecvData1.reinit (zrecv1, mask);
 
-
-  rebuildEngine (maxNum_xsend0, xsendNum0, xsendData0, engine_xsend0);
-  rebuildEngine (maxNum_xrecv0, xrecvNum0, xrecvData0, engine_xrecv0);
-  rebuildEngine (maxNum_ysend0, ysendNum0, ysendData0, engine_ysend0);
-  rebuildEngine (maxNum_yrecv0, yrecvNum0, yrecvData0, engine_yrecv0);
-  rebuildEngine (maxNum_zsend0, zsendNum0, zsendData0, engine_zsend0);
-  rebuildEngine (maxNum_zrecv0, zrecvNum0, zrecvData0, engine_zrecv0);
-  rebuildEngine (maxNum_xsend1, xsendNum1, xsendData1, engine_xsend1);
-  rebuildEngine (maxNum_xrecv1, xrecvNum1, xrecvData1, engine_xrecv1);
-  rebuildEngine (maxNum_ysend1, ysendNum1, ysendData1, engine_ysend1);
-  rebuildEngine (maxNum_yrecv1, yrecvNum1, yrecvData1, engine_yrecv1);
-  rebuildEngine (maxNum_zsend1, zsendNum1, zsendData1, engine_zsend1);
-  rebuildEngine (maxNum_zrecv1, zrecvNum1, zrecvData1, engine_zrecv1);
+  rebuildEnginePersistentSend (maxNum_xsend0, xsendNum0, xsendData0,
+			       xdest0, 0, engine_xsend0);
+  rebuildEnginePersistentRecv (maxNum_xrecv0, xrecvNum0, xrecvData0,
+			       xsrc0,  0, engine_xrecv0);
+  rebuildEnginePersistentSend (maxNum_xsend1, xsendNum1, xsendData1,
+			       xdest1, 1, engine_xsend1);
+  rebuildEnginePersistentRecv (maxNum_xrecv1, xrecvNum1, xrecvData1,
+			       xsrc1,  1, engine_xrecv1);
+  rebuildEnginePersistentSend (maxNum_ysend0, ysendNum0, ysendData0,
+			       ydest0, 0, engine_ysend0);
+  rebuildEnginePersistentRecv (maxNum_yrecv0, yrecvNum0, yrecvData0,
+			       ysrc0,  0, engine_yrecv0);
+  rebuildEnginePersistentSend (maxNum_ysend1, ysendNum1, ysendData1,
+			       ydest1, 1, engine_ysend1);
+  rebuildEnginePersistentRecv (maxNum_yrecv1, yrecvNum1, yrecvData1,
+			       ysrc1,  1, engine_yrecv1);
+  rebuildEnginePersistentSend (maxNum_zsend0, zsendNum0, zsendData0,
+			       zdest0, 0, engine_zsend0);
+  rebuildEnginePersistentRecv (maxNum_zrecv0, zrecvNum0, zrecvData0,
+			       zsrc0,  0, engine_zrecv0);
+  rebuildEnginePersistentSend (maxNum_zsend1, zsendNum1, zsendData1,
+			       zdest1, 1, engine_zsend1);
+  rebuildEnginePersistentRecv (maxNum_zrecv1, zrecvNum1, zrecvData1,
+			       zsrc1,  1, engine_zrecv1);
+  
+  // rebuildEngine (maxNum_xsend0, xsendNum0, xsendData0, engine_xsend0);
+  // rebuildEngine (maxNum_xrecv0, xrecvNum0, xrecvData0, engine_xrecv0);
+  // rebuildEngine (maxNum_ysend0, ysendNum0, ysendData0, engine_ysend0);
+  // rebuildEngine (maxNum_yrecv0, yrecvNum0, yrecvData0, engine_yrecv0);
+  // rebuildEngine (maxNum_zsend0, zsendNum0, zsendData0, engine_zsend0);
+  // rebuildEngine (maxNum_zrecv0, zrecvNum0, zrecvData0, engine_zrecv0);
+  // rebuildEngine (maxNum_xsend1, xsendNum1, xsendData1, engine_xsend1);
+  // rebuildEngine (maxNum_xrecv1, xrecvNum1, xrecvData1, engine_xrecv1);
+  // rebuildEngine (maxNum_ysend1, ysendNum1, ysendData1, engine_ysend1);
+  // rebuildEngine (maxNum_yrecv1, yrecvNum1, yrecvData1, engine_yrecv1);
+  // rebuildEngine (maxNum_zsend1, zsendNum1, zsendData1, engine_zsend1);
+  // rebuildEngine (maxNum_zrecv1, zrecvNum1, zrecvData1, engine_zrecv1);
   
   // rebuildEngine (xsendNum0,  xrecvNum0,
   // 		 xsendData0, xrecvData0,
@@ -398,6 +435,36 @@ rebuildEngine (IndexType & maxSend,
   engine_send.build ();
 }
 
+static void
+rebuildEnginePersistentSend (IndexType & maxSend,
+			     Parallel::TransNumAtomInSubList & sendNum,
+			     Parallel::TransSubListData & sendData,
+			     const int dest,
+			     const int tag,
+			     Parallel::TransferEngine & engine_send)
+{
+  engine_send.clearRegistered();
+  engine_send.registerBuff (sendNum);
+  sendData.build (maxSend);
+  engine_send.registerBuff (sendData);
+  engine_send.buildPersistentSend (dest, tag);
+}
+
+static void
+rebuildEnginePersistentRecv (IndexType & maxRecv,
+			     Parallel::TransNumAtomInSubList & recvNum,
+			     Parallel::TransSubListData & recvData,
+			     const int src,
+			     const int tag,
+			     Parallel::TransferEngine & engine_recv)
+{
+  engine_recv.clearRegistered();
+  engine_recv.registerBuff (recvNum);
+  recvData.build (maxRecv);
+  engine_recv.registerBuff (recvData);
+  engine_recv.buildPersistentRecv (src, tag);
+}
+
 void Parallel::SystemRedistributeTransferUtil::
 redistributeHost ()
 {
@@ -408,98 +475,105 @@ redistributeHost ()
   HostTimer::tic (item_Redistribute_BuildEngine);
   if (thisNum_xsend0 > maxNum_xsend0){
     maxNum_xsend0 = thisNum_xsend0;
-    rebuildEngine (maxNum_xsend0, xsendNum0, xsendData0, engine_xsend0);
+    rebuildEnginePersistentSend (maxNum_xsend0, xsendNum0, xsendData0,
+				 xdest0, 0, engine_xsend0);
   }
   if (thisNum_xrecv0 > maxNum_xrecv0){
     maxNum_xrecv0 = thisNum_xrecv0;
-    rebuildEngine (maxNum_xrecv0, xrecvNum0, xrecvData0, engine_xrecv0);
+    rebuildEnginePersistentRecv (maxNum_xrecv0, xrecvNum0, xrecvData0,
+				 xsrc0,  0, engine_xrecv0);
   }
   if (thisNum_xsend1 > maxNum_xsend1){
     maxNum_xsend1 = thisNum_xsend1;
-    rebuildEngine (maxNum_xsend1, xsendNum1, xsendData1, engine_xsend1);
+    rebuildEnginePersistentSend (maxNum_xsend1, xsendNum1, xsendData1,
+				 xdest1, 1, engine_xsend1);
   }
   if (thisNum_xrecv1 > maxNum_xrecv1){
     maxNum_xrecv1 = thisNum_xrecv1;
-    rebuildEngine (maxNum_xrecv1, xrecvNum1, xrecvData1, engine_xrecv1);
+    rebuildEnginePersistentRecv (maxNum_xrecv1, xrecvNum1, xrecvData1,
+				 xsrc1,  1, engine_xrecv1);
   }
-
   if (thisNum_ysend0 > maxNum_ysend0){
     maxNum_ysend0 = thisNum_ysend0;
-    rebuildEngine (maxNum_ysend0, ysendNum0, ysendData0, engine_ysend0);
+    rebuildEnginePersistentSend (maxNum_ysend0, ysendNum0, ysendData0,
+				 ydest0, 0, engine_ysend0);
   }
   if (thisNum_yrecv0 > maxNum_yrecv0){
     maxNum_yrecv0 = thisNum_yrecv0;
-    rebuildEngine (maxNum_yrecv0, yrecvNum0, yrecvData0, engine_yrecv0);
+    rebuildEnginePersistentRecv (maxNum_yrecv0, yrecvNum0, yrecvData0,
+				 ysrc0,  0, engine_yrecv0);
   }
   if (thisNum_ysend1 > maxNum_ysend1){
     maxNum_ysend1 = thisNum_ysend1;
-    rebuildEngine (maxNum_ysend1, ysendNum1, ysendData1, engine_ysend1);
+    rebuildEnginePersistentSend (maxNum_ysend1, ysendNum1, ysendData1,
+				 ydest1, 1, engine_ysend1);
   }
   if (thisNum_yrecv1 > maxNum_yrecv1){
     maxNum_yrecv1 = thisNum_yrecv1;
-    rebuildEngine (maxNum_yrecv1, yrecvNum1, yrecvData1, engine_yrecv1);
+    rebuildEnginePersistentRecv (maxNum_yrecv1, yrecvNum1, yrecvData1,
+				 ysrc1,  1, engine_yrecv1);
   }
-
   if (thisNum_zsend0 > maxNum_zsend0){
     maxNum_zsend0 = thisNum_zsend0;
-    rebuildEngine (maxNum_zsend0, zsendNum0, zsendData0, engine_zsend0);
+    rebuildEnginePersistentSend (maxNum_zsend0, zsendNum0, zsendData0,
+				 zdest0, 0, engine_zsend0);
   }
   if (thisNum_zrecv0 > maxNum_zrecv0){
     maxNum_zrecv0 = thisNum_zrecv0;
-    rebuildEngine (maxNum_zrecv0, zrecvNum0, zrecvData0, engine_zrecv0);
+    rebuildEnginePersistentRecv (maxNum_zrecv0, zrecvNum0, zrecvData0,
+				 zsrc0,  0, engine_zrecv0);
   }
   if (thisNum_zsend1 > maxNum_zsend1){
     maxNum_zsend1 = thisNum_zsend1;
-    rebuildEngine (maxNum_zsend1, zsendNum1, zsendData1, engine_zsend1);
+    rebuildEnginePersistentSend (maxNum_zsend1, zsendNum1, zsendData1,
+				 zdest1, 1, engine_zsend1);
   }
   if (thisNum_zrecv1 > maxNum_zrecv1){
     maxNum_zrecv1 = thisNum_zrecv1;
-    rebuildEngine (maxNum_zrecv1, zrecvNum1, zrecvData1, engine_zrecv1);
+    rebuildEnginePersistentRecv (maxNum_zrecv1, zrecvNum1, zrecvData1,
+				 zsrc1,  1, engine_zrecv1);
   }
   HostTimer::toc (item_Redistribute_BuildEngine);
 
   HostTimer::tic (item_Redistribute_Transfer);
-  if (thisNum_xsend0 != 10000) engine_xsend0.Isend (xdest0, 0);
-  if (thisNum_xrecv0 != 10000) engine_xrecv0.Irecv (xsrc0,  0);
-  if (thisNum_xsend0 != 10000) engine_xsend0.wait();
-  if (thisNum_xrecv0 != 10000) engine_xrecv0.wait();
-  if (thisNum_xsend0 != 10000) xsend0.clearData();
-  if (thisNum_xrecv0 != 10000) xrecv0h.add (xrecv0, mask);
+  if (thisNum_xsend0 != 0) engine_xsend0.startPersistentRequest();
+  if (thisNum_xrecv0 != 0) engine_xrecv0.startPersistentRequest();
+  if (thisNum_xsend0 != 0) engine_xsend0.wait();
+  if (thisNum_xrecv0 != 0) engine_xrecv0.wait();
+  if (thisNum_xsend0 != 0) xsend0.clearData();
+  if (thisNum_xrecv0 != 0) xrecv0h.add (xrecv0, mask);
+  if (thisNum_xsend1 != 0) engine_xsend1.startPersistentRequest();
+  if (thisNum_xrecv1 != 0) engine_xrecv1.startPersistentRequest();
+  if (thisNum_xsend1 != 0) engine_xsend1.wait();
+  if (thisNum_xrecv1 != 0) engine_xrecv1.wait();
+  if (thisNum_xsend1 != 0) xsend1.clearData();
+  if (thisNum_xrecv1 != 0) xrecv1h.add (xrecv1, mask);
 
-  if (thisNum_xsend1 != 10000) engine_xsend1.Isend (xdest1, 1);
-  if (thisNum_xrecv1 != 10000) engine_xrecv1.Irecv (xsrc1,  1);
-  if (thisNum_xsend1 != 10000) engine_xsend1.wait();
-  if (thisNum_xrecv1 != 10000) engine_xrecv1.wait();
-  if (thisNum_xsend1 != 10000) xsend1.clearData();
-  if (thisNum_xrecv1 != 10000) xrecv1h.add (xrecv1, mask);
+  if (thisNum_ysend0 != 0) engine_ysend0.startPersistentRequest();
+  if (thisNum_yrecv0 != 0) engine_yrecv0.startPersistentRequest();
+  if (thisNum_ysend0 != 0) engine_ysend0.wait();
+  if (thisNum_yrecv0 != 0) engine_yrecv0.wait();
+  if (thisNum_ysend0 != 0) ysend0.clearData();
+  if (thisNum_yrecv0 != 0) yrecv0h.add (yrecv0, mask);
+  if (thisNum_ysend1 != 0) engine_ysend1.startPersistentRequest();
+  if (thisNum_yrecv1 != 0) engine_yrecv1.startPersistentRequest();
+  if (thisNum_ysend1 != 0) engine_ysend1.wait();
+  if (thisNum_yrecv1 != 0) engine_yrecv1.wait();
+  if (thisNum_ysend1 != 0) ysend1.clearData();
+  if (thisNum_yrecv1 != 0) yrecv1h.add (yrecv1, mask);
 
-  if (thisNum_ysend0 != 10000) engine_ysend0.Isend (ydest0, 0);
-  if (thisNum_yrecv0 != 10000) engine_yrecv0.Irecv (ysrc0,  0);
-  if (thisNum_ysend0 != 10000) engine_ysend0.wait();
-  if (thisNum_yrecv0 != 10000) engine_yrecv0.wait();
-  if (thisNum_ysend0 != 10000) ysend0.clearData();
-  if (thisNum_yrecv0 != 10000) yrecv0h.add (yrecv0, mask);
-
-  if (thisNum_ysend1 != 10000) engine_ysend1.Isend (ydest1, 1);
-  if (thisNum_yrecv1 != 10000) engine_yrecv1.Irecv (ysrc1,  1);
-  if (thisNum_ysend1 != 10000) engine_ysend1.wait();
-  if (thisNum_yrecv1 != 10000) engine_yrecv1.wait();
-  if (thisNum_ysend1 != 10000) ysend1.clearData();
-  if (thisNum_yrecv1 != 10000) yrecv1h.add (yrecv1, mask);
-
-  if (thisNum_zsend0 != 10000) engine_zsend0.Isend (zdest0, 0);
-  if (thisNum_zrecv0 != 10000) engine_zrecv0.Irecv (zsrc0,  0);
-  if (thisNum_zsend0 != 10000) engine_zsend0.wait();
-  if (thisNum_zrecv0 != 10000) engine_zrecv0.wait();
-  if (thisNum_zsend0 != 10000) zsend0.clearData();
-  if (thisNum_zrecv0 != 10000) zrecv0h.add (zrecv0, mask);
-
-  if (thisNum_zsend1 != 10000) engine_zsend1.Isend (zdest1, 1);
-  if (thisNum_zrecv1 != 10000) engine_zrecv1.Irecv (zsrc1,  1);
-  if (thisNum_zsend1 != 10000) engine_zsend1.wait();
-  if (thisNum_zrecv1 != 10000) engine_zrecv1.wait();
-  if (thisNum_zsend1 != 10000) zsend1.clearData();
-  if (thisNum_zrecv1 != 10000) zrecv1h.add (zrecv1, mask);
+  if (thisNum_zsend0 != 0) engine_zsend0.startPersistentRequest();
+  if (thisNum_zrecv0 != 0) engine_zrecv0.startPersistentRequest();
+  if (thisNum_zsend0 != 0) engine_zsend0.wait();
+  if (thisNum_zrecv0 != 0) engine_zrecv0.wait();
+  if (thisNum_zsend0 != 0) zsend0.clearData();
+  if (thisNum_zrecv0 != 0) zrecv0h.add (zrecv0, mask);
+  if (thisNum_zsend1 != 0) engine_zsend1.startPersistentRequest();
+  if (thisNum_zrecv1 != 0) engine_zrecv1.startPersistentRequest();
+  if (thisNum_zsend1 != 0) engine_zsend1.wait();
+  if (thisNum_zrecv1 != 0) engine_zrecv1.wait();
+  if (thisNum_zsend1 != 0) zsend1.clearData();
+  if (thisNum_zrecv1 != 0) zrecv1h.add (zrecv1, mask);
   HostTimer::toc (item_Redistribute_Transfer);
 
   

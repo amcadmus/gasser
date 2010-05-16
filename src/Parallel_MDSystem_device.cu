@@ -199,9 +199,15 @@ redistribute ()
 void Parallel::MDSystem::
 transferGhost ()
 {
+  HostTimer::tic (item_TransferGhost_DHCopy);
   transCoordscopyUtil .copyToHost ();
+  HostTimer::toc (item_TransferGhost_DHCopy);
+  HostTimer::tic (item_TransferGhost_Tranfer);
   transCoordstransUtil.transCoords ();
+  HostTimer::toc (item_TransferGhost_Tranfer);
+  HostTimer::tic (item_TransferGhost_DHCopy);
   transCoordscopyUtil .copyFromHost ();
+  HostTimer::toc (item_TransferGhost_DHCopy);
 }
 
 void Parallel::MDSystem::
