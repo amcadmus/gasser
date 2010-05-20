@@ -72,6 +72,8 @@ int main(int argc, char * argv[])
   Topology::System sysTop;
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  LennardJones6_12CapParameter ljparamCap;
+  ljparamCap.reinit (1.f, 1.f, 0.f, 3.2f, 10000.f);
   LennardJones6_12Parameter ljparam;
   ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
@@ -160,7 +162,7 @@ int main(int argc, char * argv[])
   
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
   Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.0001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 

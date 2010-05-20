@@ -3,6 +3,7 @@
 
 #include "Parallel_MDData.h"
 #include "Parallel_CellList.h"
+#include "Parallel_Timer.h"
 
 // #define DEVICE_CODE
 
@@ -239,7 +240,7 @@ public:
   
 
 #ifdef DEVICE_CODE
-
+  
   class SystemRedistributeCopyUtil
   {
     SubCellList			hostSubInner;
@@ -357,21 +358,34 @@ public:
 #endif // DEVICE_CODE
 
 
-#ifdef DEVICE_CODE
+#ifdef DEVICE_CODE  
+  
   void Parallel::SystemTransCoordsCopyUtil::
   copyToHost ()
   {
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Pack);
     dpkgInner.pack (*ptr_ddata, mask);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Pack);
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Copy);
     dpkgInner.copyToHost (hpkgInner);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Copy);
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Unpack);
     hpkgInner.unpack_replace (*ptr_hdata);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Unpack);
   }
 
   void Parallel::SystemTransCoordsCopyUtil::
   copyFromHost ()
   {
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Pack);
     hpkgOuter.pack (*ptr_hdata, mask);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Pack);
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Copy);
     dpkgOuter.copyFromHost (hpkgOuter);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Copy);
+    Parallel::Timer::HostTimer::tic (Parallel::Timer::item_TransferGhost_DHCopy_Unpack);
     dpkgOuter.unpack_replace (*ptr_ddata);
+    Parallel::Timer::HostTimer::toc (Parallel::Timer::item_TransferGhost_DHCopy_Unpack);
   }
 
   void Parallel::SystemTransCoordsCopyUtil::

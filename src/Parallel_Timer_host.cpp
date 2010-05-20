@@ -93,6 +93,9 @@ printRecord (FILE * fp)
       totalPercent += printHostItem (fp, item_TransferGhost);
       printHostItem (fp, item_TransferGhost_Tranfer);
       printHostItem (fp, item_TransferGhost_DHCopy);
+      printHostItem (fp, item_TransferGhost_DHCopy_Pack);
+      printHostItem (fp, item_TransferGhost_DHCopy_Copy);
+      printHostItem (fp, item_TransferGhost_DHCopy_Unpack);
 
       fprintf (fp, "# Total percentage:");
       for (int i = 0; i < PrintStartPosition - 16; ++i){
@@ -150,6 +153,15 @@ init ()
 	   MaxWordsLength);
   strncpy (hostWords[item_TransferGhost_DHCopy - ParallelItemShift] ,
 	   "Transfer Ghosts device-host copy",
+	   MaxWordsLength);
+  strncpy (hostWords[item_TransferGhost_DHCopy_Pack - ParallelItemShift] ,
+	   "Transfer Ghosts device-host copy pack",
+	   MaxWordsLength);
+  strncpy (hostWords[item_TransferGhost_DHCopy_Copy - ParallelItemShift] ,
+	   "Transfer Ghosts device-host copy copy",
+	   MaxWordsLength);
+  strncpy (hostWords[item_TransferGhost_DHCopy_Unpack - ParallelItemShift] ,
+	   "Transfer Ghosts device-host copy unpack",
 	   MaxWordsLength);
   strncpy (hostWords[item_TransferGhost_Tranfer - ParallelItemShift] ,
 	   "Transfer Ghosts transfer",
