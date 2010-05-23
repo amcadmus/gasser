@@ -22,7 +22,9 @@ using namespace Parallel::Timer;
 
 int main(int argc, char * argv[])
 {
-  Parallel::Interface::initEnvironment (&argc, &argv);
+  Parallel::Interface::initMPI (&argc, &argv);
+  Parallel::Interface::initEnvironment ();
+  
   // int div[3];
   // div[2] = env.numProc();
   // div[1] = div[0] = 1;
@@ -30,18 +32,17 @@ int main(int argc, char * argv[])
   // // div[1] = 2;
   // // div[2] = 2;
   // env.init (div);
-  if (Parallel::Interface::numProc() == 8){
-    Parallel::Interface::initCart (2,2,2);
-  }
-  else{
-    Parallel::Interface::initCart (1,
-				   1,
-				   Parallel::Interface::numProc());
-  }
-
+  // if (Parallel::Interface::numProc() == 8){
+  //   Parallel::Interface::initCart (2,2,2);
+  // }
+  // else{
+  //   Parallel::Interface::initCart (1,
+  // 				   1,
+  // 				   Parallel::Interface::numProc());
+  // }
   
-  GPU::Environment genv;
-  genv.setDeviceId (atoi(argv[3]));
+  // GPU::Environment genv;
+  // genv.setDeviceId (atoi(argv[3]));
   
   HostTimer::init();
   DeviceTimer::init ();

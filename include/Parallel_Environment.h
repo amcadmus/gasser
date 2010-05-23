@@ -8,7 +8,8 @@
 
 namespace Parallel {
   class MDExcptDimsNotConsistentWithNProc : public MDException {};
-
+  class MDExcptNoActiveProcess : public MDException {};
+  
   enum coordIndex {
     CoordXIndex =	0,
     CoordYIndex	=	1,
@@ -17,20 +18,28 @@ namespace Parallel {
   
   class Environment 
   {
+    static MPI_Comm commActive;
     static MPI_Comm commCart;
+    static int rank_worldRoot;
     static int dims[3];
     static int myRank_;
     static int numProc_;
+    static int active;
 public:
-    static void init (int * argc, char *** argv);
+    static void init_mpi (int * argc, char *** argv);
+    static void init_env (const char * deviceName = "Device Emulation (CPU)",
+			  const int & nx = 0,
+			  const int & ny = 0,
+			  const int & nz = 0);
     static void finalize ();
-    static void initCart (const int & nx,
-			  const int & ny,
-			  const int & nz);
+    static int  isActive () {return active;}
+    // static void initCart (const int & nx,
+    // 			  const int & ny,
+    // 			  const int & nz);
+    
     static int myRank  () {return myRank_;}
     static int numProc () {return numProc_;}
-    static const MPI_Comm & communicator ()
-	{return commCart;}
+    static const MPI_Comm & communicator () {return commCart;}
     static void cartCoordToRank (const int & ix,
 				 const int & iy,
 				 const int & iz,
@@ -43,7 +52,8 @@ public:
 			    int & ny,
 			    int & nz) ;
     static void barrier ();
-
+    static void abort (int errorCode);
+    
     static void neighborProcIndex (int direction,
 				   int displacement,
 				   int & src,

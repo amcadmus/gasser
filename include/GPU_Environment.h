@@ -1,13 +1,26 @@
 #ifndef __GPU_Environment_h__
 #define __GPU_Environment_h__
 
+#define MaxLengthDeviceName			256
+#define MaxNumDevicePerNode			32
+
 namespace GPU{
   class Environment
   {
-    int deviceId;
+    static int my_deviceId;
+    static int numActiveDevice;
+    static int memActiveDevice;
+    static int * activeDeviceId;
+    static char activeDeviceName[MaxLengthDeviceName];
 public:
-    Environment();
-    void setDeviceId (int id);
+    static void initialize (const char * activeDeviceName = "Tesla C1060");
+    static void finalize ();
+    static int getNumActiveDevice () 
+	{return GPU::Environment::numActiveDevice;}
+    static const int * cptr_activeDeviceId () 
+	{return GPU::Environment::activeDeviceId;}
+    static void setDeviceId (int id);
+    static int  getDeviceId () {return GPU::Environment:: my_deviceId;}
   };
 }
 

@@ -21,37 +21,26 @@
 
 using namespace Parallel::Timer;
 
+int prog (int argc, char * argv[]);
+
 int main(int argc, char * argv[])
 {
-  Parallel::Interface::initEnvironment (&argc, &argv);
-  // int div[3];
-  // div[2] = env.numProc();
-  // div[1] = div[0] = 1;
-  // // div[0] = 2;
-  // // div[1] = 2;
-  // // div[2] = 2;
-  // env.init (div);
-  if (Parallel::Interface::numProc() == 8){
-    Parallel::Interface::initCart (2,2,2);
-  }
-  else{
-    Parallel::Interface::initCart (1,
-				   1,
-				   Parallel::Interface::numProc());
-  }
+  Parallel::Interface::initMPI (&argc, &argv);
+  // Parallel::Interface::initEnvironment ("Device Emulation (CPU)");
+  Parallel::Interface::initEnvironment ();
 
-  
-  GPU::Environment genv;
-  if (Parallel::Interface::numProc() == 1){
-    genv.setDeviceId (atoi(argv[3]));
-  }
-  else if (Parallel::Interface::myRank() == 0){
-    genv.setDeviceId (0);
-  }
-  else{
-    genv.setDeviceId(2);
+  int flag = 0;
+  if (Parallel::Interface::isActive()){
+    flag = prog (argc, argv);
   }
   
+  Parallel::Interface::finalizeEnvironment ();
+
+  return flag;
+}
+
+int prog (int argc, char * argv[])
+{  
   HostTimer::init();
   DeviceTimer::init ();
   HostTimer::tic (item_Total);

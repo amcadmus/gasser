@@ -1,13 +1,12 @@
 #ifndef __Parallel_Integrator_h_wanghan__
 #define __Parallel_Integrator_h_wanghan__
 
-#ifdef DEVICE_CODE
 #include "common.h"
+
+#ifdef DEVICE_CODE
 #include "Parallel_CellList.h"
 #include "Parallel_Statistic.h"
 #include "SumVector.h"
-#else
-#include "common.h"
 #endif
 
 namespace Parallel {

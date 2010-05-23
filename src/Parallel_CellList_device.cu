@@ -1668,7 +1668,7 @@ rebuildCellList_step2_mapBondTop (const IndexType * forwardMap,
   bool docopy = (toIndex != MaxIndexValue && fromIndex != toIndex);
 
   IndexType bk_num, bk_Index, bk_Posi;
-  IndexType bk_Neighbor_globalIndex, bk_Neighbor_localIndex;
+  IndexType bk_Neighbor_globalIndex;
 
   if (maxNumBond != 0){
     if (docopy){

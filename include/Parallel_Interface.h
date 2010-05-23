@@ -3,11 +3,14 @@
 
 namespace Parallel{
   namespace Interface{
-    void initEnvironment (int * argc, char *** argv);
+    void initMPI         (int * argc, char *** argv);
+    void initEnvironment (const char * deviceName = "Device Emulation (CPU)",
+			  const int & nx = 0,
+			  const int & ny = 0,
+			  const int & nz = 0);
     void finalizeEnvironment ();
-    void initCart (const int & nx,
-		   const int & ny,
-		   const int & nz);
+
+    int isActive ();
     int myRank ();
     int numProc ();
     void cartCoordToRank (const int & ix,
@@ -22,6 +25,7 @@ namespace Parallel{
 		     int & ny,
 		     int & nz);
     void barrier ();
+    void abort (int errorCode);
 
     unsigned numThreadsInCell  () ;
 

@@ -4,7 +4,7 @@
 #include "Parallel_Environment.h"
 #include "compile_error_mixcode.h"
 
-#define NUMTHREADSINCELL 128
+#define NUMTHREADSINCELL 4
 
 unsigned Parallel::Interface::
 numThreadsInCell ()
@@ -13,10 +13,20 @@ numThreadsInCell ()
 }
 
 void Parallel::Interface::
-initEnvironment (int * argc, char ***argv)
+initMPI (int * argc, char *** argv)
 {
-  Parallel::Environment::init (argc, argv);
+  Parallel::Environment::init_mpi (argc, argv);
 }
+
+void Parallel::Interface::
+initEnvironment (const char * deviceName,
+		 const int & nx,
+		 const int & ny,
+		 const int & nz)
+{
+  Parallel::Environment::init_env (deviceName, nx, ny, nz);
+}
+
 
 void Parallel::Interface::
 finalizeEnvironment ()
@@ -36,13 +46,19 @@ numProc()
   return Parallel::Environment::numProc();
 }
 
-void Parallel::Interface::
-initCart (const int & nx,
-	  const int & ny,
-	  const int & nz)
+int Parallel::Interface::
+isActive()
 {
-  Parallel::Environment::initCart(nx, ny, nz);
+  return Parallel::Environment::isActive();
 }
+
+// void Parallel::Interface::
+// initCart (const int & nx,
+// 	  const int & ny,
+// 	  const int & nz)
+// {
+//   Parallel::Environment::initCart(nx, ny, nz);
+// }
 
 void Parallel::Interface::
 cartCoordToRank (const int & ix,
@@ -75,6 +91,13 @@ barrier ()
 {
   Parallel::Environment::barrier();
 }
+
+void Parallel::Interface::
+abort (int errorCode)
+{
+  Parallel::Environment::abort (errorCode);
+}
+
 
 void Parallel::Interface::
 shiftNeighbor (int direction,
