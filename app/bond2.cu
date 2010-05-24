@@ -86,14 +86,13 @@ int main(int argc, char * argv[])
   mol.addBond (Topology::Bond (0, 1, hsparam));
   mol.addBond (Topology::Bond (0, 1, feneparam));
   sysTop.addMolecules (mol, sys.numAtomInGroFile(filename) / 2);
-  
-  sys.init (filename, sysTop);
 
-  sys.redistribute ();
-  sys.deviceData.applyPeriodicBondaryCondition ();
   SystemNonBondedInteraction sysNbInter (sysTop);
   SystemBondedInteraction    sysBdInter (sysTop);
   if (Parallel::Interface::myRank() == 0) sysBdInter.printEverything ();
+  
+  sys.init (filename, sysTop, sysNbInter.maxRcut());
+  sys.redistribute ();
 
   Parallel::InteractionEngine interEng (sys.deviceData);
   interEng.registNonBondedInteraction (sysNbInter);

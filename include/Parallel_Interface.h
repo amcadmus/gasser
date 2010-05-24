@@ -4,7 +4,7 @@
 namespace Parallel{
   namespace Interface{
     void initMPI         (int * argc, char *** argv);
-    void initEnvironment (const char * deviceName = "Device Emulation (CPU)",
+    void initEnvironment (const char * deviceName = "Tesla C1060",
 			  const int & nx = 0,
 			  const int & ny = 0,
 			  const int & nz = 0);

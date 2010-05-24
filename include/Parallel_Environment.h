@@ -25,6 +25,9 @@ namespace Parallel {
     static int myRank_;
     static int numProc_;
     static int active;
+    static void initCart (const int & nx,
+			  const int & ny,
+			  const int & nz);
 public:
     static void init_mpi (int * argc, char *** argv);
     static void init_env (const char * deviceName = "Device Emulation (CPU)",

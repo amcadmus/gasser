@@ -48,7 +48,9 @@ reallocGroProperty (const IndexType & memSize__)
 
 void Parallel::MDSystem::
 init (const char * confFileName,
-      const Topology::System & sysTop)
+      const Topology::System & sysTop,
+      const ScalorType & cellSize,
+      const IndexType & divideLevel)
 {
   MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
   				 MDDataItemMask_CoordinateNoi |
@@ -85,7 +87,7 @@ init (const char * confFileName,
   DeviceMDData & ddata (deviceData);
   ddata.copyFromHost (localHostData, MDDataItemMask_All);
 
-  deviceData.initCellStructure (3.2, 1);
+  deviceData.initCellStructure (cellSize, divideLevel);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
   cellRelation.build (deviceData);
   

@@ -23,34 +23,31 @@ struct StrCmp
       { return strcmp (a, b);}
 };  
 
-static void 
-initCart  (MPI_Comm & comm_active,
-	   MPI_Comm & comm_cart,
-	   const int & nx,
+void Parallel::Environment::
+initCart  (const int & nx,
 	   const int & ny,
 	   const int & nz)
 {
   int ndims = 3;
-  int dims[3];
   dims[0] = nx;
   dims[1] = ny;
   dims[2] = nz;
   // printf ("%d %d %d %d\n",
   // 	  Parallel::Environment::numProc(), nx, ny, nz);
 
-  MPI_Dims_create (Parallel::Environment::numProc(), ndims, dims);
-  if (dims[0] * dims[1] * dims[2] != Parallel::Environment::numProc()){
+  MPI_Dims_create (numProc(), ndims, dims);
+  if (dims[0] * dims[1] * dims[2] != numProc()){
     throw Parallel::MDExcptDimsNotConsistentWithNProc ();
   }
 
-  if (Parallel::Environment::myRank () == 0){
+  if (myRank () == 0){
     printf ("# ndims are %d %d %d\n", dims[0], dims[1], dims[2]);
   }
   
   int periodic [3];
   periodic[0] = periodic[1] = periodic[2] = 1;
   int reorder = 1;
-  MPI_Cart_create (comm_active, ndims, dims, periodic, reorder, &comm_cart);
+  MPI_Cart_create (commActive, ndims, dims, periodic, reorder, &commCart);
 
   // printf ("# myrank is %d in %d\n", myRank_, numProc_);
 }
@@ -192,7 +189,7 @@ init_env (const char * deviceName,
   if (isActive()){
     MPI_Comm_size (commActive, &numProc_);
     MPI_Comm_rank (commActive, &myRank_);
-    initCart (commActive, commCart, nx, ny, nz);
+    initCart (nx, ny, nz);
     MPI_Comm_rank (commCart, &myRank_);
   }
 

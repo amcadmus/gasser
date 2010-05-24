@@ -61,6 +61,7 @@ initCellStructure (const ScalorType & rlist_,
   if ((CellOnX && numCell.x < 3) ||
       (CellOnY && numCell.y < 3) ||
       (CellOnZ && numCell.z < 3) ){
+    printf("rlist is %f, nx %d ny %d nz %d\n", rlist, numCell.x, numCell.y, numCell.z);
     throw MDExcptCellList ("Number of cell on one direction is less than 3");
   }
 
@@ -3556,10 +3557,12 @@ easyMalloc (const IndexType & totalNumCell_,
 void Parallel::DeviceCellRelation::
 clear ()
 {
-  cudaFree (numNeighbor);
-  cudaFree (neighborCellIndex);
-  cudaFree (neighborShift);
-  malloced = false;
+  if (malloced){
+    cudaFree (numNeighbor);
+    cudaFree (neighborCellIndex);
+    cudaFree (neighborShift);
+    malloced = false;
+  }
 }
 
 Parallel::DeviceCellRelation::
