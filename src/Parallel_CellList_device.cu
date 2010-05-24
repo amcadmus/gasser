@@ -2439,7 +2439,7 @@ pack (const DeviceCellListedMDData & ddata,
 
   DeviceMDData::setGlobalBox (ddata.getGlobalBox());
   if (expectedNumData > DeviceMDData::memSize() ){
-    printf ("# DeviceTransferPackage::pack, realloc\n");
+    // printf ("# DeviceTransferPackage::pack, realloc\n");
     DeviceMDData::easyMalloc(
 	expectedNumData * MemAllocExtension,
 	expectedNumBond, expectedNumAngle, expectedNumDihedral);
@@ -2447,7 +2447,7 @@ pack (const DeviceCellListedMDData & ddata,
   else if ((copyBond && (getMaxNumBond() != ddata.getMaxNumBond())) ||
 	   (copyAngle && (getMaxNumAngle() != ddata.getMaxNumAngle())) ||
 	   (copyDihedral && (getMaxNumDihedral() != ddata.getMaxNumDihedral())) ){
-    printf ("# DeviceTransferPackage::pack, realloc\n");
+    // printf ("# DeviceTransferPackage::pack, realloc\n");
     DeviceMDData::easyMalloc(
 	DeviceMDData::memSize(),
 	expectedNumBond, expectedNumAngle, expectedNumDihedral);

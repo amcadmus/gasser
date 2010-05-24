@@ -2,14 +2,15 @@
 
 #include "Parallel_Interface.h"
 #include "Parallel_Environment.h"
+
 #include "compile_error_mixcode.h"
 
-#define NUMTHREADSINCELL 64
+// #define NUMTHREADSINCELL 32
 
 unsigned Parallel::Interface::
 numThreadsInCell ()
 {
-  return NUMTHREADSINCELL;
+  return Parallel::Environment::getCellCapacity();
 }
 
 void Parallel::Interface::
@@ -19,12 +20,13 @@ initMPI (int * argc, char *** argv)
 }
 
 void Parallel::Interface::
-initEnvironment (const char * deviceName,
+initEnvironment (const unsigned & cellCapacity ,
+		 const char * deviceName,
 		 const int & nx,
 		 const int & ny,
 		 const int & nz)
 {
-  Parallel::Environment::init_env (deviceName, nx, ny, nz);
+  Parallel::Environment::init_env (cellCapacity, deviceName, nx, ny, nz);
 }
 
 

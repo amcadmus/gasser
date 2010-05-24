@@ -153,7 +153,7 @@ easyMalloc (const IndexType memSize_,
 	    const IndexType maxNumAngle_,
 	    const IndexType maxNumDihedral_)
 {
-  printf ("# malloc HostMDData\n");
+  // printf ("# malloc HostMDData\n");
   clear ();
 
   _memSize = memSize_;

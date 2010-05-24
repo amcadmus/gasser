@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
 {
   Parallel::Interface::initMPI (&argc, &argv);
   // Parallel::Interface::initEnvironment ("Device Emulation (CPU)");
-  Parallel::Interface::initEnvironment ("Tesla C1060");
+  Parallel::Interface::initEnvironment (128, "Tesla C1060");
 
   int flag = 0;
   if (Parallel::Interface::isActive()){
@@ -95,7 +95,7 @@ int prog (int argc, char * argv[])
   
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
   Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.0001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 

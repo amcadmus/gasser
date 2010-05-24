@@ -20,28 +20,29 @@ namespace Parallel {
   {
     static MPI_Comm commActive;
     static MPI_Comm commCart;
-    static int rank_worldRoot;
+    // static int rank_worldRoot;
     static int dims[3];
     static int myRank_;
     static int numProc_;
     static int active;
+    static int inited;
+    static unsigned cellCapacity;
+private:
     static void initCart (const int & nx,
 			  const int & ny,
 			  const int & nz);
 public:
     static void init_mpi (int * argc, char *** argv);
-    static void init_env (const char * deviceName = "Device Emulation (CPU)",
+    static void init_env (const unsigned & cellCapacity = 64,
+			  const char * deviceName = "Device Emulation (CPU)",
 			  const int & nx = 0,
 			  const int & ny = 0,
 			  const int & nz = 0);
     static void finalize ();
-    static int  isActive () {return active;}
-    // static void initCart (const int & nx,
-    // 			  const int & ny,
-    // 			  const int & nz);
-    
-    static int myRank  () {return myRank_;}
-    static int numProc () {return numProc_;}
+public:
+    static int isActive () {return active;}    
+    static int myRank   () {return myRank_;}
+    static int numProc  () {return numProc_;}
     static const MPI_Comm & communicator () {return commCart;}
     static void cartCoordToRank (const int & ix,
 				 const int & iy,
@@ -54,13 +55,15 @@ public:
     static void numProcDim (int & nx,
 			    int & ny,
 			    int & nz) ;
-    static void barrier ();
-    static void abort (int errorCode);
-    
     static void neighborProcIndex (int direction,
 				   int displacement,
 				   int & src,
 				   int & dest);
+    static unsigned getCellCapacity () {return cellCapacity;}
+public:    
+    static void barrier ();
+    static void abort (int errorCode);
+    
   };
 }
 

@@ -5,14 +5,18 @@
 
 #include "compile_error_mixcode.h"
 
+unsigned GPU::Environment::numThreadsInCell = 0;
 int GPU::Environment::my_deviceId = -1;
 int GPU::Environment::memActiveDevice = 32;
 int GPU::Environment::numActiveDevice = 0;
 int * GPU::Environment::activeDeviceId = NULL;
 
 void GPU::Environment::
-initialize (const char * activeDeviceName)
+initialize (const unsigned & numThreadsInCell_,
+	    const char * activeDeviceName)
 {
+  numThreadsInCell = numThreadsInCell_;
+  
   int numDevice = 0;
   cudaGetDeviceCount(&numDevice);
 

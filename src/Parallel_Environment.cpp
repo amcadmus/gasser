@@ -15,7 +15,9 @@ int Parallel::Environment::dims[3] = {0, 0, 0};
 int Parallel::Environment::myRank_ = 0;
 int Parallel::Environment::numProc_ = 0;
 int Parallel::Environment::active = 0;
-int Parallel::Environment::rank_worldRoot = 0;
+// int Parallel::Environment::rank_worldRoot = 0;
+int Parallel::Environment::inited = 0;
+unsigned Parallel::Environment::cellCapacity = 0;
 
 struct StrCmp 
 {
@@ -61,18 +63,26 @@ init_mpi (int * argc, char *** argv)
     MPI_Init (argc, argv);
   }
   else{
-    std::cout << "duplicate call of Parallel::Environment::init may cause problems"
+    std::cout << "duplicate call of Parallel::Environment::init_mpi may cause problems"
 	      << std::endl;
     return;
   }
 }
 
 void Parallel::Environment::
-init_env (const char * deviceName,
+init_env (const unsigned & cellCapacity_,
+	  const char * deviceName,
 	  const int & nx,
 	  const int & ny,
 	  const int & nz)
 {
+  if (inited){
+    std::cout << "duplicate call of Parallel::Environment::init_env may cause problems"
+	      << std::endl;
+    return;
+  }    
+  cellCapacity = cellCapacity_;
+  
   char my_name [MPI_MAX_PROCESSOR_NAME];
   int numProc_world;
   int myRank_world;
@@ -111,7 +121,7 @@ init_env (const char * deviceName,
 
     // char deviceName[] ="Tesla C1060";
     // char deviceName[] = "Device Emulation (CPU)";
-    GPU::Environment::initialize (deviceName);
+    GPU::Environment::initialize (cellCapacity, deviceName);
     int my_numActiveDevice = GPU::Environment::getNumActiveDevice();
     MPI_Allgather (&my_numActiveDevice, 1, MPI_INT,
 		   all_numActiveDevice, 1, MPI_INT,
@@ -158,7 +168,7 @@ init_env (const char * deviceName,
   	rank_activeNodes[count++] = i;
       }
     }
-    rank_worldRoot = rank_activeNodes[0];
+    // rank_worldRoot = rank_activeNodes[0];
     MPI_Group group_world, group_active;
     MPI_Comm_group (MPI_COMM_WORLD, &group_world);
     MPI_Group_incl (group_world, numActiveProc, rank_activeNodes, &group_active);
@@ -190,10 +200,12 @@ init_env (const char * deviceName,
     MPI_Comm_size (commActive, &numProc_);
     MPI_Comm_rank (commActive, &myRank_);
     initCart (nx, ny, nz);
-    MPI_Comm_rank (commCart, &myRank_);
+    MPI_Comm_size (commCart,   &numProc_);
+    MPI_Comm_rank (commCart,   &myRank_);
   }
 
   // printf ("@@@ myrank: %d of %d\n", myRank(), numProc());
+  inited = 1;
 }
 
 void Parallel::Environment::
