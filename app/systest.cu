@@ -29,30 +29,20 @@ int main(int argc, char * argv[])
   Parallel::Interface::initMPI (&argc, &argv);
   Parallel::Interface::initEnvironment (4, "Device Emulation (CPU)");
   // Parallel::Interface::initEnvironment (64, "Tesla C1060");
-
-  ScalorType * a;
-  IndexType b = 10;
-  Parallel::HostAllocator::hostMalloc ((void**)&a, sizeof(double)*b,
-				       Parallel::HostAllocator::hostMallocPageLocked);
-  for (IndexType i = 0; i < b; ++i){
-    a[i] = i * 0.5;
-  }
-  Parallel::HostAllocator::hostFree ((void**)&a,
-				     Parallel::HostAllocator::hostMallocPageLocked);
   
   int flag = 0;
 
-  // if (Parallel::Interface::isActive()){
-  //   try{
-  //     flag = prog (argc, argv);
-  //   }
-  //   catch (MDExcptCuda & e){
-  //     fprintf (stderr, "%s\n", e.what());	
-  //   }
-  //   catch (MDException &e){
-  //     fprintf (stderr, "%s\n", e.what());
-  //   }
-  // }
+  if (Parallel::Interface::isActive()){
+    try{
+      flag = prog (argc, argv);
+    }
+    catch (MDExcptCuda & e){
+      fprintf (stderr, "%s\n", e.what());	
+    }
+    catch (MDException &e){
+      fprintf (stderr, "%s\n", e.what());
+    }
+  }
   
   Parallel::Interface::finalizeEnvironment ();
 
@@ -111,7 +101,7 @@ int prog (int argc, char * argv[])
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 
-  IndexType stFeq = 10;
+  IndexType stFeq = 1;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);

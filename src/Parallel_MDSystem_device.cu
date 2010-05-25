@@ -243,6 +243,8 @@ finalize ()
 
 Parallel::SystemRedistributeCopyUtil::
 SystemRedistributeCopyUtil ()
+    : hpkgInner (Parallel::HostAllocator::hostMallocPageLocked),
+      hpkgOuter (Parallel::HostAllocator::hostMallocPageLocked)
 {
   mask = MDDataItemMask_All;
 }
@@ -283,7 +285,9 @@ setData (HostCellListedMDData & hdata,
 Parallel::SystemTransCoordsCopyUtil::
 SystemTransCoordsCopyUtil ()
     : mask (MDDataItemMask_Coordinate |
-	    MDDataItemMask_GlobalIndex)
+	    MDDataItemMask_GlobalIndex),
+      hpkgInner (Parallel::HostAllocator::hostMallocPageLocked),
+      hpkgOuter (Parallel::HostAllocator::hostMallocPageLocked)
 {
 }
 

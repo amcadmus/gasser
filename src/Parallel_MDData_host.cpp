@@ -7,10 +7,12 @@
 
 #include "compile_error_mixcode.h"
 
+using namespace Parallel::HostAllocator;
 
 Parallel::HostMDData::
-HostMDData()
-    : _numData(0), _memSize(0),
+HostMDData(const HostMallocType_t & mallocType_)
+    : mallocType (mallocType_),
+      _numData(0), _memSize(0),
       coord (NULL),
       coordNoi (NULL),
       velox (NULL), veloy(NULL), veloz(NULL),
@@ -46,32 +48,32 @@ clear ()
   _numData = 0;
   _memSize = 0;
   
-  freeAPointer ((void**)&coord);
-  freeAPointer ((void**)&coordNoi);
-  freeAPointer ((void**)&velox);
-  freeAPointer ((void**)&veloy);
-  freeAPointer ((void**)&veloz);
-  freeAPointer ((void**)&forcx);
-  freeAPointer ((void**)&forcy);
-  freeAPointer ((void**)&forcz);
-  freeAPointer ((void**)&globalIndex);
-  freeAPointer ((void**)&type);
-  freeAPointer ((void**)&mass);
-  freeAPointer ((void**)&charge);
+  hostFree ((void**)&coord, mallocType);
+  hostFree ((void**)&coordNoi, mallocType);
+  hostFree ((void**)&velox, mallocType);
+  hostFree ((void**)&veloy, mallocType);
+  hostFree ((void**)&veloz, mallocType);
+  hostFree ((void**)&forcx, mallocType);
+  hostFree ((void**)&forcy, mallocType);
+  hostFree ((void**)&forcz, mallocType);
+  hostFree ((void**)&globalIndex, mallocType);
+  hostFree ((void**)&type, mallocType);
+  hostFree ((void**)&mass, mallocType);
+  hostFree ((void**)&charge, mallocType);
 
-  freeAPointer ((void**)&bondNeighbor_globalIndex);
-  freeAPointer ((void**)&bondIndex);
-  freeAPointer ((void**)&numBond);
+  hostFree ((void**)&bondNeighbor_globalIndex, mallocType);
+  hostFree ((void**)&bondIndex, mallocType);
+  hostFree ((void**)&numBond, mallocType);
   maxNumBond = 0;
-  freeAPointer ((void**)&angleNeighbor_globalIndex);
-  freeAPointer ((void**)&angleIndex);
-  freeAPointer ((void**)&anglePosi);
-  freeAPointer ((void**)&numAngle);
+  hostFree ((void**)&angleNeighbor_globalIndex, mallocType);
+  hostFree ((void**)&angleIndex, mallocType);
+  hostFree ((void**)&anglePosi, mallocType);
+  hostFree ((void**)&numAngle, mallocType);
   maxNumAngle = 0;
-  freeAPointer ((void**)&dihedralNeighbor_globalIndex);
-  freeAPointer ((void**)&dihedralIndex);
-  freeAPointer ((void**)&dihedralPosi);
-  freeAPointer ((void**)&numDihedral);
+  hostFree ((void**)&dihedralNeighbor_globalIndex, mallocType);
+  hostFree ((void**)&dihedralIndex, mallocType);
+  hostFree ((void**)&dihedralPosi, mallocType);
+  hostFree ((void**)&numDihedral, mallocType);
   maxNumDihedral = 0;  
 }
 
@@ -168,72 +170,98 @@ easyMalloc (const IndexType memSize_,
   size_t sizef = memSize() * sizeof(ScalorType);
   size_t sizeidx = memSize() * sizeof(IndexType);
   size_t sizetype = memSize() * sizeof (TypeType);
+
+  hostMalloc ((void**)&coord, sizecoord, mallocType);
+  hostMalloc ((void**)&coordNoi, sizecoordNoi, mallocType);
+  hostMalloc ((void**)&velox, sizef, mallocType);
+  hostMalloc ((void**)&veloy, sizef, mallocType);
+  hostMalloc ((void**)&veloz, sizef, mallocType);
+  hostMalloc ((void**)&forcx, sizef, mallocType);
+  hostMalloc ((void**)&forcy, sizef, mallocType);
+  hostMalloc ((void**)&forcz, sizef, mallocType);
+  hostMalloc ((void**)&globalIndex, sizeidx, mallocType);
+  hostMalloc ((void**)&type, sizetype, mallocType);
+  hostMalloc ((void**)&mass, sizef, mallocType);
+  hostMalloc ((void**)&charge, sizef, mallocType);
   
-  coord = (HostCoordType *) malloc (sizecoord);
-  if (coord == NULL) throw MDExcptFailedMallocOnHost ("coord", sizecoord);
-  coordNoi = (HostCoordNoiType *) malloc (sizecoordNoi);
-  if (coordNoi == NULL) throw MDExcptFailedMallocOnHost ("coordNoi", sizecoordNoi);
-  velox = (ScalorType *) malloc (sizef);
-  if (velox == NULL) throw MDExcptFailedMallocOnHost ("velox", sizef);
-  veloy = (ScalorType *) malloc (sizef);
-  if (veloy == NULL) throw MDExcptFailedMallocOnHost ("veloy", sizef);
-  veloz = (ScalorType *) malloc (sizef);
-  if (veloz == NULL) throw MDExcptFailedMallocOnHost ("veloz", sizef);
-  forcx = (ScalorType *) malloc (sizef);
-  if (forcx == NULL) throw MDExcptFailedMallocOnHost ("forcx", sizef);
-  forcy = (ScalorType *) malloc (sizef);
-  if (forcy == NULL) throw MDExcptFailedMallocOnHost ("forcy", sizef);
-  forcz = (ScalorType *) malloc (sizef);
-  if (forcz == NULL) throw MDExcptFailedMallocOnHost ("forcz", sizef);
-  globalIndex = (IndexType *) malloc (sizeidx);
-  if (globalIndex == NULL) throw MDExcptFailedMallocOnHost ("globalIndex", sizeidx);
-  type = (TypeType *) malloc (sizetype);
-  if (type == NULL) throw MDExcptFailedMallocOnHost ("type", sizetype);
-  mass = (ScalorType *) malloc (sizef);
-  if (mass == NULL) throw MDExcptFailedMallocOnHost ("mass", sizef);
-  charge = (ScalorType *) malloc (sizef);
-  if (charge == NULL) throw MDExcptFailedMallocOnHost ("charge", sizef);  
+  // coord = (HostCoordType *) malloc (sizecoord);
+  // if (coord == NULL) throw MDExcptFailedMallocOnHost ("coord", sizecoord);
+  // coordNoi = (HostCoordNoiType *) malloc (sizecoordNoi);
+  // if (coordNoi == NULL) throw MDExcptFailedMallocOnHost ("coordNoi", sizecoordNoi);
+  // velox = (ScalorType *) malloc (sizef);
+  // if (velox == NULL) throw MDExcptFailedMallocOnHost ("velox", sizef);
+  // veloy = (ScalorType *) malloc (sizef);
+  // if (veloy == NULL) throw MDExcptFailedMallocOnHost ("veloy", sizef);
+  // veloz = (ScalorType *) malloc (sizef);
+  // if (veloz == NULL) throw MDExcptFailedMallocOnHost ("veloz", sizef);
+  // forcx = (ScalorType *) malloc (sizef);
+  // if (forcx == NULL) throw MDExcptFailedMallocOnHost ("forcx", sizef);
+  // forcy = (ScalorType *) malloc (sizef);
+  // if (forcy == NULL) throw MDExcptFailedMallocOnHost ("forcy", sizef);
+  // forcz = (ScalorType *) malloc (sizef);
+  // if (forcz == NULL) throw MDExcptFailedMallocOnHost ("forcz", sizef);
+  // globalIndex = (IndexType *) malloc (sizeidx);
+  // if (globalIndex == NULL) throw MDExcptFailedMallocOnHost ("globalIndex", sizeidx);
+  // type = (TypeType *) malloc (sizetype);
+  // if (type == NULL) throw MDExcptFailedMallocOnHost ("type", sizetype);
+  // mass = (ScalorType *) malloc (sizef);
+  // if (mass == NULL) throw MDExcptFailedMallocOnHost ("mass", sizef);
+  // charge = (ScalorType *) malloc (sizef);
+  // if (charge == NULL) throw MDExcptFailedMallocOnHost ("charge", sizef);  
 
   size_t size0 = sizeof(IndexType) * memSize();
 
   if (maxNumBond != 0){
     size_t size1 = size0 * maxNumBond;
-    numBond = (IndexType *) malloc (size0);
-    if (numBond == NULL) throw MDExcptFailedMallocOnHost ("numBond", size0);
-    bondIndex = (IndexType *) malloc (size1);
-    if (bondIndex == NULL) throw MDExcptFailedMallocOnHost ("bondIndex", size1);
-    bondNeighbor_globalIndex = (IndexType *) malloc (size1);
-    if (bondNeighbor_globalIndex == NULL){
-      throw MDExcptFailedMallocOnHost ("bondNeighbor_globalIndex", size1);
-    }
+    hostMalloc ((void**)&numBond, size0, mallocType);
+    hostMalloc ((void**)&bondIndex, size1, mallocType);
+    hostMalloc ((void**)&bondNeighbor_globalIndex, size1, mallocType);    
+    // numBond = (IndexType *) malloc (size0);
+    // if (numBond == NULL) throw MDExcptFailedMallocOnHost ("numBond", size0);
+    // bondIndex = (IndexType *) malloc (size1);
+    // if (bondIndex == NULL) throw MDExcptFailedMallocOnHost ("bondIndex", size1);
+    // bondNeighbor_globalIndex = (IndexType *) malloc (size1);
+    // if (bondNeighbor_globalIndex == NULL){
+    //   throw MDExcptFailedMallocOnHost ("bondNeighbor_globalIndex", size1);
+    // }
   }
   if (maxNumAngle != 0){
     size_t size1 = size0 * maxNumAngle;
     size_t size2 = size0 * maxNumAngle * 2;
-    numAngle = (IndexType *) malloc (size0);
-    if (numAngle == NULL) throw MDExcptFailedMallocOnHost ("numAngle", size0);
-    angleIndex = (IndexType *) malloc (size1);
-    if (angleIndex == NULL) throw MDExcptFailedMallocOnHost ("angleIndex", size1);
-    anglePosi = (IndexType *) malloc (size1);
-    if (anglePosi == NULL) throw MDExcptFailedMallocOnHost ("anglePosi", size1);
-    angleNeighbor_globalIndex = (IndexType *) malloc (size2);
-    if (angleNeighbor_globalIndex == NULL){
-      throw MDExcptFailedMallocOnHost ("angleNeighbor_globalIndex", size2);
-    }
+    hostMalloc ((void**)&numAngle, size0, mallocType);
+    hostMalloc ((void**)&angleIndex, size1, mallocType);
+    hostMalloc ((void**)&anglePosi , size1, mallocType);
+    hostMalloc ((void**)&angleNeighbor_globalIndex, size2, mallocType);
+    
+    // numAngle = (IndexType *) malloc (size0);
+    // if (numAngle == NULL) throw MDExcptFailedMallocOnHost ("numAngle", size0);
+    // angleIndex = (IndexType *) malloc (size1);
+    // if (angleIndex == NULL) throw MDExcptFailedMallocOnHost ("angleIndex", size1);
+    // anglePosi = (IndexType *) malloc (size1);
+    // if (anglePosi == NULL) throw MDExcptFailedMallocOnHost ("anglePosi", size1);
+    // angleNeighbor_globalIndex = (IndexType *) malloc (size2);
+    // if (angleNeighbor_globalIndex == NULL){
+    //   throw MDExcptFailedMallocOnHost ("angleNeighbor_globalIndex", size2);
+    // }
   }
   if (maxNumDihedral != 0){
     size_t size1 = size0 * maxNumDihedral;
     size_t size2 = size0 * maxNumDihedral * 3;
-    numDihedral = (IndexType *) malloc (size0);
-    if (numDihedral == NULL) throw MDExcptFailedMallocOnHost ("numDihedral", size0);
-    dihedralIndex = (IndexType *) malloc (size1);
-    if (dihedralIndex == NULL) throw MDExcptFailedMallocOnHost ("dihedralIndex", size1);
-    dihedralPosi = (IndexType *) malloc (size1);
-    if (dihedralPosi == NULL) throw MDExcptFailedMallocOnHost ("dihedralPosi", size1);
-    dihedralNeighbor_globalIndex = (IndexType *) malloc (size2);
-    if (dihedralNeighbor_globalIndex == NULL){
-      throw MDExcptFailedMallocOnHost ("dihedralNeighbor_globalIndex", size2);
-    }
+    hostMalloc ((void**)&numDihedral, size0, mallocType);
+    hostMalloc ((void**)&dihedralIndex, size1, mallocType);
+    hostMalloc ((void**)&dihedralPosi , size1, mallocType);
+    hostMalloc ((void**)&dihedralNeighbor_globalIndex, size2, mallocType);
+    
+    // numDihedral = (IndexType *) malloc (size0);
+    // if (numDihedral == NULL) throw MDExcptFailedMallocOnHost ("numDihedral", size0);
+    // dihedralIndex = (IndexType *) malloc (size1);
+    // if (dihedralIndex == NULL) throw MDExcptFailedMallocOnHost ("dihedralIndex", size1);
+    // dihedralPosi = (IndexType *) malloc (size1);
+    // if (dihedralPosi == NULL) throw MDExcptFailedMallocOnHost ("dihedralPosi", size1);
+    // dihedralNeighbor_globalIndex = (IndexType *) malloc (size2);
+    // if (dihedralNeighbor_globalIndex == NULL){
+    //   throw MDExcptFailedMallocOnHost ("dihedralNeighbor_globalIndex", size2);
+    // }
   }
 
   fillZero ();
@@ -241,8 +269,10 @@ easyMalloc (const IndexType memSize_,
 
 
 Parallel::HostMDData::
-HostMDData (const HostMDData & hdata)
-    : _numData(0), _memSize(0),
+HostMDData (const HostMDData & hdata,
+	    const HostMallocType_t & mallocType_)
+    : mallocType (mallocType_),
+      _numData(0), _memSize(0),
       coord (NULL),
       coordNoi (NULL),
       velox (NULL), veloy(NULL), veloz(NULL),

@@ -5,6 +5,7 @@
 #include "Topology.h"
 #include "BoxGeometry.h"
 #include "Parallel_DataTransferBlock.h"
+#include "Parallel_HostAllocator.h"
 
 extern "C"{
 #include "xdrfile/xdrfile.h"
@@ -58,6 +59,7 @@ namespace Parallel{
   class HostMDData 
   {
     friend class DeviceMDData ;
+    Parallel::HostAllocator::HostMallocType_t mallocType;
 protected:
     IndexType _numData;
     IndexType _memSize;
@@ -103,8 +105,11 @@ private:
 			     const IndexType & maxNumAngle_,
 			     const IndexType & maxNumDihedral_);
 public:
-    HostMDData ();
-    HostMDData (const HostMDData & hdata);
+    HostMDData (const Parallel::HostAllocator::HostMallocType_t & type =
+		Parallel::HostAllocator::hostMallocCDefault);
+    HostMDData (const HostMDData & hdata,
+		const Parallel::HostAllocator::HostMallocType_t & type =
+		Parallel::HostAllocator::hostMallocCDefault);
     ~HostMDData ();
 public:
     // const IndexType & size     () const {return numData;}

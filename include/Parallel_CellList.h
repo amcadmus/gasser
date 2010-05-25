@@ -230,7 +230,8 @@ private:
     IndexType * getCellIndex      () {return cellIndex;}
     IndexType * getCellStartIndex () {return cellStartIndex;}
 public:
-    HostTransferPackage ();
+    HostTransferPackage (const Parallel::HostAllocator::HostMallocType_t & t =
+			 Parallel::HostAllocator::hostMallocCDefault);
     ~HostTransferPackage ();
 public:
     void reinit (const SubCellList & SubCellList);

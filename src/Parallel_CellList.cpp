@@ -235,8 +235,10 @@ buildSubList (const IndexType & xIdLo,
 
 
 Parallel::HostTransferPackage::
-HostTransferPackage ()
-    : numCell (0), memSize(0), cellIndex(NULL), cellStartIndex(NULL),
+HostTransferPackage (const Parallel::HostAllocator::HostMallocType_t & t)
+    : HostMDData (t),
+      numCell (0), memSize(0),
+      cellIndex(NULL), cellStartIndex(NULL),
       myMask (MDDataItemMask_All)
 {
 }
