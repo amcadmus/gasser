@@ -2,6 +2,7 @@
 #include "Parallel_Integrator.h"
 #include "MDException.h"
 #include <stdlib.h>
+
 #include "compile_error_mixcode.h"
 
 Parallel::HostSystemMomentum::
@@ -49,4 +50,12 @@ sumAll ()
   p_f[2] = sump[2];
 }
 
+void Parallel::HostSystemMass::
+sumAll()
+{
+  mass = p_mass;
+  Parallel::SummationEngine sume;
+  sume.sumAll (&mass, 1, &sumMass);
+  p_mass = sumMass;
+}
 

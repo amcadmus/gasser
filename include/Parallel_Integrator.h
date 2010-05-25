@@ -26,7 +26,17 @@ public:
     const ScalorType & getMomentumX () const {return p_f[0];}
     const ScalorType & getMomentumY () const {return p_f[1];}
     const ScalorType & getMomentumZ () const {return p_f[2];}
-  }; 
+  };
+  class HostSystemMass
+  {
+    double mass;
+    double sumMass;
+    ScalorType p_mass;
+public:
+    void sumAll();
+    void setMass (const ScalorType & x) {p_mass = x;}
+    const ScalorType & getMass () const {return p_mass;}
+  };
 }
 
 #ifdef DEVICE_CODE

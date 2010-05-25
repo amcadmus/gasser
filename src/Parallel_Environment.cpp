@@ -141,6 +141,7 @@ init_env (const unsigned & cellCapacity_,
     active = (all_activity[myRank_world] != -1);
     if (isActive()){
       GPU::Environment::setDeviceId (all_activity[myRank_world]);
+      // GPU::Environment::setDeviceId (1);
     }
   }
   

@@ -59,6 +59,10 @@ reinit  (const DeviceCellListedMDData & data)
   sum_mass.sumBuff (sumM, 0);
   cudaMemcpy (&totalMassi, sumM, sizeof(ScalorType), cudaMemcpyDeviceToHost);
   checkCUDAError ("TranslationalFreedomRemover::reinit, cpy sumM");
+  Parallel::HostSystemMass sysMass;
+  sysMass.setMass (totalMassi);
+  sysMass.sumAll ();
+  totalMassi = sysMass.getMass();
   totalMassi = 1.f/totalMassi;
 }
 
