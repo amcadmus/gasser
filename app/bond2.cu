@@ -210,17 +210,13 @@ int prog (int argc, char *argv[])
   }
 
   sys.updateHost ();
-  
   sys.collectLocalData ();
-
   sys.writeGlobalData_GroFile ("confout.gro");
-  
-  char name[1024];
-  sprintf (name, "id%d.coord", Parallel::Interface::myRank());
-  sys.writeLocalData_SimpleFile (name);
-
-
   sys.globalHostData.endWriteData_xtcFile ();
+  
+  // char name[1024];
+  // sprintf (name, "id%d.coord", Parallel::Interface::myRank());
+  // sys.writeLocalData_SimpleFile (name);
 
   Parallel::Interface::barrier();
   sys.finalize();

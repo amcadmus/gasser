@@ -1,6 +1,19 @@
 #ifndef __Parallel_Auxiliary_h_wanghan__
 #define __Parallel_Auxiliary_h_wanghan__
 
+namespace Parallel{
+  enum HostMallocType {
+    hostMallocDefault			= 1,
+    hostMallocPageLocked		= 2
+  };
+  typedef enum HostMallocType HostMallocType_t;
+  
+  namespace HostAllocator{
+    void hostMalloc (void** ptr, size_t size, HostMallocType_t type);
+    void hostFree   (void** ptr, HostMallocType_t type);
+  }
+}
+
 
 #ifdef DEVICE_CODE
 namespace Parallel {

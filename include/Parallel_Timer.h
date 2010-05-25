@@ -78,8 +78,7 @@ namespace Parallel{
     namespace DeviceTimer{
       extern cudaEvent_t start [SizeOfTimeRecordArray];
       extern cudaEvent_t stop  [SizeOfTimeRecordArray];
-      void
- init ();
+      void init ();
       void finalize ();
       void reset ();
       void tic (timeItem_t timeItem,
@@ -87,7 +86,6 @@ namespace Parallel{
       TimeType toc (timeItem_t timeItem,
 		    cudaStream_t stream = 0);
     }
-
 #endif
   }
 }
