@@ -25,9 +25,12 @@ initZeroCell ()
 }
 
 void Parallel::DeviceCellListedMDData::
-initCellStructure (const ScalorType & rlist_,
-		   const IndexType & devideLevel_,
-		   const BoxDirection_t & bdir)
+calNumCell (const ScalorType & input_rlist,
+	    const IndexType & input_dividelevel,
+	    const BoxDirection_t & bdir,
+	    IntVectorType & result_numCell,
+	    VectorType & result_frameLow,
+	    VectorType & result_frameUp)
 {
   int Nx, Ny, Nz;
   Parallel::Interface::numProcDim (Nx, Ny, Nz);
@@ -37,54 +40,62 @@ initCellStructure (const ScalorType & rlist_,
   dx = getGlobalBoxSize().x / double(Nx);
   dy = getGlobalBoxSize().y / double(Ny);
   dz = getGlobalBoxSize().z / double(Nz);
-  frameLow.x = dx * ix;
-  frameLow.y = dy * iy;
-  frameLow.z = dz * iz;
-  frameUp.x = frameLow.x + dx;
-  frameUp.y = frameLow.y + dy;
-  frameUp.z = frameLow.z + dz;
+  result_frameLow.x = dx * ix;
+  result_frameLow.y = dy * iy;
+  result_frameLow.z = dz * iz;
+  result_frameUp.x = result_frameLow.x + dx;
+  result_frameUp.y = result_frameLow.y + dy;
+  result_frameUp.z = result_frameLow.z + dz;
   
   bool CellOnX, CellOnY, CellOnZ;
   CellOnX = bdir & RectangularBoxGeometry::mdRectBoxDirectionX;
   CellOnY = bdir & RectangularBoxGeometry::mdRectBoxDirectionY;
   CellOnZ = bdir & RectangularBoxGeometry::mdRectBoxDirectionZ;
-  rlist = rlist_;
-  double rlisti = 1./rlist;
+  double input_rlisti = 1./input_rlist;
 
-  if (CellOnX ) numCell.x = int ( floor(dx * rlisti) );
-  else numCell.x = 1;
-  if (CellOnY ) numCell.y = int ( floor(dy * rlisti) );
-  else numCell.y = 1;
-  if (CellOnZ ) numCell.z = int ( floor(dz * rlisti) );
-  else numCell.z = 1;
+  if (CellOnX ) result_numCell.x = int ( floor(dx * input_rlisti) );
+  else result_numCell.x = 1;
+  if (CellOnY ) result_numCell.y = int ( floor(dy * input_rlisti) );
+  else result_numCell.y = 1;
+  if (CellOnZ ) result_numCell.z = int ( floor(dz * input_rlisti) );
+  else result_numCell.z = 1;
 
-  if ((CellOnX && numCell.x < 3) ||
-      (CellOnY && numCell.y < 3) ||
-      (CellOnZ && numCell.z < 3) ){
-    printf("rlist is %f, nx %d ny %d nz %d\n", rlist, numCell.x, numCell.y, numCell.z);
+  if ((CellOnX && result_numCell.x < 3) ||
+      (CellOnY && result_numCell.y < 3) ||
+      (CellOnZ && result_numCell.z < 3) ){
+    printf("input_rlist is %f, nx %d ny %d nz %d\n", input_rlist, result_numCell.x, result_numCell.y, result_numCell.z);
     throw MDExcptCellList ("Number of cell on one direction is less than 3");
   }
 
   // add ghost cell
   VectorType dcell;
-  dcell.x = (frameUp.x - frameLow.x) / numCell.x;
-  dcell.y = (frameUp.y - frameLow.y) / numCell.y;
-  dcell.z = (frameUp.z - frameLow.z) / numCell.z;
-  frameUp.x += dcell.x;
-  frameUp.y += dcell.y;
-  frameUp.z += dcell.z;
-  frameLow.x -= dcell.x;
-  frameLow.y -= dcell.y;
-  frameLow.z -= dcell.z;
-  numCell.x += 2;
-  numCell.y += 2;
-  numCell.z += 2;
+  dcell.x = (result_frameUp.x - result_frameLow.x) / result_numCell.x;
+  dcell.y = (result_frameUp.y - result_frameLow.y) / result_numCell.y;
+  dcell.z = (result_frameUp.z - result_frameLow.z) / result_numCell.z;
+  result_frameUp.x += dcell.x;
+  result_frameUp.y += dcell.y;
+  result_frameUp.z += dcell.z;
+  result_frameLow.x -= dcell.x;
+  result_frameLow.y -= dcell.y;
+  result_frameLow.z -= dcell.z;
+  result_numCell.x += 2;
+  result_numCell.y += 2;
+  result_numCell.z += 2;
   
-  devideLevel = devideLevel_;
-  if (CellOnX) numCell.x *= devideLevel;
-  if (CellOnY) numCell.y *= devideLevel;
-  if (CellOnZ) numCell.z *= devideLevel;
+  if (CellOnX) result_numCell.x *= input_dividelevel;
+  if (CellOnY) result_numCell.y *= input_dividelevel;
+  if (CellOnZ) result_numCell.z *= input_dividelevel;
+}
 
+void Parallel::DeviceCellListedMDData::
+initCellStructure (const ScalorType & rlist_,
+		   const IndexType & devideLevel_,
+		   const BoxDirection_t & bdir)
+{
+  rlist = rlist_;
+  devideLevel = devideLevel_;
+  calNumCell (rlist, devideLevel, bdir, numCell, frameLow, frameUp);
+  
   DeviceMDData bkData (*this);
   
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
@@ -138,6 +149,120 @@ initCellStructure (const ScalorType & rlist_,
   err.updateHost();
   err.check ("DeviceCellListedMDData::formCellSturcture");
 }
+
+void Parallel::DeviceCellListedMDData::
+reinitCellStructure (const ScalorType & rlist_,
+		     const IndexType & devideLevel_,
+		     const BoxDirection_t & bdir)
+{
+  IntVectorType tmpNumCell;
+  VectorType tmpFrameLow, tmpFrameUp;
+  calNumCell (rlist_, devideLevel_, bdir, tmpNumCell, tmpFrameLow, tmpFrameUp);
+  if (tmpNumCell.x == numCell.x &&
+      tmpNumCell.y == numCell.y &&
+      tmpNumCell.z == numCell.z ){
+    rlist = rlist_;
+    devideLevel = devideLevel_;
+    return;
+  }
+  
+  DeviceCellListedMDData bkData ;
+  bkData.copyFromDevice (*this, MDDataItemMask_All);
+  rlist = rlist_;
+  devideLevel = devideLevel_;
+  numCell = tmpNumCell;
+  frameLow = tmpFrameLow;
+  frameUp = tmpFrameUp;
+
+  IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell ();
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  
+  if (numThreadsInCell * totalNumCell > DeviceMDData::memSize()){
+    DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell);
+  }
+  numData() = totalNumCell * numThreadsInCell;
+
+  easyMallocCell (totalNumCell);
+  initZeroCell ();
+
+  IndexType numThreadBlock = numThreadsInCell;
+  IntVectorType numCell_ = bkData.getNumCell();
+  dim3 gridDim = toGridDim(numCell_.x*numCell_.y*numCell_.z);
+  IndexType * forwardMap;
+  cudaMalloc ((void**)&forwardMap,
+	      sizeof(IndexType) * numCell_.x * numCell_.y * numCell_.z * numThreadsInCell);
+  checkCUDAError ("DeviceCellListedMDData::reinitCellStructure malloc forwardMap");
+  
+  Parallel::CudaGlobal::reinitCellStructure_calForwardMap
+      <<<gridDim, numThreadBlock >>>(
+	  bkData.dptr_numAtomInCell(),
+	  bkData.dptr_coordinate(),
+	  frameLow,
+	  frameUp,
+	  numCell,
+	  numAtomInCell,
+	  forwardMap,
+	  err.ptr_de);
+  checkCUDAError ("DeviceCellListedMDData::reinitCellStructure_calForwardMap");
+  err.updateHost();
+  err.check ("DeviceCellListedMDData::reinitCellStructure_calForwardMap");
+  Parallel::CudaGlobal::reinitCellStructure_step1
+      <<<gridDim, numThreadBlock >>>(
+	  bkData.dptr_numAtomInCell(),
+	  bkData.dptr_coordinate(),
+	  bkData.dptr_coordinateNoi(),
+	  bkData.dptr_velocityX(),
+	  bkData.dptr_velocityY(),
+	  bkData.dptr_velocityZ(),
+	  bkData.dptr_globalIndex(),
+	  bkData.dptr_type(),
+	  bkData.dptr_mass(),
+	  bkData.dptr_charge(),
+	  forwardMap,
+	  coord,
+	  coordNoi,
+	  velox,
+	  veloy,
+	  veloz,
+	  globalIndex,
+	  type,
+	  mass,
+	  charge);
+  checkCUDAError ("DeviceCellListedMDData::reinitCellStructure_step1");
+  Parallel::CudaGlobal::reinitCellStructure_step2
+      <<<gridDim, numThreadBlock>>>(
+	  bkData.dptr_numAtomInCell(),
+	  bkData.getMaxNumBond(),
+	  bkData.dptr_numBond(),
+	  bkData.dptr_bondIndex(),
+	  bkData.dptr_bondNeighbor_globalIndex(),
+	  bkData.getMaxNumAngle(),
+	  bkData.dptr_numAngle(),
+	  bkData.dptr_angleIndex(),
+	  bkData.dptr_anglePosi(),
+	  bkData.dptr_angleNeighbor_globalIndex(),
+	  bkData.getMaxNumDihedral(),
+	  bkData.dptr_numDihedral(),
+	  bkData.dptr_dihedralIndex(),
+	  bkData.dptr_dihedralPosi(),
+	  bkData.dptr_dihedralNeighbor_globalIndex(),
+	  bkData.getBondTopStride(),
+	  forwardMap,
+	  dptr_numBond(),
+	  dptr_bondIndex(),
+	  dptr_bondNeighbor_globalIndex(),
+	  dptr_numAngle(),
+	  dptr_angleIndex(),
+	  dptr_anglePosi(),
+	  dptr_angleNeighbor_globalIndex(),
+	  dptr_numDihedral(),
+	  dptr_dihedralIndex(),
+	  dptr_dihedralPosi(),
+	  dptr_dihedralNeighbor_globalIndex(),
+	  getBondTopStride());      
+  cudaFree (forwardMap);
+}
+  
 
 void Parallel::DeviceCellListedMDData::
 rebuild ()
@@ -565,6 +690,192 @@ formCellStructure (const VectorType frameLow,
     charge[targetIndex] = bk_charge[ii];
   }
 }
+
+
+__global__ void Parallel::CudaGlobal::
+reinitCellStructure_calForwardMap (const IndexType * bk_numAtomInCell,
+				   const CoordType * bk_coord,
+				   const VectorType frameLow,
+				   const VectorType frameUp,
+				   const IntVectorType numCell,
+				   IndexType * numAtomInCell,
+				   IndexType * forwardMap,
+				   mdError_t * ptr_de)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  IndexType this_numAtom = bk_numAtomInCell[bid];
+  if (this_numAtom == 0) return;
+
+  ScalorType dcellxi;
+  ScalorType dcellyi;
+  ScalorType dcellzi;
+  dcellxi = ScalorType(numCell.x) / (frameUp.x - frameLow.x);
+  dcellyi = ScalorType(numCell.y) / (frameUp.y - frameLow.y);
+  dcellzi = ScalorType(numCell.z) / (frameUp.z - frameLow.z);
+
+  if (tid < this_numAtom){
+    IndexType targetCellx, targetCelly, targetCellz;
+    targetCellx = IndexType((bk_coord[ii].x - frameLow.x) * dcellxi);
+    targetCelly = IndexType((bk_coord[ii].y - frameLow.y) * dcellyi);
+    targetCellz = IndexType((bk_coord[ii].z - frameLow.z) * dcellzi);
+    if (ptr_de != NULL && 
+	(targetCellx >= numCell.x || 
+	 targetCelly >= numCell.y || 
+	 targetCellz >= numCell.z)){
+      *ptr_de = mdErrorOverFlowCellIdx;
+      return;
+    }
+    IndexType cellid = CudaDevice::D3toD1
+	(numCell, targetCellx, targetCelly, targetCellz);
+    IndexType pid = atomicAdd (&numAtomInCell[cellid], 1);
+    if (pid >= blockDim.x){
+      *ptr_de = mdErrorShortCellList;
+      pid = 0;
+    }
+    IndexType targetIndex = pid + cellid * blockDim.x;
+    forwardMap[ii] = targetIndex;
+  }
+}
+
+
+__global__ void Parallel::CudaGlobal::
+reinitCellStructure_step1 (const IndexType * bk_numAtomInCell,
+			   const CoordType  * bk_coord,
+			   const CoordNoiType * bk_coordNoi,
+			   const ScalorType * bk_velox,
+			   const ScalorType * bk_veloy,
+			   const ScalorType * bk_veloz,
+			   const IndexType  * bk_globalIndex,
+			   const TypeType   * bk_type,
+			   const ScalorType * bk_mass,
+			   const ScalorType * bk_charge,
+			   const IndexType * forwardMap,
+			   CoordType  * coord,
+			   CoordNoiType * coordNoi,
+			   ScalorType * velox,
+			   ScalorType * veloy,
+			   ScalorType * veloz,
+			   IndexType  * globalIndex,
+			   TypeType   * type,
+			   ScalorType * mass,
+			   ScalorType * charge)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  IndexType this_numAtom = bk_numAtomInCell[bid];
+  if (this_numAtom == 0) return;
+
+  if (tid < this_numAtom){
+    IndexType targetIndex = forwardMap[ii];
+    coord[targetIndex] = bk_coord[ii];
+    coordNoi[targetIndex].x = bk_coordNoi[ii].x;
+    coordNoi[targetIndex].y = bk_coordNoi[ii].y;
+    coordNoi[targetIndex].z = bk_coordNoi[ii].z;
+    velox[targetIndex] = bk_velox[ii];
+    veloy[targetIndex] = bk_veloy[ii];
+    veloz[targetIndex] = bk_veloz[ii];
+    globalIndex[targetIndex] = bk_globalIndex[ii];
+    type[targetIndex] = bk_type[ii];
+    mass[targetIndex] = bk_mass[ii];
+    charge[targetIndex] = bk_charge[ii];
+  }
+}
+
+__global__ void Parallel::CudaGlobal::
+reinitCellStructure_step2 (const IndexType * bk_numAtomInCell,
+			   const IndexType bk_maxNumBond,
+			   const IndexType * bk_numBond,
+			   const IndexType * bk_bondIndex,
+			   const IndexType * bk_bondNeighbor_globalIndex,
+			   const IndexType bk_maxNumAngle,
+			   const IndexType * bk_numAngle,
+			   const IndexType * bk_angleIndex,
+			   const IndexType * bk_anglePosi,			   
+			   const IndexType * bk_angleNeighbor_globalIndex,
+			   const IndexType bk_maxNumDihedral,
+			   const IndexType * bk_numDihedral,
+			   const IndexType * bk_dihedralIndex,
+			   const IndexType * bk_dihedralPosi,
+			   const IndexType * bk_dihedralNeighbor_globalIndex,
+			   const IndexType bk_bondTopStride,
+			   const IndexType * forwardMap,
+			   IndexType * numBond,
+			   IndexType * bondIndex,
+			   IndexType * bondNeighbor_globalIndex,
+			   IndexType * numAngle,
+			   IndexType * angleIndex,
+			   IndexType * anglePosi,
+			   IndexType * angleNeighbor_globalIndex,
+			   IndexType * numDihedral,
+			   IndexType * dihedralIndex,
+			   IndexType * dihedralPosi,
+			   IndexType * dihedralNeighbor_globalIndex,
+			   const IndexType bondTopStride)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  IndexType this_numAtom = bk_numAtomInCell[bid];
+  if (this_numAtom == 0) return;
+
+  if (tid < this_numAtom){
+    IndexType my_targetIndex = forwardMap[ii];
+    if (bk_maxNumBond != 0){
+      IndexType tmpNum = numBond[my_targetIndex] = bk_numBond[ii];
+      IndexType tmp_target = my_targetIndex;
+      IndexType tmp_src = ii;
+      for (IndexType jj = 0; jj < tmpNum; ++jj){
+	bondIndex[tmp_target] = bk_bondIndex[tmp_src];
+	bondNeighbor_globalIndex[tmp_target] = bk_bondNeighbor_globalIndex[tmp_src];
+	tmp_target += bondTopStride;
+	tmp_src    += bk_bondTopStride;
+      }
+    }
+    if (bk_maxNumAngle != 0){
+      IndexType tmpNum = numAngle[my_targetIndex] = bk_numAngle[ii];
+      IndexType tmp_target = my_targetIndex;
+      IndexType tmp_src = ii;
+      for (IndexType jj = 0; jj < tmpNum; ++jj){
+	angleIndex[tmp_target] = bk_angleIndex[tmp_src];
+	anglePosi [tmp_target] = bk_anglePosi [tmp_src];
+	tmp_target += bondTopStride;
+	tmp_src    += bk_bondTopStride;
+      }
+      tmp_target = my_targetIndex;
+      tmp_src = ii;
+      for (IndexType jj = 0; jj < tmpNum * 2; ++jj){
+	bondNeighbor_globalIndex[tmp_target] = bk_bondNeighbor_globalIndex[tmp_src];
+	tmp_target += bondTopStride;
+	tmp_src    += bk_bondTopStride;
+      }  
+    }
+    if (bk_maxNumDihedral != 0){
+      IndexType tmpNum = numDihedral[my_targetIndex] = bk_numDihedral[ii];
+      IndexType tmp_target = my_targetIndex;
+      IndexType tmp_src = ii;
+      for (IndexType jj = 0; jj < tmpNum; ++jj){
+	dihedralIndex[tmp_target] = bk_dihedralIndex[tmp_src];
+	dihedralPosi [tmp_target] = bk_dihedralPosi [tmp_src];
+	tmp_target += bondTopStride;
+	tmp_src    += bk_bondTopStride;
+      }
+      tmp_target = my_targetIndex;
+      tmp_src = ii;
+      for (IndexType jj = 0; jj < tmpNum * 2; ++jj){
+	bondNeighbor_globalIndex[tmp_target] = bk_bondNeighbor_globalIndex[tmp_src];
+	tmp_target += bondTopStride;
+	tmp_src    += bk_bondTopStride;
+      }
+    }
+  }
+}
+
 
 __global__ void Parallel::CudaGlobal::
 rebuildCellList_step1 (const VectorType frameLow,

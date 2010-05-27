@@ -274,6 +274,12 @@ private:
     void easyMallocCell (const IndexType & totalNumCell);
     void initZeroCell ();
     void clearCell ();
+    void calNumCell (const ScalorType & rlist,
+		     const IndexType & devideLevel,
+		     const BoxDirection_t & bdir,
+		     IntVectorType & numCell,
+		     VectorType & result_frameLow,
+		     VectorType & result_frameUp);
 public:
     IndexType D3toD1 (const IndexType & ix,
 		      const IndexType & iy,
@@ -299,6 +305,9 @@ public:
     void initCellStructure (const ScalorType & rlist,
 			    const IndexType & devideLevel = 1,
 			    const BoxDirection_t & bdir = 7);
+    void reinitCellStructure (const ScalorType & rlist,
+			      const IndexType & devideLevel = 1,
+			      const BoxDirection_t & bidr = 7);
     void rebuild ();
     void rebuild (DeviceBondList & dbdlist);
     void applyPeriodicBondaryCondition ();

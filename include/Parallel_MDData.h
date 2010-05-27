@@ -286,7 +286,8 @@ public:
     bool hasBond    () const {return maxNumBond != 0;}
     bool hasAngle   () const {return maxNumAngle != 0;}
     bool hasDihedral() const {return maxNumDihedral != 0;}
-    const IndexType & bondTopStride () const {return _memSize;}
+    const IndexType & bondTopStride ()    const {return _memSize;}
+    const IndexType & getBondTopStride () const {return _memSize;}
     
     const RectangularBox & getGlobalBox     () const {return globalBox;}
     const HostVectorType & getGlobalBoxSize () const {return globalBox.size;}
