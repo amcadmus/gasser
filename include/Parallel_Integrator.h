@@ -77,8 +77,9 @@ public:
       SumVector<ScalorType> sum_kzz;
       IndexType sharedBuffSize;
   public:
-      VelocityVerlet (const DeviceCellListedMDData & sys) { init (sys);}
-      void init (const DeviceCellListedMDData & sys);
+      VelocityVerlet () {};
+      VelocityVerlet (const DeviceCellListedMDData & sys) {reinit (sys);}
+      void reinit (const DeviceCellListedMDData & sys);
   public:
       void step1 (DeviceCellListedMDData & sys,
 		  const ScalorType & dt);
@@ -89,6 +90,65 @@ public:
 		  DeviceStatistic & st);
     };
   }
+
+
+  class BerendsenLeapFrog 
+  {
+    dim3 gridDim;
+    dim3 myBlockDim;
+    bool TCoupleOn;
+    bool PCoupleOn;
+    ScalorType refT;
+    ScalorType tauT;
+    ScalorType refP[3];
+    ScalorType tauP[3];
+    ScalorType betaP[3];
+    IndexType NPCoupleGroup;
+    PCoupleDirection_t PCoupleDirections[3];
+private:
+    ScalorType dt;
+    IndexType nstep;
+    MDStatistic myst;
+    ScalorType lastKineticE;
+    ScalorType lastPressure[3];
+    LeapFrog lpfrog;
+    InteractionEngine_interface * ptr_inter;
+    NeighborList * ptr_nlist;
+    BondedInteractionList * ptr_bdInterList;
+    ScalorType rebuildThreshold;
+private:
+    void firstStep (MDSystem & sys, MDTimer * timer);
+    void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
+public:
+    void init (const MDSystem &sys,
+	       const IndexType & NThread,
+	       const ScalorType & dt,
+	       InteractionEngine_interface &inter,
+	       NeighborList & nlist,
+	       const ScalorType & rebuildThreshold,
+	       BondedInteractionList * ptr_bdInterList = NULL) ;
+    BerendsenLeapFrog ();
+    BerendsenLeapFrog (const MDSystem &sys,
+		       const IndexType & NThread,
+		       const ScalorType & dt,
+		       InteractionEngine_interface &inter,
+		       NeighborList & nlist,
+		       const ScalorType & rebuildThreshold,
+		       BondedInteractionList * ptr_bdInterList = NULL)
+	: myst(sys), lpfrog(sys, NThread)
+	{ init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
+    ~BerendsenLeapFrog () {};
+public:
+    void TCouple (const ScalorType & refT,
+		  const ScalorType & tauT);
+    void addPcoupleGroup (const PCoupleDirection_t & direction,
+			  const ScalorType & refP,
+			  const ScalorType & tauP,
+			  const ScalorType & betaP);
+    void oneStep (MDSystem & sys, MDTimer * timer=NULL);
+    void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
+  };
+
 
   namespace CudaGlobal{
     __global__ void

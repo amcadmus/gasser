@@ -214,6 +214,9 @@ reinitCellStructure (const ScalorType & rlist_,
 	  bkData.dptr_velocityX(),
 	  bkData.dptr_velocityY(),
 	  bkData.dptr_velocityZ(),
+	  bkData.dptr_forceX(),
+	  bkData.dptr_forceY(),
+	  bkData.dptr_forceZ(),
 	  bkData.dptr_globalIndex(),
 	  bkData.dptr_type(),
 	  bkData.dptr_mass(),
@@ -224,6 +227,9 @@ reinitCellStructure (const ScalorType & rlist_,
 	  velox,
 	  veloy,
 	  veloz,
+	  forcx,
+	  forcy,
+	  forcz,
 	  globalIndex,
 	  type,
 	  mass,
@@ -748,6 +754,9 @@ reinitCellStructure_step1 (const IndexType * bk_numAtomInCell,
 			   const ScalorType * bk_velox,
 			   const ScalorType * bk_veloy,
 			   const ScalorType * bk_veloz,
+			   const ScalorType * bk_forcx,
+			   const ScalorType * bk_forcy,
+			   const ScalorType * bk_forcz,
 			   const IndexType  * bk_globalIndex,
 			   const TypeType   * bk_type,
 			   const ScalorType * bk_mass,
@@ -758,6 +767,9 @@ reinitCellStructure_step1 (const IndexType * bk_numAtomInCell,
 			   ScalorType * velox,
 			   ScalorType * veloy,
 			   ScalorType * veloz,
+			   ScalorType * forcx,
+			   ScalorType * forcy,
+			   ScalorType * forcz,
 			   IndexType  * globalIndex,
 			   TypeType   * type,
 			   ScalorType * mass,
@@ -779,6 +791,9 @@ reinitCellStructure_step1 (const IndexType * bk_numAtomInCell,
     velox[targetIndex] = bk_velox[ii];
     veloy[targetIndex] = bk_veloy[ii];
     veloz[targetIndex] = bk_veloz[ii];
+    forcx[targetIndex] = bk_forcx[ii];
+    forcy[targetIndex] = bk_forcy[ii];
+    forcz[targetIndex] = bk_forcz[ii];
     globalIndex[targetIndex] = bk_globalIndex[ii];
     type[targetIndex] = bk_type[ii];
     mass[targetIndex] = bk_mass[ii];
@@ -3883,7 +3898,7 @@ Parallel::DeviceCellRelation::
 }
 
 void Parallel::DeviceCellRelation::
-build (DeviceCellListedMDData & list)
+rebuild (DeviceCellListedMDData & list)
 {
   ptr_list = &list;
 
@@ -3895,12 +3910,6 @@ build (DeviceCellListedMDData & list)
   Parallel::Interface::numProcDim (Nx, Ny, Nz);
   
   easyMalloc (totalNumCell, MaxNeiPerCell);
-  // setValue <<<
-  //     (totalNumCell + DefaultNThreadPerBlock - 1) / DefaultNThreadPerBlock,
-  //     DefaultNThreadPerBlock >>> (
-  // 	  numNeighbor,
-  // 	  totalNumCell,
-  // 	  0);
   int rankx, ranky, rankz;
   Parallel::Interface::rankToCartCoord (Parallel::Interface::myRank(), rankx, ranky, rankz);
   
@@ -4197,7 +4206,7 @@ copyToHost (HostCellRelation & hrelation)
 
 
 void Parallel::DeviceCellRelation::
-build (DeviceCellListedMDData & list,
+rebuild (DeviceCellListedMDData & list,
        const SubCellList & sub0,
        const SubCellList & sub1)
 {

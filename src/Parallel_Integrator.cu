@@ -23,7 +23,7 @@ clear ()
 }
 
 void Parallel::TranslationalFreedomRemover::
-reinit  (const DeviceCellListedMDData & data)
+reinit (const DeviceCellListedMDData & data)
 {
   clear ();
   
@@ -215,15 +215,15 @@ removeTranslationalFreedom (const IndexType * numAtomInCell,
 
 
 void Parallel::Integrator::VelocityVerlet::
-init (const DeviceCellListedMDData & ddata)
+reinit (const DeviceCellListedMDData & ddata)
 {
   IndexType totalNumCell = ddata.getNumCell().x *
       ddata.getNumCell().y * ddata.getNumCell().z;
   gridDim = toGridDim (totalNumCell);
 
-  sum_kxx.init (totalNumCell, NThreadForSum);
-  sum_kyy.init (totalNumCell, NThreadForSum);
-  sum_kzz.init (totalNumCell, NThreadForSum);
+  sum_kxx.reinit (totalNumCell, NThreadForSum);
+  sum_kyy.reinit (totalNumCell, NThreadForSum);
+  sum_kzz.reinit (totalNumCell, NThreadForSum);
   
   sharedBuffSize = Parallel::Interface::numThreadsInCell() * sizeof(ScalorType);
 }

@@ -52,15 +52,15 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
   checkCUDAError ("InteractionEngine::init, bind texture");
   
   // init sum vectors
-  sum_nb_p.init (sys.ddata.numAtom, NThreadForSum);
-  sum_nb_vxx.init (sys.ddata.numAtom, NThreadForSum);
-  sum_nb_vyy.init (sys.ddata.numAtom, NThreadForSum);
-  sum_nb_vzz.init (sys.ddata.numAtom, NThreadForSum);
-  sum_b_p.init (nob, NThreadForSum);
-  sum_b_vxx.init (nob, NThreadForSum);
-  sum_b_vyy.init (nob, NThreadForSum);
-  sum_b_vzz.init (nob, NThreadForSum);
-  sum_angle_p.init (nob, NThreadForSum);
+  sum_nb_p.reinit (sys.ddata.numAtom, NThreadForSum);
+  sum_nb_vxx.reinit (sys.ddata.numAtom, NThreadForSum);
+  sum_nb_vyy.reinit (sys.ddata.numAtom, NThreadForSum);
+  sum_nb_vzz.reinit (sys.ddata.numAtom, NThreadForSum);
+  sum_b_p.reinit (nob, NThreadForSum);
+  sum_b_vxx.reinit (nob, NThreadForSum);
+  sum_b_vyy.reinit (nob, NThreadForSum);
+  sum_b_vzz.reinit (nob, NThreadForSum);
+  sum_angle_p.reinit (nob, NThreadForSum);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamCreate(&sum_stream[i]);
   }

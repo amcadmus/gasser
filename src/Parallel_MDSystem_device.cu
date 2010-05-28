@@ -89,7 +89,7 @@ init (const char * confFileName,
 
   deviceData.initCellStructure (cellSize, divideLevel);
   // printf ("ncell: %d\n", deviceData.getNumCell().x);
-  cellRelation.build (deviceData);
+  cellRelation.rebuild (deviceData);
   
   // for (IndexType i = 0; i < deviceData.numData(); ++i){
   //   deviceData.dptr_coordinate()[i].x += 2;
@@ -179,6 +179,34 @@ init (const char * confFileName,
   
   return;
 }
+
+
+void Parallel::MDSystem::
+reinitCellStructure (const ScalorType & cellSize,
+		     const IndexType & divideLevel)
+{
+  MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
+  				 MDDataItemMask_CoordinateNoi |
+  				 MDDataItemMask_Velocity |
+  				 MDDataItemMask_GlobalIndex);
+
+  deviceData.reinitCellStructure (cellSize, divideLevel);
+  cellRelation.rebuild (deviceData);
+
+  deviceData.copyToHost (localHostData, maskConfig);
+  hostBuff.copy (localHostData, MDDataItemMask_All);
+  hostBuff.clearData ();
+  
+  redistribtransUtil  .setHostData (localHostData, hostBuff);
+  redistribcopyUtil   .setData     (localHostData, deviceData);
+  transCoordstransUtil.setHostData (localHostData, hostBuff);
+  transCoordscopyUtil .setData     (localHostData, deviceData);
+  
+  collectUtil.setHostData (localHostData, hostBuff, globalHostData);
+  
+  return;
+}
+
 
 
 void Parallel::MDSystem::

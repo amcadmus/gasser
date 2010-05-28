@@ -27,8 +27,8 @@ int prog (int argc, char * argv[]);
 int main(int argc, char * argv[])
 {
   Parallel::Interface::initMPI (&argc, &argv);
-  // Parallel::Interface::initEnvironment (4, "Device Emulation (CPU)");
-  Parallel::Interface::initEnvironment (64, "Tesla C1060");
+  Parallel::Interface::initEnvironment (20, "Device Emulation (CPU)");
+  // Parallel::Interface::initEnvironment (64, "Tesla C1060");
   
   int flag = 0;
 
@@ -89,7 +89,7 @@ int prog (int argc, char * argv[])
   interEng.registBondedInteraction    (sysBdInter);
   interEng.clearInteraction (sys.deviceData);
   Parallel::DeviceCellRelation relation;
-  relation.build (sys.deviceData);
+  relation.rebuild (sys.deviceData);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
   hst.reinit (sys.localHostData);

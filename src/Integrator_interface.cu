@@ -86,9 +86,9 @@ void LeapFrog::init (const MDSystem &sys,
   }
   atomGridDim = toGridDim (nob);  
 
-  sum_kxx.init (nob, NThreadForSum);
-  sum_kyy.init (nob, NThreadForSum);
-  sum_kzz.init (nob, NThreadForSum);  
+  sum_kxx.reinit (nob, NThreadForSum);
+  sum_kyy.reinit (nob, NThreadForSum);
+  sum_kzz.reinit (nob, NThreadForSum);  
 
   sharedBuffSize = NThread * sizeof(ScalorType);
 }
@@ -217,9 +217,9 @@ void VelocityVerlet::init (const MDSystem &sys,
   }
   atomGridDim = toGridDim (nob);  
 
-  sum_kxx.init (nob, NThreadForSum);
-  sum_kyy.init (nob, NThreadForSum);
-  sum_kzz.init (nob, NThreadForSum);  
+  sum_kxx.reinit (nob, NThreadForSum);
+  sum_kyy.reinit (nob, NThreadForSum);
+  sum_kzz.reinit (nob, NThreadForSum);  
 
   sharedBuffSize = NThread * sizeof(ScalorType);
 }
@@ -319,10 +319,10 @@ void VelocityRescale::init (const MDSystem & sys,
   cudaMalloc ((void**)&buff, sizeof(ScalorType) * nob);
   checkCUDAError ("VelocityVerlet::init allocation");
 
-  sum_kxx.init (nob, NThreadForSum);
-  sum_kyy.init (nob, NThreadForSum);
-  sum_kzz.init (nob, NThreadForSum);
-  sum_k.init (nob, NThreadForSum);
+  sum_kxx.reinit (nob, NThreadForSum);
+  sum_kyy.reinit (nob, NThreadForSum);
+  sum_kzz.reinit (nob, NThreadForSum);
+  sum_k.reinit (nob, NThreadForSum);
   
   sharedBuffSize = NThread * sizeof(ScalorType);
 }

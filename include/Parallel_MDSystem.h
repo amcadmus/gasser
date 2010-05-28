@@ -315,7 +315,9 @@ public:
     void init (const char * confFileName,
 	       const Topology::System & sysTop,
 	       const ScalorType & cellSize,
-	       const IndexType & divideLevel = 1);
+	       const IndexType  & divideLevel = 1);
+    void reinitCellStructure (const ScalorType & cellSize,
+			      const IndexType  & divideLevel = 1);
     void finalize ();
 public:
     void updateHost ()

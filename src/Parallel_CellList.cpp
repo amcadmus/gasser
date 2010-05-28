@@ -899,6 +899,7 @@ clear ()
 {
   freeAPointer ((void**)&buffs);
   freeAPointer ((void**)&sizes);
+  num = 0;
 }
 
 Parallel::TransNumAtomInSubList::
@@ -965,6 +966,7 @@ clear ()
 {
   freeAPointer ((void**)&buffs);
   freeAPointer ((void**)&sizes);
+  num = 0;
 }
 
 Parallel::TransSubListData::
@@ -1378,6 +1380,16 @@ getTransBuffs  (IndexType * num_,
   *buffs_ = buffs;
   *sizes_ = sizes;
 }
+
+// void Parallel::HostCellListedMDData::
+// mallocAs  (const HostCellListedMDData & hdata)
+// {
+//   HostMDData::easyMalloc (hdata.memSize(),
+// 			  hdata.getMaxNumBond(),
+// 			  hdata.getMaxNumAngle(),
+// 			  hdata.getMaxNumDihedral());
+//   numCell = hdata.getNumCell();
+//   frameUp = 
 
 
 void Parallel::HostCellListedMDData::

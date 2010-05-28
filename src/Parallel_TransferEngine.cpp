@@ -120,6 +120,7 @@ clear ()
   freeAPointer ((void**)&blockLength);
   freeAPointer ((void**)&shiftIndex);
   buff = NULL;
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
   count = memSize = 0;
 }
@@ -129,6 +130,7 @@ clearRegistered ()
 {
   count = 0;
   buff = NULL;
+  if (request != MPI_REQUEST_NULL) MPI_Request_free (&request);
   if (dataType != MPI_DATATYPE_NULL) MPI_Type_free (&dataType);
 }
 

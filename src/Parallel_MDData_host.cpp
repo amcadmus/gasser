@@ -301,7 +301,7 @@ void Parallel::HostMDData::
 copy (const HostMDData & hdata,
       const MDDataItemMask_t mask)
 {
-  if (!mask) return;
+  // if (!mask) return;
   IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
   bool copyBond = (mask & MDDataItemMask_Bond);
   bool copyAngle = (mask & MDDataItemMask_Angle);

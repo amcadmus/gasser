@@ -77,6 +77,7 @@ public:
 public:
     void clearData ();
     void clearData (const SubCellList & subList);
+    void mallocAs  (const HostCellListedMDData & hdata);
     void copy (const HostCellListedMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
     void add  (const HostCellListedMDData & hdata,
@@ -394,10 +395,10 @@ public:
 public:
     DeviceCellRelation () : ptr_list(NULL), malloced(false) {};
     ~DeviceCellRelation ();
-    void build (DeviceCellListedMDData & list);
-    void build (DeviceCellListedMDData & list,
-		const SubCellList & sub0,
-		const SubCellList & sub1);
+    void rebuild (DeviceCellListedMDData & list);
+    void rebuild (DeviceCellListedMDData & list,
+		  const SubCellList & sub0,
+		  const SubCellList & sub1);
 public:
     IndexType * dptr_numNeighborCell   () {return numNeighbor;}
     IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}

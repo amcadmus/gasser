@@ -96,13 +96,13 @@ int prog (int argc, char *argv[])
   interEng.registBondedInteraction    (sysBdInter);
   interEng.clearInteraction (sys.deviceData);
   Parallel::DeviceCellRelation relation;
-  relation.build (sys.deviceData);
+  relation.rebuild (sys.deviceData);
   Parallel::DeviceCellRelation relation_buildBdList;
   Parallel::SubCellList ghost, innerShell;
   sys.deviceData.buildSubListGhostCell (ghost);
   sys.deviceData.buildSubListInnerShell (innerShell);
   ghost.add (innerShell);
-  relation_buildBdList.build (sys.deviceData, innerShell, ghost);
+  relation_buildBdList.rebuild (sys.deviceData, innerShell, ghost);
   Parallel::DeviceBondList dbdlist;
   dbdlist.reinit (sys.deviceData);
   buildDeviceBondList (sys.deviceData, relation, dbdlist);

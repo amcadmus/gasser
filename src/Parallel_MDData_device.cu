@@ -214,7 +214,7 @@ void Parallel::DeviceMDData::
 copyFromHost (const HostMDData & hdata,
 	      const MDDataItemMask_t mask)
 {
-  if (!mask) return;
+  // if (!mask) return;
   IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
   bool copyBond = (mask & MDDataItemMask_Bond);
   bool copyAngle = (mask & MDDataItemMask_Angle);
@@ -326,7 +326,7 @@ void Parallel::DeviceMDData::
 copyToHost (HostMDData & hdata,
 	    const MDDataItemMask_t mask) const
 {
-  if (!mask) return;
+  // if (!mask) return;
   IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
   bool copyBond = (mask & MDDataItemMask_Bond);
   bool copyAngle = (mask & MDDataItemMask_Angle);
@@ -437,7 +437,7 @@ void Parallel::DeviceMDData::
 copyFromDevice (const DeviceMDData & ddata,
 		const MDDataItemMask_t mask)
 {
-  if (!mask) return;
+  // if (!mask) return;
   IndexType expectedNumBond(0), expectedNumAngle(0), expectedNumDihedral(0);
   bool copyBond = (mask & MDDataItemMask_Bond);
   bool copyAngle = (mask & MDDataItemMask_Angle);

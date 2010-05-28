@@ -587,28 +587,30 @@ void Parallel::InteractionEngine::
 applyBondedInteraction (DeviceCellListedMDData & ddata,
 			DeviceBondList & dbdlist)
 {
-  Parallel::CudaGlobal::clearGhostBond
-      <<<numGhostCell, numThreadsInCell>>> (
-	  ghostCellIndex,
-	  ddata.dptr_numBond());
-  Parallel::CudaGlobal::calBondInteraction
-      <<<gridDim, numThreadsInCell>>>(
-	  ddata.dptr_coordinate(),
-	  ddata.getGlobalBox().size,
-	  ddata.getGlobalBox().sizei,
-	  ddata.dptr_numAtomInCell(),
-	  ddata.dptr_numBond(),
-	  ddata.dptr_bondIndex(),
-	  ddata.bondTopStride(),
-	  dbdlist.dptr_bondNeighbor_localIndex(),
-	  dbdlist.getStride(),
-	  ddata.dptr_forceX(),
-	  ddata.dptr_forceY(),
-	  ddata.dptr_forceZ(),
-	  err.ptr_de,
-	  err.ptr_dscalor);
-  checkCUDAError ("InteractionEngine::applyBondedInteraction");
-  err.check ("InteractionEngine::applyBondedInteraction no st");
+  if (hasBond){
+    Parallel::CudaGlobal::clearGhostBond
+	<<<numGhostCell, numThreadsInCell>>> (
+	    ghostCellIndex,
+	    ddata.dptr_numBond());
+    Parallel::CudaGlobal::calBondInteraction
+	<<<gridDim, numThreadsInCell>>>(
+	    ddata.dptr_coordinate(),
+	    ddata.getGlobalBox().size,
+	    ddata.getGlobalBox().sizei,
+	    ddata.dptr_numAtomInCell(),
+	    ddata.dptr_numBond(),
+	    ddata.dptr_bondIndex(),
+	    ddata.bondTopStride(),
+	    dbdlist.dptr_bondNeighbor_localIndex(),
+	    dbdlist.getStride(),
+	    ddata.dptr_forceX(),
+	    ddata.dptr_forceY(),
+	    ddata.dptr_forceZ(),
+	    err.ptr_de,
+	    err.ptr_dscalor);
+    checkCUDAError ("InteractionEngine::applyBondedInteraction");
+    err.check ("InteractionEngine::applyBondedInteraction no st");
+  }
 }
 
 
@@ -617,36 +619,38 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
 			DeviceBondList & dbdlist,
 			DeviceStatistic & st)
 {
-  Parallel::CudaGlobal::clearGhostBond
-      <<<numGhostCell, numThreadsInCell>>> (
-	  ghostCellIndex,
-	  ddata.dptr_numBond());
-  Parallel::CudaGlobal::calBondInteraction
-      <<<gridDim, numThreadsInCell, calBondInteraction_sbuffSize>>>(
-	  ddata.dptr_coordinate(),
-	  ddata.getGlobalBox().size,
-	  ddata.getGlobalBox().sizei,
-	  ddata.dptr_numAtomInCell(),
-	  ddata.dptr_numBond(),
-	  ddata.dptr_bondIndex(),
-	  ddata.bondTopStride(),
-	  dbdlist.dptr_bondNeighbor_localIndex(),
-	  dbdlist.getStride(),
-	  ddata.dptr_forceX(),
-	  ddata.dptr_forceY(),
-	  ddata.dptr_forceZ(),
-	  sum_b_p.getBuff(),
-	  sum_b_vxx.getBuff(),
-	  sum_b_vyy.getBuff(),
-	  sum_b_vzz.getBuff(),
-	  err.ptr_de,
-	  err.ptr_dscalor);
-  checkCUDAError ("InteractionEngine::applyBondedInteraction");
-  err.check ("InteractionEngine::applyBondedInteraction with st");
-  sum_b_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_BondedPotential, 0);
-  sum_b_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialXX, 0);
-  sum_b_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
-  sum_b_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialZZ, 0);
+  if (hasBond){
+    Parallel::CudaGlobal::clearGhostBond
+	<<<numGhostCell, numThreadsInCell>>> (
+	    ghostCellIndex,
+	    ddata.dptr_numBond());
+    Parallel::CudaGlobal::calBondInteraction
+	<<<gridDim, numThreadsInCell, calBondInteraction_sbuffSize>>>(
+	    ddata.dptr_coordinate(),
+	    ddata.getGlobalBox().size,
+	    ddata.getGlobalBox().sizei,
+	    ddata.dptr_numAtomInCell(),
+	    ddata.dptr_numBond(),
+	    ddata.dptr_bondIndex(),
+	    ddata.bondTopStride(),
+	    dbdlist.dptr_bondNeighbor_localIndex(),
+	    dbdlist.getStride(),
+	    ddata.dptr_forceX(),
+	    ddata.dptr_forceY(),
+	    ddata.dptr_forceZ(),
+	    sum_b_p.getBuff(),
+	    sum_b_vxx.getBuff(),
+	    sum_b_vyy.getBuff(),
+	    sum_b_vzz.getBuff(),
+	    err.ptr_de,
+	    err.ptr_dscalor);
+    checkCUDAError ("InteractionEngine::applyBondedInteraction");
+    err.check ("InteractionEngine::applyBondedInteraction with st");
+    sum_b_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_BondedPotential, 0);
+    sum_b_vxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialXX, 0);
+    sum_b_vyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialYY, 0);
+    sum_b_vzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_VirialZZ, 0);
+  }
 }
 
 __global__ void Parallel::CudaGlobal::
