@@ -22,7 +22,7 @@ struct DeviceCellList
 				 * be larger than thread per block */
   IndexType * numNeighborCell;
   IndexType * neighborCellIndex;
-  CoordType * neighborCellShift;
+  CoordNoiType * neighborCellShiftNoi;
   IndexType maxNumNeighborCell;
 };
 
@@ -81,10 +81,10 @@ __device__ IndexType &
 getNeighborCellIndex (const DeviceCellList & clist,
 		      const IndexType & cid,
 		      const IndexType & i);
-__device__ CoordType &
-getNeighborCellShift (const DeviceCellList & clist,
-		      const IndexType & cid,
-		      const IndexType & i);
+__device__ CoordNoiType &
+getNeighborCellShiftNoi (const DeviceCellList & clist,
+			 const IndexType & cid,
+			 const IndexType & i);
 __device__ void
 pushNeighborCell (const DeviceCellList & clist,
 		  const IndexType & cid,
@@ -339,23 +339,23 @@ getNeighborCellIndex (const DeviceCellList & clist,
   return clist.neighborCellIndex[cid * clist.maxNumNeighborCell + i];
 }
 
-__device__ CoordType &
-getNeighborCellShift (const DeviceCellList & clist,
-		      const IndexType & cid,
-		      const IndexType & i)
+__device__ CoordNoiType &
+getNeighborCellShiftNoi (const DeviceCellList & clist,
+			 const IndexType & cid,
+			 const IndexType & i)
 {
-  return clist.neighborCellShift[cid * clist.maxNumNeighborCell + i];
+  return clist.neighborCellShiftNoi[cid * clist.maxNumNeighborCell + i];
 }
 
 __device__ void 
 pushNeighborCell (const DeviceCellList & clist,
 		  const IndexType & cid,
 		  const IndexType & neighborIndex,
-		  const CoordType & neighborShift)
+		  const CoordNoiType & neighborShiftNoi)
 {
   IndexType index = clist.numNeighborCell[cid] ++;
-  getNeighborCellIndex (clist, cid, index) = neighborIndex;
-  getNeighborCellShift (clist, cid, index) = neighborShift;
+  getNeighborCellIndex    (clist, cid, index) = neighborIndex;
+  getNeighborCellShiftNoi (clist, cid, index) = neighborShiftNoi;
 }
 
 

@@ -525,7 +525,7 @@ namespace Parallel{
 			   const int nProcDimz,
 			   IndexType * numNeighbor,
 			   IndexType * neighborCellIndex,
-			   CoordType * neighborShift,
+			   CoordNoiType * neighborShiftNoi,
 			   const IndexType stride);
     __global__ void
     buildCellNeighborhood (const IntVectorType numCell,
@@ -544,9 +544,18 @@ namespace Parallel{
 			   const IndexType length1,
 			   IndexType * numNeighbor,
 			   IndexType * neighborCellIndex,
-			   CoordType * neighborShift,
+			   CoordNoiType * neighborShiftNoi,
 			   const IndexType stride);
-
+    __global__ void 
+    rescaleCoordinate (const IndexType * numAtomInCell,
+		       const HostVectorType scale,
+		       CoordType * coord);
+    __global__ void 
+    rescaleVelocity   (const IndexType * numAtomInCell,
+		       const HostVectorType scale,
+		       ScalorType * velox,
+		       ScalorType * veloy,
+		       ScalorType * veloz);
   }
   namespace CudaDevice{
     template <typename VEC, typename T>

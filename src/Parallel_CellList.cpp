@@ -1730,7 +1730,7 @@ Parallel::HostCellRelation::
 HostCellRelation ()
     : numNeighbor (NULL),
       neighborCellIndex (NULL),
-      neighborShift (NULL)
+      neighborShiftNoi (NULL)
 {
 }
 
@@ -1745,7 +1745,7 @@ clear ()
 {
   freeAPointer ((void**)&numNeighbor);
   freeAPointer ((void**)&neighborCellIndex);
-  freeAPointer ((void**)&neighborShift);
+  freeAPointer ((void**)&neighborShiftNoi);
 }
 
 void Parallel::HostCellRelation::
@@ -1768,12 +1768,12 @@ easyMalloc (const IndexType & totalNumCell_,
 				     "neighborCellIndex",
 				     sizeof(IndexType)*totalNumCell*MaxNeiPerCell);
   }
-  neighborShift = (HostCoordType *) malloc (sizeof(HostCoordType) *
-					    totalNumCell * MaxNeiPerCell);
-  if (neighborShift == NULL){
+  neighborShiftNoi = (HostCoordNoiType *) malloc (sizeof(HostCoordNoiType) *
+						  totalNumCell * MaxNeiPerCell);
+  if (neighborShiftNoi == NULL){
     throw MDExcptFailedMallocOnHost ("HostCellRelation::easyMalloc",
 				     "neighborShift",
-				     sizeof(HostCoordType)*totalNumCell*MaxNeiPerCell);
+				     sizeof(HostCoordNoiType)*totalNumCell*MaxNeiPerCell);
   }
 }
 

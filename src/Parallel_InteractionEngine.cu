@@ -32,13 +32,13 @@ ScalorType bondedInteractionParameter [MaxNumberBondedInteractionParamemter];
 
 Parallel::InteractionEngine::
 InteractionEngine ()
-    : inited(false), hasBond (false), hasAngle(false)
+    : inited(false), hasBond (false), hasAngle(false), rcut (0.f)
 {
 }
 
 Parallel::InteractionEngine::
 InteractionEngine (const DeviceCellListedMDData & ddata)
-    : inited(false), hasBond (false), hasAngle(false)
+    : inited(false), hasBond (false), hasAngle(false), rcut (0.f)
 {
   reinit (ddata);
 }
@@ -115,6 +115,8 @@ Parallel::InteractionEngine::
 void Parallel::InteractionEngine::
 registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 {
+  rcut = sysNbInter.maxRcut();
+  
   if (! sysNbInter.beBuilt()) {
     throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine_interface");
   }
@@ -230,7 +232,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
-	  relation.dptr_neighborShift(),
+	  relation.dptr_neighborShiftNoi(),
 	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
@@ -262,7 +264,7 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_numAtomInCell(),
 	  relation.dptr_numNeighborCell(),
 	  relation.dptr_neighborCellIndex(),
-	  relation.dptr_neighborShift(),
+	  relation.dptr_neighborShiftNoi(),
 	  relation.stride_neighborCellIndex(),
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
@@ -281,7 +283,7 @@ calNonBondedInteraction (const CoordType * coord,
 			 const IndexType * numAtomInCell,
 			 const IndexType * numNeighborCell,
 			 const IndexType * neighborCellIndex,
-			 const CoordType * neighborShift,
+			 const CoordNoiType * neighborShiftNoi,
 			 const IndexType   stride,
 			 ScalorType * forcx,
 			 ScalorType * forcy,
@@ -350,7 +352,9 @@ calNonBondedInteraction (const CoordType * coord,
     CoordType target_shift;
     IndexType target_numAtomInCell;
     target_cellIndex = neighborCellIndex[bid * stride + kk];
-    target_shift     = neighborShift    [bid * stride + kk];
+    target_shift.x   = neighborShiftNoi [bid * stride + kk].x * boxSize.x;
+    target_shift.y   = neighborShiftNoi [bid * stride + kk].y * boxSize.y;
+    target_shift.z   = neighborShiftNoi [bid * stride + kk].z * boxSize.z;
     target_numAtomInCell = numAtomInCell[target_cellIndex];
     if (target_numAtomInCell == 0) continue;
     IndexType indexShift = target_cellIndex * blockDim.x;
@@ -468,7 +472,7 @@ calNonBondedInteraction (const CoordType * coord,
 			 const IndexType * numAtomInCell,
 			 const IndexType * numNeighborCell,
 			 const IndexType * neighborCellIndex,
-			 const CoordType * neighborShift,
+			 const CoordNoiType * neighborShiftNoi,
 			 const IndexType   stride,
 			 ScalorType * forcx,
 			 ScalorType * forcy,
@@ -518,7 +522,9 @@ calNonBondedInteraction (const CoordType * coord,
     CoordType target_shift;
     IndexType target_numAtomInCell;
     target_cellIndex = neighborCellIndex[bid * stride + kk];
-    target_shift     = neighborShift    [bid * stride + kk];
+    target_shift.x   = neighborShiftNoi [bid * stride + kk].x * boxSize.x;
+    target_shift.y   = neighborShiftNoi [bid * stride + kk].y * boxSize.y;
+    target_shift.z   = neighborShiftNoi [bid * stride + kk].z * boxSize.z;
     target_numAtomInCell = numAtomInCell[target_cellIndex];
     if (target_numAtomInCell == 0) continue;
     IndexType indexShift = target_cellIndex * blockDim.x;

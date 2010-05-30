@@ -262,7 +262,7 @@ step2 (DeviceCellListedMDData & data,
 	  data.dptr_velocityX(),
 	  data.dptr_velocityY(),
 	  data.dptr_velocityZ());
-  checkCUDAError ("interface::VelocityVerlet::step2, no st");
+  checkCUDAError ("Integrator::VelocityVerlet::step2, no st");
 }
 
 void Parallel::Integrator::VelocityVerlet::
@@ -288,7 +288,7 @@ step2 (DeviceCellListedMDData & data,
   sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyYY, 0);
   sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyZZ, 0);
 
-  checkCUDAError ("interface::VelocityVerlet::step2, with st");
+  checkCUDAError ("Integrator::VelocityVerlet::step2, with st");
 }
 	  
 
@@ -393,3 +393,446 @@ velocityVerlet_step2 (const IndexType * numAtomInCell,
 }
 
   
+
+void Parallel::Integrator::LeapFrog::
+reinit (const DeviceCellListedMDData & ddata)
+{
+  IndexType totalNumCell = ddata.getNumCell().x *
+      ddata.getNumCell().y * ddata.getNumCell().z;
+  gridDim = toGridDim (totalNumCell);
+
+  sum_kxx.reinit (totalNumCell, NThreadForSum);
+  sum_kyy.reinit (totalNumCell, NThreadForSum);
+  sum_kzz.reinit (totalNumCell, NThreadForSum);
+  
+  sharedBuffSize = Parallel::Interface::numThreadsInCell() * sizeof(ScalorType);
+}
+  
+void Parallel::Integrator::LeapFrog::
+stepX (DeviceCellListedMDData & ddata,
+       const ScalorType & dt)
+{
+  Parallel::CudaGlobal::leapFrogStepX
+      <<<gridDim, Parallel::Interface::numThreadsInCell()>>> (
+	  ddata.dptr_numAtomInCell(),
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ(),
+	  dt,
+	  ddata.dptr_coordinate());
+  checkCUDAError ("Integrator::LeapFrog::stepX");	  
+}
+
+void Parallel::Integrator::LeapFrog::
+stepV (DeviceCellListedMDData & ddata,
+       const ScalorType & dt)
+{
+  Parallel::CudaGlobal::leapFrogStepV
+      <<<gridDim, Parallel::Interface::numThreadsInCell()>>>(
+	  ddata.dptr_numAtomInCell(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  ddata.dptr_mass(),
+	  dt,
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ());
+  checkCUDAError ("Integrator::LeapFrog::stepV, without st");
+}
+
+void Parallel::Integrator::LeapFrog::
+stepV (DeviceCellListedMDData & ddata,
+       const ScalorType & dt,
+       DeviceStatistic & st)
+{
+  Parallel::CudaGlobal::leapFrogStepV
+      <<<gridDim, Parallel::Interface::numThreadsInCell(), sharedBuffSize>>>(
+	  ddata.dptr_numAtomInCell(),
+	  ddata.dptr_forceX(),
+	  ddata.dptr_forceY(),
+	  ddata.dptr_forceZ(),
+	  ddata.dptr_mass(),
+	  dt,
+	  ddata.dptr_velocityX(),
+	  ddata.dptr_velocityY(),
+	  ddata.dptr_velocityZ(),
+	  sum_kxx.getBuff(),
+	  sum_kyy.getBuff(),
+	  sum_kzz.getBuff());
+  sum_kxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyXX, 0);
+  sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyYY, 0);
+  sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyZZ, 0);
+  checkCUDAError ("Integrator::LeapFrog::stepV, with st");
+}
+
+
+__global__ void Parallel::CudaGlobal::
+leapFrogStepX (const IndexType * numAtomInCell,
+	       const ScalorType * velox,
+	       const ScalorType * veloy,
+	       const ScalorType * veloz,
+	       const ScalorType dt,
+	       CoordType * coord)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  if (this_numAtomInCell == 0){
+    return;
+  }
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (threadIdx.x < this_numAtomInCell){
+    coord[ii].x += dt * velox[ii];
+    coord[ii].y += dt * veloy[ii];
+    coord[ii].z += dt * veloz[ii];
+  }
+}
+
+__global__ void Parallel::CudaGlobal::
+leapFrogStepV (const IndexType * numAtomInCell,
+	       const ScalorType * forcx,
+	       const ScalorType * forcy,
+	       const ScalorType * forcz,
+	       const ScalorType * mass,
+	       const ScalorType dt,
+	       ScalorType * velox,
+	       ScalorType * veloy,
+	       ScalorType * veloz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  if (this_numAtomInCell == 0){
+    return;
+  }
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (threadIdx.x < this_numAtomInCell){
+    ScalorType dtmi = dt / mass[ii];
+    velox[ii] += dtmi * forcx[ii];
+    veloy[ii] += dtmi * forcy[ii];
+    veloz[ii] += dtmi * forcz[ii];
+  }
+}
+
+
+__global__ void Parallel::CudaGlobal::
+leapFrogStepV (const IndexType * numAtomInCell,
+	       const ScalorType * forcx,
+	       const ScalorType * forcy,
+	       const ScalorType * forcz,
+	       const ScalorType * mass,
+	       const ScalorType dt,
+	       ScalorType * velox,
+	       ScalorType * veloy,
+	       ScalorType * veloz,
+	       ScalorType * statistic_buffxx,
+	       ScalorType * statistic_buffyy,
+	       ScalorType * statistic_buffzz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType this_numAtomInCell = numAtomInCell[bid];
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  extern __shared__ ScalorType buff [];
+  ScalorType vx(0.f), vy(0.f), vz(0.f);
+  ScalorType scalor = 0.f;
+  
+  if (threadIdx.x < this_numAtomInCell){
+    ScalorType dtmi = dt / mass[ii];
+    scalor = 0.5f * mass[ii];
+    vx = (velox[ii] += dtmi * forcx[ii]);
+    vy = (veloy[ii] += dtmi * forcy[ii]);
+    vz = (veloz[ii] += dtmi * forcz[ii]);
+  }
+
+  buff[threadIdx.x] = scalor * vx * vx;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffxx[bid] = buff[0];
+  __syncthreads();
+  buff[threadIdx.x] = scalor * vy * vy;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffyy[bid] = buff[0];
+  __syncthreads();
+  buff[threadIdx.x] = scalor * vz * vz;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
+}
+
+
+using namespace RectangularBoxGeometry;
+
+
+Parallel::Integrator::BerendsenLeapFrog::
+BerendsenLeapFrog ()
+{
+  TCoupleOn = false;
+  PCoupleOn = false;
+  NPCoupleGroup = 0;
+  ptr_inter = NULL;
+  ptr_bdInterList = NULL;
+  nstep = 0;
+}
+
+
+void Parallel::Integrator::BerendsenLeapFrog::
+reinit (const MDSystem & sys,
+	const ScalorType & dt_,
+	InteractionEngine * ptr_inter_,
+	TranslationalFreedomRemover * ptr_trRemover_,
+	const IndexType removeFeq_,
+	DeviceBondList * ptr_bdInterList_) 
+{
+  dt = dt_;
+  TCoupleOn = false;
+  PCoupleOn = false;
+  NPCoupleGroup = 0;
+  nstep = 0;
+
+  IntVectorType numCell (sys.deviceData.getNumCell());
+  IndexType nob = numCell.x * numCell.y * numCell.z;
+  gridDim = toGridDim (nob);  
+
+  lpfrog.reinit (sys.deviceData);
+  ptr_inter = ptr_inter_;
+  ptr_trRemover = ptr_trRemover_;
+  removeFeq = removeFeq_;
+  ptr_bdInterList = ptr_bdInterList_;
+
+  relation.rebuild (sys.deviceData);
+  if (ptr_bdInterList != NULL){
+    Parallel::SubCellList ghost, innerShell;
+    sys.deviceData.buildSubListGhostCell (ghost);
+    sys.deviceData.buildSubListInnerShell (innerShell);
+    ghost.add (innerShell);
+    relation_buildBdList.rebuild (sys.deviceData, innerShell, ghost);
+  }
+
+  // myhst.reinit (sys.localHostData);
+  // myst .reinit (sys.deviceData);
+}
+
+
+void Parallel::Integrator::BerendsenLeapFrog::
+TCouple (const ScalorType & refT_,
+	 const ScalorType & tauT_)
+{
+  TCoupleOn = true;
+  refT = refT_;
+  tauT = tauT_;
+}
+
+void Parallel::Integrator::BerendsenLeapFrog::
+addPcoupleGroup (const BoxDirection_t & direction,
+		 const ScalorType & refP_,
+		 const ScalorType & tauP_,
+		 const ScalorType & betaP_)
+{
+  if (direction == 0) return;
+  PCoupleOn = true;
+  
+  if (NPCoupleGroup == 3){
+    fprintf (stderr, "# too many P couple groups, add nothing" );
+    return ;
+  }
+  refP[NPCoupleGroup] = refP_;
+  tauP[NPCoupleGroup] = tauP_;
+  betaP[NPCoupleGroup] = betaP_;
+  PCoupleDirections[NPCoupleGroup] = direction;
+  
+  NPCoupleGroup ++;
+}
+
+void Parallel::Integrator::BerendsenLeapFrog::
+firstStep (MDSystem & sys,
+	   DeviceStatistic &st)
+{
+  myst.clearData ();
+  ptr_inter->clearInteraction (sys.deviceData);
+  sys.transferGhost();  
+  ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					relation);
+  if (ptr_bdInterList != NULL){
+    buildDeviceBondList (sys.deviceData,
+			 relation_buildBdList,
+			 *ptr_bdInterList);
+    ptr_inter->applyBondedInteraction (sys.deviceData,
+				       *ptr_bdInterList);
+  }
+  sys.clearGhost();
+
+  lpfrog.stepX (sys.deviceData, dt);
+  lpfrog.stepV (sys.deviceData, dt, myst);
+  
+  sys.deviceData.rebuild ();
+  sys.redistribute ();
+
+  ptr_inter->clearInteraction (sys.deviceData);
+  sys.transferGhost();  
+  ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					relation,
+					myst);
+  if (ptr_bdInterList != NULL){
+    buildDeviceBondList (sys.deviceData,
+			 relation_buildBdList,
+			 *ptr_bdInterList);
+    ptr_inter->applyBondedInteraction (sys.deviceData,
+				       *ptr_bdInterList,
+				       myst);
+  }
+  sys.clearGhost();
+  st.add (myst);
+  nstep ++;
+}
+
+void Parallel::Integrator::BerendsenLeapFrog::
+oneStep (MDSystem & sys,
+	 DeviceStatistic &st)
+{
+  ScalorType nowT, lambda;
+  ScalorType nowP[3], mu[3];
+  IndexType nDir[3];
+
+  if (nstep % removeFeq == 0 && ptr_trRemover != NULL){
+    ptr_trRemover->remove (sys.deviceData);
+  }
+  
+  if (nstep != 0) {
+    myst.copyToHost (myhst);
+    myhst.collectDataAll ();
+    if (TCoupleOn){
+      nowT = myhst.kineticEnergy();
+      nowT *= 2.f / (sys.getNumFreedom() - 3);
+      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+    }
+    if (PCoupleOn){
+      for (IndexType i = 0; i < NPCoupleGroup; ++i){
+	nowP[i] = 0;
+	nDir[i] = 0;
+	if ((PCoupleDirections[i] & mdRectBoxDirectionX) != 0){
+	  nowP[i] += myhst.pressureXX(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionY) != 0){
+	  nowP[i] += myhst.pressureYY(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionZ) != 0){
+	  nowP[i] += myhst.pressureZZ(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	nowP[i] /= ScalorType(nDir[i]);
+	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+      }
+    }
+  
+    myst.clearData();
+    lpfrog.stepV (sys.deviceData, dt, myst);
+    if (TCoupleOn){
+      HostVectorType scale;
+      scale.x = (scale.y = (scale.z = lambda));
+      sys.deviceData.rescaleVelocity (scale);
+      myst.rescale (mdStatistic_KineticEnergyXX, 3, lambda*lambda);
+    }
+    // st.add (myst);
+    // myst.clearData();
+    lpfrog.stepX (sys.deviceData, dt);
+    HostVectorType coordScalor ;
+    if (PCoupleOn){
+      coordScalor.x = (coordScalor.y = (coordScalor.z = 1.f));
+      for (IndexType i = 0; i < NPCoupleGroup; ++i){
+	if ((PCoupleDirections[i] & mdRectBoxDirectionX) != 0){
+	  coordScalor.x *= mu[i];
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionY) != 0){
+	  coordScalor.y *= mu[i];
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionZ) != 0){
+	  coordScalor.z *= mu[i];
+	}
+      }
+    }
+    nstep ++;
+
+    sys.deviceData.rebuild();
+    sys.redistribute();
+    if (PCoupleOn){
+      sys.deviceData.rescaleCoordinate (coordScalor);
+    }    
+    {
+      bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut()+0.1);
+      if (reinited){
+	printf ("# change too much, reinit \n");
+	sys.redistribute();
+	ptr_inter->reinit (sys.deviceData);
+	if (ptr_trRemover != NULL){
+	  ptr_trRemover->reinit (sys.deviceData);
+	}
+	if (ptr_bdInterList != NULL){
+	  ptr_bdInterList->reinit (sys.deviceData);
+	}
+	IntVectorType numCell (sys.deviceData.getNumCell());
+	gridDim = toGridDim (numCell.x * numCell.y * numCell.z);  
+	lpfrog.reinit (sys.deviceData);
+	relation.rebuild (sys.deviceData);
+	if (ptr_bdInterList != NULL){
+	  Parallel::SubCellList ghost, innerShell;
+	  sys.deviceData.buildSubListGhostCell (ghost);
+	  sys.deviceData.buildSubListInnerShell (innerShell);
+	  ghost.add (innerShell);
+	  relation_buildBdList.rebuild (sys.deviceData, innerShell, ghost);
+	}
+      }
+    }
+    
+    ptr_inter->clearInteraction (sys.deviceData);
+    sys.transferGhost();  
+    ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					  relation,
+					  myst);
+    if (ptr_bdInterList != NULL){
+      buildDeviceBondList (sys.deviceData,
+			   relation_buildBdList,
+			   *ptr_bdInterList);
+      ptr_inter->applyBondedInteraction (sys.deviceData,
+					 *ptr_bdInterList,
+					 myst);
+    }
+    sys.clearGhost();
+    st.add (myst);
+  }
+  else {
+    firstStep (sys, st);
+  }
+}
+
+
+// void
+// BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
+// {
+//   myst.clearDevice ();
+//   ptr_inter->clearInteraction (sys.deviceData);
+//   sys.transferGhost();  
+//   ptr_inter->applyNonBondedInteraction (sys.deviceData,
+// 					deviceCellRelation);
+//   if (ptr_bdInterList != NULL){
+//     buildDeviceBondList (deviceData,
+// 			 deviceCellRelation_buildBdList,
+// 			 *ptr_bdInterList);
+//     ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
+//   }
+//   sys.clearGhost();
+
+//   lpfrog.stepX (sys.deviceData, dt);
+//   lpfrog.stepV (sys.deviceData, dt, myst);
+  
+//   sys.deviceData.rebuild (dbdlist);
+//   sys.redistribute ();
+
+//   ptr_inter->clearInteraction (sys.deviceData);
+//   ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
+//   if (ptr_bdInterList != NULL){
+//     ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
+//   }
+//   nstep ++;
+// }
+

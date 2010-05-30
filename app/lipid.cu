@@ -136,10 +136,10 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure());
+		st.pressureXX(sys.box),
+		st.pressureYY(sys.box),
+		st.pressureZZ(sys.box),
+		st.pressure(sys.box));
 	fflush(stdout);
       }
       else {

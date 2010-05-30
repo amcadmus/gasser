@@ -213,32 +213,32 @@ buildCellNeighborhood (DeviceCellList clist,
 	      }
 	    }
 	  }
-	  CoordType shift;
-	  shift.x = shift.y = shift.z = 0.f;
+	  CoordNoiType shift;
+	  shift.x = shift.y = shift.z = 0;
 	  if (min < rlist2){
 	    if (myx < 0) {
 	      myx += clist.NCell.x;
-	      shift.x += boxSize.x;
+	      shift.x += 1;
 	    }
 	    else if (myx >= clist.NCell.x){
 	      myx -= clist.NCell.x;
-	      shift.x -= boxSize.x;
+	      shift.x -= 1;
 	    }
 	    if (myy < 0) {
 	      myy += clist.NCell.y;
-	      shift.y += boxSize.y;
+	      shift.y += 1;
 	    }
 	    else if (myy >= clist.NCell.y){
 	      myy -= clist.NCell.y;
-	      shift.y -= boxSize.y;
+	      shift.y -= 1;
 	    }
 	    if (myz < 0) {
 	      myz += clist.NCell.z;
-	      shift.z += boxSize.z;
+	      shift.z += 1;
 	    }
 	    else if (myz >= clist.NCell.z){
 	      myz -= clist.NCell.z;
-	      shift.z -= boxSize.z;
+	      shift.z -= 1;
 	    }
 
 	    pushNeighborCell (clist,

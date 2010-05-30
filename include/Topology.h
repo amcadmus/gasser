@@ -118,7 +118,8 @@ public:
 			 const IndexType & number);
       void clear();
   public:
-      IndexType numAtom () const {return indexShift.back();}
+      const IndexType & numAtom () const {return indexShift.back();}
+      const IndexType & getNumFreedom () const {return numFreedom;}
       void calMolTopPosition (const IndexType & globalIndex,
 			      IndexType & top_molIndex,
 			      IndexType & top_atomIndex) const;

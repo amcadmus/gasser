@@ -92,8 +92,8 @@ int prog (int argc, char * argv[])
   relation.rebuild (sys.deviceData);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
-  hst.reinit (sys.localHostData);
-  dst.reinit (sys.deviceData);
+  // hst.reinit (sys.localHostData);
+  // dst.reinit (sys.deviceData);
   
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
   Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
@@ -156,10 +156,10 @@ int prog (int argc, char * argv[])
   	      hst.NonBondedEnergy() +
   	      hst.BondedEnergy() +
   	      hst.kineticEnergy(),
-  	      hst.pressureXX(),
-  	      hst.pressureYY(),
-  	      hst.pressureZZ(),
-  	      hst.pressure());
+  	      hst.pressureXX(sys.deviceData.getGlobalBox()),
+  	      hst.pressureYY(sys.deviceData.getGlobalBox()),
+  	      hst.pressureZZ(sys.deviceData.getGlobalBox()),
+  	      hst.pressure(sys.deviceData.getGlobalBox()));
       fflush (stdout);
     }
     

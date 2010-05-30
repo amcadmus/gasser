@@ -8,22 +8,6 @@ Parallel::HostStatistic::
 HostStatistic ()
     : localData (NULL), globalData (NULL)
 {
-}
-
-Parallel::HostStatistic::
-~HostStatistic ()
-{
-  freeAPointer ((void**)&localData);
-  freeAPointer ((void**)&globalData);
-}
-
-void Parallel::HostStatistic::
-reinit (const HostCellListedMDData & sys)
-{
-  volume = sys.getGlobalBox().size.x *
-      sys.getGlobalBox().size.y * sys.getGlobalBox().size.z;
-  volumei = 1./volume;
-  
   size = sizeof(ScalorType) * NumberOfStatisticItems;
   localData  = (ScalorType *) malloc (size);
   if (localData == NULL){
@@ -33,14 +17,41 @@ reinit (const HostCellListedMDData & sys)
   if (globalData == NULL){
     throw MDExcptFailedMallocOnHost ("MDStatistic::MDStatistic", "hdata", size);
   }
+  clearData();
+}
 
+Parallel::HostStatistic::
+~HostStatistic ()
+{
+  clear();
+}
+
+void Parallel::HostStatistic::
+clear ()
+{
+  freeAPointer ((void**)&localData);
+  freeAPointer ((void**)&globalData);
+}
+
+// void Parallel::HostStatistic::
+// reinit (const HostCellListedMDData & sys)
+// {
+//   volume = sys.getGlobalBox().size.x *
+//       sys.getGlobalBox().size.y * sys.getGlobalBox().size.z;
+//   volumei = 1./volume;  
+
+//   clearData();
+// }
+
+void Parallel::HostStatistic::
+clearData ()
+{
 #pragma unroll NumberOfStatisticItems
   for (IndexType i = 0; i < NumberOfStatisticItems; ++i){
     localData[i] = 0.f;
     globalData[i] = 0.f;
   }
 }
-
 
 void Parallel::HostStatistic::
 collectData ()

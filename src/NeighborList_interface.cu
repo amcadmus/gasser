@@ -117,8 +117,8 @@ mallocDeviceCellList (const IntVectorType & NCell,
 	      sizeof(IndexType) * numCell);
   cudaMalloc ((void**)&(dclist.neighborCellIndex),
 	      sizeof(IndexType) * maxNumNeighborCell * numCell);
-  cudaMalloc ((void**)&(dclist.neighborCellShift),
-	      sizeof(CoordType) * maxNumNeighborCell * numCell);
+  cudaMalloc ((void**)&(dclist.neighborCellShiftNoi),
+	      sizeof(CoordNoiType) * maxNumNeighborCell * numCell);
   checkCUDAError ("NeighborList::maxNumNeighborCell cell list buff");
 }
 
@@ -129,6 +129,9 @@ clearDeviceCellList ()
   if ( mallocedDeviceCellList ){
     cudaFree (dclist.data);
     cudaFree (dclist.numbers);
+    cudaFree (dclist.numNeighborCell);
+    cudaFree (dclist.neighborCellIndex);
+    cudaFree (dclist.neighborCellShiftNoi);
     cudaFree (mySendBuff);
     cudaFree (myTargetBuff);
     mallocedDeviceCellList = false;
@@ -985,8 +988,12 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   // loop over 27 neighbor cells
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
-    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
-    CoordType shift         = getNeighborCellShift (clist, bid, i);
+    IndexType targetCellIdx = getNeighborCellIndex    (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_neighbor_coord, targetIndexes[tid]);

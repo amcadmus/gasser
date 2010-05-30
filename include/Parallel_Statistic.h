@@ -27,29 +27,31 @@ namespace Parallel{
   {
     ScalorType * localData;
     ScalorType * globalData;
-    ScalorType volume;
-    ScalorType volumei;
+    // ScalorType volume;
+    // ScalorType volumei;
     size_t size;
+    void clear ();
 public:
     HostStatistic ();
     ~HostStatistic ();
     HostStatistic (const HostCellListedMDData & sys);
-    void reinit (const HostCellListedMDData & sys);
+    // void reinit (const HostCellListedMDData & sys);
 public:
     ScalorType * cptr_localStatisticData  () {return localData;}
     ScalorType * cptr_globalStatisticData () {return globalData;}
     const ScalorType * cptr_localStatisticData  () const {return localData;}
     const ScalorType * cptr_globalStatisticData () const {return globalData;}
+    void clearData	();
     void collectData    ();
     void collectDataAll ();
     void collectData    (const mdStatisticItem_t item);
     void collectDataAll (const mdStatisticItem_t item);
 public:
     ScalorType kineticEnergy ();
-    ScalorType pressureXX ();
-    ScalorType pressureYY ();
-    ScalorType pressureZZ ();
-    ScalorType pressure   ();
+    ScalorType pressureXX (const RectangularBox & box);
+    ScalorType pressureYY (const RectangularBox & box);
+    ScalorType pressureZZ (const RectangularBox & box);
+    ScalorType pressure   (const RectangularBox & box);
     ScalorType virial ();
     ScalorType virialXX ();
     ScalorType virialYY ();
@@ -68,17 +70,14 @@ namespace Parallel{
   {
 private:
     bool dmalloced;
-    ScalorType volume;
     size_t size;
-    // void clear ();
+    void clear ();
 private:
     ScalorType *ddata;
 public:
-    DeviceStatistic  () : dmalloced(false) {}
-    DeviceStatistic  (const DeviceCellListedMDData & sys)
-	: dmalloced(false) {reinit(sys);}
+    DeviceStatistic  ();
     ~DeviceStatistic ();
-    void reinit (const DeviceCellListedMDData & sys);
+    // void reinit (const DeviceCellListedMDData & ddata);
 public:
     ScalorType * dptr_statisticData () {return ddata;}
     const ScalorType * dptr_statisticData () const {return ddata;}
@@ -86,6 +85,9 @@ public:
     void copy (const DeviceStatistic & st);
     void copyToHost (HostStatistic & hst);
     void add  (const DeviceStatistic & st);
+    void rescale (const IndexType  & position,
+		  const IndexType  & num,
+		  const ScalorType & scale);
   };
 
   namespace CudaGlobal{
@@ -116,27 +118,36 @@ inline ScalorType Parallel::HostStatistic::kineticEnergy ()
       globalData[mdStatistic_KineticEnergyZZ];
 }
 
-inline ScalorType Parallel::HostStatistic::pressureXX ()
+inline ScalorType Parallel::HostStatistic::
+pressureXX (const RectangularBox & box)
 {
+  double volumei = box.sizei.x * box.sizei.y * box.sizei.z;
   return 2. * volumei * (globalData[mdStatistic_KineticEnergyXX] -
 			 globalData[mdStatistic_VirialXX] * 0.5);
 }
 
-inline ScalorType Parallel::HostStatistic::pressureYY ()
+inline ScalorType Parallel::HostStatistic::
+pressureYY (const RectangularBox & box)
 {
+  double volumei = box.sizei.x * box.sizei.y * box.sizei.z;
   return 2. * volumei * (globalData[mdStatistic_KineticEnergyYY] -
 			 globalData[mdStatistic_VirialYY] * 0.5);
 }
 
-inline ScalorType Parallel::HostStatistic::pressureZZ ()
+inline ScalorType Parallel::HostStatistic::
+pressureZZ (const RectangularBox & box)
 {
+  double volumei = box.sizei.x * box.sizei.y * box.sizei.z;
   return 2. * volumei * (globalData[mdStatistic_KineticEnergyZZ] -
 			 globalData[mdStatistic_VirialZZ] * 0.5);
 }
 
-inline ScalorType Parallel::HostStatistic::pressure ()
+inline ScalorType Parallel::HostStatistic::
+pressure (const RectangularBox & box)
 {
-  return (pressureXX() + pressureYY() + pressureZZ()) * .33333333333333333333;
+  return (pressureXX(box) +
+	  pressureYY(box) +
+	  pressureZZ(box)) * .33333333333333333333;
 }
 
 inline ScalorType Parallel::HostStatistic::virial()

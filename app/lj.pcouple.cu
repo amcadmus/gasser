@@ -20,8 +20,11 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	64
-#define NThreadsPerBlockAtom	96
+// #define NThreadsPerBlockCell	64
+// #define NThreadsPerBlockAtom	96
+
+#define NThreadsPerBlockCell	4
+#define NThreadsPerBlockAtom	4
 
 
 int main(int argc, char * argv[])
@@ -86,10 +89,10 @@ int main(int argc, char * argv[])
   			  nlist,
 			  rebuildThreshold);
   blpf.TCouple (1, 0.1);
-  blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
-  			4., 1, 1);
-  blpf.addPcoupleGroup (PCoupleZ,
-  			4., 10, 1);
+  blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
+  			-4., 1, 1);
+  // blpf.addPcoupleGroup (PCoupleZ,
+  // 			4., 10, 1);
   
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
@@ -125,10 +128,10 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure(),
+		st.pressureXX(sys.box),
+		st.pressureYY(sys.box),
+		st.pressureZZ(sys.box),
+		st.pressure(sys.box),
 		sys.box.size.x,
 		sys.box.size.y,
 		sys.box.size.z);

@@ -6,27 +6,34 @@
 Parallel::DeviceStatistic::
 ~DeviceStatistic ()
 {
-  if (dmalloced){
-    cudaFree (ddata);
-  }
+  clear ();
 }
-
 
 void Parallel::DeviceStatistic::
-reinit (const DeviceCellListedMDData & data)
+clear ()
 {
-  volume = data.getGlobalBox().size.x * data.getGlobalBox().size.y *
-      data.getGlobalBox().size.z;
-
-  size = sizeof (ScalorType) * NumberOfStatisticItems;
-  if (!dmalloced){
-    cudaMalloc ((void**)&ddata, size);
-    checkCUDAError("DeviceStatistic::init, malloc");
-    dmalloced = true;
+  if (dmalloced){
+    cudaFree (ddata);
+    dmalloced = false;
   }
-  
+}
+
+Parallel::DeviceStatistic::
+DeviceStatistic ()
+    : dmalloced (false)
+{
+  size = sizeof (ScalorType) * NumberOfStatisticItems;
+  cudaMalloc ((void**)&ddata, size);
+  checkCUDAError("DeviceStatistic::init, malloc");
+  dmalloced = true;
   clearData ();
 }
+
+// void Parallel::DeviceStatistic::
+// reinit (const DeviceCellListedMDData & ddata)
+// {
+//   clearData ();
+// }
 
 __global__ void Parallel::CudaGlobal::
 clearStatisticData (ScalorType *ddata)
@@ -71,5 +78,21 @@ copyToHost (HostStatistic & hst)
 {
   cudaMemcpy (hst.cptr_localStatisticData(), ddata, size, cudaMemcpyDeviceToHost);
   checkCUDAError ("DeviceStatistic::copyToHost");
+}
+
+static __global__ void
+localRescale (const IndexType  posistion,
+	      const ScalorType scale,
+	      ScalorType * ddata)
+{
+  ddata[posistion + threadIdx.x] *= scale;
+}
+
+void Parallel::DeviceStatistic::
+rescale (const IndexType  & position,
+	 const IndexType  & num,
+	 const ScalorType & scale)
+{
+  localRescale <<<1, num>>> (position, scale, ddata);
 }
 

@@ -1343,7 +1343,11 @@ __global__ void calNonBondedInteraction (
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
     IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
-    CoordType shift         = getNeighborCellShift (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;    
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
@@ -1448,7 +1452,11 @@ __global__ void calNonBondedInteraction (
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
     IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
-    CoordType shift         = getNeighborCellShift (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
@@ -1472,10 +1480,10 @@ __global__ void calNonBondedInteraction (
 	    targetIndexes[jj] != ii){
 	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
-	  	  const_nonBondedInteractionTable,
-	  	  const_numAtomType[0],
-	  	  reftype,
-	  	  targettype[jj]);
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[jj]);
 	  // if (fidx != mdForceNULL) {
 	  ScalorType fx, fy, fz, dp;
 	  nbForcePoten (nonBondedInteractionType[fidx],

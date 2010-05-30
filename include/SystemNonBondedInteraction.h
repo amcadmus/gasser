@@ -49,7 +49,7 @@ public:
   ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
   void reinit (const Topology::System & sysTop);
   void clear ();
-  ScalorType maxRcut() {return maxrc;}
+  const ScalorType & maxRcut() const {return maxrc;}
 public:
   bool beBuilt () const {return isBuilt;}
   IndexType numberOfAtomTypes () const

@@ -128,7 +128,7 @@ public:
     IndexType MaxNeiPerCell;
     IndexType * numNeighbor;
     IndexType * neighborCellIndex;
-    HostCoordType * neighborShift;
+    HostCoordNoiType * neighborShiftNoi;
     void clear ();
     void easyMalloc (const IndexType & totalNumCell,
 		     const IndexType & MaxNeiPerCell);
@@ -138,10 +138,10 @@ public:
 public:
     IndexType * cptr_numNeighborCell   () {return numNeighbor;}
     IndexType * cptr_neighborCellIndex () {return neighborCellIndex;}
-    HostCoordType * cptr_neighborShift     () {return neighborShift;}
+    HostCoordNoiType * cptr_neighborShiftNoi () {return neighborShiftNoi;}
     const IndexType * cptr_numNeighborCell   () const {return numNeighbor;}
     const IndexType * cptr_neighborCellIndex () const {return neighborCellIndex;}
-    const HostCoordType * cptr_neighborShift     () const {return neighborShift;}
+    const HostCoordNoiType * cptr_neighborShiftNoi () const {return neighborShiftNoi;}
     IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
   };
   
@@ -306,13 +306,15 @@ public:
     void initCellStructure (const ScalorType & rlist,
 			    const IndexType & devideLevel = 1,
 			    const BoxDirection_t & bdir = 7);
-    void reinitCellStructure (const ScalorType & rlist,
+    bool reinitCellStructure (const ScalorType & rlist,
 			      const IndexType & devideLevel = 1,
 			      const BoxDirection_t & bidr = 7);
     void rebuild ();
     void rebuild (DeviceBondList & dbdlist);
     void applyPeriodicBondaryCondition ();
     void applyPeriodicBondaryConditionOnGhostCells ();
+    void rescaleCoordinate (const HostVectorType & scale);
+    void rescaleVelocity   (const HostVectorType & scale);
 public:
     void clearData (const SubCellList & subList);
 public:
@@ -382,30 +384,31 @@ public:
 
   class DeviceCellRelation 
   {
-    DeviceCellListedMDData * ptr_list;
-    bool malloced;
-    IndexType * numNeighbor;
-    IndexType * neighborCellIndex;
-    CoordType * neighborShift;
-    IndexType totalNumCell;
-    IndexType MaxNeiPerCell;
+    const DeviceCellListedMDData * ptr_list;
+    
+    bool		 malloced;
+    IndexType		 * numNeighbor;
+    IndexType		 * neighborCellIndex;
+    CoordNoiType	 * neighborShiftNoi;
+    IndexType		 totalNumCell;
+    IndexType		 MaxNeiPerCell;
     void clear ();
     void easyMalloc (const IndexType & totalNumCell,
 		     const IndexType & MaxNeiPerCell);
 public:
-    DeviceCellRelation () : ptr_list(NULL), malloced(false) {};
+    DeviceCellRelation  () : ptr_list(NULL), malloced(false) {};
     ~DeviceCellRelation ();
-    void rebuild (DeviceCellListedMDData & list);
-    void rebuild (DeviceCellListedMDData & list,
+    void rebuild (const DeviceCellListedMDData & list);
+    void rebuild (const DeviceCellListedMDData & list,
 		  const SubCellList & sub0,
 		  const SubCellList & sub1);
 public:
-    IndexType * dptr_numNeighborCell   () {return numNeighbor;}
+    IndexType * dptr_numNeighborCell () {return numNeighbor;}
     IndexType * dptr_neighborCellIndex () {return neighborCellIndex;}
-    CoordType * dptr_neighborShift     () {return neighborShift;}
-    const IndexType * dptr_numNeighborCell   () const {return numNeighbor;}
+    CoordNoiType * dptr_neighborShiftNoi () {return neighborShiftNoi;}
+    const IndexType * dptr_numNeighborCell () const {return numNeighbor;}
     const IndexType * dptr_neighborCellIndex () const {return neighborCellIndex;}
-    const CoordType * dptr_neighborShift     () const {return neighborShift;}
+    const CoordNoiType * dptr_neighborShiftNoi () const {return neighborShiftNoi;}
     IndexType stride_neighborCellIndex () const {return MaxNeiPerCell;}
 public:
     void copyToHost (HostCellRelation & hrelation);

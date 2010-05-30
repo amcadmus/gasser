@@ -208,7 +208,7 @@ addMolecules (const Molecule & mol,
   numbers.push_back(number);
   if (indexShift.size() == 0) indexShift.push_back(0);
   indexShift.push_back (indexShift.back() + number * mol.atoms.size());
-  numFreedom += molecules.size() * number;
+  numFreedom += molecules.size() * number * 3;
 }
 
 void Topology::System::

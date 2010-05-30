@@ -298,6 +298,7 @@ public:
     void reallocGroProperty (const IndexType & memSize);
 
     IndexType				globalNumAtom;
+    IndexType				numFreedom;
     GlobalHostMDData			globalHostData;
     HostCellListedMDData		localHostData;
     HostCellListedMDData		hostBuff;
@@ -316,7 +317,7 @@ public:
 	       const Topology::System & sysTop,
 	       const ScalorType & cellSize,
 	       const IndexType  & divideLevel = 1);
-    void reinitCellStructure (const ScalorType & cellSize,
+    bool reinitCellStructure (const ScalorType & cellSize,
 			      const IndexType  & divideLevel = 1);
     void finalize ();
 public:
@@ -326,6 +327,8 @@ public:
     void redistribute ();
     void transferGhost ();
     void clearGhost ();
+public:
+    const IndexType &  getNumFreedom () const {return numFreedom;}
 public:
     IndexType numAtomInGroFile (const char * filename) 
 	{ return globalHostData.numAtomInGroFile(filename); }

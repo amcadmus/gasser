@@ -562,15 +562,15 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
 	nowP[i] = 0;
 	nDir[i] = 0;
 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
+	  nowP[i] += myst.pressureXX(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
+	  nowP[i] += myst.pressureYY(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
+	  nowP[i] += myst.pressureZZ(sys.box);
 	  nDir[i] ++;
 	}
 	nowP[i] /= ScalorType(nDir[i]);
@@ -625,7 +625,7 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
+      printf("# rebuild at step %d\n", nstep);
       // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }
@@ -662,15 +662,15 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
 	nowP[i] = 0;
 	nDir[i] = 0;
 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
+	  nowP[i] += myst.pressureXX(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
+	  nowP[i] += myst.pressureYY(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
+	  nowP[i] += myst.pressureZZ(sys.box);
 	  nDir[i] ++;
 	}
 	nowP[i] /= ScalorType(nDir[i]);
@@ -725,7 +725,7 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
-      // printf("# rebuild at step %d\n", nstep);
+      printf("# rebuild at step %d\n", nstep);
       // fflush(stdout);
       ptr_nlist->reBuild(sys, timer);
     }

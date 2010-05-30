@@ -11,7 +11,8 @@ using namespace Parallel::Timer;
 Parallel::MDSystem::
 MDSystem ()
     : atomName(NULL), atomIndex(NULL),
-      resdName(NULL), resdIndex(NULL)
+      resdName(NULL), resdIndex(NULL),
+      numFreedom (0)
 {
 }
 
@@ -52,6 +53,7 @@ init (const char * confFileName,
       const ScalorType & cellSize,
       const IndexType & divideLevel)
 {
+  numFreedom = sysTop.getNumFreedom();
   MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
   				 MDDataItemMask_CoordinateNoi |
   				 MDDataItemMask_Velocity |
@@ -181,7 +183,7 @@ init (const char * confFileName,
 }
 
 
-void Parallel::MDSystem::
+bool Parallel::MDSystem::
 reinitCellStructure (const ScalorType & cellSize,
 		     const IndexType & divideLevel)
 {
@@ -190,21 +192,23 @@ reinitCellStructure (const ScalorType & cellSize,
   				 MDDataItemMask_Velocity |
   				 MDDataItemMask_GlobalIndex);
 
-  deviceData.reinitCellStructure (cellSize, divideLevel);
-  cellRelation.rebuild (deviceData);
+  bool reinited = deviceData.reinitCellStructure (cellSize, divideLevel);
+  if (reinited){
+    cellRelation.rebuild (deviceData);
 
-  deviceData.copyToHost (localHostData, maskConfig);
-  hostBuff.copy (localHostData, MDDataItemMask_All);
-  hostBuff.clearData ();
+    deviceData.copyToHost (localHostData, maskConfig);
+    hostBuff.copy (localHostData, MDDataItemMask_All);
+    hostBuff.clearData ();
   
-  redistribtransUtil  .setHostData (localHostData, hostBuff);
-  redistribcopyUtil   .setData     (localHostData, deviceData);
-  transCoordstransUtil.setHostData (localHostData, hostBuff);
-  transCoordscopyUtil .setData     (localHostData, deviceData);
+    redistribtransUtil  .setHostData (localHostData, hostBuff);
+    redistribcopyUtil   .setData     (localHostData, deviceData);
+    transCoordstransUtil.setHostData (localHostData, hostBuff);
+    transCoordscopyUtil .setData     (localHostData, deviceData);
   
-  collectUtil.setHostData (localHostData, hostBuff, globalHostData);
-  
-  return;
+    collectUtil.setHostData (localHostData, hostBuff, globalHostData);
+  }
+    
+  return reinited;
 }
 
 

@@ -657,3 +657,13 @@ endWriteData_xtcFile ()
   free (xdx);
   xdrfile_close(xdfile);
 }
+
+
+
+
+
+
+
+
+
+

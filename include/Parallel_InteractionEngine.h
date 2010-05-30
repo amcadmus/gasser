@@ -39,6 +39,7 @@ namespace Parallel{
     MDError err;
     IndexType * ghostCellIndex;
     IndexType   numGhostCell;
+    ScalorType rcut;
 private:
     void clear ();
     // void initNonBondedInteraction (const MDSystem & sys);
@@ -50,6 +51,7 @@ public:
     void registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
     void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
 public:
+    ScalorType getMaxRcut () const {return rcut;}
     void clearInteraction (DeviceCellListedMDData & data);
     void applyNonBondedInteraction (DeviceCellListedMDData & data,
 				    const DeviceCellRelation & relation);
@@ -73,7 +75,7 @@ public:
 			     const IndexType * numAtomInCell,
 			     const IndexType * numNeighborCell,
 			     const IndexType * neighborCellIndex,
-			     const CoordType * neighborShift,
+			     const CoordNoiType * neighborShiftNoi,
 			     const IndexType   stride,
 			     ScalorType * forcx,
 			     ScalorType * forcy,
@@ -88,7 +90,7 @@ public:
 			     const IndexType * numAtomInCell,
 			     const IndexType * numNeighborCell,
 			     const IndexType * neighborCellIndex,
-			     const CoordType * neighborShift,
+			     const CoordNoiType * neighborShiftNoi,
 			     const IndexType   stride,
 			     ScalorType * forcx,
 			     ScalorType * forcy,
