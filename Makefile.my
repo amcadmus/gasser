@@ -54,14 +54,14 @@ appobjects=	$(subst .cu,.o,$(wildcard $(application_dir)/*.cu))
 libtarget=	$(lib_dir)/libmd.a
 
 C:=		mpicc
-CFLAGS +=	-g -O0 
+CFLAGS +=	-g -O3
 CFLAGS += 	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC
 
 CXX:=		mpicxx
 CXXFLAGS += 	$(CFLAGS)
 
 CU:=		nvcc
-CUFLAGS +=	$(CFLAGS)  -arch sm_12 -deviceemu
+CUFLAGS +=	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC -g -arch sm_12 
 
 target:		$(application_target) $(libtarget)
 
@@ -76,7 +76,7 @@ $(appobjects):
 
 .PHONY: clean
 clean:
-	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d
+	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d lib/libmd.a
 
 .PHONY: makedir
 makedir:
