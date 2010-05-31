@@ -376,10 +376,6 @@ calNonBondedInteraction (const CoordType * coord,
 	ScalorType diffy = targetCoord[ll].y + target_shift.y;
 	ScalorType diffz = targetCoord[ll].z + target_shift.z;
 	if (diffx*diffx+diffy*diffy+diffz*diffz < rlist2 && ll + indexShift != ii) {
-	  // printf ("%f %f %f  %f %f %f  %f\n",
-	  // 	  refCoord.x, refCoord.y, refCoord.z,
-	  // 	  targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z,
-	  // 	  target_shift.z);
 	  IndexType fidx(0);
 	  fidx = Parallel::CudaDevice::calNonBondedForceIndex (
 	      const_nonBondedInteractionTable,
@@ -392,6 +388,12 @@ calNonBondedInteraction (const CoordType * coord,
 			[nonBondedInteractionParameterPosition[fidx]],
 			diffx, diffy, diffz,
 			&fx, &fy, &fz, &dp);
+	  // printf ("%f, %f %f %f,  %f %f %f,  %f %f %f,  %f\n",
+	  // 	  sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
+	  // 	  refCoord.x, refCoord.y, refCoord.z,
+	  // 	  targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z,
+	  // 	  diffx, diffy, diffz,
+	  // 	  dp);
 	  myPoten += dp;
 	  myVxx += fx * diffx;
 	  myVyy += fy * diffy;

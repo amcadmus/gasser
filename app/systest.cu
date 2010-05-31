@@ -27,8 +27,9 @@ int prog (int argc, char * argv[]);
 int main(int argc, char * argv[])
 {
   Parallel::Interface::initMPI (&argc, &argv);
-  Parallel::Interface::initEnvironment (4, "Device Emulation (CPU)");
-  // Parallel::Interface::initEnvironment (64, "Tesla C1060");
+  // Parallel::Interface::initEnvironment (4, "Device Emulation (CPU)");
+  Parallel::Interface::initEnvironment (64, "Tesla C1060");
+  // Parallel::Interface::initEnvironment (4, "Tesla C1060");
   
   int flag = 0;
 
@@ -74,47 +75,16 @@ int prog (int argc, char * argv[])
   LennardJones6_12CapParameter ljparamCap;
   ljparamCap.reinit (1.f, 1.f, 0.f, 3.2f, 10000.f);
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.19f);
+  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.numAtomInGroFile(filename));
 
   SystemNonBondedInteraction sysNbInter (sysTop);
   SystemBondedInteraction    sysBdInter (sysTop);
 
-  // sys.init (filename, sysTop, sysNbInter.maxRcut(), 1);
-  sys.init (filename, sysTop, 4., 1);
+  sys.init (filename, sysTop, sysNbInter.maxRcut() + 0.1f, 1);
   sys.redistribute ();
-  IndexType count = 0;
-  IntVectorType numCell = sys.deviceData.getNumCell();
-  for (IndexType i = 0;
-       i < numCell.x * numCell.y * numCell.z; ++i){
-    count += sys.deviceData.dptr_numAtomInCell()[i];
-  }
-  printf ("num atom in sys is %d\n", count);
-
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
-  
-  sys.reinitCellStructure (3.21);
-  count = 0;
-  numCell = sys.deviceData.getNumCell();
-  for (IndexType i = 0;
-       i < numCell.x * numCell.y * numCell.z; ++i){
-    count += sys.deviceData.dptr_numAtomInCell()[i];
-  }
-  sys.redistribute();
-  printf ("num atom in sys is %d\n", count);
-
-  // sys.reinitCellStructure (4);
-  // count = 0;
-  // numCell = sys.deviceData.getNumCell();
-  // for (IndexType i = 0;
-  //      i < numCell.x * numCell.y * numCell.z; ++i){
-  //   count += sys.deviceData.dptr_numAtomInCell()[i];
-  // }
-  // sys.redistribute();
-  // printf ("num atom in sys is %d\n", count);
-
-  // return 0;
   
   Parallel::InteractionEngine interEng;
   interEng.reinit (sys.deviceData);
@@ -125,8 +95,6 @@ int prog (int argc, char * argv[])
   relation.rebuild (sys.deviceData);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
-  // hst.reinit (sys.localHostData);
-  // dst.reinit (sys.deviceData);
   
   ScalorType dt = 0.001;
   Parallel::Integrator::VelocityVerlet vv;
@@ -139,15 +107,23 @@ int prog (int argc, char * argv[])
   blf.reinit (sys, dt, &interEng, &trRemover);
 
   blf.TCouple (1.f, 0.1);
+  // blf.addPcoupleGroup (mdRectBoxDirectionX |
+  // 		       mdRectBoxDirectionY |
+  // 		       mdRectBoxDirectionZ,
+  // 		       0, 1, 10);
   blf.addPcoupleGroup (mdRectBoxDirectionX |
-  		       mdRectBoxDirectionY |
-  		       mdRectBoxDirectionZ,
-  		       -4, 1, 1);
+  		       mdRectBoxDirectionY,
+  		       0, 1, 10);
+  blf.addPcoupleGroup (mdRectBoxDirectionZ,
+  		       0, 1, 1);
       
-  IndexType stFeq = 1;
+  IndexType stFeq = 10;
 
-  printf ("#       1            2              3             4             5             6             7           8           9          10          11     12     13     14\n");
-  printf ("#       n         time           nb E           b E           k E             T       total E         Pxx         Pyy         Pzz           P     Lx     Ly     Lz\n");
+  if (Parallel::Interface::myRank() == 0){
+    printf ("#       1            2              3             4             5             6             7           8           9          10          11     12     13     14\n");
+    printf ("#       n         time           nb E           b E           k E             T       total E         Pxx         Pyy         Pzz           P     Lx     Ly     Lz\n");
+  }
+  
   for (IndexType i = 0; i < nstep; ++i){
     dst.clearData ();
 
@@ -163,10 +139,10 @@ int prog (int argc, char * argv[])
   	      hst.NonBondedEnergy(),
   	      hst.BondedEnergy(),
   	      hst.kineticEnergy(),
+  	      hst.kineticEnergy() * 2. / sys.getNumFreedom(),
   	      hst.NonBondedEnergy() +
   	      hst.BondedEnergy() +
   	      hst.kineticEnergy(),
-  	      hst.kineticEnergy() * 2. / sys.getNumFreedom(),
   	      hst.pressureXX(sys.deviceData.getGlobalBox()),
   	      hst.pressureYY(sys.deviceData.getGlobalBox()),
   	      hst.pressureZZ(sys.deviceData.getGlobalBox()),

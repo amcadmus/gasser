@@ -20,11 +20,11 @@
 #include "NonBondedInteraction.h"
 
 
-// #define NThreadsPerBlockCell	64
-// #define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	128
+#define NThreadsPerBlockAtom	96
 
-#define NThreadsPerBlockCell	4
-#define NThreadsPerBlockAtom	4
+// #define NThreadsPerBlockCell	4
+// #define NThreadsPerBlockAtom	4
 
 
 int main(int argc, char * argv[])
@@ -89,11 +89,15 @@ int main(int argc, char * argv[])
   			  nlist,
 			  rebuildThreshold);
   blpf.TCouple (1, 0.1);
-  blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
-  			-4., 1, 1);
+  // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
+  // 			0, 1, 10);
   // blpf.addPcoupleGroup (PCoupleZ,
   // 			4., 10, 1);
   
+  blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
+  			0, 1, 10);
+  blpf.addPcoupleGroup (PCoupleZ,
+  			0, 1, 1);
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
   
@@ -115,7 +119,7 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();

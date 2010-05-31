@@ -27,8 +27,8 @@ int prog (int argc, char * argv[]);
 int main(int argc, char * argv[])
 {
   Parallel::Interface::initMPI (&argc, &argv);
-  Parallel::Interface::initEnvironment (20, "Device Emulation (CPU)");
-  // Parallel::Interface::initEnvironment (64, "Tesla C1060");
+  // Parallel::Interface::initEnvironment (4, "Device Emulation (CPU)");
+  Parallel::Interface::initEnvironment (128, "Tesla C1060");
   
   int flag = 0;
 
@@ -97,11 +97,11 @@ int prog (int argc, char * argv[])
   
   Parallel::Integrator::VelocityVerlet vv (sys.deviceData);
   Parallel::TranslationalFreedomRemover trRemover (sys.deviceData);
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.0001;
 
   sys.globalHostData.initWriteData_xtcFile ("traj.xtc");
 
-  IndexType stFeq = 100;
+  IndexType stFeq = 10;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);
@@ -163,7 +163,7 @@ int prog (int argc, char * argv[])
       fflush (stdout);
     }
     
-    if ((i+1)%1000 == 0){
+    if ((i+1)%10000 == 0){
       sys.updateHost ();  
       sys.collectLocalData ();
       sys.globalHostData.writeData_xtcFile (i, dt*i);

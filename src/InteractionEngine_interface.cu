@@ -634,6 +634,8 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
       ScalorType diffy ( target.y - ref.y );
       ScalorType diffz ( target.z - ref.z );
       shortestImage (box, &diffx, &diffy, &diffz);
+
+
       // ScalorType * forceParam;
       // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
       // 				&forceParam);
@@ -646,6 +648,13 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 		    [nonBondedInteractionParameterPosition[nbForceIndex]],
       		    diffx, diffy, diffz, 
       		    &fx, &fy, &fz, &dp);
+      // printf ("%f, %f %f %f,  %f %f %f,  %f %f %f, %f\n",
+      // 	      sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
+      // 	      ref.x, ref.y, ref.z,
+      // 	      target.x, target.y, target.z,
+      // 	      diffx, diffy, diffz,
+      // 	      dp
+      // 	  );
       myPoten += dp;
       myVxx += fx * diffx;
       myVyy += fy * diffy;
