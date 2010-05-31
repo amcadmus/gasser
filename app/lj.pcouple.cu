@@ -94,10 +94,10 @@ int main(int argc, char * argv[])
   // blpf.addPcoupleGroup (PCoupleZ,
   // 			4., 10, 1);
   
-  blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
-  			0, 1, 10);
-  blpf.addPcoupleGroup (PCoupleZ,
-  			0, 1, 1);
+  // blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
+  // 			0, 1, 10);
+  // blpf.addPcoupleGroup (PCoupleZ,
+  // 			0, 1, 1);
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
   

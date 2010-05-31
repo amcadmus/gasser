@@ -111,11 +111,11 @@ int prog (int argc, char * argv[])
   // 		       mdRectBoxDirectionY |
   // 		       mdRectBoxDirectionZ,
   // 		       0, 1, 10);
-  blf.addPcoupleGroup (mdRectBoxDirectionX |
-  		       mdRectBoxDirectionY,
-  		       0, 1, 10);
-  blf.addPcoupleGroup (mdRectBoxDirectionZ,
-  		       0, 1, 1);
+  // blf.addPcoupleGroup (mdRectBoxDirectionX |
+  // 		       mdRectBoxDirectionY,
+  // 		       0, 1, 10);
+  // blf.addPcoupleGroup (mdRectBoxDirectionZ,
+  // 		       0, 1, 1);
       
   IndexType stFeq = 10;
 
@@ -125,17 +125,15 @@ int prog (int argc, char * argv[])
   }
   
   for (IndexType i = 0; i < nstep; ++i){
-    dst.clearData ();
-
     if ((i+1)%stFeq == 0){
+      dst.clearData ();
       blf.oneStep (sys, dst);
+      dst.copyToHost (hst);
+      hst.collectData ();
     }
     else {
       blf.oneStep (sys);
-    }
-    
-    dst.copyToHost (hst);
-    hst.collectData ();
+    }    
 
     if ((i+1)%stFeq == 0 && Parallel::Interface::myRank() == 0){
       printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.5e %.5e %.5e %.5e %.3f %.3f %.3f\n",
