@@ -127,8 +127,14 @@ int prog (int argc, char *argv[])
   // printf ("# frameLow: %f %f %f\n",
   // 	  sys.deviceData.getFrameLow().x,
   // 	  sys.deviceData.getFrameLow().y,
-  // 	  sys.deviceData.getFrameLow().z);  
-  IndexType stFeq = 10;
+  // 	  sys.deviceData.getFrameLow().z);
+
+  if (Parallel::Interface::myRank() == 0){
+    printf ("#       1            2              3             4             5             6             7           8           9          10          11\n");
+    printf ("#       n         time           nb E           b E           k E             T       total E         Pxx         Pyy         Pzz           P\n");
+  }
+  
+  IndexType stFeq = 1;
   for (IndexType i = 0; i < nstep; ++i){
     if ((i)%10 == 0){
       DeviceTimer::tic (item_RemoveTransFreedom);
@@ -184,12 +190,13 @@ int prog (int argc, char *argv[])
     hst.collectData ();
 
     if ((i+1)%stFeq == 0 && Parallel::Interface::myRank() == 0){
-      printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+      printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.5e %.5e %.5e %.5e\n",
   	      (i+1),  
   	      (i+1) * dt, 
   	      hst.NonBondedEnergy(),
   	      hst.BondedEnergy(),
   	      hst.kineticEnergy(),
+  	      hst.kineticEnergy() * 2. / sys.getNumFreedom(),
   	      hst.NonBondedEnergy() +
   	      hst.BondedEnergy() +
   	      hst.kineticEnergy(),

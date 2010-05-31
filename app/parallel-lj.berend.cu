@@ -91,8 +91,6 @@ int prog (int argc, char * argv[])
   interEng.registNonBondedInteraction (sysNbInter);
   interEng.registBondedInteraction    (sysBdInter);
   interEng.clearInteraction (sys.deviceData);
-  Parallel::DeviceCellRelation relation;
-  relation.rebuild (sys.deviceData);
   Parallel::HostStatistic hst;
   Parallel::DeviceStatistic dst;
   
