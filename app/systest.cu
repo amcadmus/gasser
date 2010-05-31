@@ -127,7 +127,12 @@ int prog (int argc, char * argv[])
   for (IndexType i = 0; i < nstep; ++i){
     dst.clearData ();
 
-    blf.oneStep (sys, dst);
+    if ((i+1)%stFeq == 0){
+      blf.oneStep (sys, dst);
+    }
+    else {
+      blf.oneStep (sys);
+    }
     
     dst.copyToHost (hst);
     hst.collectData ();

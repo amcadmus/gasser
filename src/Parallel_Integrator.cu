@@ -866,33 +866,244 @@ oneStep (MDSystem & sys,
 }
 
 
-// void
-// BerendsenLeapFrog::firstStep (MDSystem & sys,  MDTimer * timer)
-// {
-//   myst.clearDevice ();
-//   ptr_inter->clearInteraction (sys.deviceData);
-//   sys.transferGhost();  
-//   ptr_inter->applyNonBondedInteraction (sys.deviceData,
-// 					deviceCellRelation);
-//   if (ptr_bdInterList != NULL){
-//     buildDeviceBondList (deviceData,
-// 			 deviceCellRelation_buildBdList,
-// 			 *ptr_bdInterList);
-//     ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
-//   }
-//   sys.clearGhost();
 
-//   lpfrog.stepX (sys.deviceData, dt);
-//   lpfrog.stepV (sys.deviceData, dt, myst);
+void Parallel::Integrator::BerendsenLeapFrog::
+firstStep (MDSystem & sys)
+{
+  myst.clearData ();
+  DeviceTimer::tic (item_ClearInteraction);
+  ptr_inter->clearInteraction (sys.deviceData);
+  DeviceTimer::toc (item_ClearInteraction);
+  HostTimer::tic (item_TransferGhost);
+  sys.transferGhost();  
+  HostTimer::toc (item_TransferGhost);
+  DeviceTimer::tic (item_NonBondedInterStatistic);
+  ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					relation);
+  DeviceTimer::toc (item_NonBondedInterStatistic);
+  if (ptr_bdInterList != NULL){
+    DeviceTimer::tic (item_BondedInterStatistic);
+    buildDeviceBondList (sys.deviceData,
+			 relation_buildBdList,
+			 *ptr_bdInterList);
+    ptr_inter->applyBondedInteraction (sys.deviceData,
+				       *ptr_bdInterList);
+    DeviceTimer::toc (item_BondedInterStatistic);
+  }
+  HostTimer::tic (item_TransferGhost);
+  sys.clearGhost();
+  DeviceTimer::toc (item_ClearInteraction);
+
+  DeviceTimer::tic (item_Integrate);
+  lpfrog.stepX (sys.deviceData, dt);
+  lpfrog.stepV (sys.deviceData, dt, myst);
+  DeviceTimer::toc (item_Integrate);
   
-//   sys.deviceData.rebuild (dbdlist);
-//   sys.redistribute ();
+  DeviceTimer::tic (item_BuildCellList);
+  sys.deviceData.rebuild ();
+  DeviceTimer::toc (item_BuildCellList);
+  HostTimer::tic (item_Redistribute);
+  sys.redistribute ();
+  HostTimer::toc (item_Redistribute);
 
-//   ptr_inter->clearInteraction (sys.deviceData);
-//   ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, myst, timer);
-//   if (ptr_bdInterList != NULL){
-//     ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, myst, timer);
-//   }
-//   nstep ++;
-// }
+  DeviceTimer::tic (item_ClearInteraction);
+  ptr_inter->clearInteraction (sys.deviceData);
+  DeviceTimer::toc (item_ClearInteraction);
+  HostTimer::tic (item_TransferGhost);
+  sys.transferGhost();  
+  HostTimer::toc (item_TransferGhost);
+  DeviceTimer::tic (item_NonBondedInterStatistic);
+  ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					relation,
+					myst);
+  DeviceTimer::toc (item_NonBondedInterStatistic);
+  if (ptr_bdInterList != NULL){
+    DeviceTimer::tic (item_BondedInterStatistic);
+    buildDeviceBondList (sys.deviceData,
+			 relation_buildBdList,
+			 *ptr_bdInterList);
+    ptr_inter->applyBondedInteraction (sys.deviceData,
+				       *ptr_bdInterList,
+				       myst);
+    DeviceTimer::toc (item_BondedInterStatistic);
+  }
+  HostTimer::tic (item_TransferGhost);
+  sys.clearGhost();
+  HostTimer::toc (item_TransferGhost);
+  nstep ++;
+}
+
+
+
+void Parallel::Integrator::BerendsenLeapFrog::
+oneStep (MDSystem & sys)
+{
+  ScalorType nowT, lambda;
+  ScalorType nowP[3], mu[3];
+  IndexType nDir[3];
+
+  DeviceTimer::tic (item_RemoveTransFreedom);
+  if (nstep % removeFeq == 0 && ptr_trRemover != NULL){
+    ptr_trRemover->remove (sys.deviceData);
+  }
+  DeviceTimer::toc (item_RemoveTransFreedom);
+  
+  if (nstep != 0) {
+    DeviceTimer::tic (item_Integrate);
+    myst.copyToHost (myhst);
+    myhst.collectDataAll ();
+    if (TCoupleOn){
+      nowT = myhst.kineticEnergy();
+      nowT *= 2.f / (sys.getNumFreedom() - 3);
+      lambda = sqrtf(1.f + dt / tauT * (refT / nowT - 1.f));
+    }
+    if (PCoupleOn){
+      for (IndexType i = 0; i < NPCoupleGroup; ++i){
+	nowP[i] = 0;
+	nDir[i] = 0;
+	if ((PCoupleDirections[i] & mdRectBoxDirectionX) != 0){
+	  nowP[i] += myhst.pressureXX(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionY) != 0){
+	  nowP[i] += myhst.pressureYY(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionZ) != 0){
+	  nowP[i] += myhst.pressureZZ(sys.deviceData.getGlobalBox());
+	  nDir[i] ++;
+	}
+	nowP[i] /= ScalorType(nDir[i]);
+	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+      }
+    }
+  
+    myst.clearData();
+    if (TCoupleOn){
+      lpfrog.stepV (sys.deviceData, dt, myst);
+    }
+    else {
+      lpfrog.stepV (sys.deviceData, dt);
+    }
+    if (TCoupleOn){
+      HostVectorType scale;
+      scale.x = (scale.y = (scale.z = lambda));
+      sys.deviceData.rescaleVelocity (scale);
+      myst.rescale (mdStatistic_KineticEnergyXX, 3, lambda*lambda);
+    }
+    // st.add (myst);
+    // myst.clearData();
+    lpfrog.stepX (sys.deviceData, dt);
+    HostVectorType coordScalor ;
+    if (PCoupleOn){
+      coordScalor.x = (coordScalor.y = (coordScalor.z = 1.f));
+      for (IndexType i = 0; i < NPCoupleGroup; ++i){
+	if ((PCoupleDirections[i] & mdRectBoxDirectionX) != 0){
+	  coordScalor.x *= mu[i];
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionY) != 0){
+	  coordScalor.y *= mu[i];
+	}
+	if ((PCoupleDirections[i] & mdRectBoxDirectionZ) != 0){
+	  coordScalor.z *= mu[i];
+	}
+      }
+    }
+    nstep ++;
+    DeviceTimer::tic (item_Integrate);
+    DeviceTimer::tic (item_BuildCellList);
+    sys.deviceData.rebuild();
+    DeviceTimer::toc (item_BuildCellList);
+    HostTimer::tic (item_Redistribute);
+    sys.redistribute();
+    HostTimer::toc (item_Redistribute);
+    if (PCoupleOn){
+      DeviceTimer::tic (item_Integrate);
+      sys.deviceData.rescaleCoordinate (coordScalor);
+      DeviceTimer::toc (item_Integrate);
+      DeviceTimer::tic (item_BuildCellList);
+      bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
+      DeviceTimer::toc (item_BuildCellList);
+      if (reinited){
+	printf ("# change too much, reinit \n");
+	HostTimer::tic (item_Redistribute);
+	sys.redistribute();
+	HostTimer::toc (item_Redistribute);
+	DeviceTimer::tic (item_NonBondedInteraction);
+	ptr_inter->reinit (sys.deviceData);
+	DeviceTimer::toc (item_NonBondedInteraction);
+	if (ptr_trRemover != NULL){
+	  DeviceTimer::tic (item_RemoveTransFreedom);
+	  ptr_trRemover->reinit (sys.deviceData);
+	  DeviceTimer::toc (item_RemoveTransFreedom);
+	}
+	if (ptr_bdInterList != NULL){
+	  DeviceTimer::tic (item_BondedInteraction);
+	  ptr_bdInterList->reinit (sys.deviceData);
+	  DeviceTimer::toc (item_BondedInteraction);
+	}
+	IntVectorType numCell (sys.deviceData.getNumCell());
+	gridDim = toGridDim (numCell.x * numCell.y * numCell.z);  
+	DeviceTimer::tic (item_Integrate);
+	lpfrog.reinit (sys.deviceData);
+	DeviceTimer::toc (item_Integrate);
+	relation.rebuild (sys.deviceData);
+	if (ptr_bdInterList != NULL){
+	  Parallel::SubCellList ghost, innerShell;
+	  sys.deviceData.buildSubListGhostCell (ghost);
+	  sys.deviceData.buildSubListInnerShell (innerShell);
+	  ghost.add (innerShell);
+	  relation_buildBdList.rebuild (sys.deviceData, innerShell, ghost);
+	}
+	DeviceTimer::toc (item_Integrate);
+      }
+    }    
+    
+    DeviceTimer::tic (item_ClearInteraction);
+    ptr_inter->clearInteraction (sys.deviceData);
+    DeviceTimer::toc (item_ClearInteraction);
+    HostTimer::tic (item_TransferGhost);
+    sys.transferGhost();  
+    HostTimer::toc (item_TransferGhost);
+    if (PCoupleOn){
+      DeviceTimer::tic (item_NonBondedInterStatistic);
+      ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					    relation,
+					    myst);
+      DeviceTimer::toc (item_NonBondedInterStatistic);
+    }
+    else {
+      DeviceTimer::tic (item_NonBondedInteraction);
+      ptr_inter->applyNonBondedInteraction (sys.deviceData,
+					    relation);
+      DeviceTimer::toc (item_NonBondedInteraction);
+    }
+    if (ptr_bdInterList != NULL){
+      DeviceTimer::tic (item_BuildBondList);
+      buildDeviceBondList (sys.deviceData,
+			   relation_buildBdList,
+			   *ptr_bdInterList);
+      DeviceTimer::toc (item_BuildBondList);
+      if (PCoupleOn){
+	DeviceTimer::tic (item_BondedInterStatistic);
+	ptr_inter->applyBondedInteraction (sys.deviceData,
+					   *ptr_bdInterList,
+					   myst);
+	DeviceTimer::toc (item_BondedInterStatistic);
+      }
+      else {
+	DeviceTimer::tic (item_BondedInteraction);
+	ptr_inter->applyBondedInteraction (sys.deviceData,
+					   *ptr_bdInterList);	
+	DeviceTimer::toc (item_BondedInteraction);
+      }
+    }
+    HostTimer::tic (item_TransferGhost);
+    sys.clearGhost();
+    HostTimer::toc (item_TransferGhost);
+  }
+  else {
+    firstStep (sys);
+  }
+}
 
