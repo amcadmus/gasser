@@ -4566,5 +4566,51 @@ rescaleVelocity  (const HostVectorType & scale)
 }
 
 
+void Parallel::DeviceCellListedMDData::
+mallocFromHost (const HostCellListedMDData & hdata)
+{
+  DeviceMDData::mallocFromHost (hdata);
+  rlist = hdata.getRlist();
+  devideLevel = hdata.getDevideLevel();
+  frameLow = hdata.getFrameLow();
+  frameUp  = hdata.getFrameUp();
+  numCell = hdata.getNumCell();
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  easyMallocCell (totalNumCell);
+  setValue <<<totalNumCell / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
+      (numAtomInCell, totalNumCell, IndexType(0));
+}
+
+void Parallel::DeviceCellListedMDData::
+mallocToHost (HostCellListedMDData & hdata) const
+{
+  DeviceMDData::mallocToHost (hdata);
+  hdata.rlist = rlist;
+  hdata.devideLevel = devideLevel;
+  hdata.frameLow = frameLow;
+  hdata.frameUp = frameUp;
+  hdata.numCell = numCell;
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  hdata.easyMallocCell (totalNumCell);
+  for (IndexType i = 0; i < totalNumCell; ++i){
+    hdata.numAtomInCell[i] = 0;
+  }
+}
+
+void Parallel::DeviceCellListedMDData::
+mallocFromDevice (const DeviceCellListedMDData & ddata)
+{
+  DeviceMDData::mallocFromDevice (ddata);
+    rlist = ddata.getRlist();
+  devideLevel = ddata.getDevideLevel();
+  frameLow = ddata.getFrameLow();
+  frameUp  = ddata.getFrameUp();
+  numCell = ddata.getNumCell();
+  IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
+  easyMallocCell (totalNumCell);
+  setValue <<<totalNumCell / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
+      (numAtomInCell, totalNumCell, IndexType(0));
+}
+
 
 

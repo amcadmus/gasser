@@ -1381,15 +1381,20 @@ getTransBuffs  (IndexType * num_,
   *sizes_ = sizes;
 }
 
-// void Parallel::HostCellListedMDData::
-// mallocAs  (const HostCellListedMDData & hdata)
-// {
-//   HostMDData::easyMalloc (hdata.memSize(),
-// 			  hdata.getMaxNumBond(),
-// 			  hdata.getMaxNumAngle(),
-// 			  hdata.getMaxNumDihedral());
-//   numCell = hdata.getNumCell();
-//   frameUp = 
+void Parallel::HostCellListedMDData::
+malloc  (const HostCellListedMDData & hdata)
+{
+  HostMDData::malloc (hdata);
+  rlist = hdata.getRlist();
+  devideLevel = hdata.getDevideLevel();
+  frameLow = hdata.getFrameLow();
+  frameUp  = hdata.getFrameUp();
+  numCell = hdata.getNumCell();
+  easyReallocCell (numCell.x * numCell.y * numCell.z);
+  for (IndexType i = 0; i < numCell.x * numCell.y * numCell.z; ++i){
+    numAtomInCell[i] = 0;
+  }
+}
 
 
 void Parallel::HostCellListedMDData::

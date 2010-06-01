@@ -663,6 +663,32 @@ endWriteData_xtcFile ()
   xdrfile_close(xdfile);
 }
 
+void Parallel::DeviceMDData::
+mallocFromDevice (const DeviceMDData & ddata)
+{
+  setGlobalBox (ddata.getGlobalBox());
+  easyMalloc (ddata.memSize(), ddata.getMaxNumBond(), ddata.getMaxNumAngle(),
+	      ddata.getMaxNumDihedral());
+  _numData = 0;
+}
+
+void Parallel::DeviceMDData::
+mallocFromHost (const HostMDData & hdata)
+{
+  setGlobalBox (hdata.getGlobalBox());
+  easyMalloc (hdata.memSize(), hdata.getMaxNumBond(), hdata.getMaxNumAngle(),
+	      hdata.getMaxNumDihedral());
+  _numData = 0;
+}
+
+
+void Parallel::DeviceMDData::
+mallocToHost (HostMDData & hdata) const 
+{
+  hdata.setGlobalBox (getGlobalBox());
+  hdata.easyMalloc (memSize(), getMaxNumBond(), getMaxNumAngle(), getMaxNumDihedral());
+  hdata.numData() = 0;
+}
 
 
 

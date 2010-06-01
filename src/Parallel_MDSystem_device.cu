@@ -196,9 +196,8 @@ reinitCellStructure (const ScalorType & cellSize,
   if (reinited){
     cellRelation.rebuild (deviceData);
 
-    deviceData.copyToHost (localHostData, maskConfig);
-    hostBuff.copy (localHostData, MDDataItemMask_All);
-    hostBuff.clearData ();
+    deviceData.malloc (localHostData, MDDataItemMask_All);
+    hostBuff  .malloc (localHostData, MDDataItemMask_All);
   
     redistribtransUtil  .setHostData (localHostData, hostBuff);
     redistribcopyUtil   .setData     (localHostData, deviceData);
