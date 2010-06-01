@@ -803,10 +803,12 @@ oneStep (MDSystem & sys,
       sys.deviceData.rescaleCoordinate (coordScalor);
       DeviceTimer::toc (item_Integrate);
       DeviceTimer::tic (item_BuildCellList);
-      bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
+      bool reinited = sys.reinitCellStructure (3.334);
+      // bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
       DeviceTimer::toc (item_BuildCellList);
       if (reinited){
 	printf ("# change too much, reinit \n");
+	fflush (stdout);
 	HostTimer::tic (item_Redistribute);
 	sys.redistribute();
 	HostTimer::toc (item_Redistribute);
@@ -830,6 +832,7 @@ oneStep (MDSystem & sys,
 	DeviceTimer::toc (item_Integrate);
 	relation.rebuild (sys.deviceData);
 	if (ptr_bdInterList != NULL){
+	  buildDeviceBondList (sys.deviceData, relation, *ptr_bdInterList);
 	  Parallel::SubCellList ghost, innerShell;
 	  sys.deviceData.buildSubListGhostCell (ghost);
 	  sys.deviceData.buildSubListInnerShell (innerShell);
@@ -1034,7 +1037,7 @@ oneStep (MDSystem & sys)
       bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
       DeviceTimer::toc (item_BuildCellList);
       if (reinited){
-	printf ("# change too much, reinit \n");
+	printf ("# change too much, reinit 2 \n");
 	HostTimer::tic (item_Redistribute);
 	sys.redistribute();
 	HostTimer::toc (item_Redistribute);
@@ -1058,6 +1061,7 @@ oneStep (MDSystem & sys)
 	DeviceTimer::toc (item_Integrate);
 	relation.rebuild (sys.deviceData);
 	if (ptr_bdInterList != NULL){
+	  buildDeviceBondList (sys.deviceData, relation, *ptr_bdInterList);
 	  Parallel::SubCellList ghost, innerShell;
 	  sys.deviceData.buildSubListGhostCell (ghost);
 	  sys.deviceData.buildSubListInnerShell (innerShell);

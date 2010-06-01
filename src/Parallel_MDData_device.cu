@@ -28,14 +28,17 @@ clear ()
   if (memSize() != 0){    
     cudaFree (coord);
     cudaFree (coordNoi);
+    checkCUDAError ("DeviceMDData::clear");
   
     cudaFree (velox);
     cudaFree (veloy);
     cudaFree (veloz);
+    checkCUDAError ("DeviceMDData::clear");
   
     cudaFree (forcx);
     cudaFree (forcy);
     cudaFree (forcz);
+    checkCUDAError ("DeviceMDData::clear");
 
     cudaFree (globalIndex);
     cudaFree (type);
@@ -52,6 +55,7 @@ clear ()
       cudaFree (bondIndex);
       maxNumBond = 0;
     }
+    checkCUDAError ("DeviceMDData::clearBondTop");
     if (maxNumAngle != 0){
       cudaFree (numAngle);
       cudaFree (angleNeighbor_globalIndex);
@@ -59,6 +63,7 @@ clear ()
       cudaFree (anglePosi);
       maxNumAngle = 0;
     }
+    checkCUDAError ("DeviceMDData::clearBondTop");
     if (maxNumDihedral != 0){
       cudaFree (numDihedral);
       cudaFree (dihedralNeighbor_globalIndex);
@@ -512,35 +517,35 @@ copyFromDevice (const DeviceMDData & ddata,
   size_t size0 = sizeof(IndexType) * ddata.memSize();
 
   if (copyBond && maxNumBond != 0){
-    cudaMemcpy (numBond, ddata.numBond, size0, cudaMemcpyHostToDevice);
+    cudaMemcpy (numBond, ddata.numBond, size0, cudaMemcpyDeviceToDevice);
     size_t size1 = size0 * maxNumBond;
-    cudaMemcpy (bondIndex, ddata.bondIndex, size1, cudaMemcpyHostToDevice);
+    cudaMemcpy (bondIndex, ddata.bondIndex, size1, cudaMemcpyDeviceToDevice);
     cudaMemcpy (bondNeighbor_globalIndex,
 		ddata.bondNeighbor_globalIndex,
 		size1,
-		cudaMemcpyHostToDevice);
+		cudaMemcpyDeviceToDevice);
   }
   if (copyAngle && maxNumAngle != 0){
-    cudaMemcpy (numAngle, ddata.numAngle, size0, cudaMemcpyHostToDevice);
+    cudaMemcpy (numAngle, ddata.numAngle, size0, cudaMemcpyDeviceToDevice);
     size_t size1 = size0 * maxNumAngle;
     size_t size2 = size0 * maxNumAngle * 2;
-    cudaMemcpy (angleIndex, ddata.angleIndex, size1, cudaMemcpyHostToDevice);
-    cudaMemcpy (anglePosi, ddata.anglePosi, size1, cudaMemcpyHostToDevice);
+    cudaMemcpy (angleIndex, ddata.angleIndex, size1, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (anglePosi, ddata.anglePosi, size1, cudaMemcpyDeviceToDevice);
     cudaMemcpy (angleNeighbor_globalIndex,
 		ddata.angleNeighbor_globalIndex,
 		size2,
-		cudaMemcpyHostToDevice);
+		cudaMemcpyDeviceToDevice);
   }
   if (copyDihedral && maxNumDihedral != 0){
-    cudaMemcpy (numDihedral, ddata.numDihedral, size0, cudaMemcpyHostToDevice);
+    cudaMemcpy (numDihedral, ddata.numDihedral, size0, cudaMemcpyDeviceToDevice);
     size_t size1 = size0 * maxNumDihedral;
     size_t size2 = size0 * maxNumDihedral * 3;
-    cudaMemcpy (dihedralIndex, ddata.dihedralIndex, size1, cudaMemcpyHostToDevice);
-    cudaMemcpy (dihedralPosi, ddata.dihedralPosi, size1, cudaMemcpyHostToDevice);
+    cudaMemcpy (dihedralIndex, ddata.dihedralIndex, size1, cudaMemcpyDeviceToDevice);
+    cudaMemcpy (dihedralPosi, ddata.dihedralPosi, size1, cudaMemcpyDeviceToDevice);
     cudaMemcpy (dihedralNeighbor_globalIndex,
 		ddata.dihedralNeighbor_globalIndex,
 		size2,
-		cudaMemcpyHostToDevice);
+		cudaMemcpyDeviceToDevice);
   }
 }
 

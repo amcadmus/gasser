@@ -12,6 +12,10 @@
   hscalor = 0;
   hindex = (IndexType *) malloc (sizeof(IndexType) * NErrorIndex);
   hscalor = (ScalorType *) malloc (sizeof(ScalorType) * NErrorScalor);
+  for (IndexType i = 0; i < NErrorIndex; ++i){
+    hindex[i] = 0;
+    hscalor[i] = 0.f;
+  }
   cudaMalloc ((void **)&ptr_de, sizeof(mdError_t));
   cudaMemcpy (ptr_de, &he, sizeof(mdError_t), cudaMemcpyHostToDevice);
   cudaMalloc ((void **)&ptr_dindex, NErrorIndex * sizeof(IndexType));
@@ -20,8 +24,8 @@
 	      cudaMemcpyHostToDevice);
   cudaMemcpy (ptr_dscalor, &hscalor, NErrorScalor * sizeof(ScalorType),
 	      cudaMemcpyHostToDevice);
-  cudaMemset (ptr_dindex, 0, NErrorIndex * sizeof(IndexType));
-  cudaMemset (ptr_dscalor, 0, NErrorScalor * sizeof(ScalorType));
+  // cudaMemset (ptr_dindex, 0, NErrorIndex * sizeof(IndexType));
+  // cudaMemset (ptr_dscalor, 0, NErrorScalor * sizeof(ScalorType));
   checkCUDAError ("MDError::MDError");
 }
 

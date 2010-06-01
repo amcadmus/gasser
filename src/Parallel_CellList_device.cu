@@ -178,7 +178,9 @@ reinitCellStructure (const ScalorType & rlist_,
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
   
   if (numThreadsInCell * totalNumCell > DeviceMDData::memSize()){
-    DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell);
+    printf ("# change too much, reinit 2a\n");
+    DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell,
+			      getMaxNumBond(), getMaxNumAngle(), getMaxNumDihedral());
   }
   numData() = totalNumCell * numThreadsInCell;
 
@@ -192,7 +194,7 @@ reinitCellStructure (const ScalorType & rlist_,
   cudaMalloc ((void**)&forwardMap,
 	      sizeof(IndexType) * numCell_.x * numCell_.y * numCell_.z * numThreadsInCell);
   checkCUDAError ("DeviceCellListedMDData::reinitCellStructure malloc forwardMap");
-  
+
   Parallel::CudaGlobal::reinitCellStructure_calForwardMap
       <<<gridDim, numThreadBlock >>>(
 	  bkData.dptr_numAtomInCell(),
@@ -206,6 +208,7 @@ reinitCellStructure (const ScalorType & rlist_,
   checkCUDAError ("DeviceCellListedMDData::reinitCellStructure_calForwardMap");
   err.updateHost();
   err.check ("DeviceCellListedMDData::reinitCellStructure_calForwardMap");
+
   Parallel::CudaGlobal::reinitCellStructure_step1
       <<<gridDim, numThreadBlock >>>(
 	  bkData.dptr_numAtomInCell(),
