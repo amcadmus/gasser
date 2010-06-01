@@ -803,8 +803,8 @@ oneStep (MDSystem & sys,
       sys.deviceData.rescaleCoordinate (coordScalor);
       DeviceTimer::toc (item_Integrate);
       DeviceTimer::tic (item_BuildCellList);
-      bool reinited = sys.reinitCellStructure (3.334);
-      // bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
+      // bool reinited = sys.reinitCellStructure (3.334);
+      bool reinited = sys.reinitCellStructure (ptr_inter->getMaxRcut() + 0.1f);
       DeviceTimer::toc (item_BuildCellList);
       if (reinited){
 	printf ("# change too much, reinit \n");

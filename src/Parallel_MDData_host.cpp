@@ -791,11 +791,11 @@ writeData_GroFile (const char * filename,
 }
 
 void Parallel::HostMDData::
-malloc (const HostMDData & hdata)
+mallocFromHost (const HostMDData & hdata)
 {
   setGlobalBox (hdata.getGlobalBox());
-  easyMalloc (hdata.memSize(), hdata.maxNumBond(), hdata.maxNumAngle(),
-	      hdata.maxNumDihedral());
+  easyMalloc (hdata.memSize(), hdata.getMaxNumBond(), hdata.getMaxNumAngle(),
+	      hdata.getMaxNumDihedral());
   _numData = 0;
 }
 

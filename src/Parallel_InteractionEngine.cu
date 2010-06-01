@@ -559,6 +559,11 @@ calNonBondedInteraction (const CoordType * coord,
 		   diffy,
 		   diffz,
 		   &fx, &fy, &fz);
+	  // printf ("%f, %f %f %f,  %f %f %f,  %f %f %f\n",
+	  // 	  sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
+	  // 	  refCoord.x, refCoord.y, refCoord.z,
+	  // 	  targetCoord[ll].x, targetCoord[ll].y, targetCoord[ll].z,
+	  // 	  diffx, diffy, diffz);
 	  fsumx += fx;
 	  fsumy += fy;
 	  fsumz += fz;

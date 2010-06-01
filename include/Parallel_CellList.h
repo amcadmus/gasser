@@ -77,7 +77,7 @@ public:
 public:
     void clearData ();
     void clearData (const SubCellList & subList);
-    void malloc    (const HostCellListedMDData & hdata);
+    void mallocFromHost (const HostCellListedMDData & hdata);
     void copy (const HostCellListedMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
     void add  (const HostCellListedMDData & hdata,
@@ -318,9 +318,9 @@ public:
 public:
     void clearData (const SubCellList & subList);
 public:
-    void mallocFromHost   (HostCellListedMDData & hdata);
+    void mallocFromHost   (const HostCellListedMDData & hdata);
     void mallocToHost     (HostCellListedMDData & hdata) const;
-    void mallocFromDevice (DeviceCellListedMDData & ddata);
+    void mallocFromDevice (const DeviceCellListedMDData & ddata);
     void copyToHost   (HostCellListedMDData & hdata,
 		       const MDDataItemMask_t mask = MDDataItemMask_All) const;
     void copyFromHost (const HostCellListedMDData & hdata,

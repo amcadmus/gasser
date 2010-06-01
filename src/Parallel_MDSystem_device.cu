@@ -187,17 +187,12 @@ bool Parallel::MDSystem::
 reinitCellStructure (const ScalorType & cellSize,
 		     const IndexType & divideLevel)
 {
-  MDDataItemMask_t maskConfig = (MDDataItemMask_Coordinate |
-  				 MDDataItemMask_CoordinateNoi |
-  				 MDDataItemMask_Velocity |
-  				 MDDataItemMask_GlobalIndex);
-
   bool reinited = deviceData.reinitCellStructure (cellSize, divideLevel);
   if (reinited){
     cellRelation.rebuild (deviceData);
 
-    deviceData.malloc (localHostData, MDDataItemMask_All);
-    hostBuff  .malloc (localHostData, MDDataItemMask_All);
+    deviceData.mallocToHost   (localHostData);
+    hostBuff  .mallocFromHost (localHostData);
   
     redistribtransUtil  .setHostData (localHostData, hostBuff);
     redistribcopyUtil   .setData     (localHostData, deviceData);

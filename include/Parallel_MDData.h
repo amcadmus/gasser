@@ -131,7 +131,7 @@ public:
 		     const IndexType maxNumBond_ = 0,
 		     const IndexType maxNumAngle_ = 0,
 		     const IndexType maxNumDihedral_ = 0);
-    void malloc (const HostMDData & hdata);
+    void mallocFromHost (const HostMDData & hdata);
     void copy (const HostMDData & hdata,
 	       const MDDataItemMask_t mask = MDDataItemMask_All);
 public:

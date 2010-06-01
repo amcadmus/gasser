@@ -1382,9 +1382,10 @@ getTransBuffs  (IndexType * num_,
 }
 
 void Parallel::HostCellListedMDData::
-malloc  (const HostCellListedMDData & hdata)
+mallocFromHost  (const HostCellListedMDData & hdata)
 {
-  HostMDData::malloc (hdata);
+  HostMDData::mallocFromHost (hdata);
+  
   rlist = hdata.getRlist();
   devideLevel = hdata.getDevideLevel();
   frameLow = hdata.getFrameLow();

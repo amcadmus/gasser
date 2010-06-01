@@ -178,7 +178,6 @@ reinitCellStructure (const ScalorType & rlist_,
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
   
   if (numThreadsInCell * totalNumCell > DeviceMDData::memSize()){
-    printf ("# change too much, reinit 2a\n");
     DeviceMDData::easyMalloc (numThreadsInCell * totalNumCell,
 			      getMaxNumBond(), getMaxNumAngle(), getMaxNumDihedral());
   }
@@ -4570,11 +4569,18 @@ void Parallel::DeviceCellListedMDData::
 mallocFromHost (const HostCellListedMDData & hdata)
 {
   DeviceMDData::mallocFromHost (hdata);
+  
   rlist = hdata.getRlist();
   devideLevel = hdata.getDevideLevel();
-  frameLow = hdata.getFrameLow();
-  frameUp  = hdata.getFrameUp();
-  numCell = hdata.getNumCell();
+  numCell.x = hdata.getNumCell().x;
+  numCell.y = hdata.getNumCell().y;
+  numCell.z = hdata.getNumCell().z;
+  frameLow.x = hdata.getFrameLow().x;
+  frameLow.y = hdata.getFrameLow().y;
+  frameLow.z = hdata.getFrameLow().z;
+  frameUp.x  = hdata.getFrameUp().x;
+  frameUp.y  = hdata.getFrameUp().y;
+  frameUp.z  = hdata.getFrameUp().z;
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
   easyMallocCell (totalNumCell);
   setValue <<<totalNumCell / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
@@ -4585,13 +4591,21 @@ void Parallel::DeviceCellListedMDData::
 mallocToHost (HostCellListedMDData & hdata) const
 {
   DeviceMDData::mallocToHost (hdata);
+
   hdata.rlist = rlist;
   hdata.devideLevel = devideLevel;
-  hdata.frameLow = frameLow;
-  hdata.frameUp = frameUp;
-  hdata.numCell = numCell;
+  hdata.frameLow.x = frameLow.x;
+  hdata.frameLow.y = frameLow.y;
+  hdata.frameLow.z = frameLow.z;
+  hdata.frameUp.x  = frameUp.x;
+  hdata.frameUp.y  = frameUp.y;
+  hdata.frameUp.z  = frameUp.z;
+  hdata.numCell.x  = numCell.x;
+  hdata.numCell.y  = numCell.y;
+  hdata.numCell.z  = numCell.z;
+
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
-  hdata.easyMallocCell (totalNumCell);
+  hdata.easyReallocCell (totalNumCell);
   for (IndexType i = 0; i < totalNumCell; ++i){
     hdata.numAtomInCell[i] = 0;
   }
@@ -4601,11 +4615,19 @@ void Parallel::DeviceCellListedMDData::
 mallocFromDevice (const DeviceCellListedMDData & ddata)
 {
   DeviceMDData::mallocFromDevice (ddata);
-    rlist = ddata.getRlist();
+
+  rlist = ddata.getRlist();
   devideLevel = ddata.getDevideLevel();
-  frameLow = ddata.getFrameLow();
-  frameUp  = ddata.getFrameUp();
-  numCell = ddata.getNumCell();
+  numCell.x = ddata.getNumCell().x;
+  numCell.y = ddata.getNumCell().y;
+  numCell.z = ddata.getNumCell().z;
+  frameLow.x = ddata.getFrameLow().x;
+  frameLow.y = ddata.getFrameLow().y;
+  frameLow.z = ddata.getFrameLow().z;
+  frameUp.x  = ddata.getFrameUp().x;
+  frameUp.y  = ddata.getFrameUp().y;
+  frameUp.z  = ddata.getFrameUp().z;
+
   IndexType totalNumCell = numCell.x * numCell.y * numCell.z;
   easyMallocCell (totalNumCell);
   setValue <<<totalNumCell / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
