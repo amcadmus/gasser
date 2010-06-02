@@ -26,7 +26,6 @@ typedef enum mdStatisticItem mdStatisticItem_t;
 class MDStatistic
 {
   bool dmalloced;
-  ScalorType volume;
 public:
   ScalorType *hdata;
   ScalorType *ddata;
@@ -44,10 +43,10 @@ public:
   void deviceAdd  (const MDStatistic & st);
 public:
   ScalorType kineticEnergy ();
-  ScalorType pressureXX ();
-  ScalorType pressureYY ();
-  ScalorType pressureZZ ();
-  ScalorType pressure   ();
+  ScalorType pressureXX (const RectangularBoxGeometry::RectangularBox & box);
+  ScalorType pressureYY (const RectangularBoxGeometry::RectangularBox & box);
+  ScalorType pressureZZ (const RectangularBoxGeometry::RectangularBox & box);
+  ScalorType pressure   (const RectangularBoxGeometry::RectangularBox & box);
   ScalorType virial ();
   ScalorType virialXX ();
   ScalorType virialYY ();
@@ -80,27 +79,34 @@ inline ScalorType MDStatistic::kineticEnergy ()
       hdata[mdStatisticKineticEnergyZZ];
 }
 
-inline ScalorType MDStatistic::pressureXX ()
+inline ScalorType MDStatistic::
+pressureXX (const RectangularBoxGeometry::RectangularBox & box)
 {
+  ScalorType volume = box.size.x * box.size.y * box.size.z;
   return 2. / volume * (hdata[mdStatisticKineticEnergyXX] -
 			hdata[mdStatisticVirialXX] * 0.5);
 }
 
-inline ScalorType MDStatistic::pressureYY ()
+inline ScalorType MDStatistic::
+pressureYY (const RectangularBoxGeometry::RectangularBox & box)
 {
+  ScalorType volume = box.size.x * box.size.y * box.size.z;
   return 2. / volume * (hdata[mdStatisticKineticEnergyYY] -
 			hdata[mdStatisticVirialYY] * 0.5);
 }
 
-inline ScalorType MDStatistic::pressureZZ ()
+inline ScalorType MDStatistic::
+pressureZZ (const RectangularBoxGeometry::RectangularBox & box)
 {
+  ScalorType volume = box.size.x * box.size.y * box.size.z;
   return 2. / volume * (hdata[mdStatisticKineticEnergyZZ] -
 			hdata[mdStatisticVirialZZ] * 0.5);
 }
 
-inline ScalorType MDStatistic::pressure ()
+inline ScalorType MDStatistic::
+pressure (const RectangularBoxGeometry::RectangularBox & box)
 {
-  return (pressureXX() + pressureYY() + pressureZZ()) / 3.;
+  return (pressureXX(box) + pressureYY(box) + pressureZZ(box)) / 3.;
 }
 
 inline ScalorType MDStatistic::virial()

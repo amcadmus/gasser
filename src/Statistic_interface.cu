@@ -66,16 +66,12 @@ MDStatistic ()
 {
   hdata = NULL;
   dmalloced = false;
-  volume = 0;
 }
 
 
 void MDStatistic::
 init (const MDSystem & sys)
 {
-  // recorde system infomation
-  volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
-
   // malloc and init system
   hdata = (ScalorType *) malloc (sizeof(ScalorType) * NumberOfStatisticItems);
   if (hdata == NULL){

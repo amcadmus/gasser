@@ -714,15 +714,15 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDTimer * timer)
 	nowP[i] = 0;
 	nDir[i] = 0;
 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
+	  nowP[i] += myst.pressureXX(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
+	  nowP[i] += myst.pressureYY(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
+	  nowP[i] += myst.pressureZZ(sys.box);
 	  nDir[i] ++;
 	}
 	nowP[i] /= ScalorType(nDir[i]);
@@ -808,15 +808,15 @@ BerendsenLeapFrog::oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer)
 	nowP[i] = 0;
 	nDir[i] = 0;
 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-	  nowP[i] += myst.pressureXX();
+	  nowP[i] += myst.pressureXX(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-	  nowP[i] += myst.pressureYY();
+	  nowP[i] += myst.pressureYY(sys.box);
 	  nDir[i] ++;
 	}
 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-	  nowP[i] += myst.pressureZZ();
+	  nowP[i] += myst.pressureZZ(sys.box);
 	  nDir[i] ++;
 	}
 	nowP[i] /= ScalorType(nDir[i]);

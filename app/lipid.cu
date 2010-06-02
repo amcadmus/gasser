@@ -159,10 +159,10 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticVirialXX)*0.5,
 		st.getStatistic(mdStatisticVirialYY)*0.5,
 		st.getStatistic(mdStatisticVirialZZ)*0.5,
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure());
+		st.pressureXX(sys.box),
+		st.pressureYY(sys.box),
+		st.pressureZZ(sys.box),
+		st.pressure(sys.box));
 	fflush(stdout);
       }
       else {

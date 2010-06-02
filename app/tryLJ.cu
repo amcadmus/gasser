@@ -128,10 +128,10 @@ int main(int argc, char * argv[])
 	      st.getStatistic(mdStatisticNonBondedPotential) +
 	      st.kineticEnergy(),
 	      st.virial(),
-	      st.pressure(),
-	      st.pressureXX(),
-	      st.pressureYY(),
-	      st.pressureZZ(),
+	      st.pressure(sys.box),
+	      st.pressureXX(sys.box),
+	      st.pressureYY(sys.box),
+	      st.pressureZZ(sys.box),
 	      sys.box.size.x,
 	      sys.box.size.y,
 	      sys.box.size.z);
