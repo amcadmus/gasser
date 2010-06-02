@@ -466,7 +466,11 @@ BerendsenLeapFrog::addPcoupleGroup (const PCoupleDirection_t & direction,
 {
   if (direction == 0) return;
   PCoupleOn = true;
-  
+
+  if (NPCoupleGroup == 3){
+    fprintf (stderr, "# too many P couple groups, add nothing" );
+    return ;
+  }
   refP[NPCoupleGroup] = refP_;
   tauP[NPCoupleGroup] = tauP_;
   betaP[NPCoupleGroup] = betaP_;
