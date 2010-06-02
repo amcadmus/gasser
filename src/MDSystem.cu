@@ -1,3 +1,8 @@
+#define DEVICE_CODE
+
+#include "MDSystem.h"
+#include "common.h"
+
 #include "MDSystem.h"
 #include <stdlib.h>
 

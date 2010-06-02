@@ -196,6 +196,7 @@ Topology::System::
 System ()
 {
   name[0] = '\0';
+  numFreedom = 0;
 }
 
 
@@ -207,14 +208,29 @@ addMolecules (const Molecule & mol,
   numbers.push_back(number);
   if (indexShift.size() == 0) indexShift.push_back(0);
   indexShift.push_back (indexShift.back() + number * mol.atoms.size());
+  numFreedom += mol.size() * number * 3;
 }
 
 void Topology::System::
 clear()
 {
   name[0] = '\0';
+  numFreedom = 0;
   molecules.clear();
   numbers.clear();
   indexShift.clear();
+}
+
+void Topology::System::
+calMolTopPosition (const IndexType & globalIndex,
+		   IndexType & molIndex,
+		   IndexType & atomIndex) const
+{
+  if (globalIndex >= indexShift.back ()){
+    throw MDExcptTopology ("wrong global index");
+  }
+  molIndex = 0;
+  while (globalIndex >= indexShift[molIndex+1]) molIndex++;
+  atomIndex = (globalIndex - indexShift[molIndex]) % (molecules[molIndex].size());
 }
 

@@ -1,3 +1,4 @@
+#define DEVICE_CODE
 #define CPLUSPLUS
 #include "MDSystem_interface.h"
 #include "GromacsFileManager.h"
@@ -191,6 +192,7 @@ void MDSystem::writeHostDataGro (const char * filename,
   fclose (fp);
   if (timer != NULL) timer->toc(mdTimeDataIO);
 }
+
 
 MDSystem::~MDSystem()
 {

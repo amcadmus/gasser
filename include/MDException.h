@@ -3,7 +3,7 @@
 
 // #include <string>
 #include "string.h"
-#include "common.h"
+// #include "common.h"
 #include <stdio.h>
 
 class MDException;
@@ -25,6 +25,8 @@ class MDExcpt0AtomType;
 class MDExcptUnbuiltNonBondedInteraction;
 class MDExcptWrongNumberAtomDataTopology;
 
+
+class MDExcptTooSmallCell;
 
 // char delimitor[3] = {':', ' ', '\0'};
 
@@ -234,6 +236,33 @@ public:
       }
 };
   
+
+class MDExcptTooSmallCell : public MDException
+{
+  char message[MaxExceptionMsgLength];
+public:
+  MDExcptTooSmallCell ()
+      {
+	message[0] ='\0';
+    	strncat (message, "too small cell size", MaxExceptionMsgLength);
+      }
+  MDExcptTooSmallCell (const char * description,
+		       const char * name,
+		       const size_t size) 
+      {
+	message[0] ='\0';
+	strncat (message, "in ", MaxExceptionMsgLength);
+	strncat (message, description, MaxExceptionMsgLength);
+	strncat (message, "too small cell size", MaxExceptionMsgLength);
+      }
+  virtual const char* what() const throw()
+      {
+	return message;
+      }
+};
+  
+
+
 class MDExcptWrongNumberAtomDataTopology : public MDException
 {
 public:

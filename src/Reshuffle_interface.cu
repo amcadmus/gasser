@@ -1,3 +1,5 @@
+#include "MDSystem_interface.h"
+
 #include "Reshuffle_interface.h"
 #include "Reshuffle.h"
 // #include "NonBondedInteraction.h"

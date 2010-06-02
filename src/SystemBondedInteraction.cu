@@ -10,6 +10,17 @@ SystemBondedInteraction()
 }
 
 SystemBondedInteraction::
+SystemBondedInteraction(const Topology::System & sysTop)
+    : numBondedInteraction (0), memBondedInteraction(0),
+      numBondedParameter (0), memBondedParameter (0),
+      hasBond_(false), hasAngle_(false),
+      type (NULL), bondedParameterPosition (NULL), bondedParameter (NULL)
+{
+  reinit (sysTop);
+}
+
+
+SystemBondedInteraction::
 ~SystemBondedInteraction ()
 {
   freeAPointer((void**)&type);
@@ -157,8 +168,10 @@ reinit (const Topology::System & sysTop)
   }
 
   angleInteractionShift = numBondedInteraction;
-  bondedParameterPosition[numBondedInteraction] = numBondedParameter;
-  sortBond();
+  if (hasBond_){
+    bondedParameterPosition[numBondedInteraction] = numBondedParameter;
+    sortBond();
+  }
 
   // handel angle  
   for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
@@ -211,61 +224,66 @@ reinit (const Topology::System & sysTop)
 	  push_back(interactionIndex);
     }
   }
-  bondedParameterPosition[numBondedInteraction] = numBondedParameter;
-  sortAngle();
-
-  printEverything();
+  if (hasAngle_){
+    bondedParameterPosition[numBondedInteraction] = numBondedParameter;
+    sortAngle();
+  }
 }
 
 void SystemBondedInteraction::
 printEverything ()
 {
-  printf ("#@@ here are bond parameters\n");
-  printf ("#@@ type");
-  for (unsigned i = 0; i < numBondedInteraction; ++i){
-    printf ("  %d", type[i]);
-  }
-  printf ("\n");
-  printf ("#@@ positions");
-  for (unsigned i = 0; i < numBondedInteraction+1; ++i){
-    printf ("  %d", bondedParameterPosition[i]);
-  }
-  printf ("\n");
-  printf ("#@@ parameters\n");
-  for (unsigned i = 0; i < numBondedInteraction; ++i){
-    printf ("#@@@");    
-    for (unsigned j = bondedParameterPosition[i];
-	 j < bondedParameterPosition[i+1]; ++j){
-      printf ("  %f", bondedParameter[j]);
+  if (hasBond_ || hasAngle_){
+    printf ("#@@ here are bond parameters\n");
+    printf ("#@@ type");
+    for (unsigned i = 0; i < numBondedInteraction; ++i){
+      printf ("  %d", type[i]);
     }
     printf ("\n");
-  }
-
-  printf ("#@@ here are bonds in molecules (bondNeighborIndex, bondIndex)\n");
-  for (unsigned i = 0; i < bondIndex.size(); ++i){
-    for (unsigned j = 0; j < bondIndex[i].size(); ++j){
-      printf ("#@@@ atom %d", j);    
-      for (unsigned k = 0; k < bondIndex[i][j].size(); ++k){
-	printf (" (%d %d)", bondNeighborIndex[i][j][k], bondIndex[i][j][k]);
+    printf ("#@@ positions");
+    for (unsigned i = 0; i < numBondedInteraction+1; ++i){
+      printf ("  %d", bondedParameterPosition[i]);
+    }
+    printf ("\n");
+    printf ("#@@ parameters\n");
+    for (unsigned i = 0; i < numBondedInteraction; ++i){
+      printf ("#@@@");    
+      for (unsigned j = bondedParameterPosition[i];
+	   j < bondedParameterPosition[i+1]; ++j){
+	printf ("  %f", bondedParameter[j]);
       }
       printf ("\n");
     }
-    printf ("\n");
   }
-  printf ("#@@ here are angles in molecules (angleNeighborIndex0 angleNeighborIndex1, anglePosi, angleIndex)\n");
-  for (unsigned i = 0; i < angleIndex.size(); ++i){
-    for (unsigned j = 0; j < angleIndex[i].size(); ++j){
-      printf ("#@@@ atom %d", j);    
-      for (unsigned k = 0; k < angleIndex[i][j].size(); ++k){
-	printf (" (%d %d, %d, %d)",
-		angleNeighborIndex[i][j][2*k],
-		angleNeighborIndex[i][j][2*k+1],
-		anglePosi[i][j][k],
-		angleIndex[i][j][k]);
+  if (hasBond_){
+    printf ("#@@ here are bonds in molecules (bondNeighborIndex, bondIndex)\n");
+    for (unsigned i = 0; i < bondIndex.size(); ++i){
+      for (unsigned j = 0; j < bondIndex[i].size(); ++j){
+	printf ("#@@@ atom %d", j);    
+	for (unsigned k = 0; k < bondIndex[i][j].size(); ++k){
+	  printf (" (%d %d)", bondNeighborIndex[i][j][k], bondIndex[i][j][k]);
+	}
+	printf ("\n");
       }
       printf ("\n");
     }
-    printf ("\n");
+  }
+  if (hasAngle_){
+    printf ("#@@ here are angles in molecules (angleNeighborIndex0 angleNeighborIndex1, anglePosi, angleIndex)\n");
+    for (unsigned i = 0; i < angleIndex.size(); ++i){
+      for (unsigned j = 0; j < angleIndex[i].size(); ++j){
+	printf ("#@@@ atom %d", j);    
+	for (unsigned k = 0; k < angleIndex[i][j].size(); ++k){
+	  printf (" (%d %d, %d, %d)",
+		  angleNeighborIndex[i][j][2*k],
+		  angleNeighborIndex[i][j][2*k+1],
+		  anglePosi[i][j][k],
+		  angleIndex[i][j][k]);
+	}
+	printf ("\n");
+      }
+      printf ("\n");
+    }
   }
 }
 

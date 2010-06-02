@@ -1,16 +1,13 @@
 #ifndef __common_h_wanghan__
 #define __common_h_wanghan__
 
-#include "systemDefines.h"
 #include <stdlib.h>
-
-#ifndef CPP_FILE
+#include "systemDefines.h"
 #include "error.h"
-#endif
 
-#include "MDException.h"
+#include "compile_error_mixcode.h"
 
-#ifndef CPP_FILE
+#ifdef DEVICE_CODE
 static dim3 toGridDim (IndexType nob)
 {
   dim3 tmp;
@@ -30,7 +27,8 @@ inline void freeAPointer (void ** ptr)
   }
 }
 
-#ifndef CPP_FILE
+
+#ifdef DEVICE_CODE
 inline void cudaFreeAPointer (void ** ptr)
 {
   if (*ptr != NULL) {

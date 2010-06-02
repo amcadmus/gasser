@@ -1,4 +1,14 @@
+#define DEVICE_CODE
+
 #include "Statistic_interface.h"
+
+
+void MDStatistic::deviceCopy (const MDStatistic & st)
+{
+  cudaMemcpy (ddata, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyDeviceToDevice);
+  checkCUDAError ("Statistic::deviceCopy");
+}
 
 
 // __global__ void initBuff (ScalorType * buff, IndexType n);
@@ -66,7 +76,7 @@ MDStatistic ()
 {
   hdata = NULL;
   dmalloced = false;
-  volume = 0;
+  // volume = 0;
 }
 
 
@@ -74,7 +84,7 @@ void MDStatistic::
 init (const MDSystem & sys)
 {
   // recorde system infomation
-  volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  // volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
 
   // malloc and init system
   hdata = (ScalorType *) malloc (sizeof(ScalorType) * NumberOfStatisticItems);

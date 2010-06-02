@@ -4,9 +4,20 @@
 #include "common.h"
 #include "Interaction.h"
 #include <vector> 
+#include "MDException.h"
 
 namespace Topology {
-    
+
+  class MDExcptTopology : public MDException {
+    char message[MaxExceptionMsgLength];
+public:
+    MDExcptTopology (const char * description) 
+	{strncpy (message, description, MaxExceptionMsgLength);}
+    virtual const char* what() const throw()
+	{return message;}
+  };
+
+  
     struct Atom 
     {
       char name[8];
@@ -95,6 +106,7 @@ namespace Topology {
     struct System
     {
       char name[8];
+      IndexType numFreedom;
       std::vector<NonBondedInteraction > nonBondedInteractions;
       std::vector<Molecule > molecules;
       std::vector<IndexType > numbers;
@@ -105,6 +117,15 @@ namespace Topology {
       void addMolecules (const Molecule & mol,
 			 const IndexType & number);
       void clear();
+  public:
+      const IndexType & numAtom () const {return indexShift.back();}
+      const IndexType & getNumFreedom () const {return numFreedom;}
+      void calMolTopPosition (const IndexType & globalIndex,
+			      IndexType & top_molIndex,
+			      IndexType & top_atomIndex) const;
+      const Atom & getAtom (const IndexType & top_molIndex,
+			    const IndexType & top_atomIndex) const
+	  {return molecules[top_molIndex].atoms[top_atomIndex];}
     };
 }
 

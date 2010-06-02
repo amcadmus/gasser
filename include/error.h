@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "MDException.h"
 
+#ifdef DEVICE_CODE
 inline void checkCUDAError (const char *msg)
 {
   cudaError_t err = cudaGetLastError();
@@ -13,12 +14,14 @@ inline void checkCUDAError (const char *msg)
     throw MDExcptCuda();
   }
 }
+#endif
 
 enum mdError{
   mdSuccess			= 0,
   mdErrorShortCellList		= 1,
   mdErrorShortNeighborList	= 2,
-  mdErrorOverFlowCellIdx	= 3
+  mdErrorOverFlowCellIdx	= 3,
+  mdErrorBreakFENEBond		= 4
 };
 typedef enum mdError mdError_t;
 

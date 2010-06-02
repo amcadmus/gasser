@@ -23,6 +23,28 @@ public:
   // HostBondList   hdblist;
   // DeviceBondList dbdlist;
   unsigned angleInteractionShift;
+public:
+  const std::vector<IndexType > &
+  getTopBondIndex (const IndexType & topMolIndex,
+		   const IndexType & topAtomIndex) const
+      {return bondIndex[topMolIndex][topAtomIndex];}
+  const std::vector<IndexType > &
+  getTopBondNeighborIndex (const IndexType & topMolIndex,
+			   const IndexType & topAtomIndex) const
+      {return bondNeighborIndex[topMolIndex][topAtomIndex];}
+public:
+  const std::vector<IndexType > &
+  getTopAngleIndex (const IndexType & topMolIndex,
+		    const IndexType & topAtomIndex) const
+      {return angleIndex[topMolIndex][topAtomIndex];}
+  const std::vector<IndexType > &
+  getTopAnglePosi (const IndexType & topMolIndex,
+		   const IndexType & topAtomIndex) const
+      {return anglePosi [topMolIndex][topAtomIndex];}
+  const std::vector<IndexType > &
+  getTopAngleNeighborIndex (const IndexType & topMolIndex,
+			    const IndexType & topAtomIndex) const
+      {return angleNeighborIndex[topMolIndex][topAtomIndex];}
 private:
   bool hasBond_;
   bool hasAngle_;
@@ -30,7 +52,6 @@ private:
   bool findAngle (const Topology::Angle & ag, IndexType & i);
   void reallocInteraction ();
   void reallocParameter ();
-  void printEverything ();
   void sortBond ();
   void sortAngle ();
 public:
@@ -38,14 +59,16 @@ public:
   IndexType memBondedInteraction;
   InteractionType * type;
   IndexType  * bondedParameterPosition;
-  ScalorType * bondedParameter;
   IndexType numBondedParameter;
   IndexType memBondedParameter;
+  ScalorType * bondedParameter;
 public:
   SystemBondedInteraction ();
+  SystemBondedInteraction (const Topology::System & sysTop);
   ~SystemBondedInteraction ();
   void reinit (const Topology::System & sysTop);
   void clear ();
+  void printEverything ();
 public:
   bool hasBond () const {return hasBond_;}
   bool hasAngle () const {return hasAngle_;}

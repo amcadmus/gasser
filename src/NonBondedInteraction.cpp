@@ -1,3 +1,6 @@
+#define HOST_CODE
+#define CPP_FILE
+
 #include "NonBondedInteraction.h"
 
 bool NonBondedInteractionParameter::

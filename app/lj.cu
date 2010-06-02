@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "MDSystem_interface.h"
 #include "common.h"
 #include "BoxGeometry.h"
 #include "MDSystem.h"
@@ -11,7 +12,6 @@
 #include "tmp.h"
 #include "Reshuffle_interface.h"
 
-#include "MDSystem_interface.h"
 
 #include "Topology.h"
 #include "SystemBondedInteraction.h"
@@ -20,7 +20,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	64
+#define NThreadsPerBlockCell	96
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -60,7 +60,7 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ);
@@ -115,10 +115,10 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure());
+		st.pressureXX(sys.box),
+		st.pressureYY(sys.box),
+		st.pressureZZ(sys.box),
+		st.pressure(sys.box));
 	fflush(stdout);
       }
       else {

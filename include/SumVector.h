@@ -18,10 +18,10 @@ class SumVector
   IndexType bitBlockDim;
   IndexType sharedBuffSize;
   void clear();
+  void init   (IndexType NumberOfSum, IndexType NThread);
 public:
   SumVector();
   ~SumVector();
-  void init   (IndexType NumberOfSum, IndexType NThread);
   void reinit (IndexType NumberOfSum, IndexType NThread);
   SCALORTYPE * getBuff () {return buff;}
   void sumBuff (SCALORTYPE * result, IndexType posi,
@@ -82,7 +82,8 @@ SumVector<SCALORTYPE>::~SumVector()
 }
 
 template<typename SCALORTYPE>
-void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
+void SumVector<SCALORTYPE>::
+init (IndexType NumberOfSum, IndexType NThread)
 {
   deviceMalloced = false;
   NBlock = NULL;
@@ -124,7 +125,8 @@ void SumVector<SCALORTYPE>::init (IndexType NumberOfSum, IndexType NThread)
 }
 
 template<typename SCALORTYPE>
-void SumVector<SCALORTYPE>::reinit (IndexType NumberOfSum, IndexType NThread)
+void SumVector<SCALORTYPE>::
+reinit (IndexType NumberOfSum, IndexType NThread)
 {
   clear();
   init (NumberOfSum, NThread);

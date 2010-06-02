@@ -2,10 +2,8 @@
 #define __Auxiliary_h_wanghan__
 #include <stdio.h>
 
-#include "SumVector.h"
 #include "common.h"
-
-
+#include "SumVector.h"
 
 __device__ void      addKthBit (IndexType *a, IndexType k);
 __device__ IndexType getKthBit (IndexType  a, IndexType k);
@@ -84,6 +82,21 @@ rescaleProperty (T * data,
     data[ii] *= scalor;
   }
 }
+
+template<typename T>
+__global__ void
+rescaleProperty (T * data,
+		 const IndexType start,
+		 const IndexType N,
+		 const T scalor)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < N) {
+    data[start+ii] *= scalor;
+  }
+}
+
 
 template<typename T>
 __global__ void

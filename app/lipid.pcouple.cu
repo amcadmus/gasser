@@ -1,10 +1,10 @@
 #include <stdio.h>
+#include "MDSystem_interface.h"
 #include "common.h"
 #include "BoxGeometry.h"
 #include "MDSystem.h"
 #include "RandomGenerator.h"
 #include "Auxiliary.h"
-#include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
 #include "Statistic.h"
 #include "Integrator_interface.h"
@@ -139,10 +139,10 @@ int main(int argc, char * argv[])
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
-		st.pressureXX(),
-		st.pressureYY(),
-		st.pressureZZ(),
-		st.pressure(),
+		st.pressureXX(sys.box),
+		st.pressureYY(sys.box),
+		st.pressureZZ(sys.box),
+		st.pressure(sys.box),
 		sys.box.size.x,
 		sys.box.size.y,
 		sys.box.size.z);

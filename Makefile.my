@@ -7,7 +7,7 @@
 # boost-include-path=	/people/thnfs/homes/wanghan/local/include/boost-1_36
 # boost-lib-path=		/people/thnfs/homes/wanghan/local/lib
 # boost-lib-option=	-lboost_program_options
-link-options=		/home/wanghan/local/lib/libxdrfile.a 
+link-options=		/home/wanghan/local/lib/libxdrfile.a -lmpi_cxx -L/usr/lib/openmpi/
 link-path=		-L /home/wanghan/local/lib
 
 include_dirs = 	./include ~/local/include  ~/local/include/xdrfile/
@@ -53,15 +53,15 @@ appobjects=	$(subst .cu,.o,$(wildcard $(application_dir)/*.cu))
 
 libtarget=	$(lib_dir)/libmd.a
 
-C:=		gcc
-CFLAGS +=	-g -O0 
+C:=		mpicc
+CFLAGS +=	-g -O3
 CFLAGS += 	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC
 
-CXX:=		g++
+CXX:=		mpicxx
 CXXFLAGS += 	$(CFLAGS)
 
 CU:=		nvcc
-CUFLAGS +=	$(CFLAGS)  -arch sm_12 
+CUFLAGS +=	$(addprefix -I ,$(include_dirs)) -DCOORD_IN_ONE_VEC -g -arch sm_12 
 
 target:		$(application_target) $(libtarget)
 
@@ -76,7 +76,7 @@ $(appobjects):
 
 .PHONY: clean
 clean:
-	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d
+	rm -f $(application_target) $(cobjects) $(cdepends) $(cuobjects) $(cudepends) $(cppobjects) $(cppdepends)  $(application_dir)/*.o $(application_dir)/*.d lib/libmd.a
 
 .PHONY: makedir
 makedir:
@@ -127,10 +127,10 @@ endef
 
 
 $(cppobjects_dir)/%.o:	$(sources_dir)/%.cpp
-	$(call make-depend,$<,$(cppobjects_dir),$(cppdepends_dir)/$(notdir $(subst .o,.d,$@)))
+	$(call make-depend,$<,$@,$(cppdepends_dir)/$(notdir $(subst .o,.d,$@)))
 	$(COMPILE.cpp) $(OUTPUT_OPTION) $<
 $(cobjects_dir)/%.o:	$(sources_dir)/%.c
-	$(call make-depend,$<,$(cobjects_dir),$(cdepends_dir)/$(notdir $(subst .o,.d,$@)))
+	$(call make-depend,$<,$@,$(cdepends_dir)/$(notdir $(subst .o,.d,$@)))
 	$(C) $(CFLAGS) -o $@ -c $<			
 $(cuobjects_dir)/%.o:	$(sources_dir)/%.cu
 	$(call make-depend-cu,$<,$(cuobjects_dir),$(cudepends_dir)/$(notdir $(subst .o,.d,$@)))

@@ -7,6 +7,9 @@
  * 
  * 
  */
+
+#define DEVICE_CODE
+
 #include "NeighborList_interface.h"
 #include "Auxiliary.h"
 #include "NeighborList.h"
@@ -18,6 +21,7 @@
  * these are textures for a fast reference of particle position.
  * 
  */
+
 #ifndef COORD_IN_ONE_VEC
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordx;
 texture<ScalorType, 1, cudaReadModeElementType> global_texRef_neighbor_coordy;
@@ -62,7 +66,7 @@ DecideNeighboringMethod (const MDSystem & sys,
 
 void NeighborList::
 mallocDeviceCellList (const IntVectorType & NCell,
-		      const VectorType & boxSize)
+		      const HostVectorType & boxSize)
 {
   if (NCell.x == 1){
     dclist.NCell.x = 1;
@@ -113,8 +117,8 @@ mallocDeviceCellList (const IntVectorType & NCell,
 	      sizeof(IndexType) * numCell);
   cudaMalloc ((void**)&(dclist.neighborCellIndex),
 	      sizeof(IndexType) * maxNumNeighborCell * numCell);
-  cudaMalloc ((void**)&(dclist.neighborCellShift),
-	      sizeof(CoordType) * maxNumNeighborCell * numCell);
+  cudaMalloc ((void**)&(dclist.neighborCellShiftNoi),
+	      sizeof(CoordNoiType) * maxNumNeighborCell * numCell);
   checkCUDAError ("NeighborList::maxNumNeighborCell cell list buff");
 }
 
@@ -125,6 +129,9 @@ clearDeviceCellList ()
   if ( mallocedDeviceCellList ){
     cudaFree (dclist.data);
     cudaFree (dclist.numbers);
+    cudaFree (dclist.numNeighborCell);
+    cudaFree (dclist.neighborCellIndex);
+    cudaFree (dclist.neighborCellShiftNoi);
     cudaFree (mySendBuff);
     cudaFree (myTargetBuff);
     mallocedDeviceCellList = false;
@@ -332,10 +339,10 @@ initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
   NatomType = sysNbInter.numberOfAtomTypes();
   nbForceTableLength = sysNbInter.interactionTableSize();
   cudaMalloc ((void**)&nbForceTable,
-	      nbForceTableLength * sizeof(ForceIndexType));
+	      nbForceTableLength * sizeof(IndexType));
   cudaMemcpy (nbForceTable,
 	      sysNbInter.interactionTable(),
-	      nbForceTableLength * sizeof(ForceIndexType),
+	      nbForceTableLength * sizeof(IndexType),
 	      cudaMemcpyHostToDevice);
   checkCUDAError ("AtomNBForceTable::deviceInitTable");
   mallocedNonBondedForceTable = true;
@@ -356,11 +363,11 @@ mallocDeviceNeighborList (const MDSystem & sys,
   }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
-  cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
+  cudaMalloc ((void**)&(dnlist.forceIndex), sizeof(IndexType) *  dnlist.stride * dnlist.listLength);
   // reshuffle backup things
   cudaMalloc ((void**)&(bkdnlistData), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(bkdnlistNneighbor), sizeof(IndexType) * sys.ddata.numAtom);
-  cudaMalloc ((void**)&(bkdnlistForceIndex), sizeof(ForceIndexType) *  dnlist.stride * dnlist.listLength);
+  cudaMalloc ((void**)&(bkdnlistForceIndex), sizeof(IndexType) *  dnlist.stride * dnlist.listLength);
   checkCUDAError ("NeighborList::mallocDeviceNeighborList");
   mallocedDeviceNeighborList = true;
 }
@@ -468,7 +475,7 @@ init (const SystemNonBondedInteraction & sysNbInter,
       sizeof(CoordType) * hroundUp4(myBlockDim.x) +
 #endif
       sizeof(TypeType)  *      hroundUp4(myBlockDim.x) +
-      sizeof(ForceIndexType) * hroundUp4(nbForceTableLength);
+      sizeof(IndexType) * hroundUp4(nbForceTableLength);
   if (buildDeviceNeighborList_DeviceCellList_sbuffSize >=
       SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
     sharednbForceTable = false;
@@ -543,7 +550,7 @@ void NeighborList::reinit (const MDSystem & sys,
       sizeof(CoordType) * hroundUp4(myBlockDim.x) +
 #endif
       sizeof(TypeType)  *      hroundUp4(myBlockDim.x) +
-      sizeof(ForceIndexType) * hroundUp4(nbForceTableLength);
+      sizeof(IndexType) * hroundUp4(nbForceTableLength);
   if (buildDeviceNeighborList_DeviceCellList_sbuffSize >=
       SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
     sharednbForceTable = false;
@@ -964,7 +971,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   // __shared__ volatile  IndexType  targetIndexes [MaxThreadsPerBlock];
   // __shared__ volatile CoordType target [MaxThreadsPerBlock];
   // __shared__ volatile  TypeType   targettype    [MaxThreadsPerBlock];
-  // __shared__ volatile  ForceIndexType nbForceTableBuff [MaxNBForceTableBuffSize];
+  // __shared__ volatile  IndexType nbForceTableBuff [MaxNBForceTableBuffSize];
 
   // IndexType nbForceTableLength = AtomNBForceTable::dCalDataLength(NatomType);
   // if (sharednbForceTable){
@@ -981,8 +988,12 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   // loop over 27 neighbor cells
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
-    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
-    CoordType shift         = getNeighborCellShift (clist, bid, i);
+    IndexType targetCellIdx = getNeighborCellIndex    (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
     targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
     if (targetIndexes[tid] != MaxIndexValue){
       target[tid] = tex1Dfetch(global_texRef_neighbor_coord, targetIndexes[tid]);
@@ -1001,7 +1012,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
 	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
 	    targetIndexes[jj] != ii){
-	  ForceIndexType fidx;
+	  IndexType fidx;
 	  if (sharednbForceTable){
 	    fidx = AtomNBForceTable::calForceIndex (
 		nbForceTableBuff, NatomType, reftype, targettype[jj]);

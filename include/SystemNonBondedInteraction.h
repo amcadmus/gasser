@@ -45,10 +45,11 @@ private:
   void build ();
 public:
   SystemNonBondedInteraction();
+  SystemNonBondedInteraction(const Topology::System & sysTop);
   ~SystemNonBondedInteraction() { clear(); freeAPointer((void**)&positions);}
   void reinit (const Topology::System & sysTop);
   void clear ();
-  ScalorType maxRcut() {return maxrc;}
+  const ScalorType & maxRcut() const {return maxrc;}
 public:
   bool beBuilt () const {return isBuilt;}
   IndexType numberOfAtomTypes () const
@@ -70,6 +71,7 @@ public:
 };
 
 
+#ifdef DEVICE_CODE
 __device__ IndexType
 nonBondedInteractionTableItem (IndexType * interactionTable,
 			       IndexType numAtomType,
@@ -88,7 +90,7 @@ calNonBondedInteractionTableLength (IndexType numAtomType)
 {
   return ((numAtomType * (numAtomType + 1)) >> 1);
 }
-
+#endif
 
 #endif
 
