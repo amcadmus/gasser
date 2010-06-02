@@ -27,8 +27,6 @@ namespace Parallel{
   {
     ScalorType * localData;
     ScalorType * globalData;
-    // ScalorType volume;
-    // ScalorType volumei;
     size_t size;
     void clear ();
 public:

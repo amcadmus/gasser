@@ -5,7 +5,7 @@
 #define NErrorIndex	2
 #define NErrorScalor	13
 
- MDError::MDError ()
+MDError::MDError ()
 {
   he = mdSuccess;
   hindex = 0;
@@ -14,6 +14,8 @@
   hscalor = (ScalorType *) malloc (sizeof(ScalorType) * NErrorScalor);
   for (IndexType i = 0; i < NErrorIndex; ++i){
     hindex[i] = 0;
+  }
+  for (IndexType i = 0; i < NErrorScalor; ++i){
     hscalor[i] = 0.f;
   }
   cudaMalloc ((void **)&ptr_de, sizeof(mdError_t));

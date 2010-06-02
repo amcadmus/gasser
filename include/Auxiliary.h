@@ -85,6 +85,21 @@ rescaleProperty (T * data,
 
 template<typename T>
 __global__ void
+rescaleProperty (T * data,
+		 const IndexType start,
+		 const IndexType N,
+		 const T scalor)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < N) {
+    data[start+ii] *= scalor;
+  }
+}
+
+
+template<typename T>
+__global__ void
 setValue (T * data,
 	  const IndexType N,
 	  const T value)
