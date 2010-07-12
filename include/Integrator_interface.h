@@ -8,7 +8,7 @@
 #include "MDTimer_interface.h"
 #include "SumVector.h"
 #include "InteractionEngine_interface.h"
-
+#include "Thermostat.h"
 
 class TranslationalFreedomRemover 
 {
@@ -67,6 +67,52 @@ public:
   // 		const NeighborList & nlist, const ScalorType & dt);
 };
 
+class LeapFrog_TPCouple
+{
+  dim3 atomGridDim;
+  dim3 myBlockDim;
+private:
+  ScalorType dt;
+  IndexType nstep;
+  MDStatistic myst;
+  ScalorType lastKineticE;
+  ScalorType lastPressure[3];
+  LeapFrog lpfrog;
+  InteractionEngine_interface * ptr_inter;
+  NeighborList * ptr_nlist;
+  BondedInteractionList * ptr_bdInterList;
+  ScalorType rebuildThreshold;
+private:
+  const Thermostat_VRescale * ptr_thermostat;
+private:
+  void firstStep (MDSystem & sys, MDTimer * timer);
+  void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
+public:
+  void init (const MDSystem &sys,
+	     const IndexType & NThread,
+	     const ScalorType & dt,
+	     InteractionEngine_interface &inter,
+	     NeighborList & nlist,
+	     const ScalorType & rebuildThreshold,
+	     BondedInteractionList * ptr_bdInterList = NULL) ;
+  LeapFrog_TPCouple ();
+  LeapFrog_TPCouple (const MDSystem &sys,
+		     const IndexType & NThread,
+		     const ScalorType & dt,
+		     InteractionEngine_interface &inter,
+		     NeighborList & nlist,
+		     const ScalorType & rebuildThreshold,
+		     BondedInteractionList * ptr_bdInterList = NULL)
+      : myst(sys), lpfrog(sys, NThread)
+      { init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
+  ~LeapFrog_TPCouple () {};
+public:
+  void addThermostat     (const Thermostat_VRescale & thermostat_);
+  void disableThermostat ();
+  void oneStep (MDSystem & sys, MDTimer * timer=NULL);
+  void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
+};
+  
 
 class VelocityVerlet 
 {
