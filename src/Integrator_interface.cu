@@ -308,11 +308,11 @@ void VelocityRescale::init (const MDSystem & sys,
   atomGridDim = toGridDim (nob);
 
   tau = tau_;
-  Nf = sys.ddata.NFreedom;
+  Nf = sys.ddata.NFreedom - 3;
   scalor1 = 1./tau;
   scalor2 = 1. / sqrt(Nf) / sqrt(tau) * 2; 
 
-  refK = (Nf-3) * 0.5 * refT;
+  refK = (Nf) * 0.5 * refT;
   printf ("# refK is %f\n", refK);
   
   cudaMalloc ((void**)&kineticE, sizeof(ScalorType) * 2);

@@ -90,7 +90,9 @@ int main(int argc, char * argv[])
 			  rebuildThreshold);
   // blpf.TCouple (1, 0.1);
   Thermostat_VelocityRescale thermostat;
-  thermostat.reinit (1, dt, 0.1, sys.ddata.numAtom * 3 - 3);
+  // ScalorType refT = 0.9977411970749;
+  ScalorType refT = 1.;
+  thermostat.reinit (refT, dt, 0.1, sys.ddata.numAtom * 3 - 3);
   blpf.addThermostat (thermostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
@@ -126,7 +128,7 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 100 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();

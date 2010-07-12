@@ -67,7 +67,8 @@ int main(int argc, char * argv[])
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  ScalorType refT = 0.9977411970749;
+  // ScalorType refT = 0.9977411970749;
+  ScalorType refT = 1.;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
@@ -90,6 +91,9 @@ int main(int argc, char * argv[])
   // sys.recoverDeviceData (&timer);
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
+  printf ("# prepare ok, start to run\n");
+  printf ("#*     1     2           3         4            5       6          7-9\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz\n");
   try{
     // sys.initWriteXtc ("traj.xtc");
     // sys.recoverDeviceData (&timer);
@@ -99,19 +103,19 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 100 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
 	inte_vv.step2 (sys, dt, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e \n",
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
-		st.getStatistic(mdStatisticBondedPotential),
 		st.kineticEnergy(),
+		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),
