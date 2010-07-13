@@ -151,7 +151,7 @@ private:
   void nullPointers ();
 private:
   const Thermostat_VCouple * ptr_thermostat;
-  const Barostat_XRescale * ptr_barostat;
+  const Barostat_VCouple * ptr_barostat;
 private:
   void firstStep (MDSystem & sys, MDTimer * timer);
   void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
@@ -177,8 +177,8 @@ public:
 public:
   void addThermostat (const Thermostat_VCouple & thermostat);
   void disableThermostat ();
-  // void addBarostat (const Barostat_XRescale & barostat);
-  // void disableBarostat ();
+  void addBarostat (const Barostat_VCouple & barostat);
+  void disableBarostat ();
   void oneStep (MDSystem & sys, MDTimer * timer=NULL);
   void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
 };

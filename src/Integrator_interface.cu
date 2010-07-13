@@ -1267,9 +1267,12 @@ void LeapFrog_TPCouple_VCouple::
 oneStep (MDSystem & sys,
 	 MDTimer * timer)
 {
-  ScalorType nowK, lambda[3];
-  ScalorType nowP[3], mu[3];
+  ScalorType nowK;
+  ScalorType lambda[3];
+  ScalorType nowP[3];
   
+  lambda[2] = lambda[1] = lambda[0] = 0.f;
+
   if (timer != NULL) timer->tic (mdTimeIntegrator);
   if (nstep != 0) {
     myst.updateHost();
@@ -1280,45 +1283,21 @@ oneStep (MDSystem & sys,
       printf ("lambda %f %f %f\n", lambda[0], lambda[1], lambda[2]);
     }
     if (ptr_barostat != NULL){
+      RectangularBox tmpBox;
+      ScalorType tmpLambda[3];
       nowP[0] = myst.pressureXX (sys.box);
       nowP[1] = myst.pressureYY (sys.box);
       nowP[2] = myst.pressureZZ (sys.box);
-      ptr_barostat->calScale (nowP, mu);
+      ptr_barostat->calCouple (nowP, tmpLambda, tmpBox);
+      lambda[0] += tmpLambda[0];
+      lambda[1] += tmpLambda[1];
+      lambda[2] += tmpLambda[2];
+      sys.box = (tmpBox);
     }
   
     myst.clearDevice();
     lpfrog.stepV_VCouple (sys, dt, lambda, myst);
     lpfrog.stepX (sys, dt);
-    if (ptr_barostat != NULL){
-      ScalorType newBoxX(sys.box.size.x);
-      ScalorType newBoxY(sys.box.size.y);
-      ScalorType newBoxZ(sys.box.size.z);
-      newBoxX *= mu[0];
-      newBoxY *= mu[1];
-      newBoxZ *= mu[2];
-      CoordType coordScalor ;
-      coordScalor.x = mu[0];
-      coordScalor.y = mu[1];
-      coordScalor.z = mu[2];      
-      // for (IndexType i = 0; i < NPCoupleGroup; ++i){
-      // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-      // 	  coordScalor.x *= mu[i];
-      // 	  newBoxX *= mu[i];
-      // 	}
-      // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-      // 	  coordScalor.y *= mu[i];
-      // 	  newBoxY *= mu[i];
-      // 	}
-      // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-      // 	  coordScalor.z *= mu[i];
-      // 	  newBoxZ *= mu[i];
-      // 	}
-      // }
-      rescaleCoord <<<atomGridDim, myBlockDim>>> (
-    	  sys.ddata.coord, sys.ddata.numAtom,
-    	  coordScalor);
-      sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
@@ -1342,9 +1321,11 @@ oneStep (MDSystem & sys,
 	 MDStatistic &st,
 	 MDTimer * timer)
 {
-  ScalorType nowK, lambda[3];
-  ScalorType nowP[3], mu[3];
-  // IndexType nDir[3];
+  ScalorType nowK;
+  ScalorType lambda[3];
+  ScalorType nowP[3];
+
+  lambda[2] = lambda[1] = lambda[0] = 0.f;
   
   if (timer != NULL) timer->tic (mdTimeIntegrator);
   if (nstep != 0) {
@@ -1355,32 +1336,22 @@ oneStep (MDSystem & sys,
       lambda[0] = lambda[1] = lambda[2];
       // printf ("lambda %f %f %f\n", lambda[0], lambda[1], lambda[2]);
     }
-    // if (ptr_barostat != NULL){
-    //   nowP[0] = myst.pressureXX (sys.box);
-    //   nowP[1] = myst.pressureYY (sys.box);
-    //   nowP[2] = myst.pressureZZ (sys.box);
-    //   ptr_barostat->calScale (nowP, mu);
-    // }
+    if (ptr_barostat != NULL){
+      RectangularBox tmpBox;
+      ScalorType tmpLambda[3];
+      nowP[0] = myst.pressureXX (sys.box);
+      nowP[1] = myst.pressureYY (sys.box);
+      nowP[2] = myst.pressureZZ (sys.box);
+      ptr_barostat->calCouple (nowP, tmpLambda, tmpBox);
+      lambda[0] += tmpLambda[0];
+      lambda[1] += tmpLambda[1];
+      lambda[2] += tmpLambda[2];
+      sys.box = (tmpBox);
+    }
   
     myst.clearDevice();
     lpfrog.stepV_VCouple (sys, dt, lambda, myst);
     lpfrog.stepX (sys, dt);
-    // if (ptr_barostat != NULL){
-    //   ScalorType newBoxX(sys.box.size.x);
-    //   ScalorType newBoxY(sys.box.size.y);
-    //   ScalorType newBoxZ(sys.box.size.z);
-    //   newBoxX *= mu[0];
-    //   newBoxY *= mu[1];
-    //   newBoxZ *= mu[2];
-    //   CoordType coordScalor ;
-    //   coordScalor.x = mu[0];
-    //   coordScalor.y = mu[1];
-    //   coordScalor.z = mu[2];      
-    //   rescaleCoord <<<atomGridDim, myBlockDim>>> (
-    // 	  sys.ddata.coord, sys.ddata.numAtom,
-    // 	  coordScalor);
-    //   sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    // }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
@@ -1415,16 +1386,16 @@ disableThermostat ()
   ptr_thermostat = NULL;
 }
 
-// void LeapFrog_TPCouple_VCouple::
-// addBarostat (const Barostat_XRescale & barostat)
-// {
-//   ptr_barostat = &barostat;
-// }
+void LeapFrog_TPCouple_VCouple::
+addBarostat (const Barostat_VCouple & barostat)
+{
+  ptr_barostat = &barostat;
+}
 
-// void LeapFrog_TPCouple_VCouple::
-// disableBarostat ()
-// {
-//   ptr_barostat = NULL;
-// }
+void LeapFrog_TPCouple_VCouple::
+disableBarostat ()
+{
+  ptr_barostat = NULL;
+}
   
 

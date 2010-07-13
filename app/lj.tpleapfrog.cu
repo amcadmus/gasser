@@ -97,16 +97,16 @@ int main(int argc, char * argv[])
   // blpf.TCouple (1, 0.1);
   Thermostat_NoseHoover thermostat;
   // ScalorType refT = 0.9977411970749;
-  ScalorType refT = 1;
+  ScalorType refT = 1.3;
   thermostat.reinit (refT, dt, 1, sys.ddata.numAtom * 3 - 3);
   blpf.addThermostat (thermostat);
-  Barostat_Berendsen barostat;
-  barostat.reinit (dt, 1);
+  Barostat_ParrinelloRahman barostat;
+  barostat.reinit (dt, 1, sys.box);
   barostat.assignGroup (mdRectBoxDirectionX |
 			mdRectBoxDirectionY |
 			mdRectBoxDirectionZ,
-			1, 10);
-  // blpf.addBarostat (barostat);
+			-0.005, 10);
+  blpf.addBarostat (barostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
   // 			0, 1, 10);
@@ -130,8 +130,8 @@ int main(int argc, char * argv[])
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9  10-11\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz boxxyz\n");
+  printf ("#*     1     2           3         4            5       6          7-9       10   11-13\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz pressure  boxxyz\n");
   try{
     sys.initWriteXtc ("traj.xtc");
     sys.recoverDeviceData (&timer);
