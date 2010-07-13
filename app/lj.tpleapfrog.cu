@@ -23,8 +23,8 @@
 #define NThreadsPerBlockCell	128
 #define NThreadsPerBlockAtom	96
 
-// #define NThreadsPerBlockCell	4
-// #define NThreadsPerBlockAtom	4
+// #define NThreadsPerBlockCell	16
+// #define NThreadsPerBlockAtom	16
 
 
 int main(int argc, char * argv[])
@@ -82,17 +82,23 @@ int main(int argc, char * argv[])
   RandomGenerator_MT19937::init_genrand (seed);
 
   // LeapFrog_TPCouple lpfrog (sys, NThreadsPerBlockAtom);
-  LeapFrog_TPCouple blpf (sys,
-			  NThreadsPerBlockAtom,
-			  dt,
-  			  inter,
-  			  nlist,
-			  rebuildThreshold);
+  // LeapFrog_TPCouple_Rescale blpf (sys,
+  // 				  NThreadsPerBlockAtom,
+  // 				  dt,
+  // 				  inter,
+  // 				  nlist,
+  // 				  rebuildThreshold);
+  LeapFrog_TPCouple_VCouple blpf (sys,
+				  NThreadsPerBlockAtom,
+				  dt,
+				  inter,
+				  nlist,
+				  rebuildThreshold);
   // blpf.TCouple (1, 0.1);
-  Thermostat_VelocityRescale thermostat;
+  Thermostat_NoseHoover thermostat;
   // ScalorType refT = 0.9977411970749;
-  ScalorType refT = 1.;
-  thermostat.reinit (refT, dt, 0.1, sys.ddata.numAtom * 3 - 3);
+  ScalorType refT = 1;
+  thermostat.reinit (refT, dt, 1, sys.ddata.numAtom * 3 - 3);
   blpf.addThermostat (thermostat);
   Barostat_Berendsen barostat;
   barostat.reinit (dt, 1);
@@ -100,7 +106,7 @@ int main(int argc, char * argv[])
 			mdRectBoxDirectionY |
 			mdRectBoxDirectionZ,
 			1, 10);
-  blpf.addBarostat (barostat);
+  // blpf.addBarostat (barostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
   // 			0, 1, 10);
@@ -135,7 +141,7 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 1 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();

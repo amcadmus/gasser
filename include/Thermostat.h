@@ -13,6 +13,12 @@ public:
   virtual ScalorType calScale (const ScalorType & Kientic_E) const = 0;
 };
 
+class Thermostat_VCouple : public Thermostat
+{
+public:
+  virtual ScalorType calCouple (const ScalorType & Kientic_E) const = 0;
+};
+
 class Thermostat_VelocityRescale : public Thermostat_VRescale
 {
   ScalorType tau;
@@ -43,5 +49,21 @@ public:
   ScalorType calScale (const ScalorType & kientic_E) const;
 };
 
-
+class Thermostat_NoseHoover : public Thermostat_VCouple
+{
+  ScalorType dt;
+  ScalorType tau;
+  ScalorType refT;
+  IndexType  Nf;
+  ScalorType refK;
+  mutable ScalorType xi;
+  ScalorType scalor;
+public:
+  void reinit (const ScalorType & refT,
+	       const ScalorType & dt,
+	       const ScalorType & tau_T,
+	       const IndexType & NKFreedom);
+  ScalorType calCouple (const ScalorType & kientic_E) const;
+};
+  
 #endif
