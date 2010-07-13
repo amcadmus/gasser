@@ -94,6 +94,13 @@ int main(int argc, char * argv[])
   ScalorType refT = 1.;
   thermostat.reinit (refT, dt, 0.1, sys.ddata.numAtom * 3 - 3);
   blpf.addThermostat (thermostat);
+  Barostat_Berendsen barostat;
+  barostat.reinit (dt, 1);
+  barostat.assignGroup (mdRectBoxDirectionX |
+			mdRectBoxDirectionY |
+			mdRectBoxDirectionZ,
+			1, 10);
+  blpf.addBarostat (barostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
   // 			0, 1, 10);
@@ -128,7 +135,7 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 100 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();

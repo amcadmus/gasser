@@ -766,6 +766,11 @@ LeapFrog_TPCouple::
 LeapFrog_TPCouple ()
 {
   ptr_thermostat = NULL;
+  ptr_barostat = NULL;
+  // ptr_barostat[0] = NULL;
+  // ptr_barostat[1] = NULL;
+  // ptr_barostat[2] = NULL;
+  // NPCoupleGroup = 0;
   // PCoupleOn = false;
   // NPCoupleGroup = 0;
   ptr_inter = NULL;
@@ -891,8 +896,7 @@ oneStep (MDSystem & sys,
 	 MDTimer * timer)
 {
   ScalorType nowK, lambda;
-  // ScalorType nowP[3], mu[3];
-  // IndexType nDir[3];
+  ScalorType nowP[3], mu[3];
   
   if (timer != NULL) timer->tic (mdTimeIntegrator);
   if (nstep != 0) {
@@ -901,26 +905,30 @@ oneStep (MDSystem & sys,
       nowK = myst.kineticEnergy();
       lambda = ptr_thermostat->calScale (nowK);
     }
-    // if (PCoupleOn){
-    //   for (IndexType i = 0; i < NPCoupleGroup; ++i){
-    // 	nowP[i] = 0;
-    // 	nDir[i] = 0;
-    // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-    // 	  nowP[i] += myst.pressureXX(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-    // 	  nowP[i] += myst.pressureYY(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-    // 	  nowP[i] += myst.pressureZZ(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	nowP[i] /= ScalorType(nDir[i]);
-    // 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-    //   }
-    // }
+    if (ptr_thermostat != 0){
+      nowP[0] = myst.pressureXX (sys.box);
+      nowP[1] = myst.pressureYY (sys.box);
+      nowP[2] = myst.pressureZZ (sys.box);
+      ptr_barostat->calScale (nowP, mu);
+      // for (IndexType i = 0; i < NPCoupleGroup; ++i){
+      // 	nowP[i] = 0;
+      // 	nDir[i] = 0;
+      // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+      // 	  nowP[i] += myst.pressureXX(sys.box);
+      // 	  nDir[i] ++;
+      // 	}
+      // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+      // 	  nowP[i] += myst.pressureYY(sys.box);
+      // 	  nDir[i] ++;
+      // 	}
+      // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+      // 	  nowP[i] += myst.pressureZZ(sys.box);
+      // 	  nDir[i] ++;
+      // 	}
+      // 	nowP[i] /= ScalorType(nDir[i]);
+      // 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
+      // }
+    }
   
     myst.clearDevice();
     lpfrog.stepV (sys, dt, myst);
@@ -939,33 +947,36 @@ oneStep (MDSystem & sys,
 	  lambda * lambda);
     }
     lpfrog.stepX (sys, dt);
-    // if (PCoupleOn){
-    //   ScalorType newBoxX(sys.box.size.x);
-    //   ScalorType newBoxY(sys.box.size.y);
-    //   ScalorType newBoxZ(sys.box.size.z);
-    //   CoordType coordScalor ;
-    //   coordScalor.x = 1.f;
-    //   coordScalor.y = 1.f;
-    //   coordScalor.z = 1.f;
-    //   for (IndexType i = 0; i < NPCoupleGroup; ++i){
-    // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-    // 	  coordScalor.x *= mu[i];
-    // 	  newBoxX *= mu[i];
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-    // 	  coordScalor.y *= mu[i];
-    // 	  newBoxY *= mu[i];
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-    // 	  coordScalor.z *= mu[i];
-    // 	  newBoxZ *= mu[i];
-    // 	}
-    //   }
-    //   rescaleCoord <<<atomGridDim, myBlockDim>>> (
-    // 	  sys.ddata.coord, sys.ddata.numAtom,
-    // 	  coordScalor);
-    //   sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    // }
+    if (ptr_barostat != NULL){
+      ScalorType newBoxX(sys.box.size.x);
+      ScalorType newBoxY(sys.box.size.y);
+      ScalorType newBoxZ(sys.box.size.z);
+      newBoxX *= mu[0];
+      newBoxY *= mu[1];
+      newBoxZ *= mu[2];
+      CoordType coordScalor ;
+      coordScalor.x = mu[0];
+      coordScalor.y = mu[1];
+      coordScalor.z = mu[2];      
+      // for (IndexType i = 0; i < NPCoupleGroup; ++i){
+      // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
+      // 	  coordScalor.x *= mu[i];
+      // 	  newBoxX *= mu[i];
+      // 	}
+      // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
+      // 	  coordScalor.y *= mu[i];
+      // 	  newBoxY *= mu[i];
+      // 	}
+      // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
+      // 	  coordScalor.z *= mu[i];
+      // 	  newBoxZ *= mu[i];
+      // 	}
+      // }
+      rescaleCoord <<<atomGridDim, myBlockDim>>> (
+    	  sys.ddata.coord, sys.ddata.numAtom,
+    	  coordScalor);
+      sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+    }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
@@ -990,7 +1001,7 @@ oneStep (MDSystem & sys,
 	 MDTimer * timer)
 {
   ScalorType nowK, lambda;
-  // ScalorType nowP[3], mu[3];
+  ScalorType nowP[3], mu[3];
   // IndexType nDir[3];
   
   if (timer != NULL) timer->tic (mdTimeIntegrator);
@@ -1000,26 +1011,12 @@ oneStep (MDSystem & sys,
       nowK = myst.kineticEnergy();
       lambda = ptr_thermostat->calScale (nowK);
     }
-    // if (PCoupleOn){
-    //   for (IndexType i = 0; i < NPCoupleGroup; ++i){
-    // 	nowP[i] = 0;
-    // 	nDir[i] = 0;
-    // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-    // 	  nowP[i] += myst.pressureXX(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-    // 	  nowP[i] += myst.pressureYY(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-    // 	  nowP[i] += myst.pressureZZ(sys.box);
-    // 	  nDir[i] ++;
-    // 	}
-    // 	nowP[i] /= ScalorType(nDir[i]);
-    // 	mu [i] = powf (1.f + dt / tauP[i] * betaP[i] * (nowP[i] - refP[i]), 1.f/3.f);
-    //   }
-    // }
+    if (ptr_thermostat != 0){
+      nowP[0] = myst.pressureXX (sys.box);
+      nowP[1] = myst.pressureYY (sys.box);
+      nowP[2] = myst.pressureZZ (sys.box);
+      ptr_barostat->calScale (nowP, mu);
+    }
   
     myst.clearDevice();
     lpfrog.stepV (sys, dt, myst);
@@ -1038,33 +1035,22 @@ oneStep (MDSystem & sys,
 	  lambda * lambda);
     }
     lpfrog.stepX (sys, dt);
-    // if (PCoupleOn){
-    //   ScalorType newBoxX(sys.box.size.x);
-    //   ScalorType newBoxY(sys.box.size.y);
-    //   ScalorType newBoxZ(sys.box.size.z);
-    //   CoordType coordScalor ;
-    //   coordScalor.x = 1.f;
-    //   coordScalor.y = 1.f;
-    //   coordScalor.z = 1.f;
-    //   for (IndexType i = 0; i < NPCoupleGroup; ++i){
-    // 	if ((PCoupleDirections[i] & PCoupleX) != 0){
-    // 	  coordScalor.x *= mu[i];
-    // 	  newBoxX *= mu[i];
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleY) != 0){
-    // 	  coordScalor.y *= mu[i];
-    // 	  newBoxY *= mu[i];
-    // 	}
-    // 	if ((PCoupleDirections[i] & PCoupleZ) != 0){
-    // 	  coordScalor.z *= mu[i];
-    // 	  newBoxZ *= mu[i];
-    // 	}
-    //   }
-    //   rescaleCoord <<<atomGridDim, myBlockDim>>> (
-    // 	  sys.ddata.coord, sys.ddata.numAtom,
-    // 	  coordScalor);
-    //   sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
-    // }
+    if (ptr_barostat != NULL){
+      ScalorType newBoxX(sys.box.size.x);
+      ScalorType newBoxY(sys.box.size.y);
+      ScalorType newBoxZ(sys.box.size.z);
+      newBoxX *= mu[0];
+      newBoxY *= mu[1];
+      newBoxZ *= mu[2];
+      CoordType coordScalor ;
+      coordScalor.x = mu[0];
+      coordScalor.y = mu[1];
+      coordScalor.z = mu[2];      
+      rescaleCoord <<<atomGridDim, myBlockDim>>> (
+    	  sys.ddata.coord, sys.ddata.numAtom,
+    	  coordScalor);
+      sys.setBoxSize (newBoxX, newBoxY, newBoxZ);
+    }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
@@ -1098,4 +1084,44 @@ disableThermostat ()
 {
   ptr_thermostat = NULL;
 }
+
+void LeapFrog_TPCouple::
+addBarostat (const Barostat_XRescale & barostat)
+{
+  ptr_barostat = &barostat;
+}
+
+void LeapFrog_TPCouple::
+disableBarostat ()
+{
+  ptr_barostat = NULL;
+}
+  
+// void LeapFrog_TPCouple::
+// addBarostat (const Barostat_XRescale & barostat,
+// 	     const PCoupleDirection_t & dirs)
+// {
+//   ptr_barostat[NPCoupleGroup] = &barostat;
+//   PCoupleDirections[NPCoupleGroup] = dirs;
+//   NDirInGroup[NPCoupleGroup] = 0;
+//   if (dirs & PCoupleX) {
+//     DirIndex[NPCoupleGroup][NDirInGroup[NPCoupleGroup]] = 0;
+//     NDirInGroup[NPCoupleGroup] ++;
+//   }
+//   if (dirs & PCoupleY) {
+//     DirIndex[NPCoupleGroup][NDirInGroup[NPCoupleGroup]] = 1;
+//     NDirInGroup[NPCoupleGroup] ++;
+//   }
+//   if (dirs & PCoupleZ) {
+//     DirIndex[NPCoupleGroup][NDirInGroup[NPCoupleGroup]] = 2;
+//     NDirInGroup[NPCoupleGroup] ++;
+//   }
+//   NPCoupleGroup ++;
+// }
+
+// void LeapFrog_TPCouple::
+// disableThermostat ()
+// {
+//   NPCoupleGroup = 0;
+// }
 

@@ -28,4 +28,20 @@ public:
   ScalorType calScale (const ScalorType & kientic_E) const;
 };
 
+class Thermostat_Berendsen : public Thermostat_VRescale
+{
+  ScalorType tau;
+  ScalorType dt;
+  IndexType  Nf;
+  ScalorType refK;
+  ScalorType scalor;
+public:
+  void reinit (const ScalorType & refT,
+	       const ScalorType & dt,
+	       const ScalorType & tau_T,
+	       const IndexType & NKFreedom);
+  ScalorType calScale (const ScalorType & kientic_E) const;
+};
+
+
 #endif

@@ -9,6 +9,7 @@
 #include "SumVector.h"
 #include "InteractionEngine_interface.h"
 #include "Thermostat.h"
+#include "Barostat.h"
 
 class TranslationalFreedomRemover 
 {
@@ -71,12 +72,15 @@ class LeapFrog_TPCouple
 {
   dim3 atomGridDim;
   dim3 myBlockDim;
+// private:
+//   IndexType NPcoupleGroup;
+//   PcoupleDirection_t PcoupleDirections[3];
+//   IndexType NDirInGroup[3];
+//   IndexType DirIndex[3][3];
 private:
   ScalorType dt;
   IndexType nstep;
   MDStatistic myst;
-  ScalorType lastKineticE;
-  ScalorType lastPressure[3];
   LeapFrog lpfrog;
   InteractionEngine_interface * ptr_inter;
   NeighborList * ptr_nlist;
@@ -84,6 +88,7 @@ private:
   ScalorType rebuildThreshold;
 private:
   const Thermostat_VRescale * ptr_thermostat;
+  const Barostat_XRescale * ptr_barostat;
 private:
   void firstStep (MDSystem & sys, MDTimer * timer);
   void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
@@ -107,8 +112,10 @@ public:
       { init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
   ~LeapFrog_TPCouple () {};
 public:
-  void addThermostat     (const Thermostat_VRescale & thermostat_);
+  void addThermostat (const Thermostat_VRescale & thermostat);
   void disableThermostat ();
+  void addBarostat (const Barostat_XRescale & barostat);
+  void disableBarostat ();
   void oneStep (MDSystem & sys, MDTimer * timer=NULL);
   void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
 };

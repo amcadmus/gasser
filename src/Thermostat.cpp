@@ -16,7 +16,7 @@ reinit (const ScalorType & refT,
   tau = tau_T;
   Nf = NKFreedom;
   refK = Nf * 0.5 * refT;
-
+  
   scalor1 = 1./tau;
   scalor2 = 1. / sqrt(Nf) / sqrt(tau) * 2; 
 }
@@ -32,5 +32,24 @@ calScale (const ScalorType & kineticE) const
   ScalorType newK = kineticE + (refK - kineticE) * scalor1 * dt
       + sqrt(refK * kineticE) * tmp2;
   return sqrt(newK / kineticE);
+}
+
+void Thermostat_Berendsen::
+reinit  (const ScalorType & refT,
+	 const ScalorType & dt_,
+	 const ScalorType & tau_T,
+	 const IndexType & NKFreedom)
+{
+  tau = tau_T;
+  scalor = 1./tau;
+  dt = dt_;
+  Nf = NKFreedom;
+  refK = Nf * 0.5 * refT;
+}
+
+ScalorType Thermostat_Berendsen::
+calScale (const ScalorType & kineticE) const
+{
+  return sqrtf (1.f + dt * scalor * (refK / kineticE - 1));
 }
 
