@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ljparam.reinit (1.f, 1.f, 0.f, 2.5f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.4;
   ScalorType rlist = maxrcut + nlistExten;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
@@ -77,7 +77,7 @@ int main(int argc, char * argv[])
 
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.002;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
@@ -105,7 +105,7 @@ int main(int argc, char * argv[])
   barostat.assignGroup (mdRectBoxDirectionX |
 			mdRectBoxDirectionY |
 			mdRectBoxDirectionZ,
-			-0.005, 10);
+			0.07, 1);
   blpf.addBarostat (barostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
@@ -130,8 +130,8 @@ int main(int argc, char * argv[])
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9       10   11-13\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz pressure  boxxyz\n");
+  printf ("#*     1     2           3         4            5       6          7-9       10   11-13      14\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz pressure  boxxyz  volume\n");
   try{
     sys.initWriteXtc ("traj.xtc");
     sys.recoverDeviceData (&timer);
@@ -141,11 +141,11 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 100 == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
@@ -160,13 +160,14 @@ int main(int argc, char * argv[])
 		st.pressure(sys.box),
 		sys.box.size.x,
 		sys.box.size.y,
-		sys.box.size.z);
+		sys.box.size.z,
+		sys.box.size.x * sys.box.size.y * sys.box.size.z);
 	fflush(stdout);
       }
       else {
 	blpf.oneStep (sys, &timer);      
       }
-      if ((i+1) % 1000 == 0){
+      if ((i+1) % 100000 == 0){
       	sys.recoverDeviceData (&timer);
       	sys.updateHostFromRecovered (&timer);
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);

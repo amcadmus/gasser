@@ -94,8 +94,8 @@ int main(int argc, char * argv[])
   // blpf.addPcoupleGroup (PCoupleZ,
   // 			4., 10, 1);
   
-  // blpf.addPcoupleGroup (PCoupleX | PCoupleY ,
-  // 			0, 1, 10);
+  blpf.addPcoupleGroup (PCoupleZ | PCoupleY ,
+  			0, 1, 10);
   // blpf.addPcoupleGroup (PCoupleZ,
   // 			0, 1, 1);
 
@@ -110,6 +110,10 @@ int main(int argc, char * argv[])
   // sys.recoverDeviceData (&timer);
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
+  printf ("# prepare ok, start to run\n");
+  printf ("#*     1     2           3         4            5       6          7-9  10-11\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz boxxyz\n");
+
   try{
     sys.initWriteXtc ("traj.xtc");
     sys.recoverDeviceData (&timer);
@@ -127,8 +131,8 @@ int main(int argc, char * argv[])
 		(i+1),  
 		(i+1) * dt, 
 		st.getStatistic(mdStatisticNonBondedPotential),
-		st.getStatistic(mdStatisticBondedPotential),
 		st.kineticEnergy(),
+		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
 		st.getStatistic(mdStatisticNonBondedPotential) +
 		st.getStatistic(mdStatisticBondedPotential) +
 		st.kineticEnergy(),

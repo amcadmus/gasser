@@ -72,8 +72,8 @@ reinit (const ScalorType & refT_,
 ScalorType Thermostat_NoseHoover::
 calCouple (const ScalorType & kineticE ) const
 {
-  printf ("scalor is %f, xi is %f, refK is %f, nowK is %f \n",
-	  scalor, xi + dt * scalor * (kineticE - refK), refK, kineticE);
+  // printf ("scalor is %f, xi is %f, refK is %f, nowK is %f \n",
+  // 	  scalor, xi + dt * scalor * (kineticE - refK), refK, kineticE);
   return (xi += dt * scalor * (kineticE - refK));
 }
 

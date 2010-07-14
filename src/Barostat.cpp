@@ -177,9 +177,29 @@ calCouple (const ScalorType * nowP,
   L = (L > b[2]) ? L : b[2];
   
   ScalorType V = b[0] * b[1] * b[2];
-  c[0] += dt * V * scalor * beta[0] / L * (tmpP[0] - refP[0]);
-  c[1] += dt * V * scalor * beta[1] / L * (tmpP[1] - refP[1]);
-  c[2] += dt * V * scalor * beta[2] / L * (tmpP[2] - refP[2]);
+  c[0] += dt * V * scalor * beta[0] / L * (tmpP[0] - refP[0]) / b[0];
+  c[1] += dt * V * scalor * beta[1] / L * (tmpP[1] - refP[1]) / b[1];
+  c[2] += dt * V * scalor * beta[2] / L * (tmpP[2] - refP[2]) / b[2];
+
+  // if (dt * c[0] > 0.02) {
+  //   c[0] = 0.02;
+  // }
+  // else if (dt * c[0] < -0.02){
+  //   c[0] = -0.02;
+  // }
+  // if (dt * c[1] > 0.02) {
+  //   c[1] = 0.02;
+  // }
+  // else if (dt * c[1] < -0.02){
+  //   c[1] = -0.02;
+  // }
+  // if (dt * c[2] > 0.02) {
+  //   c[2] = 0.02;
+  // }
+  // else if (dt * c[2] < -0.02){
+  //   c[2] = -0.02;
+  // }
+  
 
   lambda[0] = (c[0] + cold[0]) / b[0];
   lambda[1] = (c[1] + cold[1]) / b[1];

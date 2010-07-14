@@ -1267,9 +1267,10 @@ void LeapFrog_TPCouple_VCouple::
 oneStep (MDSystem & sys,
 	 MDTimer * timer)
 {
+  // printf ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
   ScalorType nowK;
   ScalorType lambda[3];
-  ScalorType nowP[3];
+  ScalorType nowP[3], mu[3];
   
   lambda[2] = lambda[1] = lambda[0] = 0.f;
 
@@ -1280,7 +1281,6 @@ oneStep (MDSystem & sys,
       nowK = myst.kineticEnergy();
       lambda[0] = ptr_thermostat->calCouple (nowK);
       lambda[2] = lambda[1] = lambda[0];
-      printf ("lambda %f %f %f\n", lambda[0], lambda[1], lambda[2]);
     }
     if (ptr_barostat != NULL){
       RectangularBox tmpBox;
@@ -1292,12 +1292,42 @@ oneStep (MDSystem & sys,
       lambda[0] += tmpLambda[0];
       lambda[1] += tmpLambda[1];
       lambda[2] += tmpLambda[2];
+      mu[0] = tmpBox.size.x / sys.box.size.x;
+      mu[1] = tmpBox.size.y / sys.box.size.y;
+      mu[2] = tmpBox.size.z / sys.box.size.z;
       sys.box = (tmpBox);
     }
   
     myst.clearDevice();
     lpfrog.stepV_VCouple (sys, dt, lambda, myst);
     lpfrog.stepX (sys, dt);
+    if (ptr_barostat != NULL){
+      CoordType coordScalor ;
+      coordScalor.x = mu[0];
+      coordScalor.y = mu[1];
+      coordScalor.z = mu[2];      
+      rescaleCoord <<<atomGridDim, myBlockDim>>> (
+    	  sys.ddata.coord, sys.ddata.numAtom,
+    	  coordScalor);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.velox, sys.ddata.numAtom,
+	  mu[0]);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.veloy, sys.ddata.numAtom,
+	  mu[1]);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.veloz, sys.ddata.numAtom,
+	  mu[2]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyXX, 1,
+	  mu[0] * mu[0]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyYY, 1,
+	  mu[1] * mu[1]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyZZ, 1,
+	  mu[2] * mu[2]);
+    }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
@@ -1323,7 +1353,7 @@ oneStep (MDSystem & sys,
 {
   ScalorType nowK;
   ScalorType lambda[3];
-  ScalorType nowP[3];
+  ScalorType nowP[3], mu[3];
 
   lambda[2] = lambda[1] = lambda[0] = 0.f;
   
@@ -1346,12 +1376,42 @@ oneStep (MDSystem & sys,
       lambda[0] += tmpLambda[0];
       lambda[1] += tmpLambda[1];
       lambda[2] += tmpLambda[2];
+      mu[0] = tmpBox.size.x / sys.box.size.x;
+      mu[1] = tmpBox.size.y / sys.box.size.y;
+      mu[2] = tmpBox.size.z / sys.box.size.z;
       sys.box = (tmpBox);
     }
   
     myst.clearDevice();
     lpfrog.stepV_VCouple (sys, dt, lambda, myst);
     lpfrog.stepX (sys, dt);
+    if (ptr_barostat != NULL){
+      CoordType coordScalor ;
+      coordScalor.x = mu[0];
+      coordScalor.y = mu[1];
+      coordScalor.z = mu[2];      
+      rescaleCoord <<<atomGridDim, myBlockDim>>> (
+    	  sys.ddata.coord, sys.ddata.numAtom,
+    	  coordScalor);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.velox, sys.ddata.numAtom,
+	  mu[0]);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.veloy, sys.ddata.numAtom,
+	  mu[1]);
+      rescaleProperty <<<atomGridDim, myBlockDim>>>(
+	  sys.ddata.veloz, sys.ddata.numAtom,
+	  mu[2]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyXX, 1,
+	  mu[0] * mu[0]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyYY, 1,
+	  mu[1] * mu[1]);
+      rescaleProperty <<<1, 1>>>(
+	  myst.ddata, mdStatisticKineticEnergyZZ, 1,
+	  mu[2] * mu[2]);
+    }
     nstep ++;
     if (timer != NULL) timer->toc (mdTimeIntegrator);
     if (ptr_nlist->judgeRebuild (sys, rebuildThreshold, timer)){
