@@ -102,10 +102,13 @@ int main(int argc, char * argv[])
   blpf.addThermostat (thermostat);
   Barostat_ParrinelloRahman barostat;
   barostat.reinit (dt, 1, sys.box);
+  // barostat.assignGroup (mdRectBoxDirectionX |
+  // 			mdRectBoxDirectionY |
+  // 			mdRectBoxDirectionZ,
+  // 			0.07, 1);
   barostat.assignGroup (mdRectBoxDirectionX |
-			mdRectBoxDirectionY |
-			mdRectBoxDirectionZ,
-			0.07, 1);
+  			mdRectBoxDirectionZ,
+  			0.07, 1);
   blpf.addBarostat (barostat);
   
   // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
