@@ -313,16 +313,53 @@ private:
 public:
     MDSystem ();
     ~MDSystem();
+    /** 
+     * Initialize the MD system
+     * 
+     * @param confFileName	file that provides the configuration
+     * @param sysTop		system topology			
+     * @param cellSize		the expected cell size (the actual cell size may
+     *				be larger
+     * @param divideLevel	the divide level of the cell
+     */
     void init (const char * confFileName,
 	       const Topology::System & sysTop,
 	       const ScalorType & cellSize,
 	       const IndexType  & divideLevel = 1);
+    /** 
+     * When the size of the system box, expected cell size or the divide level
+     * changes, reinit cell structure accordingly. 
+     *
+     * This function first calculates the number of cells on each
+     * direction. If any number is different than the old system, it
+     * renints the cell structure, otherwise it will not do
+     * anything. This function only applies to the device MD data. A
+     * additional updateHost is needed to update the host data.
+     * 
+     * @param cellSize		the expected cell size
+     * @param divideLevel	the divide level of the cell
+     * 
+     * @return			true if the cell structure changes,
+     *				false otherwise.
+     */
     bool reinitCellStructure (const ScalorType & cellSize,
 			      const IndexType  & divideLevel = 1);
+    /** 
+     * Finalize the system.
+     * 
+     */
     void finalize ();
 public:
+    /** 
+     * Update local host MD data from device MD data
+     * 
+     */
     void updateHost ()
 	{ deviceData.copyToHost (localHostData); }
+    /** 
+     * Collect local host MD data to global MD data.
+     * 
+     */
     void collectLocalData ();
     void redistribute ();
     void transferGhost ();

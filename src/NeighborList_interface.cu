@@ -100,16 +100,12 @@ mallocDeviceCellList (const IntVectorType & NCell,
 
   cudaMalloc ((void**)&(dclist.data), 
 	      sizeof(ScalorType) * numCell * dclist.stride);
+  cudaMalloc ((void**)&(dclist.numbers), sizeof(unsigned) * numCell);
   cudaMalloc ((void**)&mySendBuff, 
 	      sizeof(ScalorType) * numCell * dclist.stride);
   cudaMalloc ((void**)&myTargetBuff, 
 	      sizeof(ScalorType) * numCell * dclist.stride);
-  cudaMalloc ((void**)&(dclist.numbers), sizeof(unsigned) * numCell);
   checkCUDAError ("NeighborList::init cell list");
-  mallocedDeviceCellList = true;
-  buildDeviceCellList_initBuff<<<cellGridDim, myBlockDim>>> 
-      (mySendBuff, myTargetBuff);
-  checkCUDAError ("NeighborList::mallocedDeviceCellList cell list buff");
 
   IndexType maxNumNeighborCell = (2*mydevide+1) * (2*mydevide+1) * (2*mydevide+1);
   dclist.maxNumNeighborCell = maxNumNeighborCell;
@@ -120,6 +116,12 @@ mallocDeviceCellList (const IntVectorType & NCell,
   cudaMalloc ((void**)&(dclist.neighborCellShiftNoi),
 	      sizeof(CoordNoiType) * maxNumNeighborCell * numCell);
   checkCUDAError ("NeighborList::maxNumNeighborCell cell list buff");
+
+  mallocedDeviceCellList = true;
+
+  buildDeviceCellList_initBuff<<<cellGridDim, myBlockDim>>> 
+      (mySendBuff, myTargetBuff);
+  checkCUDAError ("NeighborList::mallocedDeviceCellList cell list buff");
 }
 
 

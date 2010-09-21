@@ -601,3 +601,102 @@ __global__ void rescaleData (const IndexType numAtom,
   if (ii < numAtom) data[ii] *= alpha;
 }
 
+
+
+__global__ void
+leapFrogStepV_VCouple (const IndexType numAtom,
+		       const ScalorType * massi,
+		       ScalorType * velox,
+		       ScalorType * veloy, 
+		       ScalorType * veloz,
+		       const ScalorType * forcx,
+		       const ScalorType * forcy, 
+		       const ScalorType * forcz,
+		       const ScalorType lambda0,
+		       const ScalorType lambda1,
+		       const ScalorType lambda2,
+		       const ScalorType dt)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  
+  if (ii < numAtom) {
+    ScalorType mi = massi[ii];
+    ScalorType hdt = 0.5f * dt;
+    ScalorType tmp = 1.f - hdt * lambda0;
+    ScalorType tmp1= 1.f + hdt * lambda0;
+    velox[ii] = (tmp * velox[ii] + dt * mi * forcx[ii]) / tmp1;
+    tmp = 1.f - hdt * lambda1;
+    tmp1= 1.f + hdt * lambda1;
+    veloy[ii] = (tmp * veloy[ii] + dt * mi * forcy[ii]) / tmp1;
+    tmp = 1.f - hdt * lambda2;
+    tmp1= 1.f + hdt * lambda2;
+    veloz[ii] = (tmp * veloz[ii] + dt * mi * forcz[ii]) / tmp1;
+  }
+}
+
+__global__ void
+leapFrogStepV_VCouple (const IndexType numAtom,
+		       const ScalorType * mass,
+		       const ScalorType * massi,
+		       ScalorType * velox,
+		       ScalorType * veloy, 
+		       ScalorType * veloz,
+		       const ScalorType * forcx,
+		       const ScalorType * forcy, 
+		       const ScalorType * forcz,
+		       const ScalorType lambda0,
+		       const ScalorType lambda1,
+		       const ScalorType lambda2,
+		       const ScalorType dt,
+		       ScalorType * statistic_buffxx,
+		       ScalorType * statistic_buffyy,
+		       ScalorType * statistic_buffzz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  ScalorType vx, vy, vz;
+  
+  if (ii < numAtom) {
+    ScalorType mi = massi[ii];
+    ScalorType hdt = 0.5f * dt;
+    ScalorType tmp = 1.f - hdt * lambda0;
+    ScalorType tmp1= 1.f + hdt * lambda0 ;
+    vx = (velox[ii] = ((tmp * velox[ii] + dt * mi * forcx[ii]) / tmp1));
+    tmp = 1.f - hdt * lambda1;
+    tmp1= 1.f + hdt * lambda1;
+    vy = (veloy[ii] = ((tmp * veloy[ii] + dt * mi * forcy[ii]) / tmp1));
+    tmp = 1.f - hdt * lambda2;
+    tmp1= 1.f + hdt * lambda2;
+    vz = (veloz[ii] = ((tmp * veloz[ii] + dt * mi * forcz[ii]) / tmp1));
+  }
+
+  extern __shared__ volatile ScalorType buff [];
+
+  ScalorType scalor;
+  if (ii < numAtom) scalor = 0.5f * mass[ii];
+  else scalor = 0.f;
+  
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vx * vx;
+  }
+  else {
+    buff[threadIdx.x] = 0.f;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffxx[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vy * vy;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffyy[bid] = buff[0];
+  __syncthreads();
+  if (ii < numAtom){
+    buff[threadIdx.x] = scalor * vz * vz;
+  }
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_buffzz[bid] = buff[0];
+}
+
+

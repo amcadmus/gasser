@@ -99,6 +99,35 @@ __global__ void leapFrogStepV (const IndexType numAtom,
 			       ScalorType * statistic_buffyy,
 			       ScalorType * statistic_buffzz);
 
+__global__ void leapFrogStepV_VCouple (const IndexType numAtom,
+				       const ScalorType * massi,
+				       ScalorType * velox,
+				       ScalorType * veloy, 
+				       ScalorType * veloz,
+				       const ScalorType * forcx,
+				       const ScalorType * forcy, 
+				       const ScalorType * forcz,
+				       const ScalorType lambda0,
+				       const ScalorType lambda1,
+				       const ScalorType lambda2,
+				       const ScalorType dt);
+__global__ void leapFrogStepV_VCouple (const IndexType numAtom,
+				       const ScalorType * mass,
+				       const ScalorType * massi,
+				       ScalorType * velox,
+				       ScalorType * veloy, 
+				       ScalorType * veloz,
+				       const ScalorType * forcx,
+				       const ScalorType * forcy, 
+				       const ScalorType * forcz,
+				       const ScalorType lambda0,
+				       const ScalorType lambda1,
+				       const ScalorType lambda2,
+				       const ScalorType dt,
+				       ScalorType * statistic_buffxx,
+				       ScalorType * statistic_buffyy,
+				       ScalorType * statistic_buffzz);
+
 
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void velocityVerlet_part1 (const IndexType numAtom,

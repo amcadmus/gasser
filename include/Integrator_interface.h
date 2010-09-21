@@ -8,7 +8,8 @@
 #include "MDTimer_interface.h"
 #include "SumVector.h"
 #include "InteractionEngine_interface.h"
-
+#include "Thermostat.h"
+#include "Barostat.h"
 
 class TranslationalFreedomRemover 
 {
@@ -60,12 +61,128 @@ public:
   void stepV (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
   void stepV (MDSystem & sys, const ScalorType & dt,
 	      MDStatistic & st, MDTimer * timer = NULL);
+  void stepV_VCouple (MDSystem & sys,
+		      const ScalorType & dt,
+		      const ScalorType * lambda,
+		      MDTimer * timer = NULL);
+  void stepV_VCouple (MDSystem & sys,
+		      const ScalorType & dt,
+		      const ScalorType * lambda,
+		      MDStatistic & st,
+		      MDTimer * timer = NULL);
 public:
   // void oneStep (MDSystem & sys, const RectangularBox & box,
   // 		const NeighborList & nlist, const ScalorType & dt);
   // void oneStep (MDSystem & sys, const RectangularBox & box,
   // 		const NeighborList & nlist, const ScalorType & dt);
 };
+
+class LeapFrog_TPCouple_Rescale
+{
+  dim3 atomGridDim;
+  dim3 myBlockDim;
+// private:
+//   IndexType NPcoupleGroup;
+//   PcoupleDirection_t PcoupleDirections[3];
+//   IndexType NDirInGroup[3];
+//   IndexType DirIndex[3][3];
+private:
+  ScalorType dt;
+  IndexType nstep;
+  MDStatistic myst;
+  LeapFrog lpfrog;
+  InteractionEngine_interface * ptr_inter;
+  NeighborList * ptr_nlist;
+  BondedInteractionList * ptr_bdInterList;
+  ScalorType rebuildThreshold;
+  void nullPointers ();
+private:
+  const Thermostat_VRescale * ptr_thermostat;
+  const Barostat_XRescale * ptr_barostat;
+private:
+  void firstStep (MDSystem & sys, MDTimer * timer);
+  void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
+public:
+  void init (const MDSystem &sys,
+	     const IndexType & NThread,
+	     const ScalorType & dt,
+	     InteractionEngine_interface &inter,
+	     NeighborList & nlist,
+	     const ScalorType & rebuildThreshold,
+	     BondedInteractionList * ptr_bdInterList = NULL) ;
+  LeapFrog_TPCouple_Rescale ();
+  LeapFrog_TPCouple_Rescale (const MDSystem &sys,
+		     const IndexType & NThread,
+		     const ScalorType & dt,
+		     InteractionEngine_interface &inter,
+		     NeighborList & nlist,
+		     const ScalorType & rebuildThreshold,
+		     BondedInteractionList * ptr_bdInterList = NULL)
+      : myst(sys), lpfrog(sys, NThread)
+      { init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
+  ~LeapFrog_TPCouple_Rescale () {};
+public:
+  void addThermostat (const Thermostat_VRescale & thermostat);
+  void disableThermostat ();
+  void addBarostat (const Barostat_XRescale & barostat);
+  void disableBarostat ();
+  void oneStep (MDSystem & sys, MDTimer * timer=NULL);
+  void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
+};
+
+class LeapFrog_TPCouple_VCouple
+{
+  dim3 atomGridDim;
+  dim3 myBlockDim;
+// private:
+//   IndexType NPcoupleGroup;
+//   PcoupleDirection_t PcoupleDirections[3];
+//   IndexType NDirInGroup[3];
+//   IndexType DirIndex[3][3];
+private:
+  ScalorType dt;
+  IndexType nstep;
+  MDStatistic myst;
+  LeapFrog lpfrog;
+  InteractionEngine_interface * ptr_inter;
+  NeighborList * ptr_nlist;
+  BondedInteractionList * ptr_bdInterList;
+  ScalorType rebuildThreshold;
+  void nullPointers ();
+private:
+  const Thermostat_VCouple * ptr_thermostat;
+  const Barostat_VCouple * ptr_barostat;
+private:
+  void firstStep (MDSystem & sys, MDTimer * timer);
+  void firstStep (MDSystem & sys, MDStatistic &st, MDTimer * timer);
+public:
+  void init (const MDSystem &sys,
+	     const IndexType & NThread,
+	     const ScalorType & dt,
+	     InteractionEngine_interface &inter,
+	     NeighborList & nlist,
+	     const ScalorType & rebuildThreshold,
+	     BondedInteractionList * ptr_bdInterList = NULL) ;
+  LeapFrog_TPCouple_VCouple ();
+  LeapFrog_TPCouple_VCouple (const MDSystem &sys,
+		     const IndexType & NThread,
+		     const ScalorType & dt,
+		     InteractionEngine_interface &inter,
+		     NeighborList & nlist,
+		     const ScalorType & rebuildThreshold,
+		     BondedInteractionList * ptr_bdInterList = NULL)
+      : myst(sys), lpfrog(sys, NThread)
+      { init (sys, NThread, dt, inter, nlist, rebuildThreshold, ptr_bdInterList); }
+  ~LeapFrog_TPCouple_VCouple () {};
+public:
+  void addThermostat (const Thermostat_VCouple & thermostat);
+  void disableThermostat ();
+  void addBarostat (const Barostat_VCouple & barostat);
+  void disableBarostat ();
+  void oneStep (MDSystem & sys, MDTimer * timer=NULL);
+  void oneStep (MDSystem & sys, MDStatistic &st, MDTimer * timer=NULL);
+};
+
 
 
 class VelocityVerlet 
