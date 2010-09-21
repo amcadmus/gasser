@@ -164,15 +164,29 @@ __device__ void AngleHarmonic::force0 (const ScalorType * param,
   ScalorType ey = (diff1y - c01 * sqrtc00i * sqrtc00i * diff0y);
   ScalorType ez = (diff1z - c01 * sqrtc00i * sqrtc00i * diff0z);
 
-  ScalorType theta = acosf (c01 * sqrtc11i * sqrtc00i);
+  ScalorType theta;
+  ScalorType thetatmp = c01 * sqrtc11i * sqrtc00i;
+  if (thetatmp > 1.f) thetatmp = 1.f;
+  theta = acosf (thetatmp);
 
   ScalorType scalor = 2 * param[k] * (theta - param[theta0]);
   scalor *= sqrtc00i;
-  scalor *= -1. / sqrtf (ex*ex + ey*ey + ez*ez);
+  ex *= 1e6;
+  ey *= 1e6;
+  ez *= 1e6;
 
-  *f0x = ex * scalor;
-  *f0y = ey * scalor;
-  *f0z = ez * scalor;
+  ScalorType tmp = sqrtf (ex*ex + ey*ey + ez*ez);
+  if (tmp != 0.f) {
+    scalor *= -1. / tmp;
+    *f0x = ex * scalor;
+    *f0y = ey * scalor;
+    *f0z = ez * scalor;
+  }
+  else {
+    *f0x = -scalor;
+    *f0y = 0.f;
+    *f0z = 0.f;
+  }
   
   // ScalorType tmp = sqrtc00i * sqrtc11i;
   // ScalorType costheta = c01 * tmp;
@@ -210,15 +224,55 @@ __device__ ScalorType AngleHarmonic::forcePoten0 (const ScalorType * param,
   ScalorType ey = (diff1y - c01 * sqrtc00i * sqrtc00i * diff0y);
   ScalorType ez = (diff1z - c01 * sqrtc00i * sqrtc00i * diff0z);
 
-  ScalorType theta = acosf (c01 * sqrtc11i * sqrtc00i);
+  ScalorType theta;
+  ScalorType thetatmp = c01 * sqrtc11i * sqrtc00i;
+  if (thetatmp > 1.f) thetatmp = 1.f;
+  theta = acosf (thetatmp);
 
   ScalorType scalor = 2 * param[k] * (theta - param[theta0]);
   scalor *= sqrtc00i;
-  scalor *= -1. / sqrtf (ex*ex + ey*ey + ez*ez);
+  ex *= 1e6;
+  ey *= 1e6;
+  ez *= 1e6;
+  
+  ScalorType tmp = sqrtf ((ex*ex + ey*ey + ez*ez));
+  if (tmp != 0.f){
+    scalor *= -1.f / tmp;
+    *f0x = ex * scalor;
+    *f0y = ey * scalor;
+    *f0z = ez * scalor;
+  }
+  else{
+    *f0x = -scalor;
+    *f0y = 0.f;
+    *f0z = 0.f;
+  }
 
-  *f0x = ex * scalor;
-  *f0y = ey * scalor;
-  *f0z = ez * scalor;
+  // ScalorType scalor = 2.f * param[k] * (theta - param[theta0]);
+  // scalor *= sqrtc00i;
+  // ex *= 1e6;
+  // ey *= 1e6;
+  // ez *= 1e6;
+  // ScalorType tmp = sqrtf (ex*ex + ey*ey + ez*ez);
+  // scalor *= -1.f / tmp;
+  // *f0x = ex * scalor;
+  // *f0y = ey * scalor;
+  // *f0z = ez * scalor;
+
+  
+  ////////////////////////////////////////////////////////////////
+  
+  // if (tmp != 0){
+  //   scalor *= -1.f / tmp;
+  //   *f0x = ex * scalor;
+  //   *f0y = ey * scalor;
+  //   *f0z = ez * scalor;
+  // }
+  // else {
+  //   *f0x = -1.f * scalor;
+  //   *f0y = 0.f;
+  //   *f0z = 0.f;
+  // }
 
   // ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   // ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -269,15 +323,44 @@ __device__ void AngleHarmonic::force1 (const ScalorType * param,
   ScalorType gy = (diff0y - c01 * sqrtc11i * sqrtc11i * diff1y);
   ScalorType gz = (diff0z - c01 * sqrtc11i * sqrtc11i * diff1z);
   
-  ScalorType theta = acosf (c01 * sqrtc11i * sqrtc00i);
+  ScalorType theta;
+  ScalorType thetatmp = c01 * sqrtc11i * sqrtc00i;
+  if (thetatmp > 1.f) thetatmp = 1.f;
+  theta = acosf (thetatmp);
 
   ScalorType scalor = 2 * param[k] * (theta - param[theta0]);
-  ScalorType scalor0 = (1.f / sqrtf (ex*ex + ey*ey + ez*ez)) * sqrtc00i * scalor;
-  ScalorType scalor1 = (1.f / sqrtf (gx*gx + gy*gy + gz*gz)) * sqrtc11i * scalor;
+  ex *= 1e6f;
+  ey *= 1e6f;
+  ez *= 1e6f;
+  gx *= 1e6f;
+  gy *= 1e6f;
+  gz *= 1e6f;
 
-  *f1x = scalor0 * ex - scalor1 * gx;
-  *f1y = scalor0 * ey - scalor1 * gy;
-  *f1z = scalor0 * ez - scalor1 * gz;
+  ScalorType tmp0 = sqrtf (ex*ex + ey*ey + ez*ez);
+  ScalorType tmp1 = sqrtf (gx*gx + gy*gy + gz*gz);
+  ScalorType scalor0 = sqrtc00i * scalor;
+  ScalorType scalor1 = sqrtc11i * scalor;
+  
+  *f1x = *f1y = *f1z = 0.f;
+  
+  if (tmp0 != 0){
+    scalor0 *= ( 1.f / tmp0 );
+    *f1x += scalor0 * ex;
+    *f1y += scalor0 * ey;
+    *f1z += scalor0 * ez;
+  }
+  else {
+    *f1x += scalor0;
+  }
+  if (tmp1 != 0){
+    scalor1 *= ( 1.f / tmp1 );
+    *f1x -= scalor1 * gx;
+    *f1y -= scalor1 * gy;
+    *f1z -= scalor1 * gz;
+  }
+  else {
+    *f1x -= scalor1;
+  }  
 
   // ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   // ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -326,15 +409,44 @@ __device__ ScalorType AngleHarmonic::forcePoten1 (const ScalorType * param,
   ScalorType gy = (diff0y - c01 * sqrtc11i * sqrtc11i * diff1y);
   ScalorType gz = (diff0z - c01 * sqrtc11i * sqrtc11i * diff1z);
   
-  ScalorType theta = acosf (c01 * sqrtc11i * sqrtc00i);
-
+  ScalorType theta;
+  ScalorType thetatmp = c01 * sqrtc11i * sqrtc00i;
+  if (thetatmp > 1.f) thetatmp = 1.f;
+  theta = acosf (thetatmp);
+  
   ScalorType scalor = 2 * param[k] * (theta - param[theta0]);
-  ScalorType scalor0 = (1.f / sqrtf (ex*ex + ey*ey + ez*ez)) * sqrtc00i * scalor;
-  ScalorType scalor1 = (1.f / sqrtf (gx*gx + gy*gy + gz*gz)) * sqrtc11i * scalor;
+  ex *= 1e6f;
+  ey *= 1e6f;
+  ez *= 1e6f;
+  gx *= 1e6f;
+  gy *= 1e6f;
+  gz *= 1e6f;
 
-  *f1x = scalor0 * ex - scalor1 * gx;
-  *f1y = scalor0 * ey - scalor1 * gy;
-  *f1z = scalor0 * ez - scalor1 * gz;
+  ScalorType tmp0 = sqrtf (ex*ex + ey*ey + ez*ez);
+  ScalorType tmp1 = sqrtf (gx*gx + gy*gy + gz*gz);
+  ScalorType scalor0 = sqrtc00i * scalor;
+  ScalorType scalor1 = sqrtc11i * scalor;
+  
+  *f1x = *f1y = *f1z = 0.f;
+  
+  if (tmp0 != 0){
+    scalor0 *= ( 1.f / tmp0 );
+    *f1x += scalor0 * ex;
+    *f1y += scalor0 * ey;
+    *f1z += scalor0 * ez;
+  }
+  else {
+    *f1x += scalor0;
+  }
+  if (tmp1 != 0){
+    scalor1 *= ( 1.f / tmp1 );
+    *f1x -= scalor1 * gx;
+    *f1y -= scalor1 * gy;
+    *f1z -= scalor1 * gz;
+  }
+  else {
+    *f1x -= scalor1;
+  }  
 
   // ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   // ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
