@@ -419,6 +419,7 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 {
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
   if (nlist.mode == CellListBuilt){
+    // printf ("### here\n");
     widomDeltaPoten
 	<<<toGridDim(wtest.numTestParticle()), nlist.myBlockDim.x,
 	nlist.myBlockDim.x * sizeof(ScalorType) >>>(
@@ -1571,8 +1572,9 @@ widomDeltaPoten (const IndexType	numTestParticle,
 //  IndexType ii = tid + bid * blockDim.x;
   if (bid > numTestParticle) return;
 
-  extern __shared__ char pub_sbuff_widom[];
-  volatile ScalorType * sumbuff = (volatile ScalorType *) pub_sbuff_widom;
+  // extern __shared__ volatile char pub_sbuff_widom[];
+  // volatile ScalorType * sumbuff = (volatile ScalorType *) pub_sbuff_widom;
+  extern __shared__ volatile ScalorType sumbuff [];
 
   CoordType refCoord = coordTestParticle[bid];
   TypeType  refType = typeTestParticle[bid];

@@ -33,6 +33,10 @@ public:
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
   virtual ScalorType rcut () const ;
+public:
+  virtual ScalorType shiftAtCut () const;
+  virtual ScalorType energyCorr   (const ScalorType & rcut) const;
+  virtual ScalorType pressureCorr (const ScalorType & rcut) const;
 };
 
 class LennardJones6_12CapParameter : public NonBondedInteractionParameter
@@ -55,7 +59,12 @@ public:
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
+public:
   virtual ScalorType rcut () const ;
+public:
+  virtual ScalorType shiftAtCut () const;
+  virtual ScalorType energyCorr   (const ScalorType & rcut) const;
+  virtual ScalorType pressureCorr (const ScalorType & rcut) const;
 };
   
 class CosTailParameter : public NonBondedInteractionParameter
