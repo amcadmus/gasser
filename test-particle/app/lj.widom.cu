@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	4
-#define NThreadsPerBlockAtom	4
+#define NThreadsPerBlockCell	96
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 1.8f);
+  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.2;
+  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion widom;
-  widom.reinit (refT, 500, 0);
+  widom.reinit (refT, 50, 0);
   
   MDTimer timer;
   unsigned i;
@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	widom.generateTestCoords (sys);
 	st.clearDevice();
 	inte_vr.step1 (sys, dt, &timer);
@@ -159,9 +159,9 @@ int main(int argc, char * argv[])
       }
     }
     // sys.endWriteXtc();
-    // sys.recoverDeviceData (&timer);
-    // sys.updateHostFromRecovered (&timer);
-    // sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
+    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }

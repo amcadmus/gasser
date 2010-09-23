@@ -33,7 +33,12 @@ public:
   const NonBondedInteractionParameter & copy (const NonBondedInteractionParameter & p1);  
   bool same (const NonBondedInteractionParameter & f1) const ;
   bool operator == (const NonBondedInteractionParameter & f1) const;
+public:
   virtual ScalorType rcut () const = 0;
+public:
+  virtual ScalorType shiftAtCut () const;
+  virtual ScalorType energyCorrtion   (const ScalorType & rcut) const;
+  virtual ScalorType pressureCorrtion (const ScalorType & rcut) const;  
 };
 
 class BondInteractionParameter : public InteractionParamter
@@ -55,6 +60,5 @@ public:
   bool same (const AngleInteractionParameter & f1) const ;
   bool operator == (const AngleInteractionParameter & f1) const;
 };
-
 
 #endif

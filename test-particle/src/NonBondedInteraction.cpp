@@ -73,6 +73,44 @@ LennardJones6_12Parameter (ScalorType epsilon,
   LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
 }
 
+
+ScalorType LennardJones6_12Parameter::
+shiftAtCut () const 
+{    
+  ScalorType dr2 = param[LennardJones6_12::rcut] * param[LennardJones6_12::rcut];
+  ScalorType ri2 = 1.f/dr2;
+  ScalorType sri2 = param[LennardJones6_12::sigma] * param[LennardJones6_12::sigma] * ri2;
+  ScalorType sri6 = sri2*sri2*sri2;
+  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6 + param[LennardJones6_12::shift]);    
+}
+
+ScalorType LennardJones6_12Parameter::
+energyCorr (const ScalorType & r) const
+{
+  ScalorType sri = param[LennardJones6_12::sigma] / r;
+  ScalorType sri2 = sri * sri;
+  ScalorType sri8 = sri2 * sri2;
+  sri8 = sri8 * sri8;
+  ScalorType s3 = param[LennardJones6_12::sigma];
+  s3 = s3 * s3 * s3;	
+  return 8.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+      * (sri8 / 3. - sri2 ) * sri;	
+}  
+
+ScalorType LennardJones6_12Parameter::
+pressureCorr (const ScalorType & r) const
+{
+  ScalorType sri = param[LennardJones6_12::sigma] / r;
+  ScalorType sri2 = sri * sri;
+  ScalorType sri8 = sri2 * sri2;
+  sri8 = sri8 * sri8;
+  ScalorType s3 = param[LennardJones6_12::sigma];
+  s3 = s3 * s3 * s3;
+  return 16.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+      * (sri8 * 2. / 3. - sri2 ) * sri;    
+}
+
+
 InteractionType LennardJones6_12CapParameter::
 type () const 
 {
@@ -124,6 +162,43 @@ LennardJones6_12CapParameter (ScalorType epsilon,
   LennardJones6_12_cap::initParameter
       (param, epsilon, sigma, shift, rcut, cap);
 }
+
+ScalorType LennardJones6_12CapParameter::
+shiftAtCut () const 
+{    
+  ScalorType dr2 = param[LennardJones6_12::rcut] * param[LennardJones6_12::rcut];
+  ScalorType ri2 = 1.f/dr2;
+  ScalorType sri2 = param[LennardJones6_12::sigma] * param[LennardJones6_12::sigma] * ri2;
+  ScalorType sri6 = sri2*sri2*sri2;
+  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6 + param[LennardJones6_12::shift]);    
+}
+
+ScalorType LennardJones6_12CapParameter::
+energyCorr (const ScalorType & r) const
+{
+  ScalorType sri = param[LennardJones6_12::sigma] / r;
+  ScalorType sri2 = sri * sri;
+  ScalorType sri8 = sri2 * sri2;
+  sri8 = sri8 * sri8;
+  ScalorType s3 = param[LennardJones6_12::sigma];
+  s3 = s3 * s3 * s3;	
+  return 8.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+      * (sri8 / 3. - sri2 ) * sri;	
+}  
+
+ScalorType LennardJones6_12CapParameter::
+pressureCorr (const ScalorType & r) const
+{
+  ScalorType sri = param[LennardJones6_12::sigma] / r;
+  ScalorType sri2 = sri * sri;
+  ScalorType sri8 = sri2 * sri2;
+  sri8 = sri8 * sri8;
+  ScalorType s3 = param[LennardJones6_12::sigma];
+  s3 = s3 * s3 * s3;
+  return 16.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+      * (sri8 * 2. / 3. - sri2 ) * sri;    
+}
+
 
 InteractionType CosTailParameter::
 type () const 
