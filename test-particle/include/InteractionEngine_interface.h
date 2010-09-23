@@ -8,6 +8,7 @@
 #include "SystemNonBondedInteraction.h"
 #include "SystemBondedInteraction.h"
 #include "BondedInteractionList.h"
+#include "WidomTestParticleInsertion.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -59,6 +60,10 @@ public:
 				  const NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion & wtest,
+				  MDTimer * timer = NULL);
   void applyNonBondedInteractionCell  (MDSystem & sys,
 				       const NeighborList & nlist,
 				       MDTimer *timer );
