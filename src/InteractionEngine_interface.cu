@@ -411,6 +411,32 @@ applyBondedInteraction (MDSystem & sys,
 }
 
 
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  if (nlist.mode == CellListBuilt){
+    widomDeltaPoten
+	<<<toGridDim(wtest.numTestParticle()), nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType) >>>(
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    wtest.temperature(),
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
 
 __global__ void clearForce (const IndexType numAtom,
 			    ScalorType * forcx,
@@ -1521,5 +1547,96 @@ __global__ void calNonBondedInteraction (
     statistic_nb_buff1[ii] = myVxx * 0.5f;
     statistic_nb_buff2[ii] = myVyy * 0.5f;
     statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }
+}
+
+
+
+__global__ void
+widomDeltaPoten (const IndexType	numTestParticle,
+		 const CoordType *	coordTestParticle,
+		 const TypeType *	typeTestParticle,
+		 const ScalorType	temperature,
+		 const IndexType	numAtom,
+		 const CoordType *	coord,
+		 const TypeType *	type,
+		 const RectangularBox	box,
+		 DeviceCellList		clist,
+		 ScalorType *		statistic_nb_buff0,
+		 mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+//  IndexType ii = tid + bid * blockDim.x;
+  if (bid > numTestParticle) return;
+
+  extern __shared__ char pub_sbuff_widom[];
+  volatile ScalorType * sumbuff = (volatile ScalorType *) pub_sbuff_widom;
+
+  CoordType refCoord = coordTestParticle[bid];
+  TypeType  refType = typeTestParticle[bid];
+  ScalorType myPoten (0.0f);
+
+  IndexType refCelli, refCellj, refCellk;
+  refCelli = IndexType (refCoord.x * box.sizei.x * ScalorType(clist.NCell.x));
+  refCellj = IndexType (refCoord.y * box.sizei.y * ScalorType(clist.NCell.y));
+  refCellk = IndexType (refCoord.z * box.sizei.z * ScalorType(clist.NCell.z));
+  
+  if (refCelli == clist.NCell.x){
+    refCelli -= clist.NCell.x;
+    refCoord.x -= box.size.x;
+  }
+  if (refCellj == clist.NCell.y){
+    refCellj -= clist.NCell.y;
+    refCoord.y -= box.size.y;
+  }
+  if (refCellk == clist.NCell.z){
+    refCellk -= clist.NCell.z;
+    refCoord.z -= box.size.z;
+  }
+
+  IndexType refCellIndex = D3toD1 (clist.NCell, refCelli, refCellj, refCellk);
+  for (IndexType i = 0; i < clist.numNeighborCell[refCellIndex]; ++i){
+    __syncthreads ();
+    IndexType targetCellIdx = getNeighborCellIndex    (clist, refCellIndex, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, refCellIndex, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    IndexType targetIndex = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndex != MaxIndexValue){
+      TypeType targettype = tex1Dfetch(global_texRef_interaction_type, targetIndex);
+      if (refType == targettype){
+	CoordType targetCoord = tex1Dfetch(global_texRef_interaction_coord, targetIndex);
+	ScalorType diffx = targetCoord.x - shift.x - refCoord.x;
+	ScalorType diffy = targetCoord.y - shift.y - refCoord.y;
+	ScalorType diffz = targetCoord.z - shift.z - refCoord.z;
+	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < clist.rlist*clist.rlist){
+	  IndexType fidx(0);
+	  ScalorType dp;
+	  fidx = AtomNBForceTable::
+	      calForceIndex (const_nonBondedInteractionTable,
+			     const_numAtomType[0],
+			     refType,
+			     refType);
+	  nbPoten (nonBondedInteractionType[fidx],
+		   &nonBondedInteractionParameter
+		   [nonBondedInteractionParameterPosition[fidx]],
+		   diffx, diffy, diffz, &dp);
+	  myPoten += dp;
+	}
+      }
+    }
+  }
+
+  sumbuff[tid] = myPoten;
+  __syncthreads();
+  sumVectorBlockBuffer_2 (sumbuff);
+  __syncthreads();
+  if (tid == 0){
+    // printf ("### du is %f\n", sumbuff[0]);
+    statistic_nb_buff0[bid] = expf(-sumbuff[0] / temperature);
   }
 }
