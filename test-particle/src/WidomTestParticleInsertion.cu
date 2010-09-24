@@ -16,7 +16,8 @@ WidomTestParticleInsertion::
 void WidomTestParticleInsertion::
 reinit (const ScalorType & temperature_,
 	const IndexType & nParticleInserted_,
-	const TypeType & particleType)
+	const TypeType & particleType,
+	const SystemNonBondedInteraction & sysNbInter)
 {
   clear ();
   
@@ -46,6 +47,10 @@ reinit (const ScalorType & temperature_,
   checkCUDAError ("WidomTestParticleInsertion::reinit copy from htype to typeTestParticle");
 
   sumExpDeltaU.reinit (numTestParticle(), NThreadForSum);
+
+  energyCorr = sysNbInter.energyCorrection (particleType) * 2. * numTestParticle();
+  printf ("# energy correction to widom test particle insertion is %f\n",
+	  energyCorr);
   
   inited = true;
 }
@@ -85,6 +90,7 @@ generateTestCoords (const MDSystem & sys)
   size_t sizec = sizeof(CoordType) * nParticleInserted;
   cudaMemcpy (coordTestParticle, hcoord, sizec, cudaMemcpyHostToDevice);
   checkCUDAError ("WidomTestParticleInsertion::generateTestCoords copy from hcoord to coordTestParticle");
+  scaledEnergyCorr = energyCorr / (sys.box.size.x * sys.box.size.y * sys.box.size.z);
 }
 
 

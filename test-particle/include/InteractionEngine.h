@@ -168,6 +168,7 @@ __global__ void
 widomDeltaPoten (const IndexType	numTestParticle,
 		 const CoordType *	coordTestParticle,
 		 const TypeType *	typeTestParticle,
+		 const ScalorType	energyCorrection,
 		 const ScalorType	temperature,
 		 const IndexType	numAtom,
 		 const CoordType *	coord,

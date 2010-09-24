@@ -439,11 +439,13 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
   if (nlist.mode == CellListBuilt){
     // printf ("### here\n");
     widomDeltaPoten
-	<<<toGridDim(wtest.numTestParticle()), nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType) >>>(
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
 	    wtest.numTestParticle(),
 	    wtest.coordTestParticle,
 	    wtest.typeTestParticle,
+	    wtest.energyCorrection(),
 	    wtest.temperature(),
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,
@@ -1575,6 +1577,7 @@ __global__ void
 widomDeltaPoten (const IndexType	numTestParticle,
 		 const CoordType *	coordTestParticle,
 		 const TypeType *	typeTestParticle,
+		 const ScalorType	energyCorrection,
 		 const ScalorType	temperature,
 		 const IndexType	numAtom,
 		 const CoordType *	coord,
@@ -1657,6 +1660,6 @@ widomDeltaPoten (const IndexType	numTestParticle,
   __syncthreads();
   if (tid == 0){
     // printf ("### du is %f\n", sumbuff[0]);
-    statistic_nb_buff0[bid] = expf(-sumbuff[0] / temperature);
+    statistic_nb_buff0[bid] = expf(-(sumbuff[0] + energyCorrection) / temperature);
   }
 }

@@ -12,8 +12,6 @@
 #include "tmp.h"
 #include "Reshuffle_interface.h"
 
-aaa
-
 #include "Topology.h"
 #include "SystemBondedInteraction.h"
 
@@ -82,7 +80,7 @@ int main(int argc, char * argv[])
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion widom;
-  widom.reinit (refT, 50, 0);
+  widom.reinit (refT, 50, 0, sysNbInter);
   
   MDTimer timer;
   unsigned i;
