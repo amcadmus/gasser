@@ -43,6 +43,9 @@ private:
 	    const std::vector<ScalorType > & paramArray,
 	    const ScalorType & rcut);
   void build ();
+private:
+  ScalorType energyCorr;
+  ScalorType pressureCorr;
 public:
   SystemNonBondedInteraction();
   SystemNonBondedInteraction(const Topology::System & sysTop);
@@ -52,22 +55,16 @@ public:
   const ScalorType & maxRcut() const {return maxrc;}
 public:
   bool beBuilt () const {return isBuilt;}
-  IndexType numberOfAtomTypes () const
-      {return numAtomTypes;}
-  IndexType numberOfInteraction () const
-      {return numInteractionItems;}
-  IndexType numberOfParameter () const
-      {return numParameters;}
-  const InteractionType * interactionType () const
-      {return types;}
-  const ScalorType * interactionParameter () const
-      {return parameters;}
-  const IndexType * interactionParameterPosition () const
-      {return positions;}
-  IndexType interactionTableSize () const
-      {return interactionTableLength;}
-  const IndexType * interactionTable () const
-      {return interactionTable_;}
+  IndexType numberOfAtomTypes () const {return numAtomTypes;}
+  IndexType numberOfInteraction () const {return numInteractionItems;}
+  IndexType numberOfParameter () const {return numParameters;}
+  const InteractionType * interactionType () const {return types;}
+  const ScalorType * interactionParameter () const {return parameters;}
+  const IndexType * interactionParameterPosition () const {return positions;}
+  IndexType interactionTableSize () const {return interactionTableLength;}
+  const IndexType * interactionTable () const {return interactionTable_;}
+  ScalorType energyCorrection () const {return energyCorr;}
+  ScalorType pressureCorrection () const {return pressureCorr;}
 };
 
 

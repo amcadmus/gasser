@@ -37,8 +37,8 @@ public:
   virtual ScalorType rcut () const = 0;
 public:
   virtual ScalorType shiftAtCut () const;
-  virtual ScalorType energyCorrtion   (const ScalorType & rcut) const;
-  virtual ScalorType pressureCorrtion (const ScalorType & rcut) const;  
+  virtual ScalorType energyCorrection   (const ScalorType & rcut) const;
+  virtual ScalorType pressureCorrection (const ScalorType & rcut) const;  
 };
 
 class BondInteractionParameter : public InteractionParamter

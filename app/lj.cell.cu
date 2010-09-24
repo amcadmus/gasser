@@ -111,12 +111,10 @@ int main(int argc, char * argv[])
       	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
       		(i+1),  
       		(i+1) * dt, 
-      		st.getStatistic(mdStatisticNonBondedPotential),
-      		st.getStatistic(mdStatisticBondedPotential),
-      		st.kineticEnergy(),
-      		st.getStatistic(mdStatisticNonBondedPotential) +
-      		st.getStatistic(mdStatisticBondedPotential) +
-      		st.kineticEnergy(),
+		st.NonBondedEnergy(),
+		st.BondedEnergy(),
+		st.kineticEnergy(),
+		st.kineticEnergy() + st.NonBondedEnergy() + st.BondedEnergy(),
       		st.pressureXX(sys.box),
       		st.pressureYY(sys.box),
       		st.pressureZZ(sys.box),

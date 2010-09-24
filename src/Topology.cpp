@@ -65,12 +65,8 @@ Topology::NonBondedInteraction::
 NonBondedInteraction (const TypeType & atomType0_,
 		      const TypeType & atomType1_,
 		      const NonBondedInteractionParameter & p)
-    : atomType0(atomType0_), atomType1(atomType1_), type(p.type())
+    : atomType0(atomType0_), atomType1(atomType1_), ptr_nbInter(&p)
 {
-  for (unsigned i = 0; i < p.numParam(); ++i){
-    paramArray.push_back( p.c_ptr()[i] );
-  }
-  rcut = p.rcut();
 }
 
 void Topology::NonBondedInteraction::
@@ -80,13 +76,36 @@ specifyInteraction(const TypeType & atomType0_,
 {
   atomType0 = atomType0_;
   atomType1 = atomType1_;
-  type = p.type();
-  paramArray.clear();
-  for (unsigned i = 0; i < p.numParam(); ++i){
-    paramArray.push_back( p.c_ptr()[i] );
-  }
-  rcut = p.rcut();
+  ptr_nbInter = &p;
 }
+
+// Topology::NonBondedInteraction::
+// NonBondedInteraction (const TypeType & atomType0_,
+// 		      const TypeType & atomType1_,
+// 		      const NonBondedInteractionParameter & p)
+//     : atomType0(atomType0_), atomType1(atomType1_), type(p.type())
+// {
+//   for (unsigned i = 0; i < p.numParam(); ++i){
+//     paramArray.push_back( p.c_ptr()[i] );
+//   }
+  
+//   rcut = p.rcut();
+// }
+
+// void Topology::NonBondedInteraction::
+// specifyInteraction(const TypeType & atomType0_,
+// 		   const TypeType & atomType1_,
+// 		   const NonBondedInteractionParameter & p)
+// {
+//   atomType0 = atomType0_;
+//   atomType1 = atomType1_;
+//   type = p.type();
+//   paramArray.clear();
+//   for (unsigned i = 0; i < p.numParam(); ++i){
+//     paramArray.push_back( p.c_ptr()[i] );
+//   }
+//   rcut = p.rcut();
+// }
 
 
 Topology::Bond::
@@ -160,6 +179,7 @@ void Topology::System::
 addNonBondedInteraction (const NonBondedInteraction & nb)
 {
   nonBondedInteractions.push_back(nb);
+  // printf ("#%f\n", nb.energyCorrection(1.8));
 }
 
 void Topology::Molecule::

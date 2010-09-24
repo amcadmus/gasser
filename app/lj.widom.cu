@@ -48,7 +48,13 @@ int main(int argc, char * argv[])
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
   ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  // NonBondedInteractionParameter * nbp (&ljparam);
+  Topology::NonBondedInteraction nb00 (0, 0, ljparam);
+  // printf ("# %f %f %f\n",
+  // 	  ljparam.energyCorrection(1.8),
+  // 	  nbp->energyCorrection(1.8),
+  // 	  nb00.energyCorrection(1.8));
+  sysTop.addNonBondedInteraction (nb00);
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);
@@ -119,12 +125,10 @@ int main(int argc, char * argv[])
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.getStatistic(mdStatisticNonBondedPotential),
+		st.NonBondedEnergy(),
 		st.kineticEnergy(),
 		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.getStatistic(mdStatisticNonBondedPotential) +
-		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
+		st.NonBondedEnergy() + st.kineticEnergy(),
 		st.pressureXX(sys.box),
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),
@@ -176,7 +180,6 @@ int main(int argc, char * argv[])
     fprintf (stderr, "%s\n", e.what());
     return 1;
   }
-  
   
   return 0;
 }
