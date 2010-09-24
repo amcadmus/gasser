@@ -7,6 +7,7 @@
 #include "MDException.h"
 #include "MDSystem_interface.h"
 #include "NeighborList_interface.h"
+#include "SystemNonBondedInteraction.h"
 
 class WidomTestParticleInsertion
 {
@@ -16,6 +17,8 @@ class WidomTestParticleInsertion
   TypeType *		htype;
   ScalorType 		hresult;
   ScalorType		mytemperature;
+  ScalorType		energyCorr;
+  ScalorType		scaledEnergyCorr;
 public:
   CoordType *		coordTestParticle;
   TypeType *		typeTestParticle;
@@ -27,11 +30,14 @@ public:
 public:
   void reinit (const ScalorType & temperature,
 	       const IndexType & nParticleInserted,
-	       const TypeType & particleType);
+	       const TypeType & particleType,
+	       const SystemNonBondedInteraction & sysNbInter);
   void clear ();
 public:
   const IndexType &  numTestParticle () const {return nParticleInserted;}
   const ScalorType & temperature     () const {return mytemperature;}
+  // void setEnergyCorr (const ScalorType & c) {energCorr = c;}
+  ScalorType energyCorrection () const {return scaledEnergyCorr;}
   void generateTestCoords (const MDSystem & sys);
   ScalorType expMu ();  
 };

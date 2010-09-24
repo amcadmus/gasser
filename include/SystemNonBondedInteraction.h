@@ -46,6 +46,8 @@ private:
 private:
   ScalorType energyCorr;
   ScalorType pressureCorr;
+  std::vector<ScalorType > energyCorrVec;
+  std::vector<ScalorType > pressureCorrVec;
 public:
   SystemNonBondedInteraction();
   SystemNonBondedInteraction(const Topology::System & sysTop);
@@ -65,6 +67,8 @@ public:
   const IndexType * interactionTable () const {return interactionTable_;}
   ScalorType energyCorrection () const {return energyCorr;}
   ScalorType pressureCorrection () const {return pressureCorr;}
+  ScalorType energyCorrection   (const TypeType & type) const {return energyCorrVec[IndexType(type)];}
+  ScalorType pressureCorrection (const TypeType & type) const {return pressureCorrVec[IndexType(type)];}
 };
 
 
