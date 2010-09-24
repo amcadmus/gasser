@@ -19,7 +19,9 @@ enum mdStatisticItem {
   mdStatisticVirialZZ				= 6,
   mdStatisticVirialXY				= 7,
   mdStatisticVirialXZ				= 8,
-  mdStatisticVirialYZ				= 9
+  mdStatisticVirialYZ				= 9,
+  mdStatisticEnergyCorrection			= 13,
+  mdStatisticPressureCorrection			= 14
 };
 typedef enum mdStatisticItem mdStatisticItem_t;
 
@@ -38,11 +40,13 @@ public:
 public:
   void clearDevice ();
   void updateHost ();
-  ScalorType getStatistic (mdStatisticItem_t item) {return hdata[item];}
+//  ScalorType getStatistic (mdStatisticItem_t item) {return hdata[item];}
 public:
   void deviceCopy (const MDStatistic & st);
   void deviceAdd  (const MDStatistic & st);
 public:
+  ScalorType NonBondedEnergy ();
+  ScalorType BondedEnergy ();
   ScalorType kineticEnergy ();
   ScalorType pressureXX (const RectangularBox & box);
   ScalorType pressureYY (const RectangularBox & box);
@@ -52,15 +56,13 @@ public:
   ScalorType virialXX ();
   ScalorType virialYY ();
   ScalorType virialZZ ();
-  ScalorType NonBondedEnergy ();
-  ScalorType BondedEnergy ();
 };
 
 
 
 inline ScalorType MDStatistic::NonBondedEnergy()
 {
-  return hdata[mdStatisticNonBondedPotential];
+  return hdata[mdStatisticNonBondedPotential] + hdata[mdStatisticEnergyCorrection];
 }
 
 inline ScalorType MDStatistic::BondedEnergy ()
@@ -98,7 +100,8 @@ inline ScalorType MDStatistic::pressureZZ (const RectangularBox & box)
 
 inline ScalorType MDStatistic::pressure (const RectangularBox & box)
 {
-  return (pressureXX(box) + pressureYY(box) + pressureZZ(box)) / 3.;
+  return (pressureXX(box) + pressureYY(box) + pressureZZ(box)) / 3. +
+      hdata[mdStatisticPressureCorrection] ;
 }
 
 inline ScalorType MDStatistic::virial()

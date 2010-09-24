@@ -130,12 +130,10 @@ int main(int argc, char * argv[])
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.getStatistic(mdStatisticNonBondedPotential),
+		st.NonBondedEnergy(),
 		st.kineticEnergy(),
 		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.getStatistic(mdStatisticNonBondedPotential) +
-		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
+		st.NonBondedEnergy() + st.BondedEnergy() + st.kineticEnergy(),
 		st.pressureXX(sys.box),
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),

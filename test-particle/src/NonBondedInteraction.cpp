@@ -85,7 +85,7 @@ shiftAtCut () const
 }
 
 ScalorType LennardJones6_12Parameter::
-energyCorr (const ScalorType & r) const
+energyCorrection (const ScalorType & r) const
 {
   ScalorType sri = param[LennardJones6_12::sigma] / r;
   ScalorType sri2 = sri * sri;
@@ -98,7 +98,7 @@ energyCorr (const ScalorType & r) const
 }  
 
 ScalorType LennardJones6_12Parameter::
-pressureCorr (const ScalorType & r) const
+pressureCorrection (const ScalorType & r) const
 {
   ScalorType sri = param[LennardJones6_12::sigma] / r;
   ScalorType sri2 = sri * sri;

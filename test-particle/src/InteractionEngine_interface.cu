@@ -136,6 +136,9 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
       sizeof(CoordType) * hroundUp4(myBlockDim.x) +
       sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
   checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
+
+  energyCorr = sysNbInter.energyCorrection ();
+  pressureCorr = sysNbInter.pressureCorrection ();
 }
 
 
@@ -242,6 +245,17 @@ applyNonBondedInteractionCell  (MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
 }
 
+
+// nblock should be 1 and block size should be 1
+__global__ void
+applyEnergyPressureCorrection (ScalorType * ddata,
+			       ScalorType energyCorr,
+			       ScalorType pressureCorr,
+			       ScalorType volume)
+{
+  ddata[mdStatisticEnergyCorrection] = energyCorr / volume;
+  ddata[mdStatisticPressureCorrection] = pressureCorr / (volume * volume);
+}
   
 void InteractionEngine_interface::
 applyNonBondedInteraction (MDSystem & sys,
@@ -273,6 +287,9 @@ applyNonBondedInteraction (MDSystem & sys,
   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  ScalorType volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  applyEnergyPressureCorrection
+      <<<1, 1, 0, 4>>> (st.ddata, energyCorr, pressureCorr, volume);
   cudaThreadSynchronize();
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
@@ -418,6 +435,7 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 			   MDTimer * timer )
 {
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
   if (nlist.mode == CellListBuilt){
     // printf ("### here\n");
     widomDeltaPoten

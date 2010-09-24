@@ -35,8 +35,8 @@ public:
   virtual ScalorType rcut () const ;
 public:
   virtual ScalorType shiftAtCut () const;
-  virtual ScalorType energyCorr   (const ScalorType & rcut) const;
-  virtual ScalorType pressureCorr (const ScalorType & rcut) const;
+  virtual ScalorType energyCorrection   (const ScalorType & rcut) const;
+  virtual ScalorType pressureCorrection (const ScalorType & rcut) const;
 };
 
 class LennardJones6_12CapParameter : public NonBondedInteractionParameter

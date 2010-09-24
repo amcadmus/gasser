@@ -48,13 +48,13 @@ int main(int argc, char * argv[])
   mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
   mol.pushAtom (Topology::Atom (1.0, 0.0, 1));
   // nonbonded interactions
-  CosTailParameter cosparam;
-  cosparam.reinit (1.f, 0.95f, 0.f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, cosparam));  
-  cosparam.reinit (1.f, 0.975f, 0.f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 1, cosparam));  
-  cosparam.reinit (1.f, 1.f, 1.6f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 1, cosparam));
+  CosTailParameter cosparam00, cosparam01, cosparam11;
+  cosparam00.reinit (1.f, 0.95f, 0.f);
+  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 0, cosparam00));  
+  cosparam01.reinit (1.f, 0.975f, 0.f);
+  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 1, cosparam01));  
+  cosparam11.reinit (1.f, 1.f, 1.6f);
+  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(1, 1, cosparam11));
   // bonded interactions
   HarmonicSpringParameter hsparam;
   FENEParameter feneparam;
@@ -133,12 +133,10 @@ int main(int argc, char * argv[])
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.getStatistic(mdStatisticNonBondedPotential),
-		st.getStatistic(mdStatisticBondedPotential),
+		st.NonBondedEnergy(),
+		st.BondedEnergy(),
 		st.kineticEnergy(),
-		st.getStatistic(mdStatisticNonBondedPotential) +
-		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
+		st.kineticEnergy() + st.NonBondedEnergy() + st.BondedEnergy(),
 		st.pressureXX(sys.box),
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),

@@ -40,6 +40,8 @@ class InteractionEngine_interface
   SumVector<ScalorType> sum_angle_p;
   cudaStream_t sum_stream[8];
   MDError err;
+  ScalorType energyCorr;
+  ScalorType pressureCorr;
 private:
   void initNonBondedInteraction (const MDSystem & sys);
 public:
