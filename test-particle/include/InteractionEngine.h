@@ -165,18 +165,18 @@ __global__ void calNonBondedInteraction (
 
 
 __global__ void
-widomDeltaPoten (const IndexType	numTestParticle,
-		 const CoordType *	coordTestParticle,
-		 const TypeType *	typeTestParticle,
-		 const ScalorType	energyCorrection,
-		 const ScalorType	temperature,
-		 const IndexType	numAtom,
-		 const CoordType *	coord,
-		 const TypeType *	type,
-		 const RectangularBox	box,
-		 DeviceCellList		clist,
-		 ScalorType *		statistic_nb_buff0,
-		 mdError_t *		ptr_de);
+widomDeltaPoten_NVT (const IndexType		numTestParticle,
+		     const CoordType *		coordTestParticle,
+		     const TypeType *		typeTestParticle,
+		     const ScalorType		energyCorrection,
+		     const ScalorType		temperature,
+		     const IndexType		numAtom,
+		     const CoordType *		coord,
+		     const TypeType *		type,
+		     const RectangularBox	box,
+		     DeviceCellList		clist,
+		     ScalorType *		statistic_nb_buff0,
+		     mdError_t *		ptr_de);
 
 
 #endif

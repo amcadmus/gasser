@@ -436,14 +436,44 @@ applyBondedInteraction (MDSystem & sys,
 void InteractionEngine_interface::
 calculateWidomDeltaEnergy (const MDSystem & sys,
 			   const NeighborList & nlist,
-			   WidomTestParticleInsertion & wtest,
+			   WidomTestParticleInsertion_NVT & wtest,
 			   MDTimer * timer )
 {
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
   // printf ("### %d\n", nlist.mode);
   if (nlist.mode == CellListBuilt){
     // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten
+    widomDeltaPoten_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    wtest.energyCorrection(),
+	    wtest.temperature(),
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion_NVT2 & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
+  if (nlist.mode == CellListBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_NVT
 	<<<toGridDim(wtest.numTestParticle()),
 	nlist.myBlockDim.x,
 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
@@ -1579,18 +1609,18 @@ __global__ void calNonBondedInteraction (
 
 
 __global__ void
-widomDeltaPoten (const IndexType	numTestParticle,
-		 const CoordType *	coordTestParticle,
-		 const TypeType *	typeTestParticle,
-		 const ScalorType	energyCorrection,
-		 const ScalorType	temperature,
-		 const IndexType	numAtom,
-		 const CoordType *	coord,
-		 const TypeType *	type,
-		 const RectangularBox	box,
-		 DeviceCellList		clist,
-		 ScalorType *		statistic_nb_buff0,
-		 mdError_t *		ptr_de)
+widomDeltaPoten_NVT (const IndexType		numTestParticle,
+		     const CoordType *		coordTestParticle,
+		     const TypeType *		typeTestParticle,
+		     const ScalorType		energyCorrection,
+		     const ScalorType		temperature,
+		     const IndexType		numAtom,
+		     const CoordType *		coord,
+		     const TypeType *		type,
+		     const RectangularBox	box,
+		     DeviceCellList		clist,
+		     ScalorType *		statistic_nb_buff0,
+		     mdError_t *		ptr_de)
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;

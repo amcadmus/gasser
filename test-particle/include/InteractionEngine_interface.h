@@ -64,7 +64,11 @@ public:
 				  MDTimer *timer = NULL);
   void calculateWidomDeltaEnergy (const MDSystem & sys,
 				  const NeighborList & nlist,
-				  WidomTestParticleInsertion & wtest,
+				  WidomTestParticleInsertion_NVT & wtest,
+				  MDTimer * timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion_NVT2 & wtest,
 				  MDTimer * timer = NULL);
   void applyNonBondedInteractionCell  (MDSystem & sys,
 				       const NeighborList & nlist,
