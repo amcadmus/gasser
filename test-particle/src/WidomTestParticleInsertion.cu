@@ -48,7 +48,7 @@ reinit (const ScalorType & temperature_,
 
   sumExpDeltaU.reinit (numTestParticle(), NThreadForSum);
 
-  energyCorr = sysNbInter.energyCorrection (particleType) * 2. * numTestParticle();
+  energyCorr = sysNbInter.energyCorrection (particleType) * 2.;
   printf ("# energy correction to widom test particle insertion is %f\n",
 	  energyCorr);
   
