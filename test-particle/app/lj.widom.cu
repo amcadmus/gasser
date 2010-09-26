@@ -19,8 +19,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	512
-#define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	4
+#define NThreadsPerBlockAtom	4
 
 int main(int argc, char * argv[])
 {
@@ -46,7 +46,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 7.f;
+  ScalorType rcut = 1.78f;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   // NonBondedInteractionParameter * nbp (&ljparam);
   Topology::NonBondedInteraction nb00 (0, 0, ljparam);
@@ -113,7 +113,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 100 == 0){
+      if ((i+1) % 10 == 0){
 	widom.generateTestCoords (sys);
 	st.clearDevice();
 	inte_vr.step1 (sys, dt, &timer);
