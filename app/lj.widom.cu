@@ -80,8 +80,8 @@ int main(int argc, char * argv[])
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
 
-  WidomTestParticleInsertion widom;
-  widom.reinit (refT, 1000, 0, sysNbInter);
+  WidomTestParticleInsertion_NVT2 widom;
+  widom.reinit (refT, 1, sys.box, 0, sysNbInter);
   
   MDTimer timer;
   unsigned i;
