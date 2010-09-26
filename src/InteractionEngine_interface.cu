@@ -250,11 +250,10 @@ applyNonBondedInteractionCell  (MDSystem & sys,
 __global__ void
 applyEnergyPressureCorrection (ScalorType * ddata,
 			       ScalorType energyCorr,
-			       ScalorType pressureCorr,
-			       ScalorType volume)
+			       ScalorType pressureCorr)
 {
-  ddata[mdStatisticEnergyCorrection] = energyCorr / volume;
-  ddata[mdStatisticPressureCorrection] = pressureCorr / (volume * volume);
+  ddata[mdStatisticEnergyCorrection] = energyCorr;
+  ddata[mdStatisticPressureCorrection] = pressureCorr;
 }
   
 void InteractionEngine_interface::
@@ -287,9 +286,15 @@ applyNonBondedInteraction (MDSystem & sys,
   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
-  ScalorType volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  volumei = 1.f / volumei;
+  // printf ("apply Ec %f, Pc %f\n",
+  // 	  energyCorr * volumei,
+  // 	  pressureCorr * volumei * volumei);
   applyEnergyPressureCorrection
-      <<<1, 1, 0, 4>>> (st.ddata, energyCorr, pressureCorr, volume);
+      <<<1, 1, 0, 4>>> (st.ddata,
+			energyCorr * volumei,
+			pressureCorr * volumei * volumei);
   cudaThreadSynchronize();
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
@@ -437,7 +442,7 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
   // printf ("### %d\n", nlist.mode);
   if (nlist.mode == CellListBuilt){
-    // printf ("### here\n");
+    // printf ("### here %f\n", wtest.energyCorrection());
     widomDeltaPoten
 	<<<toGridDim(wtest.numTestParticle()),
 	nlist.myBlockDim.x,
@@ -1660,6 +1665,6 @@ widomDeltaPoten (const IndexType	numTestParticle,
   __syncthreads();
   if (tid == 0){
     // printf ("### du is %f\n", sumbuff[0]);
-    statistic_nb_buff0[bid] = expf(-(sumbuff[0] + energyCorrection) / temperature);
+    statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
   }
 }

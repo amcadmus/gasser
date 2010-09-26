@@ -82,6 +82,7 @@ shiftAtCut () const
   ScalorType sri2 = param[LennardJones6_12::sigma] * param[LennardJones6_12::sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
   return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6 + param[LennardJones6_12::shift]);    
+  // return 0.;
 }
 
 ScalorType LennardJones6_12Parameter::
@@ -95,6 +96,7 @@ energyCorrection (const ScalorType & r) const
   s3 = s3 * s3 * s3;	
   return 8.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
       * (sri8 / 3. - sri2 ) * sri;	
+  // return 0.;
 }  
 
 ScalorType LennardJones6_12Parameter::
@@ -108,6 +110,7 @@ pressureCorrection (const ScalorType & r) const
   s3 = s3 * s3 * s3;
   return 16.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
       * (sri8 * 2. / 3. - sri2 ) * sri;    
+  // return 0.;
 }
 
 

@@ -19,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	96
+#define NThreadsPerBlockCell	512
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -46,7 +46,8 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ScalorType rcut = 7.f;
+  ljparam.reinit (1.f, 1.f, 0.f, rcut);
   // NonBondedInteractionParameter * nbp (&ljparam);
   Topology::NonBondedInteraction nb00 (0, 0, ljparam);
   // printf ("# %f %f %f\n",
@@ -63,28 +64,28 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.2;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ);
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 0.9977411970749;
-  ScalorType refT = 1.;
+  // ScalorType refT = 1.45;
+  ScalorType refT = 1.45;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion widom;
-  widom.reinit (refT, 50, 0, sysNbInter);
+  widom.reinit (refT, 1000, 0, sysNbInter);
   
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.002;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
@@ -101,8 +102,8 @@ int main(int argc, char * argv[])
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9  10\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz  mu\n");
+  printf ("#*     1     2           3         4            5       6          7-9        10  11\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz  pressure  mu\n");
   try{
     // sys.initWriteXtc ("traj.xtc");
     // sys.recoverDeviceData (&timer);
@@ -112,7 +113,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 100 == 0){
 	widom.generateTestCoords (sys);
 	st.clearDevice();
 	inte_vr.step1 (sys, dt, &timer);
