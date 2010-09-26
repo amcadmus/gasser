@@ -472,7 +472,7 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
   // printf ("### %d\n", nlist.mode);
   if (nlist.mode == CellListBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
+    printf ("### here %f\n", wtest.energyCorrection());
     widomDeltaPoten_NVT
 	<<<toGridDim(wtest.numTestParticle()),
 	nlist.myBlockDim.x,
@@ -1626,7 +1626,7 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
 //  IndexType ii = tid + bid * blockDim.x;
-  if (bid > numTestParticle) return;
+  if (bid >= numTestParticle) return;
 
   // extern __shared__ volatile char pub_sbuff_widom[];
   // volatile ScalorType * sumbuff = (volatile ScalorType *) pub_sbuff_widom;
@@ -1698,3 +1698,70 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
     statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
   }
 }
+
+
+
+
+__global__ void
+widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
+			     const CoordType *		coordTestParticle,
+			     const TypeType *		typeTestParticle,
+			     const ScalorType		energyCorrection,
+			     const ScalorType		temperature,
+			     const IndexType		numAtom,
+			     const CoordType *		coord,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     DeviceCellList		clist,
+			     ScalorType *		statistic_nb_buff0,
+			     mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  // IndexType ii = tid + bid * blockDim.x;
+
+  if (bid >= numTestParticle) return;
+  
+  CoordType refCoord = coordTestParticle[bid];
+  TypeType refType = typeTestParticle[bid];
+
+  ScalorType myPoten = 0.;
+  extern __shared__ volatile ScalorType sumbuff [];
+  
+  for (IndexType start = 0; start < numAtom; start += blockDim.x){
+    IndexType targetIndex = start + tid;
+    if (targetIndex >= numAtom) break;
+    TypeType targetType = type[targetIndex];
+    if (targetType != refType) continue;
+    CoordType targetCoord = coord[targetIndex];
+    ScalorType diffx = targetCoord.x - refCoord.x;
+    ScalorType diffy = targetCoord.y - refCoord.y;
+    ScalorType diffz = targetCoord.z - refCoord.z;
+    RectangularBoxGeometry::shortestImage (box, &diffx, &diffy, &diffz);
+    if ((diffx*diffx+diffy*diffy+diffz*diffz) < clist.rlist*clist.rlist ){
+      IndexType fidx(0);
+      ScalorType dp;
+      fidx = AtomNBForceTable::
+	  calForceIndex (const_nonBondedInteractionTable,
+			 const_numAtomType[0],
+			 refType,
+			 refType);
+      nbPoten (nonBondedInteractionType[fidx],
+	       &nonBondedInteractionParameter
+	       [nonBondedInteractionParameterPosition[fidx]],
+	       diffx, diffy, diffz, &dp);
+      myPoten += dp;
+    }
+  }
+
+  sumbuff[tid] = myPoten;
+  __syncthreads();
+  sumVectorBlockBuffer_2 (sumbuff);
+  __syncthreads();
+  if (tid == 0){
+    // printf ("### du is %f\n", sumbuff[0]);
+    statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+  }  
+}
+
