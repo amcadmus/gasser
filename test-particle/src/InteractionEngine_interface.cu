@@ -450,8 +450,6 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 	    wtest.numTestParticle(),
 	    wtest.coordTestParticle,
 	    wtest.typeTestParticle,
-	    wtest.energyCorrection(),
-	    wtest.temperature(),
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,
 	    sys.ddata.type,
@@ -472,7 +470,7 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
   // printf ("### %d\n", nlist.mode);
   if (nlist.mode == CellListBuilt){
-    printf ("### here %f\n", wtest.energyCorrection());
+    // printf ("### here %f\n", wtest.energyCorrection());
     widomDeltaPoten_NVT
 	<<<toGridDim(wtest.numTestParticle()),
 	nlist.myBlockDim.x,
@@ -480,8 +478,6 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 	    wtest.numTestParticle(),
 	    wtest.coordTestParticle,
 	    wtest.typeTestParticle,
-	    wtest.energyCorrection(),
-	    wtest.temperature(),
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,
 	    sys.ddata.type,
@@ -490,6 +486,43 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 	    wtest.sumExpDeltaU.getBuff(),
 	    err.ptr_de);
   }
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion_NPT & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
+  if (nlist.mode == CellListBuilt){
+    // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
+    widomDeltaPoten_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
+  //   printf ("%d %f  (%f %f %f)\n", i,
+  // 	    wtest.sumExpDeltaU.getBuff()[i],
+  // 	    wtest.coordTestParticle[i].x,
+  // 	    wtest.coordTestParticle[i].y,
+  // 	    wtest.coordTestParticle[i].z
+  // 	);
+  // }
+  
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
 
@@ -1612,8 +1645,6 @@ __global__ void
 widomDeltaPoten_NVT (const IndexType		numTestParticle,
 		     const CoordType *		coordTestParticle,
 		     const TypeType *		typeTestParticle,
-		     const ScalorType		energyCorrection,
-		     const ScalorType		temperature,
 		     const IndexType		numAtom,
 		     const CoordType *		coord,
 		     const TypeType *		type,
@@ -1671,7 +1702,8 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
 	ScalorType diffx = targetCoord.x - shift.x - refCoord.x;
 	ScalorType diffy = targetCoord.y - shift.y - refCoord.y;
 	ScalorType diffz = targetCoord.z - shift.z - refCoord.z;
-	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < clist.rlist*clist.rlist){
+	ScalorType dr2 = ((diffx*diffx+diffy*diffy+diffz*diffz));
+	if (dr2 < clist.rlist*clist.rlist && dr2 > 1e-4){
 	  IndexType fidx(0);
 	  ScalorType dp;
 	  fidx = AtomNBForceTable::
@@ -1694,10 +1726,15 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
   sumVectorBlockBuffer_2 (sumbuff);
   __syncthreads();
   if (tid == 0){
-    // printf ("### du is %f\n", sumbuff[0]);
-    statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+    statistic_nb_buff0[bid] = sumbuff[0];
   }
 }
+  
+//   if (tid == 0){
+//     // printf ("### du is %f\n", sumbuff[0]);
+//     statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+//   }
+// }
 
 
 
@@ -1706,8 +1743,6 @@ __global__ void
 widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
 			     const CoordType *		coordTestParticle,
 			     const TypeType *		typeTestParticle,
-			     const ScalorType		energyCorrection,
-			     const ScalorType		temperature,
 			     const IndexType		numAtom,
 			     const CoordType *		coord,
 			     const TypeType *		type,
@@ -1760,8 +1795,13 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
   sumVectorBlockBuffer_2 (sumbuff);
   __syncthreads();
   if (tid == 0){
-    // printf ("### du is %f\n", sumbuff[0]);
-    statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
-  }  
+    statistic_nb_buff0[bid] = sumbuff[0];
+  }
 }
+
+//   if (tid == 0){
+//     // printf ("### du is %f\n", sumbuff[0]);
+//     statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+//   }  
+// }
 

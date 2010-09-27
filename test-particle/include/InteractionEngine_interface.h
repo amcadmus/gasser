@@ -70,6 +70,10 @@ public:
 				  const NeighborList & nlist,
 				  WidomTestParticleInsertion_NVT2 & wtest,
 				  MDTimer * timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion_NPT & wtest,
+				  MDTimer * timer = NULL);
   void applyNonBondedInteractionCell  (MDSystem & sys,
 				       const NeighborList & nlist,
 				       MDTimer *timer );
