@@ -22,6 +22,8 @@ class WidomTestParticleInsertion_NVT
   ScalorType		mytemperature;
   ScalorType		energyCorr;
   ScalorType		scaledEnergyCorr;
+  IndexType		numAtom;
+  ScalorType		volume;
 public:
   CoordType *		coordTestParticle;
   TypeType *		typeTestParticle;
@@ -55,11 +57,9 @@ class WidomTestParticleInsertion_NVT2
   ScalorType 		hresult;
   ScalorType		mytemperature;
   ScalorType		scaledEnergyCorr;
-  HostCoordType		inteCellSize;
+  IndexType		numAtom;
+  ScalorType		volume;
   ScalorType		inteCellVolume;
-  IndexType		inteCellNumX;
-  IndexType		inteCellNumY;
-  IndexType		inteCellNumZ;
 public:
   CoordType *		coordTestParticle;
   TypeType *		typeTestParticle;
@@ -91,10 +91,16 @@ class WidomTestParticleInsertion_NPT
   IndexType		nParticleInserted;
   HostCoordType *	hcoord;
   TypeType *		htype;
+  TypeType		particleType;
   ScalorType 		hresult;
   ScalorType		mytemperature;
+  ScalorType		mypressure;
+  IndexType		numAtom;
+  ScalorType		volume;
   ScalorType		energyCorr;
   ScalorType		scaledEnergyCorr;
+  ScalorType		gridSize;
+  ScalorType		inteCellVolume;
 public:
   CoordType *		coordTestParticle;
   TypeType *		typeTestParticle;
@@ -105,13 +111,16 @@ public:
   ~WidomTestParticleInsertion_NPT ();
 public:
   void reinit (const ScalorType & temperature,
-	       const IndexType & nParticleInserted,
+	       const ScalorType & pressure,
+	       const ScalorType & gridSize,
 	       const TypeType & particleType,
 	       const SystemNonBondedInteraction & sysNbInter);
   void clear ();
 public:
   const IndexType &  numTestParticle () const {return nParticleInserted;}
   const ScalorType & temperature     () const {return mytemperature;}
+  const ScalorType & pressure	     () const {return mypressure;}
+  // void setEnergyCorr (const ScalorType & c) {energCorr = c;}
   ScalorType energyCorrection () const {return scaledEnergyCorr;}
   void generateTestCoords (const MDSystem & sys);
   ScalorType expMu ();  
