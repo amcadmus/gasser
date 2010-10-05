@@ -183,7 +183,7 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
 			     const CoordType *		coord,
 			     const TypeType *		type,
 			     const RectangularBox	box,
-			     DeviceCellList		clist,
+			     const ScalorType		rlist,
 			     ScalorType *		statistic_nb_buff0,
 			     mdError_t *		ptr_de);
 
