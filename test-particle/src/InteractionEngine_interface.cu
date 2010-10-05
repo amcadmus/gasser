@@ -458,6 +458,23 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 	    wtest.sumExpDeltaU.getBuff(),
 	    err.ptr_de);
   }
+  else if (nlist.mode == AllPairBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_allPair_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	DefaultNThreadPerBlock,
+	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.myrlist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
 
@@ -1747,7 +1764,7 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
 			     const CoordType *		coord,
 			     const TypeType *		type,
 			     const RectangularBox	box,
-			     DeviceCellList		clist,
+			     const ScalorType		rlist,
 			     ScalorType *		statistic_nb_buff0,
 			     mdError_t *		ptr_de)
 {
@@ -1774,7 +1791,8 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
     ScalorType diffy = targetCoord.y - refCoord.y;
     ScalorType diffz = targetCoord.z - refCoord.z;
     RectangularBoxGeometry::shortestImage (box, &diffx, &diffy, &diffz);
-    if ((diffx*diffx+diffy*diffy+diffz*diffz) < clist.rlist*clist.rlist ){
+    ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+    if (dr2 < rlist * rlist && dr2 > 1e-4 ){
       IndexType fidx(0);
       ScalorType dp;
       fidx = AtomNBForceTable::

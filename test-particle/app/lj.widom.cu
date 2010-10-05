@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.8;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 3,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ, 2);
@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion_NVT widom;
-  widom.reinit (refT, 100, 0, sysNbInter);
+  widom.reinit (refT, 1000, 0, sysNbInter);
   // widom.reinit (refT, 2, sys.box, 0, sysNbInter);
   // widom.reinit (refT, 2, 0, sysNbInter);
 		
