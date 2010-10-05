@@ -19,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	512
+#define NThreadsPerBlockCell	96
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -46,7 +46,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 5.f;
+  ScalorType rcut = 9.f;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   // NonBondedInteractionParameter * nbp (&ljparam);
   Topology::NonBondedInteraction nb00 (0, 0, ljparam);
@@ -64,24 +64,25 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.2;
+  ScalorType nlistExten = 0.8;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 3,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
-		      RectangularBoxGeometry::mdRectBoxDirectionZ);
+		      RectangularBoxGeometry::mdRectBoxDirectionZ, 2);
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 1.45;
-  ScalorType refT = 1.45;
+  // ScalorType refT = 1.49;
+  ScalorType refT = 1.49;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
 
-  WidomTestParticleInsertion_NVT2 widom;
-  widom.reinit (refT, 2, sys.box, 0, sysNbInter);
+  WidomTestParticleInsertion_NVT widom;
+  widom.reinit (refT, 100, 0, sysNbInter);
+  // widom.reinit (refT, 2, sys.box, 0, sysNbInter);
   // widom.reinit (refT, 2, 0, sysNbInter);
 		
   MDTimer timer;

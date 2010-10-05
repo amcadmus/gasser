@@ -15,6 +15,7 @@ processDeltaEnergy_NVT (const IndexType numTestParticle,
 
   if (ii < numTestParticle) {
     energy_buff[ii] = expf (-(energy_buff[ii] + energyCorr) / temperature);
+    // energy_buff[ii] = expf (-(energy_buff[ii]) / temperature);
   }
 }
 
@@ -32,8 +33,11 @@ processDeltaEnergy_NPT (const IndexType numTestParticle,
   IndexType ii = tid + bid * blockDim.x;
 
   if (ii < numTestParticle) {
+    // energy_buff[ii] = expf ( - (energy_buff[ii] + energyCorr) / temperature)
+    // 	 * pressure * volume /
+    // 	(temperature * (natom + 1.));
     energy_buff[ii] = expf ( - (energy_buff[ii] + energyCorr) / temperature)
-	 * pressure * volume /
+	 * pressure /
 	(temperature * (natom + 1.));
   }
 }
@@ -121,6 +125,7 @@ expMu ()
        temperature());
   sumExpDeltaU.sumBuff(dresult, 0);
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+  // printf ("# ntest is %d\n", numTestParticle());
   hresult /= numTestParticle();
   return hresult;
 }
