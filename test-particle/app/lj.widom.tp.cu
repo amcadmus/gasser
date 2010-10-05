@@ -96,8 +96,8 @@ int main(int argc, char * argv[])
 				  nlist,
 				  rebuildThreshold);
   Thermostat_NoseHoover thermostat;
-  ScalorType refT = 1.3;
-  ScalorType refP = 0.3;
+  ScalorType refT = 1.38;
+  ScalorType refP = 0.23;
   thermostat.reinit (refT, dt, 1, sys.ddata.numAtom * 3 - 3);
   blpf.addThermostat (thermostat);
   Barostat_ParrinelloRahman barostat;
@@ -140,7 +140,7 @@ int main(int argc, char * argv[])
 	st.updateHost();
 	widom.generateTestCoords (sys);
 	inter.calculateWidomDeltaEnergy (sys, nlist, widom, &timer);
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.4e %.4e %.4e %.7e %.3f %.3f %.3f %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.NonBondedEnergy(),
