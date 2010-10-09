@@ -6,7 +6,7 @@
 #include "RandomGenerator.h"
 #include "Auxiliary.h"
 #include "NeighborList_interface.h"
-#include"Statistic.h"
+#include "Statistic.h"
 #include "Integrator_interface.h"
 #include "InteractionEngine_interface.h"
 #include "tmp.h"
@@ -19,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	96
+#define NThreadsPerBlockCell	160
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -46,7 +46,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 9.f;
+  ScalorType rcut = 4;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   // NonBondedInteractionParameter * nbp (&ljparam);
   Topology::NonBondedInteraction nb00 (0, 0, ljparam);
@@ -64,30 +64,32 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.8;
+  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
-		      RectangularBoxGeometry::mdRectBoxDirectionZ, 2);
+		      RectangularBoxGeometry::mdRectBoxDirectionZ, 1);
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 1.49;
-  ScalorType refT = 1.49;
+  // ScalorType refT = 1.5;
+  ScalorType refT = 1.5;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion_NVT widom;
-  widom.reinit (refT, 1000, 0, sysNbInter);
+  IndexType ntest = 2000;
+  widom.reinit (refT, ntest, 0, sysNbInter);
   // widom.reinit (refT, 2, sys.box, 0, sysNbInter);
   // widom.reinit (refT, 2, 0, sysNbInter);
 		
   MDTimer timer;
   unsigned i;
   ScalorType dt = 0.002;
+  IndexType energyFeq = 10;
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
@@ -115,7 +117,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 100 == 0){
+      if ((i+1) % energyFeq == 0){
 	widom.generateTestCoords (sys);
 	st.clearDevice();
 	inte_vr.step1 (sys, dt, &timer);
