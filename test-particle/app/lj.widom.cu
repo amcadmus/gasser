@@ -129,17 +129,16 @@ int main(int argc, char * argv[])
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.NonBondedEnergy(),
-		st.kineticEnergy(),
+		st.NonBondedEnergy() / sys.ddata.numAtom,
+		st.kineticEnergy() / sys.ddata.numAtom,
 		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.NonBondedEnergy() + st.kineticEnergy(),
+		(st.NonBondedEnergy() + st.kineticEnergy()) / sys.ddata.numAtom,
 		st.pressureXX(sys.box),
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),
 		st.pressure(sys.box),
 		widom.expMu());	
 	fflush(stdout);
-	
       }
       else {
 	inte_vr.step1 (sys, dt, &timer);
