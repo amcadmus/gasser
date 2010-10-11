@@ -139,6 +139,9 @@ generateTestCoords (const MDSystem & sys)
     hcoord[i].x = sys.box.size.x * RandomGenerator_MT19937::genrand_real2();
     hcoord[i].y = sys.box.size.y * RandomGenerator_MT19937::genrand_real2();
     hcoord[i].z = sys.box.size.z * RandomGenerator_MT19937::genrand_real2();
+    // hcoord[i].x = 1;
+    // hcoord[i].y = 1.8;
+    // hcoord[i].z = 1.45;    
   }
   size_t sizec = sizeof(CoordType) * nParticleInserted;
   cudaMemcpy (coordTestParticle, hcoord, sizec, cudaMemcpyHostToDevice);

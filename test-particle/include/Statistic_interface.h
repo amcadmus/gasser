@@ -106,7 +106,7 @@ inline ScalorType MDStatistic::pressure (const RectangularBox & box)
 
 inline ScalorType MDStatistic::virial()
 {
-  return virialXX () + virialYY() + virialZZ();
+  return (virialXX () + virialYY() + virialZZ()) / 3.;
 }
 
 inline ScalorType MDStatistic::virialXX ()

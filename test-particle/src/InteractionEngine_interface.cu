@@ -1733,6 +1733,7 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
 		   [nonBondedInteractionParameterPosition[fidx]],
 		   diffx, diffy, diffz, &dp);
 	  myPoten += dp;
+	  // printf ("dp: %f,  %f %f %f\n", dp, diffx, diffy, diffz);
 	}
       }
     }
