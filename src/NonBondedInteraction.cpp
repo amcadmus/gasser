@@ -81,7 +81,7 @@ shiftAtCut () const
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[LennardJones6_12::sigma] * param[LennardJones6_12::sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6 + param[LennardJones6_12::shift]);    
+  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6) + param[LennardJones6_12::shift];    
   // return 0.;
 }
 
@@ -173,7 +173,7 @@ shiftAtCut () const
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[LennardJones6_12::sigma] * param[LennardJones6_12::sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6 + param[LennardJones6_12::shift]);    
+  return 4.f * param[LennardJones6_12::epsilon] * (sri6*sri6 - sri6) + param[LennardJones6_12::shift];    
 }
 
 ScalorType LennardJones6_12CapParameter::

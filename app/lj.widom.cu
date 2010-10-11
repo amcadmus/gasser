@@ -46,8 +46,11 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 4;
-  ljparam.reinit (1.f, 1.f, 0.f, rcut);
+  ScalorType rcut = 4.6;
+  // ljparam.reinit (1.f, 1.f, 1.0f, rcut);
+  ljparam.reinit (1.f, 1.f, .0f, rcut);
+
+  printf ("# shift is %f\n", ljparam.shiftAtCut());
   // NonBondedInteractionParameter * nbp (&ljparam);
   Topology::NonBondedInteraction nb00 (0, 0, ljparam);
   // printf ("# %f %f %f\n",
@@ -64,7 +67,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.1;
   ScalorType rlist = maxrcut + nlistExten;
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
@@ -73,15 +76,14 @@ int main(int argc, char * argv[])
   nlist.build(sys);
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 1.5;
-  ScalorType refT = 1.5;
+  ScalorType refT = 1.25;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
 
   WidomTestParticleInsertion_NVT widom;
-  IndexType ntest = 2000;
+  IndexType ntest = 200;
   widom.reinit (refT, ntest, 0, sysNbInter);
   // widom.reinit (refT, 2, sys.box, 0, sysNbInter);
   // widom.reinit (refT, 2, 0, sysNbInter);
@@ -106,8 +108,8 @@ int main(int argc, char * argv[])
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9        10  11\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz  pressure  mu\n");
+  printf ("#*     1     2           3         4            5       6          7-9        10  11      12\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz  pressure  mu  virial\n");
   try{
     // sys.initWriteXtc ("traj.xtc");
     // sys.recoverDeviceData (&timer);
@@ -126,7 +128,7 @@ int main(int argc, char * argv[])
 	inter.calculateWidomDeltaEnergy (sys, nlist, widom, &timer);
 	inte_vr.step2 (sys, dt, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.NonBondedEnergy() / sys.ddata.numAtom,
@@ -137,7 +139,9 @@ int main(int argc, char * argv[])
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),
 		st.pressure(sys.box),
-		widom.expMu());	
+		widom.expMu(),
+		- st.virial() / sys.ddata.numAtom
+	    );	
 	fflush(stdout);
       }
       else {

@@ -593,7 +593,7 @@ calRcut (const ScalorType * param)
 //   *fx = diffx * scalor;
 //   *fy = diffy * scalor;
 //   *fz = diffz * scalor;
-//   return boolScalor * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+//   return boolScalor * (param[epsilon] * (sri6*sri6 - sri6) + param[shift] * 0.25f);
 // }
 
 __device__ void LennardJones6_12::
@@ -702,7 +702,7 @@ forcePoten (const ScalorType * param,
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
-  return boolScalor * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+  return boolScalor * (param[epsilon] * (sri6*sri6 - sri6) + param[shift] * 0.25f);
 }
 #endif
 
@@ -721,7 +721,8 @@ poten (const ScalorType * param,
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return boolScalor * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+  return boolScalor * (param[epsilon] * (sri6*sri6 - sri6) + param[shift] * 0.25f);
+
 }
 #endif
 
@@ -751,7 +752,7 @@ lj6_12_originPoten (ScalorType * param, ScalorType r)
   ScalorType ri2 = ri*ri;
   ScalorType sri2 = param[sigma]*param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return 4.f * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+  return 4.f * param[epsilon] * (sri6*sri6 - sri6) + param[shift];
 }
 
 inline ScalorType LennardJones6_12_cap::
@@ -871,7 +872,7 @@ forcePoten (const ScalorType * param,
   *fx = -diffx * scalor;
   *fy = -diffy * scalor;
   *fz = -diffz * scalor;
-  return 4.f * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+  return 4.f * param[epsilon] * (sri6*sri6 - sri6) + param[shift];
 }
 #endif
 
@@ -896,7 +897,7 @@ poten (const ScalorType * param,
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma]*param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return 4.f * param[epsilon] * (sri6*sri6 - sri6 + param[shift]);
+  return 4.f * param[epsilon] * (sri6*sri6 - sri6) + param[shift];
 }
 #endif
 
