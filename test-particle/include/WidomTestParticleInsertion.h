@@ -47,6 +47,45 @@ public:
   ScalorType expMu ();  
 };
 
+class WidomTestParticleInsertion_NPT
+{
+  bool			inited;
+  IndexType		nParticleInserted;
+  HostCoordType *	hcoord;
+  TypeType *		htype;
+  ScalorType 		hresult;
+  ScalorType		mytemperature;
+  ScalorType		mypressure;
+  ScalorType		energyCorr;
+  ScalorType		scaledEnergyCorr;
+  IndexType		numAtom;
+  ScalorType		volume;
+public:
+  CoordType *		coordTestParticle;
+  TypeType *		typeTestParticle;
+  SumVector<ScalorType> sumExpDeltaU;
+  ScalorType *		dresult;
+public:
+  WidomTestParticleInsertion_NPT  ();
+  ~WidomTestParticleInsertion_NPT ();
+public:
+  void reinit (const ScalorType & temperature,
+	       const ScalorType & pressure,
+	       const IndexType & nParticleInserted,
+	       const TypeType & particleType,
+	       const SystemNonBondedInteraction & sysNbInter);
+  void clear ();
+public:
+  const IndexType &  numTestParticle () const {return nParticleInserted;}
+  const ScalorType & temperature     () const {return mytemperature;}
+  const ScalorType & pressure	     () const {return mypressure;}
+  // void setEnergyCorr (const ScalorType & c) {energCorr = c;}
+  ScalorType energyCorrection () const {return scaledEnergyCorr;}
+  void generateTestCoords (const MDSystem & sys);
+  ScalorType expMu ();  
+};
+
+
 // use center point integral formula rather than Monte Carlo
 class WidomTestParticleInsertion_NVT2
 {
@@ -85,7 +124,7 @@ public:
 };
 
 
-class WidomTestParticleInsertion_NPT
+class WidomTestParticleInsertion_NPT2
 {
   bool			inited;
   IndexType		nParticleInserted;
@@ -107,8 +146,8 @@ public:
   SumVector<ScalorType> sumExpDeltaU;
   ScalorType *		dresult;
 public:
-  WidomTestParticleInsertion_NPT  ();
-  ~WidomTestParticleInsertion_NPT ();
+  WidomTestParticleInsertion_NPT2  ();
+  ~WidomTestParticleInsertion_NPT2 ();
 public:
   void reinit (const ScalorType & temperature,
 	       const ScalorType & pressure,

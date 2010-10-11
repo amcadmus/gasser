@@ -1,7 +1,7 @@
 #include "WidomTestParticleInsertion.h"
 #include "RandomGenerator.h"
 
-__global__ void
+__global__ static void
 processDeltaEnergy_NVT (const IndexType numTestParticle,
 			ScalorType * energy_buff,
 			const ScalorType energyCorr,
@@ -19,7 +19,7 @@ processDeltaEnergy_NVT (const IndexType numTestParticle,
   }
 }
 
-__global__ void
+__global__ static void
 processDeltaEnergy_NPT (const IndexType numTestParticle,
 			ScalorType * energy_buff,
 			const ScalorType energyCorr,
@@ -37,7 +37,30 @@ processDeltaEnergy_NPT (const IndexType numTestParticle,
     // 	 * pressure * volume /
     // 	(temperature * (natom + 1.));
     energy_buff[ii] = expf ( - (energy_buff[ii] + energyCorr) / temperature)
-	 * pressure /
+	 * pressure * volume /
+	(temperature * (natom + 1.));
+  }
+}
+
+__global__ static void
+processDeltaEnergy_NPT2 (const IndexType numTestParticle,
+			 ScalorType * energy_buff,
+			 const ScalorType energyCorr,
+			 const IndexType  natom,
+			 const ScalorType pressure,
+			 const ScalorType volume,
+			 const ScalorType temperature)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType ii = tid + bid * blockDim.x;
+
+  if (ii < numTestParticle) {
+    // energy_buff[ii] = expf ( - (energy_buff[ii] + energyCorr) / temperature)
+    // 	 * pressure * volume /
+    // 	(temperature * (natom + 1.));
+    energy_buff[ii] = expf ( - (energy_buff[ii] + energyCorr) / temperature)
+	* pressure /
 	(temperature * (natom + 1.));
   }
 }
@@ -148,6 +171,118 @@ generateTestCoords (const MDSystem & sys)
   checkCUDAError ("WidomTestParticleInsertion_NVT::generateTestCoords copy from hcoord to coordTestParticle");
   scaledEnergyCorr = energyCorr / volume;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// npt system
+////////////////////////////////////////////////////////////////////////////////
+
+
+WidomTestParticleInsertion_NPT::
+WidomTestParticleInsertion_NPT ()
+    : inited (false), nParticleInserted (0)
+{
+}
+
+WidomTestParticleInsertion_NPT::
+~WidomTestParticleInsertion_NPT ()
+{
+  clear ();
+}
+
+void WidomTestParticleInsertion_NPT::
+reinit (const ScalorType & temperature_,
+	const ScalorType & pressure_,
+	const IndexType & nParticleInserted_,
+	const TypeType & particleType,
+	const SystemNonBondedInteraction & sysNbInter)
+{
+  clear ();
+  
+  mytemperature = temperature_;
+  mypressure = pressure_;
+  nParticleInserted = nParticleInserted_;
+
+  size_t sizec = sizeof(CoordType) * nParticleInserted;
+  size_t sizet = sizeof(TypeType)  * nParticleInserted;
+//  size_t sizef = sizeof(ScalorType)* nParticleInserted;
+  hcoord = (HostCoordType *) malloc (sizec);
+  if (hcoord == NULL) throw MDExcptFailedMallocOnHost ("WidomTestParticleInsertion_NPT::hcoord", sizec);
+  htype  = (TypeType *) malloc (sizet);
+  if (htype == NULL) throw MDExcptFailedMallocOnHost ("WidomTestParticleInsertion_NPT::htype", sizet);
+  cudaMalloc ((void **) &coordTestParticle, sizec);
+  checkCUDAError ("WidomTestParticleInsertion_NPT::reinit coordTestParticle");
+  cudaMalloc ((void **) &typeTestParticle,  sizet);
+  checkCUDAError ("WidomTestParticleInsertion_NPT::reinit typeTestParticle");
+  cudaMalloc ((void **) &dresult, sizeof(ScalorType));
+  
+  for (unsigned i = 0; i < nParticleInserted; ++i){
+    hcoord[i].x = hcoord[i].y = hcoord[i].z = hcoord[i].w = 0.;
+    htype[i] = particleType;
+  }
+  cudaMemcpy (coordTestParticle, hcoord, sizec, cudaMemcpyHostToDevice);
+  checkCUDAError ("WidomTestParticleInsertion_NPT::reinit copy from hcoord to coordTestParticle");
+  cudaMemcpy (typeTestParticle, htype, sizet, cudaMemcpyHostToDevice);
+  checkCUDAError ("WidomTestParticleInsertion_NPT::reinit copy from htype to typeTestParticle");
+
+  sumExpDeltaU.reinit (numTestParticle(), NThreadForSum);
+
+  energyCorr = sysNbInter.energyCorrection (particleType) * 2.;
+  printf ("# energy correction to widom test particle insertion is %f\n",
+	  energyCorr);
+  
+  inited = true;
+}
+
+void WidomTestParticleInsertion_NPT::
+clear ()
+{
+  nParticleInserted = 0;
+  if (inited){
+    freeAPointer ((void**)&hcoord);
+    freeAPointer ((void**)&htype);
+    cudaFree (coordTestParticle);
+    checkCUDAError ("WidomTestParticleInsertion_NPT::clear free coordTestParticle");
+    cudaFree (typeTestParticle);
+    checkCUDAError ("WidomTestParticleInsertion_NPT::clear free typeTestParticle");
+  }
+  inited = false;
+}
+
+ScalorType WidomTestParticleInsertion_NPT::
+expMu ()
+{
+  processDeltaEnergy_NPT
+      <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
+      (numTestParticle(),
+       sumExpDeltaU.getBuff(),
+       energyCorrection(),
+       numAtom,
+       pressure(),
+       volume,
+       temperature());
+  sumExpDeltaU.sumBuff(dresult, 0);
+  cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+  // printf ("# ntest is %d\n", numTestParticle());
+  hresult /= numTestParticle();
+  return hresult;
+}
+
+void WidomTestParticleInsertion_NPT::
+generateTestCoords (const MDSystem & sys)
+{
+  numAtom = sys.ddata.numAtom;
+  volume = (sys.box.size.x * sys.box.size.y * sys.box.size.z);
+  for (unsigned i = 0; i < numTestParticle(); ++i){
+    hcoord[i].x = sys.box.size.x * RandomGenerator_MT19937::genrand_real2();
+    hcoord[i].y = sys.box.size.y * RandomGenerator_MT19937::genrand_real2();
+    hcoord[i].z = sys.box.size.z * RandomGenerator_MT19937::genrand_real2();
+  }
+  size_t sizec = sizeof(CoordType) * nParticleInserted;
+  cudaMemcpy (coordTestParticle, hcoord, sizec, cudaMemcpyHostToDevice);
+  checkCUDAError ("WidomTestParticleInsertion_NPT::generateTestCoords copy from hcoord to coordTestParticle");
+  scaledEnergyCorr = energyCorr / volume;
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -285,23 +420,23 @@ generateTestCoords (const MDSystem & sys)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// for npt system
+// for npt system version 2
 ////////////////////////////////////////////////////////////////////////////////
 
 
-WidomTestParticleInsertion_NPT::
-WidomTestParticleInsertion_NPT ()
+WidomTestParticleInsertion_NPT2::
+WidomTestParticleInsertion_NPT2 ()
     : inited (false), nParticleInserted (0)
 {
 }
 
-WidomTestParticleInsertion_NPT::
-~WidomTestParticleInsertion_NPT ()
+WidomTestParticleInsertion_NPT2::
+~WidomTestParticleInsertion_NPT2 ()
 {
   clear ();
 }
 
-void WidomTestParticleInsertion_NPT::
+void WidomTestParticleInsertion_NPT2::
 reinit (const ScalorType & temperature_,
 	const ScalorType & pressure_,
 	const ScalorType & gridSize_,
@@ -322,7 +457,7 @@ reinit (const ScalorType & temperature_,
   inited = false;
 }
 
-void WidomTestParticleInsertion_NPT::
+void WidomTestParticleInsertion_NPT2::
 clear ()
 {
   nParticleInserted = 0;
@@ -330,17 +465,17 @@ clear ()
     freeAPointer ((void**)&hcoord);
     freeAPointer ((void**)&htype);
     cudaFree (coordTestParticle);
-    checkCUDAError ("WidomTestParticleInsertion_NPT::clear free coordTestParticle");
+    checkCUDAError ("WidomTestParticleInsertion_NPT2::clear free coordTestParticle");
     cudaFree (typeTestParticle);
-    checkCUDAError ("WidomTestParticleInsertion_NPT::clear free typeTestParticle");
+    checkCUDAError ("WidomTestParticleInsertion_NPT2::clear free typeTestParticle");
   }
   inited = false;
 }
 
-ScalorType WidomTestParticleInsertion_NPT::
+ScalorType WidomTestParticleInsertion_NPT2::
 expMu ()
 {
-  processDeltaEnergy_NPT
+  processDeltaEnergy_NPT2
       <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (numTestParticle(),
        sumExpDeltaU.getBuff(),
@@ -355,7 +490,7 @@ expMu ()
   return hresult;
 }
 
-void WidomTestParticleInsertion_NPT::
+void WidomTestParticleInsertion_NPT2::
 generateTestCoords (const MDSystem & sys)
 {
   clear();
