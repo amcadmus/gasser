@@ -46,7 +46,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 4.6;
+  ScalorType rcut = 6;
   // ljparam.reinit (1.f, 1.f, 1.0f, rcut);
   ljparam.reinit (1.f, 1.f, .0f, rcut);
 

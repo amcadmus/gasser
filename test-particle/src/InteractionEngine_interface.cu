@@ -531,6 +531,23 @@ calculateWidomDeltaEnergy (const MDSystem & sys,
 	    wtest.sumExpDeltaU.getBuff(),
 	    err.ptr_de);
   }
+  else if (nlist.mode == AllPairBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_allPair_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	DefaultNThreadPerBlock,
+	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.myrlist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
   // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
   //   printf ("%d %f  (%f %f %f)\n", i,
   // 	    wtest.sumExpDeltaU.getBuff()[i],

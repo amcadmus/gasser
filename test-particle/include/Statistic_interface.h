@@ -81,27 +81,29 @@ inline ScalorType MDStatistic::pressureXX (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z * 
       (hdata[mdStatisticKineticEnergyXX] -
-       hdata[mdStatisticVirialXX] * 0.5);
+       hdata[mdStatisticVirialXX] * 0.5) +
+      hdata[mdStatisticPressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureYY (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyYY] -
-       hdata[mdStatisticVirialYY] * 0.5);
+       hdata[mdStatisticVirialYY] * 0.5) +
+      hdata[mdStatisticPressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureZZ (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyZZ] -
-       hdata[mdStatisticVirialZZ] * 0.5);
+       hdata[mdStatisticVirialZZ] * 0.5) +
+      hdata[mdStatisticPressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressure (const RectangularBox & box)
 {
-  return (pressureXX(box) + pressureYY(box) + pressureZZ(box)) / 3. +
-      hdata[mdStatisticPressureCorrection] ;
+  return (pressureXX(box) + pressureYY(box) + pressureZZ(box)) / 3.;
 }
 
 inline ScalorType MDStatistic::virial()

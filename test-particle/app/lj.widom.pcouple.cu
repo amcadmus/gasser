@@ -19,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	160
+#define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -46,7 +46,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 4.6;
+  ScalorType rcut = 6.0;
   // ljparam.reinit (1.f, 1.f, 1.0f, rcut);
   ljparam.reinit (1.f, 1.f, .0f, rcut);
 
@@ -85,9 +85,9 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.002;
   IndexType energyFeq = 10;
   ScalorType seed = 1;
-  ScalorType refT = 1.3;
+  ScalorType refT = 1.30;
   ScalorType refP = 0.12;
-  ScalorType tauT = 0.1;
+  ScalorType tauT = 1.;
   ScalorType tauP = 1.;
   ScalorType betaP = 1.;
   RandomGenerator_MT19937::init_genrand (seed);
@@ -110,7 +110,7 @@ int main(int argc, char * argv[])
   blpf.addBarostat   (barostat);
 
   WidomTestParticleInsertion_NPT widom;
-  IndexType ntest = 20;
+  IndexType ntest = 1000;
   widom.reinit (refT, refP, ntest, 0, sysNbInter);
   
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
@@ -126,8 +126,8 @@ int main(int argc, char * argv[])
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6       7         8    9  10\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  virial  pressure  box  mu\n");
+  printf ("#*     1     2           3         4            5       6       7         8    9      10   11  12\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  virial  pressure  box  volume  rho  mu\n");
   try{
     // sys.initWriteXtc ("traj.xtc");
     // sys.recoverDeviceData (&timer);
@@ -143,7 +143,7 @@ int main(int argc, char * argv[])
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
 	inter.calculateWidomDeltaEnergy (sys, nlist, widom, &timer);
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.4e %.4e %.4e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.NonBondedEnergy() / sys.ddata.numAtom,
@@ -153,6 +153,8 @@ int main(int argc, char * argv[])
 		- st.virial() / sys.ddata.numAtom,
 		st.pressure(sys.box),
 		sys.box.size.x,
+		sys.box.size.x * sys.box.size.y * sys.box.size.z,
+		sys.ddata.numAtom * sys.box.sizei.x * sys.box.sizei.y * sys.box.sizei.z,
 		widom.expMu()
 	    );	
 	fflush(stdout);
