@@ -56,7 +56,7 @@ private:
   void mallocDeviceCellList (const IntVectorType & NCell,
 			     const HostVectorType & boxSize);
   void mallocDeviceNeighborList (const MDSystem & sys,
-				 const IndexType & DeviceNeighborListExpansion);
+				 const ScalorType & DeviceNeighborListExpansion);
   void bindGlobalTexture (const MDSystem & sys);
   void mallocJudgeStuff(const MDSystem & sys);
   void initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
@@ -108,7 +108,7 @@ public:
   NeighborList (const SystemNonBondedInteraction & sysNbInter,
 		const MDSystem & sys,
 		const ScalorType & rlist, const IndexType & NTread,
-		const IndexType & DeviceNeighborListExpansion = 5,
+		const ScalorType & DeviceNeighborListExpansion = 5,
 		const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
 		const IndexType devide = 1)
       : mallocedDeviceCellList (false), mallocedDeviceNeighborList (false),
@@ -140,13 +140,13 @@ public:
 	     const MDSystem & sys,
 	     const ScalorType & rlist,
 	     const IndexType & NTread,
-	     const IndexType & DeviceNeighborListExpansion = 5,
+	     const ScalorType & DeviceNeighborListExpansion = 5,
 	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
 	     const IndexType & cellListDevideLevel = 1);
   void reinit (const MDSystem & sys,
 	       const ScalorType & rlist,
 	       const IndexType & NTread,
-	       const IndexType & DeviceNeighborListExpansion = 5,
+	       const ScalorType & DeviceNeighborListExpansion = 5,
 	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
 	       const IndexType & cellListDevideLevel = 1);
   /** 
