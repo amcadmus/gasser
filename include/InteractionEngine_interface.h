@@ -8,6 +8,7 @@
 #include "SystemNonBondedInteraction.h"
 #include "SystemBondedInteraction.h"
 #include "BondedInteractionList.h"
+#include "WidomTestParticleInsertion.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -39,6 +40,8 @@ class InteractionEngine_interface
   SumVector<ScalorType> sum_angle_p;
   cudaStream_t sum_stream[8];
   MDError err;
+  ScalorType energyCorr;
+  ScalorType pressureCorr;
 private:
   void initNonBondedInteraction (const MDSystem & sys);
 public:
@@ -59,6 +62,18 @@ public:
 				  const NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion_NVT & wtest,
+				  MDTimer * timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion_NVT2 & wtest,
+				  MDTimer * timer = NULL);
+  void calculateWidomDeltaEnergy (const MDSystem & sys,
+				  const NeighborList & nlist,
+				  WidomTestParticleInsertion_NPT & wtest,
+				  MDTimer * timer = NULL);
   void applyNonBondedInteractionCell  (MDSystem & sys,
 				       const NeighborList & nlist,
 				       MDTimer *timer );

@@ -36,20 +36,45 @@ public:
       void copy (const Atom & a);
     };
 
-    struct NonBondedInteraction
+  //   struct NonBondedInteraction
+  //   {
+  //     TypeType atomType0;
+  //     TypeType atomType1;
+  //     InteractionType type;
+  //     std::vector<ScalorType > paramArray;
+  //     ScalorType rcut;
+  //     NonBondedInteractionParameter * ptr_param;
+  // public:
+  //     NonBondedInteraction (const TypeType & atomType0,
+  // 			    const TypeType & atomType1,
+  // 			    const NonBondedInteractionParameter & p);
+  //     void specifyInteraction (const TypeType & atomType0,
+  // 			       const TypeType & atomType1,
+  // 			       const NonBondedInteractionParameter & p);
+  //   };
+
+    class NonBondedInteraction
     {
+  private:
       TypeType atomType0;
       TypeType atomType1;
-      InteractionType type;
-      std::vector<ScalorType > paramArray;
-      ScalorType rcut;
+      const NonBondedInteractionParameter * ptr_nbInter;
   public:
       NonBondedInteraction (const TypeType & atomType0,
-			    const TypeType & atomType1,
-			    const NonBondedInteractionParameter & p);
+  			    const TypeType & atomType1,
+  			    const NonBondedInteractionParameter & p);
       void specifyInteraction (const TypeType & atomType0,
-			       const TypeType & atomType1,
-			       const NonBondedInteractionParameter & p);
+  			       const TypeType & atomType1,
+  			       const NonBondedInteractionParameter & p);
+      const TypeType &	typeOfAtom0 ()	const {return atomType0;}
+      const TypeType &	typeOfAtom1 ()	const {return atomType1;}
+      InteractionType	typeOfInter ()	const {return ptr_nbInter->type();}
+      unsigned		numParam ()	const {return ptr_nbInter->numParam();}
+      const ScalorType* ptr_param ()	const {return ptr_nbInter->c_ptr();}
+      ScalorType	rcut ()		const {return ptr_nbInter->rcut();}
+      ScalorType	shiftAtCut ()	const {return ptr_nbInter->shiftAtCut();}
+      ScalorType	energyCorrection   (const ScalorType & rcut) const {return ptr_nbInter->energyCorrection(rcut);}
+      ScalorType	pressureCorrection (const ScalorType & rcut) const {return ptr_nbInter->pressureCorrection(rcut);}
     };
     
     struct Bond
@@ -108,7 +133,7 @@ public:
       char name[8];
       IndexType numFreedom;
       std::vector<NonBondedInteraction > nonBondedInteractions;
-      std::vector<Molecule > molecules;
+      std::vector<Molecule  > molecules;
       std::vector<IndexType > numbers;
       std::vector<IndexType > indexShift;
   public:

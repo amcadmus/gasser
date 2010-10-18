@@ -20,16 +20,26 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	128
+#define NThreadsPerBlockCell	160
 #define NThreadsPerBlockAtom	96
 
-// #define NThreadsPerBlockCell	4
-// #define NThreadsPerBlockAtom	4
+// #define NThreadsPerBlockCell	160
+// #define NThreadsPerBlockAtom	96
 
 
 int main(int argc, char * argv[])
 {
-  IndexType nstep = 20;
+  IndexType nstep = 100000;
+  IndexType confFeq = 100000;
+  IndexType thermoFeq = 100;
+  ScalorType rcut = 4.0;
+  ScalorType nlistExten = 0.3;
+  ScalorType refT = 1.30;
+  ScalorType tauT = 1.;
+  ScalorType refP = 0.12;
+  ScalorType tauP = 1.;
+  ScalorType beta = 1.;
+
   char * filename;
   
   if (argc != 4){
@@ -51,7 +61,9 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ljparam.reinit (1.f, 1.f, 0.f, rcut);
+  // ScalorType shift = ljparam.calShiftAtCut ();
+  // ljparam.reinit (1.f, 1.f, shift, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
@@ -62,10 +74,9 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 5,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
 		      RectangularBoxGeometry::mdRectBoxDirectionZ);
@@ -77,27 +88,27 @@ int main(int argc, char * argv[])
 
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.001;
-  ScalorType seed = 1;
+  ScalorType dt = 0.002;
+  ScalorType seed = 1286812148;
   RandomGenerator_MT19937::init_genrand (seed);
 
-  LeapFrog lpfrog (sys, NThreadsPerBlockAtom);
-  BerendsenLeapFrog blpf (sys,
-			  NThreadsPerBlockAtom,
-			  dt,
-  			  inter,
-  			  nlist,
-			  rebuildThreshold);
-  blpf.TCouple (1, 0.1);
-  // blpf.addPcoupleGroup (PCoupleX | PCoupleY | PCoupleZ,
-  // 			0, 1, 10);
-  // blpf.addPcoupleGroup (PCoupleZ,
-  // 			4., 10, 1);
+  LeapFrog_TPCouple_VCouple blpf (sys,
+				  NThreadsPerBlockAtom,
+				  dt,
+				  inter,
+				  nlist,
+				  rebuildThreshold);
   
-  blpf.addPcoupleGroup (PCoupleZ | PCoupleY ,
-  			0, 1, 10);
-  // blpf.addPcoupleGroup (PCoupleZ,
-  // 			0, 1, 1);
+  Thermostat_NoseHoover thermostat;
+  thermostat.reinit (refT, dt, tauT, sys.ddata.numAtom * 3 - 3);
+  Barostat_ParrinelloRahman barostat;
+  barostat.reinit (dt, tauP, sys.box);
+  barostat.assignGroup (mdRectBoxDirectionX |
+			mdRectBoxDirectionY |
+			mdRectBoxDirectionZ,
+			refP, beta);
+  blpf.addThermostat (thermostat);
+  blpf.addBarostat   (barostat);  
 
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
   
@@ -107,13 +118,12 @@ int main(int argc, char * argv[])
   nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
   
   printf ("# prepare ok, start to run\n");
+  printf ("#*     1     2           3         4            5       6         7    8       9  10  11\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure  box  volume  h0  h1\n");
+
   // sys.recoverDeviceData (&timer);
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
-  printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9  10-11\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz boxxyz\n");
-
   try{
     sys.initWriteXtc ("traj.xtc");
     sys.recoverDeviceData (&timer);
@@ -123,32 +133,34 @@ int main(int argc, char * argv[])
       if (i%100 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % thermoFeq == 0){
 	st.clearDevice();
 	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
+	ScalorType e = st.NonBondedEnergy () + st.kineticEnergy();	
+	ScalorType v = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+	ScalorType p0 = st.pressure(sys.box);
+	ScalorType h0 = v * p0 + e;
+	ScalorType h1 = v * refP + e;
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7f %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.getStatistic(mdStatisticNonBondedPotential),
+		st.NonBondedEnergy (),
 		st.kineticEnergy(),
-		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.getStatistic(mdStatisticNonBondedPotential) +
-		st.getStatistic(mdStatisticBondedPotential) +
-		st.kineticEnergy(),
-		st.pressureXX(sys.box),
-		st.pressureYY(sys.box),
-		st.pressureZZ(sys.box),
-		st.pressure(sys.box),
+		st.kineticEnergy() * 2. / (3. * (double (sys.hdata.numAtom) - 1.)),
+		e,
+		p0,
 		sys.box.size.x,
-		sys.box.size.y,
-		sys.box.size.z);
+		v,
+		h0,
+		h1
+	    );
 	fflush(stdout);
       }
       else {
 	blpf.oneStep (sys, &timer);      
       }
-      if ((i+1) % 1000 == 0){
+      if ((i+1) % confFeq == 0){
       	sys.recoverDeviceData (&timer);
       	sys.updateHostFromRecovered (&timer);
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);

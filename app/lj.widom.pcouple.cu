@@ -6,12 +6,11 @@
 #include "RandomGenerator.h"
 #include "Auxiliary.h"
 #include "NeighborList_interface.h"
-#include"Statistic.h"
+#include "Statistic.h"
 #include "Integrator_interface.h"
 #include "InteractionEngine_interface.h"
 #include "tmp.h"
 #include "Reshuffle_interface.h"
-
 
 #include "Topology.h"
 #include "SystemBondedInteraction.h"
@@ -20,7 +19,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	96
+#define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -47,8 +46,18 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
+  ScalorType rcut = 6.0;
+  // ljparam.reinit (1.f, 1.f, 1.0f, rcut);
+  ljparam.reinit (1.f, 1.f, .0f, rcut);
+
+  printf ("# shift is %f\n", ljparam.shiftAtCut());
+  // NonBondedInteractionParameter * nbp (&ljparam);
+  Topology::NonBondedInteraction nb00 (0, 0, ljparam);
+  // printf ("# %f %f %f\n",
+  // 	  ljparam.energyCorrection(1.8),
+  // 	  nbp->energyCorrection(1.8),
+  // 	  nb00.energyCorrection(1.8));
+  sysTop.addNonBondedInteraction (nb00);
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);
@@ -59,41 +68,66 @@ int main(int argc, char * argv[])
   
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
+  ScalorType rebuildThreshold = 0.5 * nlistExten;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 2,
 		      RectangularBoxGeometry::mdRectBoxDirectionX |
 		      RectangularBoxGeometry::mdRectBoxDirectionY |
-		      RectangularBoxGeometry::mdRectBoxDirectionZ);
+		      RectangularBoxGeometry::mdRectBoxDirectionZ, 1);
   nlist.build(sys);
   MDStatistic st(sys);
-  VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 0.9977411970749;
-  ScalorType refT = 1.;
-  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
-  
+		
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.001;
+  ScalorType dt = 0.002;
+  IndexType energyFeq = 10;
   ScalorType seed = 1;
+  ScalorType refT = 1.30;
+  ScalorType refP = 0.12;
+  ScalorType tauT = 1.;
+  ScalorType tauP = 1.;
+  ScalorType betaP = 1.;
   RandomGenerator_MT19937::init_genrand (seed);
 
+  LeapFrog_TPCouple_VCouple blpf (sys,
+				  NThreadsPerBlockAtom,
+				  dt,
+				  inter,
+				  nlist,
+				  rebuildThreshold);
+  Thermostat_NoseHoover thermostat;
+  thermostat.reinit (refT, dt, tauT, sys.ddata.numAtom * 3 - 3);
+  Barostat_ParrinelloRahman barostat;
+  barostat.reinit (dt, tauP, sys.box);
+  barostat.assignGroup (mdRectBoxDirectionX |
+                        mdRectBoxDirectionY |
+                        mdRectBoxDirectionZ,
+                        refP, betaP);
+  blpf.addThermostat (thermostat);
+  blpf.addBarostat   (barostat);
+
+  WidomTestParticleInsertion_NPT widom;
+  IndexType ntest = 1000;
+  widom.reinit (refT, refP, ntest, 0, sysNbInter);
+  
   Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
   
   timer.tic(mdTimeTotal);
-  resh.calIndexTable (nlist, &timer);
-  sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
-  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
+  if (resh.calIndexTable (nlist, &timer)){
+    sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+    nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
+  }
   
   printf ("# prepare ok, start to run\n");
   // sys.recoverDeviceData (&timer);
   // sys.updateHostFromRecovered (&timer);
   // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6          7-9\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressurexyz\n");
+  printf ("#*     1     2           3         4            5       6       7         8    9      10   11  12\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  virial  pressure  box  volume  rho  mu\n");
   try{
     // sys.initWriteXtc ("traj.xtc");
     // sys.recoverDeviceData (&timer);
@@ -103,38 +137,30 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 100 == 0){
+      if ((i+1) % energyFeq == 0){
+	widom.generateTestCoords (sys);
 	st.clearDevice();
-	inte_vv.step1 (sys, dt, &timer);
-	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-	inte_vv.step2 (sys, dt, st, &timer);
+	blpf.oneStep (sys, st, &timer);
 	st.updateHost();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e \n",
+	inter.calculateWidomDeltaEnergy (sys, nlist, widom, &timer);
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.4e %.4e %.4e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
-		st.NonBondedEnergy(),
-		st.kineticEnergy(),
+		st.NonBondedEnergy() / sys.ddata.numAtom,
+		st.kineticEnergy() / sys.ddata.numAtom,
 		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.NonBondedEnergy() + st.BondedEnergy() + st.kineticEnergy(),
-		st.pressureXX(sys.box),
-		st.pressureYY(sys.box),
-		st.pressureZZ(sys.box),
-		st.pressure(sys.box));
+		(st.NonBondedEnergy() + st.kineticEnergy()) / sys.ddata.numAtom,
+		- st.virial() / sys.ddata.numAtom,
+		st.pressure(sys.box),
+		sys.box.size.x,
+		sys.box.size.x * sys.box.size.y * sys.box.size.z,
+		sys.ddata.numAtom * sys.box.sizei.x * sys.box.sizei.y * sys.box.sizei.z,
+		widom.expMu()
+	    );	
 	fflush(stdout);
       }
       else {
-	inte_vv.step1 (sys, dt, &timer);
-	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, &timer);
-	inte_vv.step2 (sys, dt, &timer);
-      }
-      if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	// printf ("# Rebuild at step %09i ... ", i+1);
-	// fflush(stdout);
-	nlist.reBuild(sys, &timer);
-	// printf ("done\n");
-	// fflush(stdout);
+	blpf.oneStep (sys, &timer);      
       }
       // if ((i+1) % 1000 == 0){
       // 	sys.recoverDeviceData (&timer);
@@ -142,15 +168,16 @@ int main(int argc, char * argv[])
       // 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       // }
       if ((i+1) % 100 == 0){
-      	resh.calIndexTable (nlist, &timer);
-      	sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
-      	nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
+      	if(resh.calIndexTable (nlist, &timer)){
+	  sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);
+	}
       }
     }
     // sys.endWriteXtc();
-    // sys.recoverDeviceData (&timer);
-    // sys.updateHostFromRecovered (&timer);
-    // sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
+    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
@@ -165,7 +192,6 @@ int main(int argc, char * argv[])
     fprintf (stderr, "%s\n", e.what());
     return 1;
   }
-  
   
   return 0;
 }

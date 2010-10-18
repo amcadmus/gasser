@@ -136,6 +136,9 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
       sizeof(CoordType) * hroundUp4(myBlockDim.x) +
       sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
   checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
+
+  energyCorr = sysNbInter.energyCorrection ();
+  pressureCorr = sysNbInter.pressureCorrection ();
 }
 
 
@@ -242,6 +245,16 @@ applyNonBondedInteractionCell  (MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
 }
 
+
+// nblock should be 1 and block size should be 1
+__global__ void
+applyEnergyPressureCorrection (ScalorType * ddata,
+			       ScalorType energyCorr,
+			       ScalorType pressureCorr)
+{
+  ddata[mdStatisticEnergyCorrection] = energyCorr;
+  ddata[mdStatisticPressureCorrection] = pressureCorr;
+}
   
 void InteractionEngine_interface::
 applyNonBondedInteraction (MDSystem & sys,
@@ -273,6 +286,15 @@ applyNonBondedInteraction (MDSystem & sys,
   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  volumei = 1.f / volumei;
+  // printf ("apply Ec %f, Pc %f\n",
+  // 	  energyCorr * volumei,
+  // 	  pressureCorr * volumei * volumei);
+  applyEnergyPressureCorrection
+      <<<1, 1, 0, 4>>> (st.ddata,
+			energyCorr * volumei,
+			pressureCorr * volumei * volumei);
   cudaThreadSynchronize();
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
@@ -410,6 +432,133 @@ applyBondedInteraction (MDSystem & sys,
   checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
+
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion_NVT & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
+  if (nlist.mode == CellListBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  else if (nlist.mode == AllPairBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_allPair_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	DefaultNThreadPerBlock,
+	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.myrlist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion_NVT2 & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
+  if (nlist.mode == CellListBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
+void InteractionEngine_interface::
+calculateWidomDeltaEnergy (const MDSystem & sys,
+			   const NeighborList & nlist,
+			   WidomTestParticleInsertion_NPT & wtest,
+			   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  // printf ("### %d\n", nlist.mode);
+  if (nlist.mode == CellListBuilt){
+    // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
+    widomDeltaPoten_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	nlist.myBlockDim.x,
+	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.dclist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  else if (nlist.mode == AllPairBuilt){
+    // printf ("### here %f\n", wtest.energyCorrection());
+    widomDeltaPoten_allPair_NVT
+	<<<toGridDim(wtest.numTestParticle()),
+	DefaultNThreadPerBlock,
+	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+	    wtest.numTestParticle(),
+	    wtest.coordTestParticle,
+	    wtest.typeTestParticle,
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.type,
+	    sys.box,
+	    nlist.myrlist,
+	    wtest.sumExpDeltaU.getBuff(),
+	    err.ptr_de);
+  }
+  // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
+  //   printf ("%d %f  (%f %f %f)\n", i,
+  // 	    wtest.sumExpDeltaU.getBuff()[i],
+  // 	    wtest.coordTestParticle[i].x,
+  // 	    wtest.coordTestParticle[i].y,
+  // 	    wtest.coordTestParticle[i].z
+  // 	);
+  // }
+  
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
 
 
 __global__ void clearForce (const IndexType numAtom,
@@ -1523,3 +1672,172 @@ __global__ void calNonBondedInteraction (
     statistic_nb_buff3[ii] = myVzz * 0.5f;
   }
 }
+
+
+
+__global__ void
+widomDeltaPoten_NVT (const IndexType		numTestParticle,
+		     const CoordType *		coordTestParticle,
+		     const TypeType *		typeTestParticle,
+		     const IndexType		numAtom,
+		     const CoordType *		coord,
+		     const TypeType *		type,
+		     const RectangularBox	box,
+		     DeviceCellList		clist,
+		     ScalorType *		statistic_nb_buff0,
+		     mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+//  IndexType ii = tid + bid * blockDim.x;
+  if (bid >= numTestParticle) return;
+
+  // extern __shared__ volatile char pub_sbuff_widom[];
+  // volatile ScalorType * sumbuff = (volatile ScalorType *) pub_sbuff_widom;
+  extern __shared__ volatile ScalorType sumbuff [];
+
+  CoordType refCoord = coordTestParticle[bid];
+  TypeType  refType = typeTestParticle[bid];
+  ScalorType myPoten (0.0f);
+
+  IndexType refCelli, refCellj, refCellk;
+  refCelli = IndexType (refCoord.x * box.sizei.x * ScalorType(clist.NCell.x));
+  refCellj = IndexType (refCoord.y * box.sizei.y * ScalorType(clist.NCell.y));
+  refCellk = IndexType (refCoord.z * box.sizei.z * ScalorType(clist.NCell.z));
+  
+  if (refCelli == clist.NCell.x){
+    refCelli -= clist.NCell.x;
+    refCoord.x -= box.size.x;
+  }
+  if (refCellj == clist.NCell.y){
+    refCellj -= clist.NCell.y;
+    refCoord.y -= box.size.y;
+  }
+  if (refCellk == clist.NCell.z){
+    refCellk -= clist.NCell.z;
+    refCoord.z -= box.size.z;
+  }
+
+  IndexType refCellIndex = D3toD1 (clist.NCell, refCelli, refCellj, refCellk);
+  for (IndexType i = 0; i < clist.numNeighborCell[refCellIndex]; ++i){
+    __syncthreads ();
+    IndexType targetCellIdx = getNeighborCellIndex    (clist, refCellIndex, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, refCellIndex, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    IndexType targetIndex = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndex != MaxIndexValue){
+      TypeType targettype = tex1Dfetch(global_texRef_interaction_type, targetIndex);
+      if (refType == targettype){
+	CoordType targetCoord = tex1Dfetch(global_texRef_interaction_coord, targetIndex);
+	ScalorType diffx = targetCoord.x - shift.x - refCoord.x;
+	ScalorType diffy = targetCoord.y - shift.y - refCoord.y;
+	ScalorType diffz = targetCoord.z - shift.z - refCoord.z;
+	ScalorType dr2 = ((diffx*diffx+diffy*diffy+diffz*diffz));
+	if (dr2 < clist.rlist*clist.rlist && dr2 > 1e-4){
+	  IndexType fidx(0);
+	  ScalorType dp;
+	  fidx = AtomNBForceTable::
+	      calForceIndex (const_nonBondedInteractionTable,
+			     const_numAtomType[0],
+			     refType,
+			     refType);
+	  nbPoten (nonBondedInteractionType[fidx],
+		   &nonBondedInteractionParameter
+		   [nonBondedInteractionParameterPosition[fidx]],
+		   diffx, diffy, diffz, &dp);
+	  myPoten += dp;
+	  // printf ("dp: %f,  %f %f %f\n", dp, diffx, diffy, diffz);
+	}
+      }
+    }
+  }
+
+  sumbuff[tid] = myPoten;
+  __syncthreads();
+  sumVectorBlockBuffer_2 (sumbuff);
+  __syncthreads();
+  if (tid == 0){
+    statistic_nb_buff0[bid] = sumbuff[0];
+  }
+}
+  
+//   if (tid == 0){
+//     // printf ("### du is %f\n", sumbuff[0]);
+//     statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+//   }
+// }
+
+
+
+
+__global__ void
+widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
+			     const CoordType *		coordTestParticle,
+			     const TypeType *		typeTestParticle,
+			     const IndexType		numAtom,
+			     const CoordType *		coord,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     const ScalorType		rlist,
+			     ScalorType *		statistic_nb_buff0,
+			     mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  // IndexType ii = tid + bid * blockDim.x;
+
+  if (bid >= numTestParticle) return;
+  
+  CoordType refCoord = coordTestParticle[bid];
+  TypeType refType = typeTestParticle[bid];
+
+  ScalorType myPoten = 0.;
+  extern __shared__ volatile ScalorType sumbuff [];
+  
+  for (IndexType start = 0; start < numAtom; start += blockDim.x){
+    IndexType targetIndex = start + tid;
+    if (targetIndex >= numAtom) break;
+    TypeType targetType = type[targetIndex];
+    if (targetType != refType) continue;
+    CoordType targetCoord = coord[targetIndex];
+    ScalorType diffx = targetCoord.x - refCoord.x;
+    ScalorType diffy = targetCoord.y - refCoord.y;
+    ScalorType diffz = targetCoord.z - refCoord.z;
+    RectangularBoxGeometry::shortestImage (box, &diffx, &diffy, &diffz);
+    ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+    if (dr2 < rlist * rlist && dr2 > 1e-4 ){
+      IndexType fidx(0);
+      ScalorType dp;
+      fidx = AtomNBForceTable::
+	  calForceIndex (const_nonBondedInteractionTable,
+			 const_numAtomType[0],
+			 refType,
+			 refType);
+      nbPoten (nonBondedInteractionType[fidx],
+	       &nonBondedInteractionParameter
+	       [nonBondedInteractionParameterPosition[fidx]],
+	       diffx, diffy, diffz, &dp);
+      myPoten += dp;
+    }
+  }
+
+  sumbuff[tid] = myPoten;
+  __syncthreads();
+  sumVectorBlockBuffer_2 (sumbuff);
+  __syncthreads();
+  if (tid == 0){
+    statistic_nb_buff0[bid] = sumbuff[0];
+  }
+}
+
+//   if (tid == 0){
+//     // printf ("### du is %f\n", sumbuff[0]);
+//     statistic_nb_buff0[bid] = expf(- (sumbuff[0] + energyCorrection) / temperature);
+//   }  
+// }
+
