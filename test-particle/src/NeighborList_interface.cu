@@ -352,14 +352,14 @@ initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 
 void NeighborList::
 mallocDeviceNeighborList (const MDSystem & sys,
-			  const IndexType & DeviceNeighborListExpansion)
+			  const ScalorType & DeviceNeighborListExpansion)
 {
   dnlist.rlist = myrlist;
   dnlist.stride = sys.ddata.numAtom;
   ScalorType density = sys.ddata.numAtom / (sys.box.size.x * sys.box.size.y * sys.box.size.z);
   IndexType expectedNumberInList 
       = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
-  dnlist.listLength = expectedNumberInList * DeviceNeighborListExpansion;
+  dnlist.listLength = IndexType(expectedNumberInList * DeviceNeighborListExpansion);
   if (dnlist.listLength < 20){
     dnlist.listLength = 20;
   }
@@ -416,7 +416,7 @@ init (const SystemNonBondedInteraction & sysNbInter,
       const MDSystem & sys,
       const ScalorType & rlist,
       const IndexType & NTread,
-      const IndexType & DeviceNeighborListExpansion,
+      const ScalorType & DeviceNeighborListExpansion,
       const BoxDirection_t & bdir,
       const IndexType & devide)
 {
@@ -502,7 +502,7 @@ init (const SystemNonBondedInteraction & sysNbInter,
 void NeighborList::reinit (const MDSystem & sys,
 			   const ScalorType & rlist,
 			   const IndexType & NTread,
-			   const IndexType & DeviceNeighborListExpansion,
+			   const ScalorType & DeviceNeighborListExpansion,
 			   const BoxDirection_t & bdir,
 			   const IndexType & devide)
 {
