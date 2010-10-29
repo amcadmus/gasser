@@ -165,7 +165,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
-		       const IndexType devide,
+		       const IndexType divide,
 		       const HostVectorType boxSize)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -177,9 +177,9 @@ buildCellNeighborhood (DeviceCellList clist,
   if (clist.NCell.z == 1) oneCellZ = true;
 
   IndexType upperX, upperY, upperZ;
-  oneCellX ? upperX = 1 : upperX = 2*devide+1;
-  oneCellY ? upperY = 1 : upperY = 2*devide+1;
-  oneCellZ ? upperZ = 1 : upperZ = 2*devide+1;
+  oneCellX ? upperX = 1 : upperX = 2*divide+1;
+  oneCellY ? upperY = 1 : upperY = 2*divide+1;
+  oneCellZ ? upperZ = 1 : upperZ = 2*divide+1;
   
   
   if (tid == 0) {
@@ -190,9 +190,9 @@ buildCellNeighborhood (DeviceCellList clist,
     for (int ix = 0; ix < upperX; ++ix){
       for (int iy = 0; iy < upperY; ++iy){
 	for (int iz = 0; iz < upperZ; ++iz){
-	  int myx = ix - clist.devide + int(centerx) ;
-	  int myy = iy - clist.devide + int(centery) ;
-	  int myz = iz - clist.devide + int(centerz) ;
+	  int myx = ix - clist.divide + int(centerx) ;
+	  int myy = iy - clist.divide + int(centery) ;
+	  int myz = iz - clist.divide + int(centerz) ;
 	  ScalorType scalorx = boxSize.x / clist.NCell.x ;
 	  ScalorType scalory = boxSize.y / clist.NCell.y ;
 	  ScalorType scalorz = boxSize.z / clist.NCell.z ;
@@ -259,15 +259,15 @@ buildCellNeighborhood (DeviceCellList clist,
   // int centerx, centery, centerz;
   // D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
   // IntVectorType thisCubic;
-  // thisCubic.z = thisCubic.y = thisCubic.x = 2 * clist.devide + 1;
+  // thisCubic.z = thisCubic.y = thisCubic.x = 2 * clist.divide + 1;
   // int myx, myy, myz;
   // D1toD3 (thisCubic, int(tid), myx, myy, myz);
-  // myx += int(centerx) - clist.devide;
-  // myy += int(centery) - clist.devide ;
-  // myz += int(centerz) - clist.devide ;
-  // ScalorType scalorx = boxSize.x / clist.NCell.x / devide;
-  // ScalorType scalory = boxSize.y / clist.NCell.y / devide;
-  // ScalorType scalorz = boxSize.z / clist.NCell.z / devide;
+  // myx += int(centerx) - clist.divide;
+  // myy += int(centery) - clist.divide ;
+  // myz += int(centerz) - clist.divide ;
+  // ScalorType scalorx = boxSize.x / clist.NCell.x / divide;
+  // ScalorType scalory = boxSize.y / clist.NCell.y / divide;
+  // ScalorType scalorz = boxSize.z / clist.NCell.z / divide;
 
   // ScalorType rlist2 = clist.rlist * clist.rlist;
   // ScalorType min = 1e9;

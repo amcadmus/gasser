@@ -10,7 +10,7 @@ using namespace RectangularBoxGeometry;
 
 struct DeviceCellList 
 {
-  IndexType devide;
+  IndexType divide;
   ScalorType rlist;		/**< radius for list building */
   IntVectorType NCell;		/**< the number of cells on each direction */
   VectorType NCelli;		/**< inverse the NCell */
@@ -135,7 +135,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 					     ScalorType * errsrc = NULL);
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
-		       const IndexType devide,
+		       const IndexType divide,
 		       const HostVectorType boxSize);
 
 
