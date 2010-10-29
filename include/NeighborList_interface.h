@@ -50,7 +50,7 @@ private:
   void DecideNeighboringMethod (const MDSystem & sys,
 				const ScalorType & rlist,
 				const BoxDirection_t & bdir,
-				const IndexType & devide,
+				const IndexType & divide,
 				NeighborListBuiltMode & mode,
 				IntVectorType & NCell);
   void mallocDeviceCellList (const IntVectorType & NCell,
@@ -71,7 +71,7 @@ public:
   NeighborListBuiltMode mode;
   ScalorType myrlist;
   BoxDirection_t mybdir;
-  IndexType mydevide;
+  IndexType mydivide;
   DeviceCellList dclist;
   DeviceNeighborList dnlist;
   IndexType NatomType;
@@ -102,7 +102,7 @@ public:
    * to maintain all neighbors (especially for the non-homogeneous systems).
    * This user provided parameter is the ratio of actually length over the
    * calculated length.
-   * @param bdir Denotes which direction of box will be cell devided. User
+   * @param bdir Denotes which direction of box will be cell divided. User
    * should validate this parameter.
    */
   NeighborList (const SystemNonBondedInteraction & sysNbInter,
@@ -110,12 +110,12 @@ public:
 		const ScalorType & rlist, const IndexType & NTread,
 		const ScalorType & DeviceNeighborListExpansion = 5,
 		const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
-		const IndexType devide = 1)
+		const IndexType divide = 1)
       : mallocedDeviceCellList (false), mallocedDeviceNeighborList (false),
 	mallocedJudgeStuff (false), initedGlobalTexture (false),
 	mallocedNonBondedForceTable (false),
 	mode (NullMode)
-      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir, devide);}
+      {init (sysNbInter, sys, rlist, NTread, DeviceNeighborListExpansion, bdir, divide);}
   /** 
    * Destructor
    * 
@@ -133,7 +133,7 @@ public:
    * to maintain all neighbors (especially for the non-homogeneous systems).
    * This user provided parameter is the ratio of actually length over the
    * calculated length.
-   * @param bdir Denotes which direction of box will be cell devided. User
+   * @param bdir Denotes which direction of box will be cell divided. User
    * should validate this parameter.
    */
   void init (const SystemNonBondedInteraction & sysNbInter,
@@ -142,13 +142,13 @@ public:
 	     const IndexType & NTread,
 	     const ScalorType & DeviceNeighborListExpansion = 5,
 	     const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
-	     const IndexType & cellListDevideLevel = 1);
+	     const IndexType & cellListDivideLevel = 1);
   void reinit (const MDSystem & sys,
 	       const ScalorType & rlist,
 	       const IndexType & NTread,
 	       const ScalorType & DeviceNeighborListExpansion = 5,
 	       const RectangularBoxGeometry::BoxDirection_t & bdir = 7,
-	       const IndexType & cellListDevideLevel = 1);
+	       const IndexType & cellListDivideLevel = 1);
   /** 
    * Build neighbor list
    * 

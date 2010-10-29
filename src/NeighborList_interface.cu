@@ -36,7 +36,7 @@ void NeighborList::
 DecideNeighboringMethod (const MDSystem & sys,
 			 const ScalorType & rlist,
 			 const BoxDirection_t & bdir,
-			 const IndexType & devide,
+			 const IndexType & divide,
 			 NeighborListBuiltMode & mode,
 			 IntVectorType & NCell)
 {
@@ -58,9 +58,9 @@ DecideNeighboringMethod (const MDSystem & sys,
   if (CellOnZ && dclist.NCell.z < 4) mode = AllPairBuilt;
 
   if (mode == CellListBuilt){
-    if (CellOnX) NCell.x *= devide;
-    if (CellOnY) NCell.y *= devide;
-    if (CellOnZ) NCell.z *= devide;
+    if (CellOnX) NCell.x *= divide;
+    if (CellOnY) NCell.y *= divide;
+    if (CellOnZ) NCell.z *= divide;
   } 
 }
 
@@ -92,7 +92,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
 
   IndexType numCell = dclist.NCell.x * dclist.NCell.y * dclist.NCell.z;
   dclist.rlist = myrlist;
-  dclist.devide = mydevide;
+  dclist.divide = mydivide;
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block
   dclist.stride = myBlockDim.x;
@@ -107,7 +107,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
 	      sizeof(ScalorType) * numCell * dclist.stride);
   checkCUDAError ("NeighborList::init cell list");
 
-  IndexType maxNumNeighborCell = (2*mydevide+1) * (2*mydevide+1) * (2*mydevide+1);
+  IndexType maxNumNeighborCell = (2*mydivide+1) * (2*mydivide+1) * (2*mydivide+1);
   dclist.maxNumNeighborCell = maxNumNeighborCell;
   cudaMalloc ((void**)&(dclist.numNeighborCell),
 	      sizeof(IndexType) * numCell);
@@ -236,7 +236,7 @@ naivelyBuildDeviceCellList (const MDSystem & sys)
   buildCellNeighborhood
       <<<cellGridDim, 1>>> (
 	  dclist,
-	  mydevide,
+	  mydivide,
 	  sys.box.size);
 }
 
@@ -418,7 +418,7 @@ init (const SystemNonBondedInteraction & sysNbInter,
       const IndexType & NTread,
       const ScalorType & DeviceNeighborListExpansion,
       const BoxDirection_t & bdir,
-      const IndexType & devide)
+      const IndexType & divide)
 {
   myBlockDim.y = 1;
   myBlockDim.z = 1;
@@ -436,8 +436,8 @@ init (const SystemNonBondedInteraction & sysNbInter,
   
   mybdir = bdir;
   myrlist = rlist;
-  mydevide = devide;
-  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, mode, dclist.NCell);
+  mydivide = divide;
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydivide, mode, dclist.NCell);
   if (mode == CellListBuilt){
     mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
@@ -499,12 +499,13 @@ init (const SystemNonBondedInteraction & sysNbInter,
 
 
 
-void NeighborList::reinit (const MDSystem & sys,
-			   const ScalorType & rlist,
-			   const IndexType & NTread,
-			   const ScalorType & DeviceNeighborListExpansion,
-			   const BoxDirection_t & bdir,
-			   const IndexType & devide)
+void NeighborList::
+reinit (const MDSystem & sys,
+	const ScalorType & rlist,
+	const IndexType & NTread,
+	const ScalorType & DeviceNeighborListExpansion,
+	const BoxDirection_t & bdir,
+	const IndexType & divide)
 {
   myBlockDim.y = 1;
   myBlockDim.z = 1;
@@ -523,9 +524,9 @@ void NeighborList::reinit (const MDSystem & sys,
   // init cell list
   mybdir = bdir;
   myrlist = rlist;
-  mydevide = devide;
+  mydivide = divide;
   clearDeviceCellList ();
-  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, mode, dclist.NCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydivide, mode, dclist.NCell);
   if (mode == CellListBuilt){
     mallocDeviceCellList (dclist.NCell, sys.box.size);
   }
@@ -640,7 +641,7 @@ void NeighborList::reBuild (const MDSystem & sys,
   NeighborListBuiltMode tmpMode;
   IntVectorType tmpNCell;
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
-  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, tmpMode, tmpNCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydivide, tmpMode, tmpNCell);
 
   // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
@@ -728,7 +729,7 @@ void NeighborList::reBuildCellList (const MDSystem & sys,
   NeighborListBuiltMode tmpMode;
   IntVectorType tmpNCell;
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
-  DecideNeighboringMethod (sys, myrlist, mybdir, mydevide, tmpMode, tmpNCell);
+  DecideNeighboringMethod (sys, myrlist, mybdir, mydivide, tmpMode, tmpNCell);
 
   // printf("# rebuild %d %d %d\n", tmpNCell.x, tmpNCell.y, tmpNCell.z);
   
