@@ -1,17 +1,156 @@
-// #include <assert.h>
-// #include <ctype.h>
-// #include <errno.h>
-// #include <limits.h>
-// #include <string.h>
-// #include <stdarg.h>
-// #include <stdlib.h>
-// #include <stdio.h>
+#define DEVICE_CODE
 
-// #include "common.h"
-// #include "SumBlock.h"
-// #include "SumVector.h"
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-// #define N 128
+#include "common.h"
+#include "SumBlock.h"
+#include "SumVector.h"
+#include "MaxVector.h"
+#include "RandomGenerator.h"
+#include "Displacement_interface.h"
+
+#define N 128
+#define M 200
+
+int main(int argc, char * argv[])
+{
+  // ScalorType * dresult, hresult;
+  // cudaMalloc ((void**)&dresult, sizeof(ScalorType));
+  // MaxVector<ScalorType> max;
+  // max.reinit (M, N);
+
+  RandomGenerator_MT19937::init_genrand((11));
+  // for (unsigned i = 0; i < M; ++i){
+  //   max.getBuff()[i] = RandomGenerator_MT19937::genrand_real2();
+  // }
+
+  // max.maxBuff(dresult, 0);
+  // cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+
+  // printf ("max is %f\n", hresult);
+  // ScalorType maxValue = max.getBuff()[0];
+  // for (unsigned i = 0; i < M; ++i){
+  //   if (max.getBuff()[i] > maxValue){
+  //     maxValue = max.getBuff()[i];
+  //   }
+  // }
+  // printf ("max is %f\n", maxValue);
+  
+  // return 0;
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // char * filename;
+  
+  // if (argc != 4){
+  //   printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
+  //   return 1;
+  // }
+  // if (argc != 1){
+  //   filename = argv[1];
+  // }
+  // printf ("# setting device to %d\n", atoi(argv[3]));
+  // cudaSetDevice (atoi(argv[3]));
+  // checkCUDAError ("set device");
+
+  // MDSystem sys;
+  // sys.initConfig (filename);
+  // Topology::System sysTop;
+  // Topology::Molecule mol;
+  // mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  // sysTop.addMolecules (mol, sys.hdata.numAtom);
+
+  // sys.initTopology (sysTop);
+  // sys.initDeviceData ();
+
+  // Displacement_max disp(sys, N);
+  // disp.recordCoord (sys);
+
+  // ScalorType maxValue = 0;
+  // for (unsigned i = 0; i < sys.hdata.numAtom; ++i){
+  //   HostVectorType hcoord ;
+  //   hcoord.x = sys.ddata.coord[i].x;
+  //   hcoord.y = sys.ddata.coord[i].y;
+  //   hcoord.z = sys.ddata.coord[i].z;
+  //   sys.ddata.coord[i].x += RandomGenerator_MT19937::genrand_real2() - 0.5;
+  //   sys.ddata.coord[i].y += RandomGenerator_MT19937::genrand_real2() - 0.5;
+  //   sys.ddata.coord[i].z += RandomGenerator_MT19937::genrand_real2() - 0.5;
+  //   ScalorType tmp = 0;
+  //   tmp += (hcoord.x - sys.ddata.coord[i].x) * (hcoord.x - sys.ddata.coord[i].x);
+  //   tmp += (hcoord.y - sys.ddata.coord[i].y) * (hcoord.y - sys.ddata.coord[i].y);
+  //   tmp += (hcoord.z - sys.ddata.coord[i].z) * (hcoord.z - sys.ddata.coord[i].z);
+  //   tmp = sqrtf(tmp);
+  //   if (tmp > maxValue){
+  //     maxValue = tmp;
+  //   }
+  // }
+
+  // ScalorType result = disp.calMaxDisplacemant (sys);
+  // printf ("max is %f, %f\n", result, maxValue);
+  
+  // return 0;
+
+
+  char * filename;
+  
+  if (argc != 4){
+    printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
+    return 1;
+  }
+  if (argc != 1){
+    filename = argv[1];
+  }
+  printf ("# setting device to %d\n", atoi(argv[3]));
+  cudaSetDevice (atoi(argv[3]));
+  checkCUDAError ("set device");
+
+  MDSystem sys;
+  sys.initConfig (filename);
+  Topology::System sysTop;
+  Topology::Molecule mol;
+  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  sysTop.addMolecules (mol, sys.hdata.numAtom);
+
+  sys.initTopology (sysTop);
+  sys.initDeviceData ();
+
+  Displacement_mean disp(sys, N);
+  disp.recordCoord (sys);
+
+  double meanValue = 0;
+  for (unsigned i = 0; i < sys.hdata.numAtom; ++i){
+    HostVectorType hcoord ;
+    hcoord.x = sys.ddata.coord[i].x;
+    hcoord.y = sys.ddata.coord[i].y;
+    hcoord.z = sys.ddata.coord[i].z;
+    sys.ddata.coord[i].x += RandomGenerator_MT19937::genrand_real2() - 0.5;
+    sys.ddata.coord[i].y += RandomGenerator_MT19937::genrand_real2() - 0.5;
+    sys.ddata.coord[i].z += RandomGenerator_MT19937::genrand_real2() - 0.5;
+    double tmp = 0;
+    tmp += (hcoord.x - sys.ddata.coord[i].x) * (hcoord.x - sys.ddata.coord[i].x);
+    tmp += (hcoord.y - sys.ddata.coord[i].y) * (hcoord.y - sys.ddata.coord[i].y);
+    tmp += (hcoord.z - sys.ddata.coord[i].z) * (hcoord.z - sys.ddata.coord[i].z);
+    tmp = sqrtf(tmp);
+    meanValue += tmp;
+  }
+
+  ScalorType result = disp.calMeanDisplacemant (sys);
+  printf ("mean is %.12f, %.12f\n", result, meanValue/sys.ddata.numAtom);
+  
+  return 0;
+
+}
+
+
+
+
 
 // __global__ void compare1 (ScalorType * a, ScalorType * result)
 // {
@@ -116,7 +255,3 @@
 //   return 0;
 // }
 
-int main(int argc, char * argv[])
-{
-    
-}
