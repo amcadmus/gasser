@@ -47,6 +47,8 @@ public:
 			  MDTimer * timer = NULL);
   void recoverDeviceData (MDTimer * timer = NULL);
 public:
+  void normalizeDeviceData ();
+public:
   /** 
    * Initialize system configuration from a .gro file.
    * 
@@ -63,7 +65,6 @@ public:
   void initDeviceData ();
   void setBoxSize (const ScalorType & x, const ScalorType & y, const ScalorType & z)
       {RectangularBoxGeometry::setBoxSize (x, y, z, &box);}
-
 public:
   /** 
    * Update host data from device.

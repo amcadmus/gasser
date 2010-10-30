@@ -164,9 +164,9 @@ DecideNumCell (const MDSystem &		sys,
   else NCell.z = 1;
   
   bool mode = true;
-  if (CellOnX && dclist.NCell.x < 4) mode = false;
-  if (CellOnY && dclist.NCell.y < 4) mode = false;
-  if (CellOnZ && dclist.NCell.z < 4) mode = false;
+  if (CellOnX && NCell.x < 4) mode = false;
+  if (CellOnY && NCell.y < 4) mode = false;
+  if (CellOnZ && NCell.z < 4) mode = false;
 
   if (mode == true){
     if (CellOnX) NCell.x *= divide;
@@ -260,4 +260,10 @@ CellList (const MDSystem &		sys,
     : mallocedDeviceCellList(false)
 {
   reinit (sys, cellSize, NTread, bdir, divide);
+}
+
+CellList::
+~CellList ()
+{
+  clearDeviceCellList();
 }
