@@ -211,9 +211,12 @@ applyNonBondedInteraction  (MDSystem & sys,
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
 	  sys.ddata.coord,
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
 	  sys.ddata.type, 
-	  sys.box, nlist.dnlist,
+	  sys.box,
+	  nlist.dnlist,
 	  err.ptr_de,
 	  err.ptr_dindex,
 	  err.ptr_dscalor);
@@ -222,28 +225,28 @@ applyNonBondedInteraction  (MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
 }
 
-void InteractionEngine_interface::
-applyNonBondedInteractionCell  (MDSystem & sys,
-				const NeighborList & nlist,
-				MDTimer *timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
-  calNonBondedInteraction
-      <<<nlist.cellGridDim, nlist.myBlockDim,
-      applyNonBondedInteraction_CellList_sbuffSize>>> (
-	  sys.ddata.numAtom,
-	  sys.ddata.coord,
-	  sys.ddata.forcx,
-	  sys.ddata.forcy,
-	  sys.ddata.forcz,
-	  sys.ddata.type, 
-	  sys.box,
-	  nlist.dclist,
-	  err.ptr_de);
-  checkCUDAError ("InteractionEngine::applyInteraction nb");
-  err.check ("interaction engine nb");	
-  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
-}
+// void InteractionEngine_interface::
+// applyNonBondedInteractionCell  (MDSystem & sys,
+// 				const NeighborList & nlist,
+// 				MDTimer *timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
+//   calNonBondedInteraction
+//       <<<nlist.cellGridDim, nlist.myBlockDim,
+//       applyNonBondedInteraction_CellList_sbuffSize>>> (
+// 	  sys.ddata.numAtom,
+// 	  sys.ddata.coord,
+// 	  sys.ddata.forcx,
+// 	  sys.ddata.forcy,
+// 	  sys.ddata.forcz,
+// 	  sys.ddata.type, 
+// 	  sys.box,
+// 	  nlist.dclist,
+// 	  err.ptr_de);
+//   checkCUDAError ("InteractionEngine::applyInteraction nb");
+//   err.check ("interaction engine nb");	
+//   if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
+// }
 
 
 // nblock should be 1 and block size should be 1
@@ -300,41 +303,41 @@ applyNonBondedInteraction (MDSystem & sys,
 }
 
 
-void InteractionEngine_interface::
-applyNonBondedInteractionCell (MDSystem & sys,
-			       const NeighborList & nlist,
-			       MDStatistic & st,
-			       MDTimer *timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  calNonBondedInteraction
-      <<<nlist.cellGridDim, nlist.myBlockDim,
-      applyNonBondedInteraction_CellList_sbuffSize>>> (
-	  sys.ddata.numAtom,
-	  sys.ddata.coord,
-	  sys.ddata.forcx,
-	  sys.ddata.forcy,
-	  sys.ddata.forcz,
-	  sys.ddata.type,
-	  sys.box,
-	  nlist.dclist
-	  ,
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
-	  err.ptr_de
-	  );
-  checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
-  err.check ("interaction engine nb");	
-  cudaThreadSynchronize();
-  sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
-  cudaThreadSynchronize();
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+// void InteractionEngine_interface::
+// applyNonBondedInteractionCell (MDSystem & sys,
+// 			       const NeighborList & nlist,
+// 			       MDStatistic & st,
+// 			       MDTimer *timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   calNonBondedInteraction
+//       <<<nlist.cellGridDim, nlist.myBlockDim,
+//       applyNonBondedInteraction_CellList_sbuffSize>>> (
+// 	  sys.ddata.numAtom,
+// 	  sys.ddata.coord,
+// 	  sys.ddata.forcx,
+// 	  sys.ddata.forcy,
+// 	  sys.ddata.forcz,
+// 	  sys.ddata.type,
+// 	  sys.box,
+// 	  nlist.dclist
+// 	  ,
+// 	  sum_nb_p.getBuff(),
+// 	  sum_nb_vxx.getBuff(),
+// 	  sum_nb_vyy.getBuff(),
+// 	  sum_nb_vzz.getBuff(),
+// 	  err.ptr_de
+// 	  );
+//   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
+//   err.check ("interaction engine nb");	
+//   cudaThreadSynchronize();
+//   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+//   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+//   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+//   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+//   cudaThreadSynchronize();
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
 
 
@@ -433,132 +436,132 @@ applyBondedInteraction (MDSystem & sys,
 }
 
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NVT & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  else if (nlist.mode == AllPairBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_allPair_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	DefaultNThreadPerBlock,
-	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.myrlist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+// void InteractionEngine_interface::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NVT & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   else if (nlist.mode == AllPairBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_allPair_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	DefaultNThreadPerBlock,
+// 	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.myrlist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NVT2 & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+// void InteractionEngine_interface::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NVT2 & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NPT & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  else if (nlist.mode == AllPairBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_allPair_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	DefaultNThreadPerBlock,
-	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.myrlist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
-  //   printf ("%d %f  (%f %f %f)\n", i,
-  // 	    wtest.sumExpDeltaU.getBuff()[i],
-  // 	    wtest.coordTestParticle[i].x,
-  // 	    wtest.coordTestParticle[i].y,
-  // 	    wtest.coordTestParticle[i].z
-  // 	);
-  // }
+// void InteractionEngine_interface::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NPT & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   else if (nlist.mode == AllPairBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_allPair_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	DefaultNThreadPerBlock,
+// 	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.myrlist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
+//   //   printf ("%d %f  (%f %f %f)\n", i,
+//   // 	    wtest.sumExpDeltaU.getBuff()[i],
+//   // 	    wtest.coordTestParticle[i].x,
+//   // 	    wtest.coordTestParticle[i].y,
+//   // 	    wtest.coordTestParticle[i].z
+//   // 	);
+//   // }
   
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
 
 __global__ void clearForce (const IndexType numAtom,

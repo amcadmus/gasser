@@ -48,6 +48,7 @@ public:
 	    const IndexType &		NTread,
 	    const BoxDirection_t &	bdir = 7,
 	    const IndexType &		divide = 1);
+  ~CellList();
   void reinit (const MDSystem &		sys,
 	       const ScalorType &	cellSize,
 	       const IndexType &	NTread,
@@ -57,6 +58,10 @@ public:
   void rebuild (const MDSystem & sys,
 		MDTimer * timer = NULL);
   bool isempty () const {return !mallocedDeviceCellList;}
+public:
+  const dim3 & getCellGrimDim () const {return cellGridDim;}
+  const dim3 & getAtomGrimDim () const {return atomGridDim;}
+  const dim3 & getBlockDim    () const {return myBlockDim;}
 }
     ;
 
