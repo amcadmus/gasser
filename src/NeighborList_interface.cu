@@ -160,8 +160,6 @@ void NeighborList::
 mallocDeviceNeighborList (const MDSystem & sys,
 			  const ScalorType & DeviceNeighborListExpansion)
 {
-  dnlist.rlist = myrlist;
-  dnlist.stride = sys.ddata.numAtom;
   ScalorType density = sys.ddata.numAtom / (sys.box.size.x * sys.box.size.y * sys.box.size.z);
   ScalorType expectedNumberInList 
       = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
@@ -202,6 +200,8 @@ reinit (const SystemNonBondedInteraction & sysNbInter,
   atomGridDim = toGridDim (nob);
   
   myrlist = rlist;
+  dnlist.rlist = myrlist;
+  dnlist.stride = sys.ddata.numAtom;
   
   // init neighbor list
   clearDeviceNeighborList ();
@@ -239,6 +239,7 @@ rebuild (const MDSystem & sys,
 {
   if (clist.isempty()){
     if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+    // printf ("rlist is %f\n", dnlist.rlist);
     buildDeviceNeighborListAllPair (sys);
     if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
   }
