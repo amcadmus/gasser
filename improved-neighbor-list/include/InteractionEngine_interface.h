@@ -12,7 +12,7 @@
 
 using namespace RectangularBoxGeometry;
 
-class InteractionEngine_interface
+class InteractionEngine
 {
   dim3 atomGridDim;
   dim3 myBlockDim;
@@ -45,16 +45,23 @@ class InteractionEngine_interface
 private:
   void initNonBondedInteraction (const MDSystem & sys);
 public:
-  InteractionEngine_interface(const MDSystem  & sys, 
+  InteractionEngine(const MDSystem  & sys, 
 			      const IndexType & NThread)
       {init (sys, NThread);}
-  ~InteractionEngine_interface();
+  ~InteractionEngine();
   void init (const MDSystem  & sys, 
 	     const IndexType & NThread);
   void registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter);
   void registBondedInteraction    (const SystemBondedInteraction    & sysBdInter);
 public:
   void clearInteraction (MDSystem & sys);
+  // apply nonbonded interaction and make nlist
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const CellList & clist,
+				  const ScalorType & rcut,
+				  NeighborList & nlist,
+				  MDTimer *timer = NULL);
+  
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
 				  MDTimer *timer = NULL);
