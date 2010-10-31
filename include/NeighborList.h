@@ -11,7 +11,9 @@ using namespace RectangularBoxGeometry;
 struct DeviceCellList 
 {
   IndexType divide;
-  ScalorType cellSize;		/**< expected cell size */
+  ScalorType rlist;		/**< radius of list, only the atoms
+				 * from neighboring cells fall in this
+				 * raidus.*/
   IntVectorType NCell;		/**< the number of cells on each direction */
   VectorType NCelli;		/**< inverse the NCell */
   IndexType * data;		/**< matrix, the i-th line keep indexes of

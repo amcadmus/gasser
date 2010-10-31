@@ -46,7 +46,7 @@ private:
   void initNonBondedInteraction (const MDSystem & sys);
 public:
   InteractionEngine(const MDSystem  & sys, 
-			      const IndexType & NThread)
+		    const IndexType & NThread)
       {init (sys, NThread);}
   ~InteractionEngine();
   void init (const MDSystem  & sys, 

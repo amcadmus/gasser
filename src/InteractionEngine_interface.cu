@@ -1487,7 +1487,7 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.cellSize;
+  ScalorType rlist = clist.rlist;
 
   // the target index and coordinates are shared
 
@@ -1596,7 +1596,7 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.cellSize;
+  ScalorType rlist = clist.rlist;
 
   // the target index and coordinates are shared
 
@@ -1740,7 +1740,7 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
 	ScalorType diffy = targetCoord.y - shift.y - refCoord.y;
 	ScalorType diffz = targetCoord.z - shift.z - refCoord.z;
 	ScalorType dr2 = ((diffx*diffx+diffy*diffy+diffz*diffz));
-	if (dr2 < clist.cellSize*clist.cellSize && dr2 > 1e-4){
+	if (dr2 < clist.rlist*clist.rlist && dr2 > 1e-4){
 	  IndexType fidx(0);
 	  ScalorType dp;
 	  fidx = AtomNBForceTable::
