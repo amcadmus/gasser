@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
-#define NThreadsPerBlockAtom	4
+#define NThreadsPerBlockCell	128
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
@@ -105,7 +105,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);

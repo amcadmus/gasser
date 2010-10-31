@@ -118,6 +118,8 @@ calMaxDisplacemant (const MDSystem & sys,
   max.maxBuff (dresult, 0);
   
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+
+  if (timer != NULL) timer->toc(mdTimeJudgeRebuild);
   return hresult;
 }
 
@@ -247,6 +249,8 @@ calMeanDisplacemant (const MDSystem & sys,
   sum.sumBuff (dresult, 0);
   
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
+
+  if (timer != NULL) timer->toc(mdTimeJudgeRebuild);
   return hresult / sys.ddata.numAtom;
 }
 
