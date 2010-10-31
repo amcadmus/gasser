@@ -28,7 +28,7 @@ IndexType const_numAtomType[1];
 __constant__
 IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
-void InteractionEngine_interface::init (const MDSystem  & sys,
+void InteractionEngine::init (const MDSystem  & sys,
 					const IndexType & NTread)
 {
   hasBond = false;
@@ -80,11 +80,11 @@ static IndexType hroundUp4 (IndexType x)
   }
 }
 
-void InteractionEngine_interface::
+void InteractionEngine::
 registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 {
   if (! sysNbInter.beBuilt()) {
-    throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine_interface");
+    throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine");
   }
   if (sysNbInter.numberOfInteraction() > MaxNumberBondedInteraction ){
     throw MDExcptExceedConstantMemLimit (
@@ -142,7 +142,7 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 }
 
 
-void InteractionEngine_interface::
+void InteractionEngine::
 registBondedInteraction (const SystemBondedInteraction & sysBdInter)
 {
   if (sysBdInter.hasBond() ){
@@ -182,7 +182,7 @@ registBondedInteraction (const SystemBondedInteraction & sysBdInter)
   }
 }
 
-InteractionEngine_interface::~InteractionEngine_interface()
+InteractionEngine::~InteractionEngine()
 {
   cudaUnbindTexture(global_texRef_interaction_coord);
   cudaUnbindTexture(global_texRef_interaction_type);
@@ -191,7 +191,7 @@ InteractionEngine_interface::~InteractionEngine_interface()
   }
 }
 
-void InteractionEngine_interface::clearInteraction (MDSystem & sys)
+void InteractionEngine::clearInteraction (MDSystem & sys)
 {
   clearForce
       <<<atomGridDim, myBlockDim>>>(
@@ -201,7 +201,7 @@ void InteractionEngine_interface::clearInteraction (MDSystem & sys)
 }
 
 
-void InteractionEngine_interface::
+void InteractionEngine::
 applyNonBondedInteraction  (MDSystem & sys,
 			    const NeighborList & nlist,
 			    MDTimer *timer )
@@ -225,7 +225,7 @@ applyNonBondedInteraction  (MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
 }
 
-// void InteractionEngine_interface::
+// void InteractionEngine::
 // applyNonBondedInteractionCell  (MDSystem & sys,
 // 				const NeighborList & nlist,
 // 				MDTimer *timer )
@@ -259,7 +259,7 @@ applyEnergyPressureCorrection (ScalorType * ddata,
   ddata[mdStatisticPressureCorrection] = pressureCorr;
 }
   
-void InteractionEngine_interface::
+void InteractionEngine::
 applyNonBondedInteraction (MDSystem & sys,
 			   const NeighborList & nlist,
 			   MDStatistic & st,
@@ -303,7 +303,7 @@ applyNonBondedInteraction (MDSystem & sys,
 }
 
 
-// void InteractionEngine_interface::
+// void InteractionEngine::
 // applyNonBondedInteractionCell (MDSystem & sys,
 // 			       const NeighborList & nlist,
 // 			       MDStatistic & st,
@@ -341,7 +341,7 @@ applyNonBondedInteraction (MDSystem & sys,
 
 
 
-void InteractionEngine_interface::
+void InteractionEngine::
 applyBondedInteraction (MDSystem & sys,
 			const BondedInteractionList & bdlist,
 			MDTimer *timer )
@@ -374,7 +374,7 @@ applyBondedInteraction (MDSystem & sys,
   }
 }
 
-void InteractionEngine_interface::
+void InteractionEngine::
 applyBondedInteraction (MDSystem & sys,
 			const BondedInteractionList & bdlist,
 			MDStatistic & st,
@@ -436,7 +436,7 @@ applyBondedInteraction (MDSystem & sys,
 }
 
 
-// void InteractionEngine_interface::
+// void InteractionEngine::
 // calculateWidomDeltaEnergy (const MDSystem & sys,
 // 			   const NeighborList & nlist,
 // 			   WidomTestParticleInsertion_NVT & wtest,
@@ -481,7 +481,7 @@ applyBondedInteraction (MDSystem & sys,
 //   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 // }
 
-// void InteractionEngine_interface::
+// void InteractionEngine::
 // calculateWidomDeltaEnergy (const MDSystem & sys,
 // 			   const NeighborList & nlist,
 // 			   WidomTestParticleInsertion_NVT2 & wtest,
@@ -509,7 +509,7 @@ applyBondedInteraction (MDSystem & sys,
 //   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 // }
 
-// void InteractionEngine_interface::
+// void InteractionEngine::
 // calculateWidomDeltaEnergy (const MDSystem & sys,
 // 			   const NeighborList & nlist,
 // 			   WidomTestParticleInsertion_NPT & wtest,
@@ -1487,7 +1487,7 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.rlist;
+  ScalorType rlist = clist.cellSize;
 
   // the target index and coordinates are shared
 
@@ -1596,7 +1596,7 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.rlist;
+  ScalorType rlist = clist.cellSize;
 
   // the target index and coordinates are shared
 
@@ -1740,7 +1740,7 @@ widomDeltaPoten_NVT (const IndexType		numTestParticle,
 	ScalorType diffy = targetCoord.y - shift.y - refCoord.y;
 	ScalorType diffz = targetCoord.z - shift.z - refCoord.z;
 	ScalorType dr2 = ((diffx*diffx+diffy*diffy+diffz*diffz));
-	if (dr2 < clist.rlist*clist.rlist && dr2 > 1e-4){
+	if (dr2 < clist.cellSize*clist.cellSize && dr2 > 1e-4){
 	  IndexType fidx(0);
 	  ScalorType dp;
 	  fidx = AtomNBForceTable::

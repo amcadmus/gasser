@@ -472,7 +472,7 @@ void
 BerendsenLeapFrog::init (const MDSystem &sys,
 			 const IndexType & NThread,
 			 const ScalorType & dt_,
-			 InteractionEngine_interface &inter,
+			 InteractionEngine &inter,
 			 NeighborList & nlist,
 			 const ScalorType & rebt,
 			 BondedInteractionList * ptr_bdInterList_)
@@ -832,7 +832,7 @@ void LeapFrog_TPCouple_Rescale::
 init (const MDSystem &sys,
       const IndexType & NThread,
       const ScalorType & dt_,
-      InteractionEngine_interface &inter,
+      InteractionEngine &inter,
       NeighborList & nlist,
       const ScalorType & rebt,
       BondedInteractionList * ptr_bdInterList_)
@@ -1156,7 +1156,7 @@ void LeapFrog_TPCouple_VCouple::
 init (const MDSystem &sys,
       const IndexType & NThread,
       const ScalorType & dt_,
-      InteractionEngine_interface &inter,
+      InteractionEngine &inter,
       NeighborList & nlist,
       const ScalorType & rebt,
       BondedInteractionList * ptr_bdInterList_)

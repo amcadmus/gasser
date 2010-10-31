@@ -371,7 +371,7 @@ buildDeviceNeighborList_DeviceCellList (IndexType		numAtom,
     reftype = tex1Dfetch(global_texRef_neighbor_type, ii);
 #endif
   }
-  ScalorType rlist = clist.rlist;
+  ScalorType rlist = nlist.rlist;
 
   // the target index and coordinates are shared
 

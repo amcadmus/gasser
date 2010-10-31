@@ -73,7 +73,7 @@ int main(int argc, char * argv[])
   ScalorType refT = 1.;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
-  InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
+  InteractionEngine inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
   
   MDTimer timer;
