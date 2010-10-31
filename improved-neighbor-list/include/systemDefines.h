@@ -31,11 +31,11 @@ typedef int		TypeType;
 #define MaxExceptionMsgLength			512
 #define MaxNBForceTableBuffSize			512
 #define MaxNumberParamPerForce			16	
-#define MaxNumberNonBondedInteraction		512
-#define MaxNumberNonBondedInteractionParameter	(512*5)
-#define MaxNumberBondedInteraction		256
-#define MaxNumberBondedInteractionParamemter	(256*3)
-#define MaxLengthNonBondedInteractionTable	128
+#define MaxNumberNonBondedInteraction		32
+#define MaxNumberNonBondedInteractionParameter	(32*5)
+#define MaxNumberBondedInteraction		32
+#define MaxNumberBondedInteractionParamemter	(32*3)
+#define MaxLengthNonBondedInteractionTable	512
 
 #define MemAllocExtension			2
 

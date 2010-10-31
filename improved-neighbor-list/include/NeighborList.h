@@ -30,8 +30,11 @@ struct DeviceCellList
 
 struct DeviceNeighborList
 {
-  ScalorType rlist;		/**< radius of neighbor list */
-  IndexType listLength;		/**< max length of the neighbor list */
+  ScalorType  rlist;		/**< radius of neighbor list */
+  IndexType   stride;           /**< stride of neighbor list, which is
+				 * the expected larger than or equal
+				 * to the number of Atoms */
+  IndexType   listLength;	/**< max length of the neighbor list */
   IndexType * data;		/**< matrix, i-th row stores the
 				 * indexes of neigbors of i-th atom*/
   IndexType * Nneighbor;	/**< vector stores the number of neigbors of
@@ -40,9 +43,6 @@ struct DeviceNeighborList
 				 * non-bonded interaction, whose type
 				 * and parameters are keeped by the
 				 * interaction engine. */
-  IndexType stride;             /**< stride of neighbor list, which is
-				 * the expected larger than or equal
-				 * to the number of Atoms */
   // DeviceNeighborList ();
   // ~DeviceNeighborList ();
 };
