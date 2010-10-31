@@ -118,7 +118,8 @@ int main(int argc, char * argv[])
 	  sys.normalizeDeviceData ();
 	  disp.recordCoord (sys);
 	  clist.rebuild (sys, &timer);
-	  inter.applyNonBondedInteraction (sys, clist, rcut, nlist, st);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
+	  nlist.rebuild (sys, clist, &timer);
 	  printf ("done\n");
 	  fflush(stdout);
 	}
@@ -151,7 +152,8 @@ int main(int argc, char * argv[])
 	  sys.normalizeDeviceData ();
 	  disp.recordCoord (sys);
 	  clist.rebuild (sys, &timer);
-	  inter.applyNonBondedInteraction (sys, clist, rcut, nlist);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, &timer);
+	  nlist.rebuild (sys, clist, &timer);
 	  printf ("done\n");
 	  fflush(stdout);
 	}

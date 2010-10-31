@@ -67,6 +67,17 @@ public:
 				  NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
+
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const CellList & clist,
+				  const ScalorType & rcut,
+				  MDTimer *timer = NULL);
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const CellList & clist,
+				  const ScalorType & rcut,
+				  MDStatistic & st,
+				  MDTimer *timer = NULL);
+
   
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
