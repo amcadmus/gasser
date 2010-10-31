@@ -51,6 +51,35 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 					 mdError_t * ptr_de,
 					 IndexType * errorIndex,
 					 ScalorType * errorScalor);
+__global__ void
+calNonBondedInteraction (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const TypeType *		type,
+			 const RectangularBox		box,
+			 DeviceCellList			clist,
+			 const ScalorType		rcut,
+			 DeviceNeighborList		nlist,
+			 mdError_t *			ptr_de);
+__global__ void
+calNonBondedInteraction (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const TypeType *		type,
+			 const RectangularBox		box,
+			 DeviceCellList			clist,
+			 const ScalorType		rcut,
+			 DeviceNeighborList		nlist,
+			 ScalorType *			statistic_nb_buff0,
+			 ScalorType *			statistic_nb_buff1,
+			 ScalorType *			statistic_nb_buff2,
+			 ScalorType *			statistic_nb_buff3,
+			 mdError_t *			ptr_de);
+
 __global__ void calBondInteraction (const IndexType numAtom,
 #ifndef COORD_IN_ONE_VEC
 				    const ScalorType * coordx,

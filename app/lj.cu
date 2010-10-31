@@ -47,7 +47,8 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ScalorType rcut = 3.2f;
+  ljparam.reinit (1.f, 1.f, 0.f, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
@@ -58,7 +59,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.1;
   ScalorType rlist = maxrcut + nlistExten;
   CellList clist (sys, rlist, NThreadsPerBlockCell);
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10.f);
@@ -109,7 +110,21 @@ int main(int argc, char * argv[])
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
+	if (maxdr > nlistExten * 0.5){
+	  printf ("# Rebuild at step %09i ... ", i+1);
+	  fflush(stdout);
+	  // rebuild
+	  sys.normalizeDeviceData ();
+	  disp.recordCoord (sys);
+	  clist.rebuild (sys, &timer);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, nlist, st);
+	  printf ("done\n");
+	  fflush(stdout);
+	}
+	else{
+	  inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	}
 	inte_vv.step2 (sys, dt, st, &timer);
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e \n",
@@ -128,21 +143,34 @@ int main(int argc, char * argv[])
       else {
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, &timer);
+	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
+	if (maxdr > nlistExten * 0.5){
+	  printf ("# Rebuild at step %09i ... ", i+1);
+	  fflush(stdout);
+	  // rebuild
+	  sys.normalizeDeviceData ();
+	  disp.recordCoord (sys);
+	  clist.rebuild (sys, &timer);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, nlist);
+	  printf ("done\n");
+	  fflush(stdout);
+	}
+	else{
+	  inter.applyNonBondedInteraction (sys, nlist, &timer);
+	}
 	inte_vv.step2 (sys, dt, &timer);
       }
-      ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
-      if (maxdr > nlistExten * 0.5){
-	printf ("# Rebuild at step %09i ... ", i+1);
-	fflush(stdout);
-	// rebuild
-	sys.normalizeDeviceData ();
-	disp.recordCoord (sys);
-	clist.rebuild (sys, &timer);
-	nlist.rebuild (sys, clist, &timer);
-	printf ("done\n");
-	fflush(stdout);
-      }
+      // if (maxdr > nlistExten * 0.5){
+      // 	printf ("# Rebuild at step %09i ... ", i+1);
+      // 	fflush(stdout);
+      // 	// rebuild
+      // 	sys.normalizeDeviceData ();
+      // 	disp.recordCoord (sys);
+      // 	clist.rebuild (sys, &timer);
+      // 	nlist.rebuild (sys, clist, &timer);
+      // 	printf ("done\n");
+      // 	fflush(stdout);
+      // }
       // if ((i+1) % 1000 == 0){
       // 	sys.recoverDeviceData (&timer);
       // 	sys.updateHostFromRecovered (&timer);

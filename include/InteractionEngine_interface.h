@@ -20,7 +20,7 @@ class InteractionEngine
   IndexType calAngleInteraction_sbuffSize;
   bool hasBond;
   bool hasAngle;
-  IndexType applyNonBondedInteraction_CellList_sbuffSize;
+  // IndexType applyNonBondedInteraction_CellList_sbuffSize;
   // ScalorType * statistic_nb_buff0;
   // ScalorType * statistic_nb_buff1;
   // ScalorType * statistic_nb_buff2;
@@ -60,6 +60,12 @@ public:
 				  const CellList & clist,
 				  const ScalorType & rcut,
 				  NeighborList & nlist,
+				  MDTimer *timer = NULL);
+  void applyNonBondedInteraction (MDSystem & sys,
+				  const CellList & clist,
+				  const ScalorType & rcut,
+				  NeighborList & nlist,
+				  MDStatistic & st,
 				  MDTimer *timer = NULL);
   
   void applyNonBondedInteraction (MDSystem & sys,
