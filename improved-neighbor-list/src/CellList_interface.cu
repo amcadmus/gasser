@@ -30,7 +30,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
   }
 
   IndexType numCell = dclist.NCell.x * dclist.NCell.y * dclist.NCell.z;
-  dclist.cellSize = mycellSize;
+  dclist.rlist = mycellSize;
   dclist.divide = mydivide;
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block

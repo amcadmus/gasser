@@ -183,7 +183,7 @@ buildCellNeighborhood (DeviceCellList clist,
   
   
   if (tid == 0) {
-    ScalorType rlist2 = clist.cellSize * clist.cellSize;
+    ScalorType rlist2 = clist.rlist * clist.rlist;
     clist.numNeighborCell[bid] = 0;
     int centerx, centery, centerz;
     D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
