@@ -7,13 +7,13 @@
 
 void Reshuffle::
 init (const MDSystem & sys,
-      const NeighborList & nlist, 
+      const CellList & clist, 
       const IndexType & NTread)
 {
   myBlockDim.y = 1;
   myBlockDim.z = 1;
   myBlockDim.x = NTread;
-  cellGridDim = nlist.cellGridDim;
+  cellGridDim = clist.getCellGrimDim();
   
   nob = cellGridDim.x * cellGridDim.y;;
   cudaMalloc ((void**)&posiBuff, sizeof(IndexType) * nob);
@@ -59,29 +59,33 @@ Reshuffle_calIndexTable (const IndexType * clistData,
   }
 }
 
-// bool Reshuffle::
-// calIndexTable (const NeighborList & nlist,
-// 	       MDTimer * timer)
-// {
-//   if (nlist.mode != CellListBuilt) return false;
+bool Reshuffle::
+calIndexTable (const CellList & clist,
+	       MDTimer * timer)
+{
+  if (clist.isempty()) return false;
 
-//   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
-//   cellGridDim = nlist.cellGridDim;
-//   IndexType nob = cellGridDim.x * cellGridDim.y;
-//   cudaFree(posiBuff);
-//   cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);  
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  cellGridDim = clist.getCellGrimDim();
+  IndexType nob = cellGridDim.x * cellGridDim.y;
+  cudaFree(posiBuff);
+  cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);  
 
-//   Reshuffle_calPosiList
-//       <<<1, 1>>> (
-//    	  nlist.dclist.numbers, nob, posiBuff);
-//   checkCUDAError ("Reshuffle::calIndexTable, cal posi");
-//   Reshuffle_calIndexTable 
-//       <<<cellGridDim, myBlockDim>>> (
-//    	  nlist.dclist.data, posiBuff, indexTable);
-//   checkCUDAError ("Reshuffle::calIndexTable, cal idxTable");
-//   if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
-//   return true;
-// }
+  Reshuffle_calPosiList
+      <<<1, 1>>> (
+   	  clist.dclist.numbers,
+	  nob,
+	  posiBuff);
+  checkCUDAError ("Reshuffle::calIndexTable, cal posi");
+  Reshuffle_calIndexTable 
+      <<<cellGridDim, myBlockDim>>> (
+   	  clist.dclist.data,
+	  posiBuff,
+	  indexTable);
+  checkCUDAError ("Reshuffle::calIndexTable, cal idxTable");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+  return true;
+}
 
 
 						       

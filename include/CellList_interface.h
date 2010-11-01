@@ -15,7 +15,7 @@
 
 using namespace RectangularBoxGeometry;
 
-class CellList
+class CellList : public Reshufflable
 {
   dim3			cellGridDim;
   dim3			atomGridDim;
@@ -58,6 +58,9 @@ public:
   void rebuild (const MDSystem & sys,
 		MDTimer * timer = NULL);
   bool isempty () const {return !mallocedDeviceCellList;}
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer *timer = NULL);
 public:
   const dim3 & getCellGrimDim () const {return cellGridDim;}
   const dim3 & getAtomGrimDim () const {return atomGridDim;}
