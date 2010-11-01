@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 10 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
@@ -128,6 +128,7 @@ int main(int argc, char * argv[])
 	}
 	else{
 	  inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	  // inter.applyNonBondedInteraction (sys, rcut, st, &timer);
 	}
 	inte_vv.step2 (sys, dt, st, &timer);
 	st.updateHost();
@@ -162,6 +163,7 @@ int main(int argc, char * argv[])
 	}
 	else{
 	  inter.applyNonBondedInteraction (sys, nlist, &timer);
+	  // inter.applyNonBondedInteraction (sys, rcut, &timer);
 	}
 	inte_vv.step2 (sys, dt, &timer);
       }

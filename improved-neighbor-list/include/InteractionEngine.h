@@ -12,6 +12,32 @@
 
 using namespace RectangularBoxGeometry;
 
+__global__ void
+calNonBondedInteraction  (IndexType			numAtom,
+			  CoordType *			coord,
+			  ScalorType *			forcx,
+			  ScalorType *			forcy, 
+			  ScalorType *			forcz,
+			  TypeType *			type,
+			  RectangularBox		box,
+			  const ScalorType		rcut,
+			  mdError_t *			ptr_de);
+__global__ void
+calNonBondedInteraction  (IndexType			numAtom,
+			  CoordType *			coord,
+			  ScalorType *			forcx,
+			  ScalorType *			forcy, 
+			  ScalorType *			forcz,
+			  TypeType *			type,
+			  RectangularBox		box,
+			  const ScalorType		rcut,
+			  ScalorType *			statistic_nb_buff0,
+			  ScalorType *			statistic_nb_buff1,
+			  ScalorType *			statistic_nb_buff2,
+			  ScalorType *			statistic_nb_buff3,
+			  mdError_t *			ptr_de);
+
+
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void calNonBondedInteraction (const IndexType numAtom,
 #ifndef COORD_IN_ONE_VEC
