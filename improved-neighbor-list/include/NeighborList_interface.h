@@ -44,7 +44,6 @@ private:
 public:
   ScalorType		myrlist;
   DeviceNeighborList	dnlist;
-  dim3			cellGridDim;
   dim3			atomGridDim;
   dim3			myBlockDim;
   IndexType		NatomType;

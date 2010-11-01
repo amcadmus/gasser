@@ -251,6 +251,21 @@ rebuild (const MDSystem &	sys,
   if (timer != NULL) timer->toc(mdTimeBuildCellList);
 }
 
+void CellList::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  Reshuffle_reshuffleDeviceCellList
+      <<<cellGridDim, myBlockDim>>> (
+  	  dclist.data,
+	  indexTable);
+  checkCUDAError ("CellList::reshuffle");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+
+
 CellList::
 CellList (const MDSystem &		sys,
 	  const ScalorType &		cellSize,

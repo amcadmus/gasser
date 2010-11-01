@@ -24,22 +24,23 @@ Reshuffle_reshuffleArray (const TYPE * bkbuff,
 class Reshuffle
 {
   IndexType * posiBuff;
-  IndexType * indexTable;
   dim3 cellGridDim;
   dim3 myBlockDim;
   IndexType nob;
 public:
+  IndexType * indexTable;
+public:
   Reshuffle (const MDSystem & sys,
-	     const NeighborList & nlist, 
+	     const CellList & clist, 
 	     const IndexType & NTread) 
-      {init (sys, nlist, NTread);}
+      {init (sys, clist, NTread);}
   ~Reshuffle ();
   void init (const MDSystem & sys,
-	     const NeighborList & nlist,
+	     const CellList & clist,
 	     const IndexType & NTread);
-  bool calIndexTable (const NeighborList & nlist,
+  bool calIndexTable (const CellList & nlist,
 		      MDTimer * timer = NULL);
-  const IndexType * getIndexTable () const {return indexTable;}
+  // const IndexType * getIndexTable () const {return indexTable;}
 };
 
 

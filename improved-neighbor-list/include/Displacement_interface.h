@@ -4,6 +4,7 @@
 #include "common.h"
 #include "BoxGeometry.h"
 #include "Reshufflable.h"
+#include "Reshuffle_interface.h"
 #include "MDSystem.h"
 #include "MDSystem_interface.h"
 #include "MDError_interface.h"
@@ -36,7 +37,7 @@ public:
   ScalorType getResult () const {return hresult;}
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
-			  MDTimer * timer) {}
+			  MDTimer * timer = NULL);
 }
     ;
 
@@ -66,7 +67,7 @@ public:
   ScalorType getResult () const {return hresult;}
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
-			  MDTimer * timer) {}
+			  MDTimer * timer = NULL);
 }
     ;
 

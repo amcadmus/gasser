@@ -123,6 +123,24 @@ calMaxDisplacemant (const MDSystem & sys,
   return hresult;
 }
 
+void Displacement_max::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  cudaMemcpy (bkbackupCoord, backupCoord,
+  	      sizeof (CoordType) * numAtom,
+  	      cudaMemcpyDeviceToDevice);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>> 
+      (bkbackupCoord,
+       numAtom,
+       indexTable,
+       backupCoord);
+  checkCUDAError ("Displacement_max::reshuffle");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
 
 
 
@@ -253,6 +271,26 @@ calMeanDisplacemant (const MDSystem & sys,
   if (timer != NULL) timer->toc(mdTimeJudgeRebuild);
   return hresult / sys.ddata.numAtom;
 }
+
+void Displacement_mean::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  cudaMemcpy (bkbackupCoord, backupCoord,
+  	      sizeof (CoordType) * numAtom,
+  	      cudaMemcpyDeviceToDevice);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>> 
+      (bkbackupCoord,
+       numAtom,
+       indexTable,
+       backupCoord);
+  checkCUDAError ("Displacement_max::reshuffle");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+
 
 
 
