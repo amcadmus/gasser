@@ -339,16 +339,16 @@ shiftedD3toD1 (DeviceCellList clist,
 }
 
 __global__ void
-buildDeviceNeighborList_DeviceCellList (IndexType		numAtom,
-					CoordType *		coord,
-					TypeType *		type,
-					RectangularBox		box,
-					DeviceCellList		clist,
+buildDeviceNeighborList_DeviceCellList (const IndexType		numAtom,
+					const CoordType *	coord,
+					const TypeType *	type,
+					const RectangularBox	box,
+					const DeviceCellList	clist,
 					DeviceNeighborList	nlist,
 					const IndexType *	nbForceTable,
-					IndexType		NatomType,
-					bool			sharednbForceTable,
-					mdError_t *		ptr_de)
+					const IndexType		NatomType,
+					const bool		sharednbForceTable,
+					mdError_t *		ptr_de )
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;

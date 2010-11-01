@@ -13,23 +13,23 @@
 using namespace RectangularBoxGeometry;
 
 __global__ void
-calNonBondedInteraction  (IndexType			numAtom,
-			  CoordType *			coord,
+calNonBondedInteraction  (const IndexType		numAtom,
+			  const CoordType *		coord,
 			  ScalorType *			forcx,
 			  ScalorType *			forcy, 
 			  ScalorType *			forcz,
-			  TypeType *			type,
-			  RectangularBox		box,
+			  const TypeType *		type,
+			  const RectangularBox		box,
 			  const ScalorType		rcut,
 			  mdError_t *			ptr_de);
 __global__ void
-calNonBondedInteraction  (IndexType			numAtom,
-			  CoordType *			coord,
+calNonBondedInteraction  (const IndexType		numAtom,
+			  const CoordType *		coord,
 			  ScalorType *			forcx,
 			  ScalorType *			forcy, 
 			  ScalorType *			forcz,
-			  TypeType *			type,
-			  RectangularBox		box,
+			  const TypeType *		type,
+			  const RectangularBox		box,
 			  const ScalorType		rcut,
 			  ScalorType *			statistic_nb_buff0,
 			  ScalorType *			statistic_nb_buff1,
@@ -39,44 +39,6 @@ calNonBondedInteraction  (IndexType			numAtom,
 
 
 // needs ceil(numAtom/blockDim.x) blocks
-__global__ void calNonBondedInteraction (const IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					 const ScalorType * coordx,
-					 const ScalorType * coordy, 
-					 const ScalorType * coordz,
-#else
-					 const CoordType * coord,
-#endif
-					 ScalorType * forcx,
-					 ScalorType * forcy, 
-					 ScalorType * forcz,
-					 const TypeType * type,
-					 const RectangularBox box,
-					 const DeviceNeighborList nlist,
-					 mdError_t * ptr_de,
-					 IndexType * errorIndex,
-					 ScalorType * errorScalor);
-__global__ void calNonBondedInteraction (const IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					 const ScalorType * coordx,
-					 const ScalorType * coordy, 
-					 const ScalorType * coordz,
-#else
-					 const CoordType * coord,
-#endif
-					 ScalorType * forcx,
-					 ScalorType * forcy, 
-					 ScalorType * forcz,
-					 const TypeType * type,
-					 const RectangularBox box,
-					 const DeviceNeighborList nlist,
-					 ScalorType * statistic_buff0,
-					 ScalorType * statistic_buff1,
-					 ScalorType * statistic_buff2,
-					 ScalorType * statistic_buff3,
-					 mdError_t * ptr_de,
-					 IndexType * errorIndex,
-					 ScalorType * errorScalor);
 __global__ void
 calNonBondedInteraction (const IndexType		numAtom,
 			 const CoordType *		coord,
@@ -85,10 +47,10 @@ calNonBondedInteraction (const IndexType		numAtom,
 			 ScalorType *			forcz,
 			 const TypeType *		type,
 			 const RectangularBox		box,
-			 DeviceCellList			clist,
-			 const ScalorType		rcut,
-			 DeviceNeighborList		nlist,
-			 mdError_t *			ptr_de);
+			 const DeviceNeighborList	nlist,
+			 mdError_t *			ptr_de,
+			 IndexType *			errorIndex,
+			 ScalorType *			errorScalor);
 __global__ void
 calNonBondedInteraction (const IndexType		numAtom,
 			 const CoordType *		coord,
@@ -97,14 +59,42 @@ calNonBondedInteraction (const IndexType		numAtom,
 			 ScalorType *			forcz,
 			 const TypeType *		type,
 			 const RectangularBox		box,
-			 DeviceCellList			clist,
-			 const ScalorType		rcut,
-			 DeviceNeighborList		nlist,
-			 ScalorType *			statistic_nb_buff0,
-			 ScalorType *			statistic_nb_buff1,
-			 ScalorType *			statistic_nb_buff2,
-			 ScalorType *			statistic_nb_buff3,
-			 mdError_t *			ptr_de);
+			 const DeviceNeighborList	nlist,
+			 ScalorType *			statistic_buff0,
+			 ScalorType *			statistic_buff1,
+			 ScalorType *			statistic_buff2,
+			 ScalorType *			statistic_buff3,
+			 mdError_t *			ptr_de,
+			 IndexType *			errorIndex,
+			 ScalorType *			errorScalor);
+// __global__ void
+// calNonBondedInteraction (const IndexType		numAtom,
+// 			 const CoordType *		coord,
+// 			 ScalorType *			forcx,
+// 			 ScalorType *			forcy, 
+// 			 ScalorType *			forcz,
+// 			 const TypeType *		type,
+// 			 const RectangularBox		box,
+// 			 DeviceCellList			clist,
+// 			 const ScalorType		rcut,
+// 			 DeviceNeighborList		nlist,
+// 			 mdError_t *			ptr_de);
+// __global__ void
+// calNonBondedInteraction (const IndexType		numAtom,
+// 			 const CoordType *		coord,
+// 			 ScalorType *			forcx,
+// 			 ScalorType *			forcy, 
+// 			 ScalorType *			forcz,
+// 			 const TypeType *		type,
+// 			 const RectangularBox		box,
+// 			 DeviceCellList			clist,
+// 			 const ScalorType		rcut,
+// 			 DeviceNeighborList		nlist,
+// 			 ScalorType *			statistic_nb_buff0,
+// 			 ScalorType *			statistic_nb_buff1,
+// 			 ScalorType *			statistic_nb_buff2,
+// 			 ScalorType *			statistic_nb_buff3,
+// 			 mdError_t *			ptr_de);
 
 __global__ void
 calNonBondedInteraction (const IndexType		numAtom,

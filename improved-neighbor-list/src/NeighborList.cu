@@ -7,7 +7,8 @@
 
 // extern texture<float, 1, cudaReadModeElementType> texRef;
 
-__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
+__global__ void
+prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   clist.data[bid * clist.stride + threadIdx.x] = MaxIndexValue;
@@ -21,13 +22,13 @@ __global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 //////////////////////////////////////////////////
 
 __global__ void
-naivelyBuildDeviceCellList (IndexType numAtom,
-			    CoordType * coord,
-			    RectangularBox box,
-			    DeviceCellList clist,
-			    mdError_t * ptr_de,
-			    IndexType * erridx,
-			    ScalorType * errsrc)
+naivelyBuildDeviceCellList (const IndexType		numAtom,
+			    const CoordType *		coord,
+			    const RectangularBox	box,
+			    DeviceCellList		clist,
+			    mdError_t *			ptr_de,
+			    IndexType *			erridx,
+			    ScalorType *		errsrc)
 {
   // normalizeSystem (box, numAtom, coordx, coordy, coordz, coordNoix, coordNoiy, coordNoiz);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -80,16 +81,17 @@ naivelyBuildDeviceCellList (IndexType numAtom,
 }
 
 
-__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
-					    CoordType * coord,
-					    IntScalorType * coordNoix,
-					    IntScalorType * coordNoiy,
-					    IntScalorType * coordNoiz,
-					    RectangularBox box,
-					    DeviceCellList clist,
-					    mdError_t * ptr_de,
-					    IndexType * erridx,
-					    ScalorType * errsrc)
+__global__ void
+naivelyBuildDeviceCellList2 (const IndexType		numAtom,
+			     CoordType *		coord,
+			     IntScalorType *		coordNoix,
+			     IntScalorType *		coordNoiy,
+			     IntScalorType *		coordNoiz,
+			     const RectangularBox	box,
+			     DeviceCellList		clist,
+			     mdError_t *		ptr_de,
+			     IndexType *		erridx,
+			     ScalorType *		errsrc)
 {
   // normalizeSystem (box, numAtom, coordx, coordy, coordz, coordNoix, coordNoiy, coordNoiz);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -320,15 +322,16 @@ buildCellNeighborhood (DeviceCellList clist,
 
 
 
-__global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
-						  CoordType * coord,
-						  TypeType * type,
-						  RectangularBox box,
-						  DeviceNeighborList nlist,
-						  const IndexType * nbForceTable,
-						  IndexType NatomType,
-						  bool sharednbForceTable,
-						  mdError_t * ptr_de)
+__global__ void
+buildDeviceNeighborList_AllPair  (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  DeviceNeighborList		nlist,
+				  const IndexType *		nbForceTable,
+				  const IndexType		NatomType,
+				  const bool			sharednbForceTable,
+				  mdError_t *			ptr_de)
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
