@@ -56,15 +56,23 @@ public:
 public:
   void clearInteraction (MDSystem & sys);
   // apply nonbonded interaction and make nlist
+  // void applyNonBondedInteraction (MDSystem & sys,
+  // 				  const CellList & clist,
+  // 				  const ScalorType & rcut,
+  // 				  NeighborList & nlist,
+  // 				  MDTimer *timer = NULL);
+  // void applyNonBondedInteraction (MDSystem & sys,
+  // 				  const CellList & clist,
+  // 				  const ScalorType & rcut,
+  // 				  NeighborList & nlist,
+  // 				  MDStatistic & st,
+  // 				  MDTimer *timer = NULL);
+
   void applyNonBondedInteraction (MDSystem & sys,
-				  const CellList & clist,
 				  const ScalorType & rcut,
-				  NeighborList & nlist,
 				  MDTimer *timer = NULL);
   void applyNonBondedInteraction (MDSystem & sys,
-				  const CellList & clist,
 				  const ScalorType & rcut,
-				  NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
 
@@ -77,7 +85,6 @@ public:
 				  const ScalorType & rcut,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
-
   
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
@@ -86,6 +93,7 @@ public:
 				  const NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
+  
   void calculateWidomDeltaEnergy (const MDSystem & sys,
 				  const NeighborList & nlist,
 				  WidomTestParticleInsertion_NVT & wtest,
