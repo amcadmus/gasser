@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
-#define NThreadsPerBlockAtom	4
+#define NThreadsPerBlockCell	128
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
@@ -59,7 +59,7 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.1;
+  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   CellList clist (sys, rlist, NThreadsPerBlockCell);
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10.f);
@@ -109,22 +109,22 @@ int main(int argc, char * argv[])
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 100 == 0){
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
 	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
 	if (maxdr > nlistExten * 0.5){
-	  printf ("# Rebuild at step %09i ... ", i+1);
-	  fflush(stdout);
+	  // printf ("# Rebuild at step %09i ... ", i+1);
+	  // fflush(stdout);
 	  // rebuild
-	  sys.normalizeDeviceData ();
+	  sys.normalizeDeviceData (&timer);
 	  disp.recordCoord (sys);
 	  clist.rebuild (sys, &timer);
 	  inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
 	  nlist.rebuild (sys, clist, &timer);
-	  printf ("done\n");
-	  fflush(stdout);
+	  // printf ("done\n");
+	  // fflush(stdout);
 	}
 	else{
 	  inter.applyNonBondedInteraction (sys, nlist, st, &timer);
@@ -150,16 +150,16 @@ int main(int argc, char * argv[])
 	inter.clearInteraction (sys);
 	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
 	if (maxdr > nlistExten * 0.5){
-	  printf ("# Rebuild at step %09i ... ", i+1);
-	  fflush(stdout);
+	  // printf ("# Rebuild at step %09i ... ", i+1);
+	  // fflush(stdout);
 	  // rebuild
-	  sys.normalizeDeviceData ();
+	  sys.normalizeDeviceData (&timer);
 	  disp.recordCoord (sys);
 	  clist.rebuild (sys, &timer);
 	  inter.applyNonBondedInteraction (sys, clist, rcut, &timer);
 	  nlist.rebuild (sys, clist, &timer);
-	  printf ("done\n");
-	  fflush(stdout);
+	  // printf ("done\n");
+	  // fflush(stdout);
 	}
 	else{
 	  inter.applyNonBondedInteraction (sys, nlist, &timer);
@@ -183,9 +183,8 @@ int main(int argc, char * argv[])
       // 	sys.updateHostFromRecovered (&timer);
       // 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       // }
-      if ((i+1) % 10 == 0){
+      if ((i+1) % 100 == 0){
 	if (resh.calIndexTable (clist, &timer)){
-	  printf ("# resh\n");
 	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
 	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
 	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  

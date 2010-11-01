@@ -47,7 +47,7 @@ public:
 			  MDTimer * timer = NULL);
   void recoverDeviceData (MDTimer * timer = NULL);
 public:
-  void normalizeDeviceData ();
+  void normalizeDeviceData (MDTimer * timer = NULL);
 public:
   /** 
    * Initialize system configuration from a .gro file.
