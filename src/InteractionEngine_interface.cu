@@ -2153,13 +2153,13 @@ calNonBondedInteraction (const IndexType		numAtom,
 
 
 __global__ void
-calNonBondedInteraction  (IndexType			numAtom,
-			  CoordType *			coord,
+calNonBondedInteraction  (const IndexType		numAtom,
+			  const CoordType *		coord,
 			  ScalorType *			forcx,
 			  ScalorType *			forcy, 
 			  ScalorType *			forcz,
-			  TypeType *			type,
-			  RectangularBox		box,
+			  const TypeType *		type,
+			  const RectangularBox		box,
 			  const ScalorType		rcut,
 			  mdError_t *			ptr_de)
 {
@@ -2242,13 +2242,13 @@ calNonBondedInteraction  (IndexType			numAtom,
 
 
 __global__ void
-calNonBondedInteraction  (IndexType			numAtom,
-			  CoordType *			coord,
+calNonBondedInteraction  (const IndexType		numAtom,
+			  const CoordType *		coord,
 			  ScalorType *			forcx,
 			  ScalorType *			forcy, 
 			  ScalorType *			forcz,
-			  TypeType *			type,
-			  RectangularBox		box,
+			  const TypeType *		type,
+			  const RectangularBox		box,
 			  const ScalorType		rcut,
 			  ScalorType *			statistic_nb_buff0,
 			  ScalorType *			statistic_nb_buff1,
@@ -2341,7 +2341,6 @@ calNonBondedInteraction  (IndexType			numAtom,
     statistic_nb_buff3[ii] = myVzz * 0.5f;
   }
 }
-
 
 
 
