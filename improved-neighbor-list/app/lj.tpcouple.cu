@@ -128,7 +128,6 @@ int main(int argc, char * argv[])
       }
       st.clearDevice();
       blpf.oneStep (sys, dt, last_st, st, &timer);
-      inter.clearInteraction (sys);
       ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
       if (maxdr > nlistExten * 0.5){
 	// printf ("# Rebuild at step %09i ... ", i+1);
@@ -141,10 +140,11 @@ int main(int argc, char * argv[])
 	// printf ("done\n");
 	// fflush(stdout);
       }
+      inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, &timer);
       if ((i+1) % 1 == 0){
 	st.updateHost();
-	ScalorType ep = st.NonBondedEnergy ();
+	ScalorType ep = st.nonBondedEnergy ();
 	ScalorType ek = st.kineticEnergy();
 	ScalorType e = ep + ek;
 	ScalorType v = sys.box.size.x * sys.box.size.y * sys.box.size.z;

@@ -9,6 +9,7 @@
 #include "SystemBondedInteraction.h"
 #include "BondedInteractionList.h"
 #include "WidomTestParticleInsertion.h"
+#include "TwinRangeCorrectionRecorder.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -93,7 +94,14 @@ public:
 				  const NeighborList & nlist,
 				  MDStatistic & st,
 				  MDTimer *timer = NULL);
-  
+
+  void calTwinRangeCorrection (const MDSystem &			sys,
+			       const CellList &			clist,
+			       const ScalorType &		rcut1,
+			       const ScalorType &		rcut2,
+			       TwinRangeCorrectionRecorder &	twrec,
+			       MDTimer *			timer = NULL);
+			       
   void calculateWidomDeltaEnergy (const MDSystem & sys,
 				  const NeighborList & nlist,
 				  WidomTestParticleInsertion_NVT & wtest,

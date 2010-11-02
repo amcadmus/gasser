@@ -12,61 +12,92 @@
 
 using namespace RectangularBoxGeometry;
 
+// needs ceil(numAtom/blockDim.x) blocks
 __global__ void
-calNonBondedInteraction  (const IndexType		numAtom,
-			  const CoordType *		coord,
-			  ScalorType *			forcx,
-			  ScalorType *			forcy, 
-			  ScalorType *			forcz,
-			  const TypeType *		type,
-			  const RectangularBox		box,
-			  const ScalorType		rcut,
-			  mdError_t *			ptr_de);
+calNonBondedInteraction_all (const IndexType		numAtom,
+			     const CoordType *		coord,
+			     ScalorType *		forcx,
+			     ScalorType *		forcy, 
+			     ScalorType *		forcz,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     const ScalorType		rcut,
+			     mdError_t *		ptr_de);
 __global__ void
-calNonBondedInteraction  (const IndexType		numAtom,
-			  const CoordType *		coord,
-			  ScalorType *			forcx,
-			  ScalorType *			forcy, 
-			  ScalorType *			forcz,
-			  const TypeType *		type,
-			  const RectangularBox		box,
-			  const ScalorType		rcut,
-			  ScalorType *			statistic_nb_buff0,
-			  ScalorType *			statistic_nb_buff1,
-			  ScalorType *			statistic_nb_buff2,
-			  ScalorType *			statistic_nb_buff3,
-			  mdError_t *			ptr_de);
-
+calNonBondedInteraction_all  (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const ScalorType		rcut,
+			      ScalorType *		statistic_nb_buff0,
+			      ScalorType *		statistic_nb_buff1,
+			      ScalorType *		statistic_nb_buff2,
+			      ScalorType *		statistic_nb_buff3,
+			      mdError_t *		ptr_de);
 
 // needs ceil(numAtom/blockDim.x) blocks
 __global__ void
-calNonBondedInteraction (const IndexType		numAtom,
-			 const CoordType *		coord,
-			 ScalorType *			forcx,
-			 ScalorType *			forcy, 
-			 ScalorType *			forcz,
-			 const TypeType *		type,
-			 const RectangularBox		box,
-			 const DeviceNeighborList	nlist,
-			 mdError_t *			ptr_de,
-			 IndexType *			errorIndex,
-			 ScalorType *			errorScalor);
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  mdError_t *			ptr_de,
+				  IndexType *			errorIndex,
+				  ScalorType *			errorScalor);
 __global__ void
-calNonBondedInteraction (const IndexType		numAtom,
-			 const CoordType *		coord,
-			 ScalorType *			forcx,
-			 ScalorType *			forcy, 
-			 ScalorType *			forcz,
-			 const TypeType *		type,
-			 const RectangularBox		box,
-			 const DeviceNeighborList	nlist,
-			 ScalorType *			statistic_buff0,
-			 ScalorType *			statistic_buff1,
-			 ScalorType *			statistic_buff2,
-			 ScalorType *			statistic_buff3,
-			 mdError_t *			ptr_de,
-			 IndexType *			errorIndex,
-			 ScalorType *			errorScalor);
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  ScalorType *			statistic_buff0,
+				  ScalorType *			statistic_buff1,
+				  ScalorType *			statistic_buff2,
+				  ScalorType *			statistic_buff3,
+				  mdError_t *			ptr_de,
+				  IndexType *			errorIndex,
+				  ScalorType *			errorScalor);
+
+
+// needs NCell blocks
+__global__ void
+calNonBondedInteraction_cell (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const DeviceCellList	clist,
+			      const ScalorType		rcut,
+			      mdError_t *		ptr_de);
+__global__ void
+calNonBondedInteraction_cell (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const DeviceCellList	clist,
+			      const ScalorType		rcut,
+			      ScalorType *		statistic_nb_buff0,
+			      ScalorType *		statistic_nb_buff1,
+			      ScalorType *		statistic_nb_buff2,
+			      ScalorType *		statistic_nb_buff3,
+			      mdError_t *		ptr_de);
+
+
 // __global__ void
 // calNonBondedInteraction (const IndexType		numAtom,
 // 			 const CoordType *		coord,
@@ -96,32 +127,40 @@ calNonBondedInteraction (const IndexType		numAtom,
 // 			 ScalorType *			statistic_nb_buff3,
 // 			 mdError_t *			ptr_de);
 
+
+// needs ceil(numAtom/blockDim.x) blocks
 __global__ void
-calNonBondedInteraction (const IndexType		numAtom,
-			 const CoordType *		coord,
-			 ScalorType *			forcx,
-			 ScalorType *			forcy, 
-			 ScalorType *			forcz,
-			 const TypeType *		type,
-			 const RectangularBox		box,
-			 const DeviceCellList		clist,
-			 const ScalorType		rcut,
-			 mdError_t *			ptr_de);
+calTwinRangeCorrection_all    (const IndexType		numAtom,
+			       const CoordType *	coord,
+			       ScalorType *		forcx,
+			       ScalorType *		forcy, 
+			       ScalorType *		forcz,
+			       const TypeType *		type,
+			       const RectangularBox	box,
+			       const ScalorType		rcut1,
+			       const ScalorType		rcut2,
+			       ScalorType *		statistic_nb_buff0,
+			       ScalorType *		statistic_nb_buff1,
+			       ScalorType *		statistic_nb_buff2,
+			       ScalorType *		statistic_nb_buff3,
+			       mdError_t *		ptr_de);
+// needs NCell blocks
 __global__ void
-calNonBondedInteraction (const IndexType		numAtom,
-			 const CoordType *		coord,
-			 ScalorType *			forcx,
-			 ScalorType *			forcy, 
-			 ScalorType *			forcz,
-			 const TypeType *		type,
-			 const RectangularBox		box,
-			 const DeviceCellList		clist,
-			 const ScalorType		rcut,
-			 ScalorType *			statistic_nb_buff0,
-			 ScalorType *			statistic_nb_buff1,
-			 ScalorType *			statistic_nb_buff2,
-			 ScalorType *			statistic_nb_buff3,
-			 mdError_t *			ptr_de);
+calTwinRangeCorrection_cell (const IndexType		numAtom,
+			     const CoordType *		coord,
+			     ScalorType *		forcx,
+			     ScalorType *		forcy, 
+			     ScalorType *		forcz,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     const DeviceCellList	clist,
+			     const ScalorType		rcut1,
+			     const ScalorType		rcut2,
+			     ScalorType *		statistic_nb_buff0,
+			     ScalorType *		statistic_nb_buff1,
+			     ScalorType *		statistic_nb_buff2,
+			     ScalorType *		statistic_nb_buff3,
+			     mdError_t *		ptr_de);
 
 
 __global__ void calBondInteraction (const IndexType numAtom,
@@ -203,12 +242,12 @@ __global__ void clearForce (const IndexType numAtom,
 			    ScalorType * forcy, 
 			    ScalorType * forcz);
 
-  // IndexType jj = 0;
-  // while (__all(jj < myNumNei)){
-  //   ++jj;
-  //   __syncthreads();
-  // }    
-  // ScalorType targetx, targety, targetz;
+// IndexType jj = 0;
+// while (__all(jj < myNumNei)){
+//   ++jj;
+//   __syncthreads();
+// }    
+// ScalorType targetx, targety, targetz;
 
 
 __global__ void calNonBondedInteraction (
