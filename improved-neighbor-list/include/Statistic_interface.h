@@ -28,15 +28,16 @@ typedef enum mdStatisticItem mdStatisticItem_t;
 class MDStatistic
 {
   bool dmalloced;
+  void clear ();
   // ScalorType volume;
 public:
   ScalorType *hdata;
   ScalorType *ddata;
 public:
   MDStatistic ();
-  MDStatistic (const MDSystem & sys) {init(sys);}
+  MDStatistic (const MDSystem & sys);
   ~MDStatistic ();
-  void init (const MDSystem & sys);
+  void reinit (const MDSystem & sys);
 public:
   void clearDevice ();
   void updateHost ();
