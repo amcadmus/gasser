@@ -72,7 +72,7 @@ public:
 		MDTimer * timer = NULL);
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
-			  MDTimer *timer);
+			  MDTimer *timer = NULL);
 }
     ;
 

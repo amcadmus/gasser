@@ -21,7 +21,9 @@ enum mdStatisticItem {
   mdStatisticVirialXZ				= 8,
   mdStatisticVirialYZ				= 9,
   mdStatisticEnergyCorrection			= 13,
-  mdStatisticPressureCorrection			= 14
+  mdStatisticPressureCorrection			= 14,
+  mdStatisticTwinRangeEnergyCorrection		= 15,
+  mdStatisticTwinRangePressureCorrection	= 16
 };
 typedef enum mdStatisticItem mdStatisticItem_t;
 
@@ -46,8 +48,8 @@ public:
   void deviceCopy (const MDStatistic & st);
   void deviceAdd  (const MDStatistic & st);
 public:
-  ScalorType NonBondedEnergy ();
-  ScalorType BondedEnergy ();
+  ScalorType nonBondedEnergy ();
+  ScalorType bondedEnergy ();
   ScalorType kineticEnergy ();
   ScalorType pressureXX (const RectangularBox & box);
   ScalorType pressureYY (const RectangularBox & box);
@@ -61,12 +63,14 @@ public:
 
 
 
-inline ScalorType MDStatistic::NonBondedEnergy()
+inline ScalorType MDStatistic::nonBondedEnergy()
 {
-  return hdata[mdStatisticNonBondedPotential] + hdata[mdStatisticEnergyCorrection];
+  return hdata[mdStatisticNonBondedPotential] +
+      hdata[mdStatisticEnergyCorrection] +
+      hdata[mdStatisticTwinRangeEnergyCorrection];
 }
 
-inline ScalorType MDStatistic::BondedEnergy ()
+inline ScalorType MDStatistic::bondedEnergy ()
 {
   return hdata[mdStatisticBondedPotential];
 }
@@ -83,7 +87,8 @@ inline ScalorType MDStatistic::pressureXX (const RectangularBox & box)
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z * 
       (hdata[mdStatisticKineticEnergyXX] -
        hdata[mdStatisticVirialXX] * 0.5) +
-      hdata[mdStatisticPressureCorrection];
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureYY (const RectangularBox & box)
@@ -91,7 +96,8 @@ inline ScalorType MDStatistic::pressureYY (const RectangularBox & box)
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyYY] -
        hdata[mdStatisticVirialYY] * 0.5) +
-      hdata[mdStatisticPressureCorrection];
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureZZ (const RectangularBox & box)
@@ -99,7 +105,8 @@ inline ScalorType MDStatistic::pressureZZ (const RectangularBox & box)
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyZZ] -
        hdata[mdStatisticVirialZZ] * 0.5) +
-      hdata[mdStatisticPressureCorrection];
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressure (const RectangularBox & box)
