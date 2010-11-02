@@ -223,6 +223,7 @@ rebuild (const MDSystem &	sys,
   if (timer != NULL) timer->tic(mdTimeBuildCellList);
   if (isempty()){
     if (buildNew){
+      printf ("# box size change too much, build cell list\n");
       mallocDeviceCellList (tmpNCell, sys.box.size);
       naivelyBuildDeviceCellList (sys);
     }
