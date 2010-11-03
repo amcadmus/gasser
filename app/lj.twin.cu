@@ -59,9 +59,9 @@ int main(int argc, char * argv[])
   
   SystemNonBondedInteraction sysNbInter;
   sysNbInter.reinit (sysTop);
-  CellList clist1 (sys, rcut1, NThreadsPerBlockCell);
-  CellList clist2 (sys, rcut2, NThreadsPerBlockCell);
-  NeighborList nlist (sysNbInter, sys, rcut1, NThreadsPerBlockCell, 10.f);
+  CellList clist1 (sys, rcut1, NThreadsPerBlockCell, NThreadsPerBlockAtom);
+  CellList clist2 (sys, rcut2, NThreadsPerBlockCell, NThreadsPerBlockAtom);
+  NeighborList nlist (sysNbInter, sys, rcut1, NThreadsPerBlockAtom, 10.f);
   TwinRangeCorrectionRecorder tcrec (sys, NThreadsPerBlockAtom);
   
   sys.normalizeDeviceData ();

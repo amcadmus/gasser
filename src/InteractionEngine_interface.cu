@@ -71,7 +71,7 @@ void InteractionEngine::init (const MDSystem  & sys,
 }
 
 
-static IndexType hroundUp4 (IndexType x)
+static IndexType hroundUp4 (const IndexType x)
 {
   if (x & 3 == 0){
     return x;
@@ -333,9 +333,9 @@ applyNonBondedInteraction  (MDSystem & sys,
     if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
     size_t applyNonBondedInteraction_CellList_sbuffSize =
 	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
-	hroundUp4(clist.getBlockDim().x);
+	hroundUp4(clist.getCellBlockDim().x);
     calNonBondedInteraction_cell
-	<<<clist.getCellGrimDim(), clist.getBlockDim(),
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
 	applyNonBondedInteraction_CellList_sbuffSize>>> (
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,
@@ -368,9 +368,9 @@ applyNonBondedInteraction (MDSystem & sys,
     if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
     size_t applyNonBondedInteraction_CellList_sbuffSize =
 	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
-	hroundUp4(clist.getBlockDim().x);
+	hroundUp4(clist.getCellBlockDim().x);
     calNonBondedInteraction_cell
-	<<<clist.getCellGrimDim(), clist.getBlockDim(),
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
 	applyNonBondedInteraction_CellList_sbuffSize>>> (
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,
@@ -576,9 +576,9 @@ calTwinRangeCorrection (const MDSystem &		sys,
   else {
     size_t applyNonBondedInteraction_CellList_sbuffSize =
 	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
-	hroundUp4(clist.getBlockDim().x);
+	hroundUp4(clist.getCellBlockDim().x);
     calTwinRangeCorrection_cell
-	<<<clist.getCellGrimDim(), clist.getBlockDim(),
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
 	applyNonBondedInteraction_CellList_sbuffSize>>> (
 	    sys.ddata.numAtom,
 	    sys.ddata.coord,

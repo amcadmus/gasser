@@ -19,7 +19,8 @@ class CellList : public Reshufflable
 {
   dim3			cellGridDim;
   dim3			atomGridDim;
-  dim3			myBlockDim;
+  dim3			cellBlockDim;
+  dim3			atomBlockDim;
   IndexType		bitDeepth;
   IndexType *		mySendBuff;
   IndexType *		myTargetBuff;
@@ -45,13 +46,15 @@ private:
 public:
   CellList (const MDSystem &		sys,
 	    const ScalorType &		cellSize,
-	    const IndexType &		NTread,
+	    const IndexType &		NTreadCell,
+	    const IndexType &		NTreadAtom,
 	    const BoxDirection_t &	bdir = 7,
 	    const IndexType &		divide = 1);
   ~CellList();
   void reinit (const MDSystem &		sys,
 	       const ScalorType &	cellSize,
-	       const IndexType &	NTread,
+	       const IndexType &	NTreadCell,
+	       const IndexType &	NTreadAtom,
 	       const BoxDirection_t &	bdir = 7,
 	       const IndexType &	divide = 1);
   
@@ -64,7 +67,8 @@ public:
 public:
   const dim3 & getCellGrimDim () const {return cellGridDim;}
   const dim3 & getAtomGrimDim () const {return atomGridDim;}
-  const dim3 & getBlockDim    () const {return myBlockDim;}
+  const dim3 & getCellBlockDim () const {return cellBlockDim;}
+  const dim3 & getAtomBlockDim () const {return atomBlockDim;}
 }
     ;
 
