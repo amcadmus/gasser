@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	32
-#define NThreadsPerBlockAtom	4
+#define NThreadsPerBlockCell	16
+#define NThreadsPerBlockAtom	20
 
 int main(int argc, char * argv[])
 {
@@ -61,8 +61,8 @@ int main(int argc, char * argv[])
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
-  CellList clist (sys, rlist, NThreadsPerBlockCell);
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10.f);
+  CellList clist (sys, rlist, NThreadsPerBlockCell, NThreadsPerBlockAtom);
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockAtom, 10.f);
   sys.normalizeDeviceData ();
   clist.rebuild (sys);
   nlist.rebuild (sys, clist);
@@ -96,8 +96,8 @@ int main(int argc, char * argv[])
   			mdRectBoxDirectionZ,
   			refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
-  blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);  
+  // blpf.addThermostat (thermostat);
+  // blpf.addBarostat   (barostat);  
 
   Reshuffle resh (sys, clist, NThreadsPerBlockCell);
   

@@ -21,8 +21,8 @@ class NeighborList : public Reshufflable
 {
   MDError err;
 private:
-  IndexType buildDeviceNeighborList_AllPair_sbuffSize;
-  IndexType buildDeviceNeighborList_DeviceCellList_sbuffSize;
+  // IndexType buildDeviceNeighborList_AllPair_sbuffSize;
+  // IndexType buildDeviceNeighborList_DeviceCellList_sbuffSize;
 private:
   bool mallocedDeviceNeighborList;
   bool mallocedNonBondedForceTable;
@@ -49,7 +49,6 @@ public:
   IndexType		NatomType;
   IndexType *		nbForceTable;
   IndexType		nbForceTableLength;
-  bool			sharednbForceTable;
 private: // reshuffle backup
   IndexType *		bkdnlistData;
   IndexType *		bkdnlistNneighbor;

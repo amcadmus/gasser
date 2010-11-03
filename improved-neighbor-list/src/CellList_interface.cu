@@ -34,7 +34,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
   dclist.divide = mydivide;
   // suppose the number of atoms in any cell is smaller or equal
   // to the number of threads in a block
-  dclist.stride = myBlockDim.x;
+  dclist.stride = cellBlockDim.x;
   cellGridDim = toGridDim (numCell);
 
   cudaMalloc ((void**)&(dclist.data), 
@@ -44,7 +44,7 @@ mallocDeviceCellList (const IntVectorType & NCell,
 	      sizeof(ScalorType) * numCell * dclist.stride);
   cudaMalloc ((void**)&myTargetBuff, 
 	      sizeof(ScalorType) * numCell * dclist.stride);
-  checkCUDAError ("NeighborList::init cell list");
+  checkCUDAError ("CellList::init cell list");
 
   IndexType maxNumNeighborCell = (2*mydivide+1) * (2*mydivide+1) * (2*mydivide+1);
   dclist.maxNumNeighborCell = maxNumNeighborCell;
@@ -54,13 +54,13 @@ mallocDeviceCellList (const IntVectorType & NCell,
 	      sizeof(IndexType) * maxNumNeighborCell * numCell);
   cudaMalloc ((void**)&(dclist.neighborCellShiftNoi),
 	      sizeof(CoordNoiType) * maxNumNeighborCell * numCell);
-  checkCUDAError ("NeighborList::maxNumNeighborCell cell list buff");
+  checkCUDAError ("CellList::maxNumNeighborCell cell list buff");
 
   mallocedDeviceCellList = true;
 
-  buildDeviceCellList_initBuff<<<cellGridDim, myBlockDim>>> 
+  buildDeviceCellList_initBuff<<<cellGridDim, cellBlockDim>>> 
       (mySendBuff, myTargetBuff);
-  checkCUDAError ("NeighborList::mallocedDeviceCellList cell list buff");
+  checkCUDAError ("CellList::mallocedDeviceCellList cell list buff");
 }
 
 void CellList::
@@ -75,7 +75,7 @@ clearDeviceCellList ()
     cudaFree (mySendBuff);
     cudaFree (myTargetBuff);
     mallocedDeviceCellList = false;
-    checkCUDAError ("NeighborList::clearDeviceCellList");
+    checkCUDAError ("CellList::clearDeviceCellList");
   }
 }
 
@@ -85,11 +85,11 @@ naivelyBuildDeviceCellList (const MDSystem & sys)
   // buildDeviceCellList_clearBuff
   //     <<<cellGridDim, myBlockDim>>> (
   // 	  mySendBuff);
-  // err.check ("NeighborList::rebuild, clear buff");
+  // err.check ("CellList::rebuild, clear buff");
   prepare_naivelyBuildDeviceCellList
-      <<<cellGridDim, myBlockDim>>> (dclist);
+      <<<cellGridDim, cellBlockDim>>> (dclist);
   naivelyBuildDeviceCellList2        
-      <<<atomGridDim, myBlockDim,
+      <<<atomGridDim, atomBlockDim,
       buildDeviceCellList_step1_sbuffSize>>> (
 	  sys.ddata.numAtom,
 	  sys.ddata.coord,
@@ -99,8 +99,8 @@ naivelyBuildDeviceCellList (const MDSystem & sys)
 	  sys.box, dclist,
 	  err.ptr_de,
 	  err.ptr_dindex, err.ptr_dscalor);
-  err.check ("NeighborList::naivelyBuildDeviceCellList");
-  checkCUDAError ("NeighborList::naivelyBuildDeviceCellList");
+  err.check ("CellList::naivelyBuildDeviceCellList");
+  checkCUDAError ("CellList::naivelyBuildDeviceCellList");
 
   buildCellNeighborhood
       <<<cellGridDim, 1>>> (
@@ -113,12 +113,12 @@ void CellList::
 buildDeviceCellList (const MDSystem & sys)
 {
   buildDeviceCellList_clearBuff
-      <<<cellGridDim, myBlockDim>>> (
+      <<<cellGridDim, cellBlockDim>>> (
 	  mySendBuff);
-  err.check ("NeighborList::rebuild, clear buff");
+  err.check ("CellList::rebuild, clear buff");
+  size_t sbuffSize = sizeof (IndexType) * 2 * cellBlockDim.x;
   buildDeviceCellList_step1 
-      <<<cellGridDim, myBlockDim,
-      buildDeviceCellList_step1_sbuffSize>>> (
+      <<<cellGridDim, cellBlockDim, sbuffSize>>> (
 	  sys.ddata.numAtom, 
 	  sys.ddata.coord,
 	  sys.ddata.coordNoix,
@@ -129,18 +129,18 @@ buildDeviceCellList (const MDSystem & sys)
 	  mySendBuff,
 	  myTargetBuff,
 	  err.ptr_de, err.ptr_dindex, err.ptr_dscalor);
-  err.check ("NeighborList::buildDeviceCellList step 1");
-  checkCUDAError ("NeighborList::buildDeviceCellList step 1");
+  err.check ("CellList::buildDeviceCellList step 1");
+  checkCUDAError ("CellList::buildDeviceCellList step 1");
   buildDeviceCellList_step2
-      <<<cellGridDim, myBlockDim>>> (
+      <<<cellGridDim, cellBlockDim>>> (
 	  sys.box,
 	  dclist,
 	  mySendBuff,
 	  myTargetBuff,
 	  bitDeepth,
 	  err.ptr_de);
-  err.check ("NeighborList::buildDeviceCellList step2");
-  checkCUDAError ("NeighborList::buildDeviceCellList step2");
+  err.check ("CellList::buildDeviceCellList step2");
+  checkCUDAError ("CellList::buildDeviceCellList step2");
 }
 
 
@@ -189,28 +189,24 @@ static IndexType calDeepth (IndexType N)
 void CellList::
 reinit (const MDSystem &		sys,
 	const ScalorType &		cellSize,
-	const IndexType &		NTread,
+	const IndexType &		NTreadCell,
+	const IndexType &		NTreadAtom,
 	const BoxDirection_t &		bdir,
 	const IndexType &		divide)
 {
-  myBlockDim.y = 1;
-  myBlockDim.z = 1;
-  myBlockDim.x = NTread;
+  cellBlockDim.x = NTreadCell;
+  atomBlockDim.x = NTreadAtom;
   bitDeepth = calDeepth(sys.ddata.numAtom);
 
   IndexType nob;
-  if (sys.ddata.numAtom % myBlockDim.x == 0){
-    nob = sys.ddata.numAtom / myBlockDim.x;
-  } else {
-    nob = sys.ddata.numAtom / myBlockDim.x + 1;
-  }
+  nob = (sys.ddata.numAtom + atomBlockDim.x - 1) / atomBlockDim.x;
   atomGridDim = toGridDim (nob);
 
   mybdir = bdir;
   mycellSize = cellSize;
   mydivide = divide;
 
-  buildDeviceCellList_step1_sbuffSize = 2 * myBlockDim.x * sizeof(IndexType);
+  buildDeviceCellList_step1_sbuffSize = 2 * atomBlockDim.x * sizeof(IndexType);
 }
 
 void CellList::
@@ -259,7 +255,7 @@ reshuffle (const IndexType * indexTable,
 {
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
   Reshuffle_reshuffleDeviceCellList
-      <<<cellGridDim, myBlockDim>>> (
+      <<<cellGridDim, cellBlockDim>>> (
   	  dclist.data,
 	  indexTable);
   checkCUDAError ("CellList::reshuffle");
@@ -270,12 +266,13 @@ reshuffle (const IndexType * indexTable,
 CellList::
 CellList (const MDSystem &		sys,
 	  const ScalorType &		cellSize,
-	  const IndexType &		NTread,
+	  const IndexType &		NThreadCell,
+	  const IndexType &		NThreadAtom,
 	  const BoxDirection_t &	bdir,
 	  const IndexType &		divide)
     : mallocedDeviceCellList(false)
 {
-  reinit (sys, cellSize, NTread, bdir, divide);
+  reinit (sys, cellSize, NThreadCell, NThreadAtom, bdir, divide);
 }
 
 CellList::

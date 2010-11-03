@@ -99,7 +99,9 @@ naivelyBuildDeviceCellList2 (const IndexType		numAtom,
   IndexType ii = tid + bid * blockDim.x;
   
   // calculate target cell id
-  __shared__ volatile IndexType targetCellid[MaxThreadsPerBlock];
+  extern __shared__ volatile IndexType sbuff[];
+  volatile IndexType * targetCellid = (volatile IndexType *) sbuff;
+  
   if (ii < numAtom){
     IndexType targetCelli, targetCellj, targetCellk;
     targetCelli = IndexType(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
@@ -152,9 +154,9 @@ naivelyBuildDeviceCellList2 (const IndexType		numAtom,
     for (IndexType i = 0; i < blockDim.x; ++i){
       IndexType cellid = targetCellid[i];
       if (cellid != MaxIndexValue){
-	IndexType pid = atomicInc(&clist.numbers[cellid], blockDim.x);
+	IndexType pid = atomicInc(&clist.numbers[cellid], clist.stride);
   	clist.data[cellid * clist.stride + pid] = i + bid * blockDim.x;
-	if (pid == blockDim.x && ptr_de != NULL){
+	if (pid == clist.stride && ptr_de != NULL){
 	  *ptr_de = mdErrorShortCellList;
 	}
       }

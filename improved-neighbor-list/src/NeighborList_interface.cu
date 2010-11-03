@@ -79,10 +79,19 @@ bindGlobalTexture (const MDSystem & sys)
 }
 
 
-
 NeighborList::~NeighborList()
 {
   clear();
+}
+
+static IndexType hroundUp4 (IndexType x)
+{
+  if (x & 3 == 0){
+    return x;
+  }
+  else {
+    return ((x >> 2) + 1) << 2;
+  }
 }
 
 
@@ -90,8 +99,23 @@ void NeighborList::
 buildDeviceNeighborListCellList (const MDSystem & sys,
 				 const CellList & clist)
 {
+  dim3 cellBlockDim = clist.getCellBlockDim();
+  bool sharednbForceTable (true);
+  size_t buildDeviceNeighborList_DeviceCellList_sbuffSize =
+      sizeof(IndexType) *	hroundUp4(cellBlockDim.x) +
+      sizeof(CoordType) *	hroundUp4(cellBlockDim.x) +
+      sizeof(TypeType)  *	hroundUp4(cellBlockDim.x) +
+      sizeof(IndexType) *	hroundUp4(nbForceTableLength);
+  if (buildDeviceNeighborList_DeviceCellList_sbuffSize >=
+      SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
+    sharednbForceTable = false;
+    buildDeviceNeighborList_DeviceCellList_sbuffSize =
+	sizeof(IndexType) *	hroundUp4(cellBlockDim.x) +
+	sizeof(CoordType) *	hroundUp4(cellBlockDim.x) +
+	sizeof(TypeType)  *	hroundUp4(cellBlockDim.x);
+  }
   buildDeviceNeighborList_DeviceCellList 
-      <<<clist.getCellGrimDim(), myBlockDim,
+      <<<clist.getCellGrimDim(), cellBlockDim, 
       buildDeviceNeighborList_DeviceCellList_sbuffSize>>> (
 	  // <<<cellGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom, 
@@ -111,6 +135,20 @@ buildDeviceNeighborListCellList (const MDSystem & sys,
 void NeighborList::
 buildDeviceNeighborListAllPair (const MDSystem & sys)
 {
+  bool sharednbForceTable (true);
+  size_t buildDeviceNeighborList_AllPair_sbuffSize =
+      sizeof(IndexType) *	hroundUp4(myBlockDim.x) +
+      sizeof(CoordType) *	hroundUp4(myBlockDim.x) +
+      sizeof(TypeType)  *	hroundUp4(myBlockDim.x) +
+      sizeof(IndexType) *	hroundUp4(nbForceTableLength);
+  if (buildDeviceNeighborList_AllPair_sbuffSize >=
+      SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
+    sharednbForceTable = false;
+    buildDeviceNeighborList_AllPair_sbuffSize =
+	sizeof(IndexType) *	hroundUp4(myBlockDim.x) +
+	sizeof(CoordType) *	hroundUp4(myBlockDim.x) +
+	sizeof(TypeType)  *	hroundUp4(myBlockDim.x);
+  }
   buildDeviceNeighborList_AllPair 
       <<<atomGridDim, myBlockDim,
       buildDeviceNeighborList_AllPair_sbuffSize>>>(
@@ -127,16 +165,6 @@ buildDeviceNeighborListAllPair (const MDSystem & sys)
   checkCUDAError ("NeighborList::build, build neighbor list all pair");
 }
 
-
-static IndexType hroundUp4 (IndexType x)
-{
-  if (x & 3 == 0){
-    return x;
-  }
-  else {
-    return ((x >> 2) + 1) << 2;
-  }
-}
 
 void NeighborList::
 initNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
@@ -214,22 +242,6 @@ reinit (const SystemNonBondedInteraction & sysNbInter,
   bindGlobalTexture (sys);
   
   //init shared memory size
-  sharednbForceTable = true;
-  buildDeviceNeighborList_DeviceCellList_sbuffSize =
-      sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
-      sizeof(CoordType) * hroundUp4(myBlockDim.x) +
-      sizeof(TypeType)  *      hroundUp4(myBlockDim.x) +
-      sizeof(IndexType) * hroundUp4(nbForceTableLength);
-  if (buildDeviceNeighborList_DeviceCellList_sbuffSize >=
-      SystemSharedBuffSize - GlobalFunctionParamSizeLimit){
-    sharednbForceTable = false;
-    buildDeviceNeighborList_DeviceCellList_sbuffSize =
-	sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
-	sizeof(CoordType) * hroundUp4(myBlockDim.x) +
-	sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
-  }  
-  buildDeviceNeighborList_AllPair_sbuffSize =
-      buildDeviceNeighborList_DeviceCellList_sbuffSize;
 }
 
 void NeighborList::
