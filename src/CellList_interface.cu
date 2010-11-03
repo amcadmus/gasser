@@ -253,13 +253,16 @@ reshuffle (const IndexType * indexTable,
 	   const IndexType & numAtom,
 	   MDTimer *timer)
 {
-  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
-  Reshuffle_reshuffleDeviceCellList
-      <<<cellGridDim, cellBlockDim>>> (
-  	  dclist.data,
-	  indexTable);
-  checkCUDAError ("CellList::reshuffle");
-  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+  if (! isempty() ){
+    if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+    printf ("gridDim.x is %d\n", cellGridDim.x);
+    Reshuffle_reshuffleDeviceCellList
+	<<<cellGridDim, cellBlockDim>>> (
+	    dclist.data,
+	    indexTable);
+    checkCUDAError ("CellList::reshuffle");
+    if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+  }
 }
 
 

@@ -208,7 +208,7 @@ clearDisplacement ()
     cudaFree (bkbackupCoord);
     cudaFree (dresult);
     malloced = false;
-    checkCUDAError ("NeighborList::clearJudgeStuff");
+    checkCUDAError ("displacement_mean::clearJudgeStuff");
   }
 }
 
@@ -219,7 +219,7 @@ recordCoord (const MDSystem & sys)
       backupCoord,
       sys.ddata.coord,
       sys.ddata.numAtom);
-  checkCUDAError ("NeighborList::init backup coords");
+  checkCUDAError ("displacement_mean::init backup coords");
 }
 
 static __global__ void
@@ -287,7 +287,7 @@ reshuffle (const IndexType * indexTable,
        numAtom,
        indexTable,
        backupCoord);
-  checkCUDAError ("Displacement_max::reshuffle");
+  checkCUDAError ("Displacement_mean::reshuffle");
   if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
 }
 

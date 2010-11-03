@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	16
-#define NThreadsPerBlockAtom	20
+#define NThreadsPerBlockCell	256
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 3.2f;
+  ScalorType rcut = 5.7f;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
@@ -96,8 +96,8 @@ int main(int argc, char * argv[])
   			mdRectBoxDirectionZ,
   			refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
-  // blpf.addThermostat (thermostat);
-  // blpf.addBarostat   (barostat);  
+  blpf.addThermostat (thermostat);
+  blpf.addBarostat   (barostat);  
 
   Reshuffle resh (sys, clist, NThreadsPerBlockCell);
   
@@ -142,7 +142,7 @@ int main(int argc, char * argv[])
       }
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 100 == 0){
 	st.updateHost();
 	ScalorType ep = st.nonBondedEnergy ();
 	ScalorType ek = st.kineticEnergy();
@@ -176,9 +176,9 @@ int main(int argc, char * argv[])
       }
     }
     // sys.endWriteXtc();
-    // sys.recoverDeviceData (&timer);
-    // sys.updateHostFromRecovered (&timer);
-    // sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
+    sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
     timer.toc(mdTimeTotal);
     timer.printRecord (stderr);
   }
