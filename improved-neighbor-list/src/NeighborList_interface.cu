@@ -192,8 +192,8 @@ mallocDeviceNeighborList (const MDSystem & sys,
   ScalorType expectedNumberInList 
       = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
   dnlist.listLength = IndexType(expectedNumberInList * DeviceNeighborListExpansion);
-  if (dnlist.listLength < 30){
-    dnlist.listLength = 30;
+  if (dnlist.listLength < 20){
+    dnlist.listLength = 20;
   }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
@@ -290,6 +290,7 @@ reshuffle (const IndexType * indexTable,
 	  bkdnlistData,
 	  bkdnlistForceIndex,
 	  bkdnlistNneighbor);
+  checkCUDAError ("NeighborList::reshuffle backup");
   Reshuffle_reshuffleDeviceNeighborList
       <<<atomGridDim, myBlockDim,
       2 * myBlockDim.x * sizeof(IndexType)>>> (
@@ -302,7 +303,7 @@ reshuffle (const IndexType * indexTable,
 	  dnlist.data,
 	  dnlist.forceIndex,
 	  dnlist.Nneighbor);
-  checkCUDAError ("NeighborList::reshuffle");
+  checkCUDAError ("NeighborList::reshuffle reshuffle");
   if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
 }
 
