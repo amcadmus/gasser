@@ -99,7 +99,7 @@ int main(int argc, char * argv[])
   blpf.addThermostat (thermostat);
   blpf.addBarostat   (barostat);  
 
-  Reshuffle resh (sys, clist, NThreadsPerBlockCell);
+  Reshuffle resh (sys);
   
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){

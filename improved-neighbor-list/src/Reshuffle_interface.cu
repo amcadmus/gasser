@@ -6,25 +6,33 @@
 // #include "HSFC.h"
 
 void Reshuffle::
-init (const MDSystem & sys,
-      const CellList & clist, 
-      const IndexType & NTread)
+reinit (const MDSystem & sys)
 {
-  myBlockDim.y = 1;
-  myBlockDim.z = 1;
-  myBlockDim.x = NTread;
-  cellGridDim = clist.getCellGrimDim();
-  
-  nob = cellGridDim.x * cellGridDim.y;;
-  cudaMalloc ((void**)&posiBuff, sizeof(IndexType) * nob);
+  clear();
   cudaMalloc ((void**)&indexTable, sizeof(IndexType) * sys.hdata.numAtom);
+  checkCUDAError ("Reshuffle::reinit");
+}
+
+Reshuffle::
+Reshuffle (const MDSystem & sys)
+    : malloced(false)
+{
+  reinit (sys);
 }
 
 Reshuffle::
 ~Reshuffle()
 {
-  cudaFree (posiBuff);
-  cudaFree (indexTable);
+  clear();
+}
+
+void Reshuffle::
+clear()
+{
+  if (malloced){
+    cudaFree (indexTable);
+    malloced = false;
+  }
 }
 
 
@@ -66,11 +74,12 @@ calIndexTable (const CellList & clist,
   if (clist.isempty()) return false;
 
   if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
-  cellGridDim = clist.getCellGrimDim();
+  dim3 cellGridDim = clist.getCellGrimDim();
   IndexType nob = cellGridDim.x * cellGridDim.y;
-  cudaFree(posiBuff);
+  IndexType * posiBuff;
   cudaMalloc ((void**)&posiBuff, sizeof(IndexType)*nob);  
-
+  checkCUDAError ("Reshuffle::calIndexTable malloc posiBuff");
+  
   Reshuffle_calPosiList
       <<<1, 1>>> (
    	  clist.dclist.numbers,
@@ -78,14 +87,15 @@ calIndexTable (const CellList & clist,
 	  posiBuff);
   checkCUDAError ("Reshuffle::calIndexTable, cal posi");
   Reshuffle_calIndexTable 
-      <<<cellGridDim, myBlockDim>>> (
+      <<<clist.getCellGrimDim(), clist.getCellBlockDim()>>> (
    	  clist.dclist.data,
 	  posiBuff,
 	  indexTable);
   checkCUDAError ("Reshuffle::calIndexTable, cal idxTable");
+  
+  cudaFree(posiBuff);
+  checkCUDAError ("Reshuffle::calIndexTable free posiBuff");
   if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+
   return true;
 }
-
-
-						       

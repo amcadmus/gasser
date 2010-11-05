@@ -83,7 +83,7 @@ int main(int argc, char * argv[])
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
-  Reshuffle resh (sys, clist, NThreadsPerBlockCell);
+  Reshuffle resh (sys);
   
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){
