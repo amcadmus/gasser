@@ -2,6 +2,7 @@
 
 #include "TwinRangeCorrectionRecorder.h"
 #include "Auxiliary.h"
+#include "Reshuffle_interface.h"
 
 void TwinRangeCorrectionRecorder::
 clear ()
@@ -10,6 +11,9 @@ clear ()
     cudaFree (forcx);
     cudaFree (forcy);
     cudaFree (forcz);
+    cudaFree (bkforcx);
+    cudaFree (bkforcy);
+    cudaFree (bkforcz);
     checkCUDAError ("TwinRangeCorrectionRecorder::clear");
     malloced = false;
   }
@@ -32,6 +36,9 @@ reinit (const MDSystem & sys,
   cudaMalloc ((void**)&forcx, sizeof(ScalorType) * sys.ddata.numAtom);
   cudaMalloc ((void**)&forcy, sizeof(ScalorType) * sys.ddata.numAtom);
   cudaMalloc ((void**)&forcz, sizeof(ScalorType) * sys.ddata.numAtom);
+  cudaMalloc ((void**)&bkforcx, sizeof(ScalorType) * sys.ddata.numAtom);
+  cudaMalloc ((void**)&bkforcy, sizeof(ScalorType) * sys.ddata.numAtom);
+  cudaMalloc ((void**)&bkforcz, sizeof(ScalorType) * sys.ddata.numAtom);
   checkCUDAError ("TwinRangeCorrectionRecorder::reinit");
   malloced = true;
 }
@@ -104,6 +111,32 @@ correct (MDSystem & sys,
   checkCUDAError ("TwinRangeCorrectionRecorder::correct");
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
+
+void TwinRangeCorrectionRecorder::
+reshuffle (const IndexType * indexTable,
+	   const IndexType & numAtom,
+	   MDTimer * timer )
+{
+  if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
+  size_t size = sizeof(ScalorType) * numAtom;
+  cudaMemcpy(bkforcx, forcx, size, cudaMemcpyDeviceToDevice);
+  cudaMemcpy(bkforcy, forcy, size, cudaMemcpyDeviceToDevice);
+  cudaMemcpy(bkforcz, forcz, size, cudaMemcpyDeviceToDevice);  
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkforcx, numAtom, indexTable, forcx);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkforcy, numAtom, indexTable, forcy);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkforcz, numAtom, indexTable, forcz);
+  checkCUDAError ("Displacement_max::reshuffle");
+  if (timer != NULL) timer->toc(mdTimeReshuffleSystem);
+}
+
+
+
 
 
 

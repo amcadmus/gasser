@@ -619,7 +619,7 @@ force (const ScalorType * param,
 
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   ScalorType boolScalor;
-  if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   else boolScalor = 4.f;
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -631,7 +631,7 @@ force (const ScalorType * param,
 
   // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   // ScalorType boolScalor;
-  // if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  // if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   // else boolScalor = 24.f;
   // Scalortype ri2 = __frcp_rn(dr2);
   // ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -656,7 +656,7 @@ force (const ScalorType * param,
        ScalorType *fz)
 {
   ScalorType boolScalor;
-  if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   else boolScalor = - 24.f;
   ScalorType ri2 = __frcp_rn(dr2);
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -668,7 +668,7 @@ force (const ScalorType * param,
 
   // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   // ScalorType boolScalor;
-  // if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  // if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   // else boolScalor = 24.f;
   // Scalortype ri2 = __frcp_rn(dr2);
   // ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -693,7 +693,7 @@ forcePoten (const ScalorType * param,
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   ScalorType boolScalor;
-  if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   else boolScalor = 4.f;
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -716,7 +716,7 @@ poten (const ScalorType * param,
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   ScalorType boolScalor;
-  if (dr2 > param[rcut]*param[rcut]) boolScalor = 0.f;
+  if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
   else boolScalor = 4.f;
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
@@ -731,7 +731,7 @@ inline ScalorType LennardJones6_12_cap::
 lj6_12_originForce (ScalorType * param, ScalorType r)
 {
   ScalorType dr2 = r*r;
-  if (dr2 > param[rcut]*param[rcut]) {
+  if (dr2 >= param[rcut]*param[rcut]) {
     return 0.f;
   }
   ScalorType ri = 1.f/r;
@@ -745,7 +745,7 @@ inline ScalorType LennardJones6_12_cap::
 lj6_12_originPoten (ScalorType * param, ScalorType r)
 {
   ScalorType dr2 = r*r;
-  if (dr2 > param[rcut]*param[rcut]) {
+  if (dr2 >= param[rcut]*param[rcut]) {
     return 0.f;
   }
   ScalorType ri = 1.f/r;
@@ -810,7 +810,7 @@ force (const ScalorType * param,
        ScalorType *fz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-  if (dr2 > param[rcut]*param[rcut]) {
+  if (dr2 >= param[rcut]*param[rcut]) {
     *fx = *fy = *fz = 0.f;
     return;
   }
@@ -848,7 +848,7 @@ forcePoten (const ScalorType * param,
 	    ScalorType *fz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-  if (dr2 > param[rcut]*param[rcut]) {
+  if (dr2 >= param[rcut]*param[rcut]) {
     *fx = *fy = *fz = 0.f;
     return 0.f;
   }
@@ -885,7 +885,7 @@ poten (const ScalorType * param,
        ScalorType diffz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-  if (dr2 > param[rcut]*param[rcut]) {
+  if (dr2 >= param[rcut]*param[rcut]) {
     return 0.f;
   }
   if (dr2 == 0.f){

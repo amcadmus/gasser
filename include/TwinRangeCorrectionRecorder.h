@@ -4,14 +4,18 @@
 #include "MDSystem_interface.h"
 #include "Statistic_interface.h"
 #include "SumVector.h"
+#include "Reshufflable.h"
 
-class TwinRangeCorrectionRecorder
+class TwinRangeCorrectionRecorder : public Reshufflable
 {
   ScalorType		energyCorr;
   ScalorType		pressureCorr;
   bool			malloced;
   dim3			atomGridDim;
   dim3			myBlockDim;
+  ScalorType *		bkforcx;
+  ScalorType *		bkforcy;
+  ScalorType *		bkforcz;
 public:
   MDStatistic		st;
   ScalorType *		forcx;
@@ -37,6 +41,9 @@ public:
   void correct (MDSystem & sys,
 		MDStatistic & st,
 		MDTimer * timer = NULL) const;
+  virtual void reshuffle (const IndexType * indexTable,
+			  const IndexType & numAtom,
+			  MDTimer * timer = NULL);
 }
     ;
 
