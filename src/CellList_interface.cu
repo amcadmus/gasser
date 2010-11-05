@@ -213,10 +213,12 @@ void CellList::
 rebuild (const MDSystem &	sys,
 	 MDTimer *		timer)
 {
+  
+  if (timer != NULL) timer->tic(mdTimeBuildCellList);
+  
   IntVectorType tmpNCell;
   bool buildNew = DecideNumCell (sys, mycellSize, mybdir, mydivide, tmpNCell);
-
-  if (timer != NULL) timer->tic(mdTimeBuildCellList);
+  
   if (isempty()){
     if (buildNew){
       printf ("# box size change too much, build cell list\n");

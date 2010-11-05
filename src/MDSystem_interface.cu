@@ -19,7 +19,8 @@ void MDSystem::
 normalizeDeviceData (MDTimer * timer)
 {
   if (timer != NULL) timer->tic(mdTimeNormalizeSys);
-  IndexType nob = (ddata.numAtom + DefaultNThreadPerBlock - 1) / DefaultNThreadPerBlock;  
+  
+  IndexType nob = (ddata.numAtom + DefaultNThreadPerBlock - 1) / DefaultNThreadPerBlock;
   dim3 atomGridDim = toGridDim (nob);
 
   normalizeSystem

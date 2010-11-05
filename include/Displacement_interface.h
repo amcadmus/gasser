@@ -31,7 +31,8 @@ public:
   ~Displacement_max ();
   void reinit (const MDSystem & sys,
 	       const IndexType & NThread);
-  void recordCoord (const MDSystem & sys);
+  void recordCoord (const MDSystem & sys,
+		    MDTimer * timer = NULL);
   ScalorType calMaxDisplacemant (const MDSystem & sys,
 				 MDTimer * timer = NULL);
   ScalorType getResult () const {return hresult;}
@@ -61,7 +62,8 @@ public:
   ~Displacement_mean ();
   void reinit (const MDSystem & sys,
 	       const IndexType & NThread);
-  void recordCoord (const MDSystem & sys);
+  void recordCoord (const MDSystem & sys,
+		    MDTimer * timer = NULL);
   ScalorType calMeanDisplacemant (const MDSystem & sys,
 				 MDTimer * timer = NULL);
   ScalorType getResult () const {return hresult;}
