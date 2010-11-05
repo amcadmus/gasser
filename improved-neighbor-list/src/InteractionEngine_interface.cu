@@ -2503,7 +2503,7 @@ calTwinRangeCorrection_cell (const IndexType		numAtom,
 	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
 	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
-	if (dr2 < rcut22 && dr2 > rcut12 &&
+	if (dr2 < rcut22 && dr2 >= rcut12 &&
 	    targetIndexes[jj] != ii){
 	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
@@ -2608,7 +2608,7 @@ calTwinRangeCorrection_all   (const IndexType		numAtom,
 	ScalorType diffz = target[kk].z - ref.z;
 	shortestImage (box, &diffx, &diffy, &diffz);
 	ScalorType dr2 = diffx*diffx+diffy*diffy+diffz*diffz;
-	if (dr2 < rcut22 && dr2 > rcut12 &&
+	if (dr2 < rcut22 && dr2 >= rcut12 &&
 	    kk + targetBlockId * blockDim.x != ii){
 	  IndexType fidx = AtomNBForceTable::calForceIndex (
 	      const_nonBondedInteractionTable,

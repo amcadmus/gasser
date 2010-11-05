@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	256
-#define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	32
+#define NThreadsPerBlockAtom	4
 
 int main(int argc, char * argv[])
 {
@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 5.7f;
+  ScalorType rcut = 6.0;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
@@ -142,7 +142,7 @@ int main(int argc, char * argv[])
       }
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-      if ((i+1) % 100 == 0){
+      if ((i+1) % 1 == 0){
 	st.updateHost();
 	ScalorType ep = st.nonBondedEnergy ();
 	ScalorType ek = st.kineticEnergy();

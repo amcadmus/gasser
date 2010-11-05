@@ -20,8 +20,8 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	256
-#define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	32
+#define NThreadsPerBlockAtom	4
 
 int main(int argc, char * argv[])
 {
@@ -47,7 +47,7 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut1 = 4.f;
+  ScalorType rcut1 = 2.f;
   ScalorType rcut2 = 6.f;
   ScalorType rThreshold = 0.3f;
   ljparam.reinit (1.f, 1.f, 0.f, rcut2);
@@ -71,13 +71,6 @@ int main(int argc, char * argv[])
   Displacement_mean disp (sys, NThreadsPerBlockAtom);
   disp.recordCoord (sys);
   Reshuffle resh (sys);  
-  // if (resh.calIndexTable (clist1)){
-  //   sys.reshuffle   (resh.indexTable, sys.hdata.numAtom);
-  //   clist1.reshuffle (resh.indexTable, sys.hdata.numAtom);
-  //   clist2.reshuffle (resh.indexTable, sys.hdata.numAtom);  
-  //   nlist.reshuffle (resh.indexTable, sys.hdata.numAtom);  
-  //   disp.reshuffle  (resh.indexTable, sys.hdata.numAtom);  
-  // }
   
   MDStatistic st (sys);
   MDStatistic last_st (sys);
@@ -109,10 +102,18 @@ int main(int argc, char * argv[])
   			refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
   blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);  
-
+  blpf.addBarostat   (barostat);
 
   timer.tic(mdTimeTotal);
+
+  if (resh.calIndexTable (clist1)){
+    sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+    clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
+    clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);
+    tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
+  }
   
   printf ("# prepare ok, start to run\n");
   // sys.recoverDeviceData (&timer);
@@ -135,6 +136,7 @@ int main(int argc, char * argv[])
       blpf.oneStep (sys, dt, last_st, st, &timer);
       ScalorType meandr = disp.calMeanDisplacemant (sys, &timer);
       if (meandr > rThreshold * 0.5){
+      // if (true){	
 	// // printf ("# Rebuild at step %09i ... \n", i+1);
 	// // fflush(stdout);
 	// // rebuild
@@ -152,7 +154,7 @@ int main(int argc, char * argv[])
       tcrec.correct (sys, st, &timer);
 
       timer.tic (mdTimeDataIO);
-      if ((i+1) % 100 == 0){
+      if ((i+1) % 1 == 0){
       	st.updateHost();
       	ScalorType ep = st.nonBondedEnergy ();
       	ScalorType ek = st.kineticEnergy();
@@ -184,6 +186,7 @@ int main(int argc, char * argv[])
       	  clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+	  tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom);
       	}
       }
     }
