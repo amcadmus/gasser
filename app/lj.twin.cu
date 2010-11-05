@@ -136,7 +136,6 @@ int main(int argc, char * argv[])
       blpf.oneStep (sys, dt, last_st, st, &timer);
       ScalorType meandr = disp.calMeanDisplacemant (sys, &timer);
       if (meandr > rThreshold * 0.5){
-      // if (true){	
 	// // printf ("# Rebuild at step %09i ... \n", i+1);
 	// // fflush(stdout);
 	// // rebuild
@@ -186,7 +185,7 @@ int main(int argc, char * argv[])
       	  clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom);
+	  tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
       	}
       }
     }

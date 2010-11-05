@@ -246,7 +246,7 @@ displacement_mean_block (const IndexType numAtom,
     dz = coord[ii].z - backupCoord[ii].z;
     shortestImage (box, &dx, &dy, &dz);
   }
-  mydiff[threadIdx.x] = sqrtf(dx*dx + dy*dy + dz*dz);
+  mydiff[threadIdx.x] = (dx*dx + dy*dy + dz*dz);
 
   sumVectorBlockBuffer_2 (mydiff);
   if (threadIdx.x == 0){
@@ -274,7 +274,7 @@ calMeanDisplacemant (const MDSystem & sys,
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
 
   if (timer != NULL) timer->toc(mdTimeJudgeRebuild);
-  return hresult / sys.ddata.numAtom;
+  return sqrtf(hresult / ScalorType(sys.ddata.numAtom));
 }
 
 void Displacement_mean::
