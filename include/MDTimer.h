@@ -3,7 +3,7 @@
 
 #define NumberOfMemberInMdTime 32
 
-typedef float		TimeType;
+typedef double		TimeType;
 
 
 enum mdTimeItem {

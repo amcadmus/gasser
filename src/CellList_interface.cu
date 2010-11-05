@@ -255,7 +255,6 @@ reshuffle (const IndexType * indexTable,
 {
   if (! isempty() ){
     if (timer != NULL) timer->tic(mdTimeReshuffleSystem);
-    printf ("gridDim.x is %d\n", cellGridDim.x);
     Reshuffle_reshuffleDeviceCellList
 	<<<cellGridDim, cellBlockDim>>> (
 	    dclist.data,

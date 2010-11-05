@@ -26,14 +26,14 @@ inline void MDTimer::tic(mdTimeItem_t item, cudaStream_t stream)
 
 inline TimeType MDTimer::toc(mdTimeItem_t item, cudaStream_t stream)
 {
-  TimeType tmptime;
+  float tmptime;
   
   cudaEventRecord(stop[item], stream);
   cudaEventSynchronize (stop[item]);
   cudaEventElapsedTime (&tmptime, start[item], stop[item]);
 
-  timeRecord[item] += tmptime;
-  return tmptime;
+  timeRecord[item] += TimeType(tmptime);
+  return TimeType(tmptime);
 }
 
 #endif

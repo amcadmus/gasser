@@ -65,7 +65,7 @@ void MDTimer::printRecord (FILE * fp)
   fprintf(fp, "Data IO:                             %1.3es   (% 3.1f%)\n",
 	  0.001 * timeRecord[mdTimeDataIO],
 	  100 * timeRecord[mdTimeDataIO] / timeRecord[mdTimeTotal]);
-  TimeType otherTime = 0.f;
+  TimeType otherTime = TimeType(0.);
   for (IndexType i = 1; i < NumberOfMemberInMdTime; ++i){
     otherTime += timeRecord[i];
   }
