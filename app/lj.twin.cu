@@ -70,14 +70,14 @@ int main(int argc, char * argv[])
   nlist.rebuild (sys, clist1);
   Displacement_mean disp (sys, NThreadsPerBlockAtom);
   disp.recordCoord (sys);
-  Reshuffle resh (sys, clist1, NThreadsPerBlockCell);  
-  if (resh.calIndexTable (clist1)){
-    sys.reshuffle   (resh.indexTable, sys.hdata.numAtom);
-    clist1.reshuffle (resh.indexTable, sys.hdata.numAtom);
-    clist2.reshuffle (resh.indexTable, sys.hdata.numAtom);  
-    nlist.reshuffle (resh.indexTable, sys.hdata.numAtom);  
-    disp.reshuffle  (resh.indexTable, sys.hdata.numAtom);  
-  }
+  Reshuffle resh (sys);  
+  // if (resh.calIndexTable (clist1)){
+  //   sys.reshuffle   (resh.indexTable, sys.hdata.numAtom);
+  //   clist1.reshuffle (resh.indexTable, sys.hdata.numAtom);
+  //   clist2.reshuffle (resh.indexTable, sys.hdata.numAtom);  
+  //   nlist.reshuffle (resh.indexTable, sys.hdata.numAtom);  
+  //   disp.reshuffle  (resh.indexTable, sys.hdata.numAtom);  
+  // }
   
   MDStatistic st (sys);
   MDStatistic last_st (sys);
@@ -175,7 +175,7 @@ int main(int argc, char * argv[])
 	    );
 	fflush(stdout);
       }
-      if ((i+1) % 1 == 0){
+      if ((i+1) % 100 == 0){
 	if (resh.calIndexTable (clist1, &timer)){
 	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
 	  clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
