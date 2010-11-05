@@ -1308,11 +1308,11 @@ oneStep (MDSystem &		sys,
   ScalorType nowK;
   ScalorType lambda[3];
   ScalorType nowP[3], mu[3];
-
+  
   lambda[2] = lambda[1] = lambda[0] = 0.f;
   
-  if (timer != NULL) timer->tic (mdTimeIntegrator);
   if (! isFirstStep ) {
+    if (timer != NULL) timer->tic (mdTimeIntegrator);
     lastStepSt.updateHost();
     if (ptr_thermostat != NULL){
       nowK = lastStepSt.kineticEnergy();
@@ -1365,6 +1365,7 @@ oneStep (MDSystem &		sys,
 	  thisStepSt.ddata, mdStatisticKineticEnergyZZ, 1,
 	  mu[2] * mu[2]);
     }
+    if (timer != NULL) timer->toc (mdTimeIntegrator);
   }
   else {
     firstStep (sys, dt, thisStepSt, timer);

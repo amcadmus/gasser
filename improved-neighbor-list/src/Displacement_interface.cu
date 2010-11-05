@@ -64,13 +64,16 @@ clearDisplacement ()
 }
 
 void Displacement_max::
-recordCoord (const MDSystem & sys)
+recordCoord (const MDSystem & sys,
+	     MDTimer * timer)
 {
+  if (timer != NULL) timer->tic(mdTimeJudgeRebuild);  
   cpyProperty <<<atomGridDim, myBlockDim>>> (
       backupCoord,
       sys.ddata.coord,
       sys.ddata.numAtom);
   checkCUDAError ("NeighborList::init backup coords");
+  if (timer != NULL) timer->toc(mdTimeJudgeRebuild);  
 }
 
 static __global__ void
@@ -105,8 +108,7 @@ ScalorType Displacement_max::
 calMaxDisplacemant (const MDSystem & sys,
 		    MDTimer *timer)
 {
-  if (timer != NULL) timer->tic(mdTimeJudgeRebuild);
-  
+  if (timer != NULL) timer->tic(mdTimeJudgeRebuild);  
   displacement_max_block 
       <<<atomGridDim, myBlockDim,
       displacement_sbuffSize>>> (
@@ -213,13 +215,16 @@ clearDisplacement ()
 }
 
 void Displacement_mean::
-recordCoord (const MDSystem & sys)
+recordCoord (const MDSystem & sys,
+	     MDTimer * timer )
 {
+  if (timer != NULL) timer->tic(mdTimeJudgeRebuild);  
   cpyProperty <<<atomGridDim, myBlockDim>>> (
       backupCoord,
       sys.ddata.coord,
       sys.ddata.numAtom);
   checkCUDAError ("displacement_mean::init backup coords");
+  if (timer != NULL) timer->toc(mdTimeJudgeRebuild);  
 }
 
 static __global__ void

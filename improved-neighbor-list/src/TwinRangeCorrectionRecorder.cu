@@ -94,8 +94,8 @@ correct (MDSystem & sys,
 	 MDStatistic & st,
 	 MDTimer * timer) const
 {
+  correct (sys, timer);
   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  correct (sys);
   applyTwinRangeEnergyPressureCorrection
       <<<1, 1>>> (
 	  st.ddata,

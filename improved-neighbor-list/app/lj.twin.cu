@@ -135,54 +135,56 @@ int main(int argc, char * argv[])
       blpf.oneStep (sys, dt, last_st, st, &timer);
       ScalorType meandr = disp.calMeanDisplacemant (sys, &timer);
       if (meandr > rThreshold * 0.5){
-	// printf ("# Rebuild at step %09i ... \n", i+1);
-	// fflush(stdout);
+	// // printf ("# Rebuild at step %09i ... \n", i+1);
+	// // fflush(stdout);
 	// // rebuild
 	sys.normalizeDeviceData (&timer);
-	disp.recordCoord (sys);
+	disp.recordCoord (sys, &timer);
 	clist1.rebuild (sys, &timer);
 	nlist.rebuild (sys, clist1, &timer);
 	clist2.rebuild (sys, &timer);
 	inter.calTwinRangeCorrection (sys, clist2, rcut1, rcut2, tcrec, &timer);
-	// printf ("done\n");
-	// fflush(stdout);
+	// // printf ("done\n");
+	// // fflush(stdout);
       }
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, &timer);
       tcrec.correct (sys, st, &timer);
 
-      if ((i+1) % 1 == 0){
-	st.updateHost();
-	ScalorType ep = st.nonBondedEnergy ();
-	ScalorType ek = st.kineticEnergy();
-	ScalorType e = ep + ek;
-	ScalorType v = sys.box.size.x * sys.box.size.y * sys.box.size.z;
-	ScalorType p0 = st.pressure(sys.box);
-	ScalorType h0 = v * p0 + e;
-	ScalorType h1 = v * refP + e;
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7f %.7e %.7e %.7e\n",
-		(i+1),  
-		(i+1) * dt, 
-		ep,
-		ek, 
-		ek * 2. / (3. * (double (sys.hdata.numAtom) - 1.)),
-		e,
-		p0,
-		sys.box.size.x,
-		v,
-		h0,
-		h1
-	    );
-	fflush(stdout);
-      }
+      timer.tic (mdTimeDataIO);
       if ((i+1) % 100 == 0){
-	if (resh.calIndexTable (clist1, &timer)){
-	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
-	  clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
-	}
+      	st.updateHost();
+      	ScalorType ep = st.nonBondedEnergy ();
+      	ScalorType ek = st.kineticEnergy();
+      	ScalorType e = ep + ek;
+      	ScalorType v = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+      	ScalorType p0 = st.pressure(sys.box);
+      	ScalorType h0 = v * p0 + e;
+      	ScalorType h1 = v * refP + e;
+      	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7f %.7e %.7e %.7e\n",
+      		(i+1),  
+      		(i+1) * dt, 
+      		ep,
+      		ek, 
+      		ek * 2. / (3. * (double (sys.hdata.numAtom) - 1.)),
+      		e,
+      		p0,
+      		sys.box.size.x,
+      		v,
+      		h0,
+      		h1
+      	    );
+      	fflush(stdout);
+      }
+      timer.toc (mdTimeDataIO);
+      if ((i+1) % 100 == 0){
+      	if (resh.calIndexTable (clist1, &timer)){
+      	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+      	  clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	}
       }
     }
     // sys.endWriteXtc();
