@@ -19,22 +19,35 @@
 #include "BondInteraction.h"
 #include "NonBondedInteraction.h"
 
-
-#define NThreadsPerBlockCell	32
-#define NThreadsPerBlockAtom	4
+#define NThreadsPerBlockCell	256
+#define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
-  IndexType nstep = 20;
+  IndexType nstep = 1000000;
+  IndexType startStep = 0;
+  IndexType confFeq = 1000000;
+  IndexType thermoFeq = 100;
+  ScalorType rcut = 5.0;
+  ScalorType nlistExten = 0.5;
+  ScalorType refT = 1.34;
+  ScalorType tauT = 1.;
+  ScalorType refP = 0.1420;
+  ScalorType tauP = 1.;
+  ScalorType betaP = 1.;
+
   char * filename;
-  
-  if (argc != 4){
-    printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
+
+  if (argc < 4){
+    printf ("Usage:\n%s conf.gro nstep device [startStep]\n", argv[0]);
     return 1;
   }
   if (argc != 1){
     nstep = atoi(argv[2]);
     filename = argv[1];
+  }
+  if (argc == 5){
+    startStep = atoi (argv[4]);
   }
   printf ("# setting device to %d\n", atoi(argv[3]));
   cudaSetDevice (atoi(argv[3]));
@@ -47,7 +60,6 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ScalorType rcut = 6.0;
   ljparam.reinit (1.f, 1.f, 0.f, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
@@ -59,7 +71,6 @@ int main(int argc, char * argv[])
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
-  ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
   CellList clist (sys, rlist, NThreadsPerBlockCell, NThreadsPerBlockAtom);
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockAtom, 10.f);
@@ -79,14 +90,10 @@ int main(int argc, char * argv[])
 
   MDTimer timer;
   unsigned i;
-  ScalorType dt = 0.001;
-  ScalorType seed = 1;
+  ScalorType dt = 0.002;
+  ScalorType seed = 1289028167;
   RandomGenerator_MT19937::init_genrand (seed);
-  ScalorType refT = 1.34;
-  ScalorType tauT = 1.;
-  ScalorType refP = 0.1420;
-  ScalorType tauP = 1.;
-  ScalorType betaP = 1.;
+  
   Thermostat_NoseHoover thermostat;
   thermostat.reinit (refT, dt, tauT, sys.ddata.numAtom * 3 - 3);
   Barostat_ParrinelloRahman barostat;
@@ -97,9 +104,10 @@ int main(int argc, char * argv[])
   			refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
   blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);  
+  blpf.addBarostat   (barostat);
 
   Reshuffle resh (sys);
+
   
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){
@@ -117,11 +125,11 @@ int main(int argc, char * argv[])
   printf ("#*     1     2           3         4            5       6         7     8       9  10  11\n");
   printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure  boxl  volume  h0  h1\n");
   try{
-    // sys.initWriteXtc ("traj.xtc");
-    // sys.recoverDeviceData (&timer);
-    // sys.updateHostFromRecovered (&timer);
-    // sys.writeHostDataXtc (0, 0*dt, &timer);
-    for (i = 0; i < nstep; ++i){
+    sys.initWriteXtc ("traj.xtc");
+    sys.recoverDeviceData (&timer);
+    sys.updateHostFromRecovered (&timer);
+    sys.writeHostDataXtc (0, 0*dt, &timer);
+    for (i = startStep; i < nstep + startStep; ++i){
       last_st.deviceCopy (st);
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
@@ -142,7 +150,7 @@ int main(int argc, char * argv[])
       }
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, &timer);
-      if ((i+1) % 1 == 0){
+      if ((i+1) % thermoFeq == 0){
 	st.updateHost();
 	ScalorType ep = st.nonBondedEnergy ();
 	ScalorType ek = st.kineticEnergy();
@@ -166,6 +174,11 @@ int main(int argc, char * argv[])
 	    );
 	fflush(stdout);
       }
+      if ((i+1) % confFeq == 0){
+      	sys.recoverDeviceData (&timer);
+      	sys.updateHostFromRecovered (&timer);
+      	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      }
       if ((i+1) % 100 == 0){
 	if (resh.calIndexTable (clist, &timer)){
 	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
@@ -175,7 +188,7 @@ int main(int argc, char * argv[])
 	}
       }
     }
-    // sys.endWriteXtc();
+    sys.endWriteXtc();
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
