@@ -101,6 +101,13 @@ public:
 			       const ScalorType &		rcut2,
 			       TwinRangeCorrectionRecorder &	twrec,
 			       MDTimer *			timer = NULL);
+  void buildNeighborListCalTwinRangeCorrection (const MDSystem &	sys,
+						const CellList &	clist,
+						const ScalorType &	rcut1,
+						const ScalorType &	rcut2,
+						NeighborList &		nlist,
+						TwinRangeCorrectionRecorder & twrec,
+						MDTimer *		timer = NULL);
 			       
   void calculateWidomDeltaEnergy (const MDSystem & sys,
 				  const NeighborList & nlist,

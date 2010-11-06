@@ -72,15 +72,12 @@ int main(int argc, char * argv[])
   
   SystemNonBondedInteraction sysNbInter;
   sysNbInter.reinit (sysTop);
-  CellList clist1 (sys, rcut1, NThreadsPerBlockCell, NThreadsPerBlockAtom);
-  CellList clist2 (sys, rcut2, NThreadsPerBlockCell, NThreadsPerBlockAtom);
+  CellList clist (sys, rcut2, NThreadsPerBlockCell, NThreadsPerBlockAtom);
   NeighborList nlist (sysNbInter, sys, rcut1, NThreadsPerBlockAtom, 10.f);
   TwinRangeCorrectionRecorder tcrec (sys, NThreadsPerBlockAtom);
   
   sys.normalizeDeviceData ();
-  clist1.rebuild (sys);
-  clist2.rebuild (sys);
-  nlist.rebuild (sys, clist1);
+  clist.rebuild (sys);
   Displacement_mean disp (sys, NThreadsPerBlockAtom);
   disp.recordCoord (sys);
   
@@ -89,9 +86,10 @@ int main(int argc, char * argv[])
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
+  inter.buildNeighborListCalTwinRangeCorrection
+      (sys, clist, rcut1, rcut2, nlist, tcrec);
   inter.clearInteraction (sys);
   inter.applyNonBondedInteraction (sys, nlist, st);
-  inter.calTwinRangeCorrection (sys, clist2, rcut1, rcut2, tcrec);
   tcrec.correct (sys, st);
 
   MDTimer timer;
@@ -115,10 +113,9 @@ int main(int argc, char * argv[])
   timer.tic(mdTimeTotal);
 
   Reshuffle resh (sys);  
-  if (resh.calIndexTable (clist1)){
+  if (resh.calIndexTable (clist)){
     sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
-    clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
-    clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
     nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
     disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);
     tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
@@ -150,10 +147,9 @@ int main(int argc, char * argv[])
 	// // rebuild
 	sys.normalizeDeviceData (&timer);
 	disp.recordCoord (sys, &timer);
-	clist1.rebuild (sys, &timer);
-	nlist.rebuild (sys, clist1, &timer);
-	clist2.rebuild (sys, &timer);
-	inter.calTwinRangeCorrection (sys, clist2, rcut1, rcut2, tcrec, &timer);
+	clist.rebuild (sys, &timer);
+	inter.buildNeighborListCalTwinRangeCorrection
+	    (sys, clist, rcut1, rcut2, nlist, tcrec, &timer);
 	// printf ("done\n");
 	// fflush(stdout);
       }
@@ -193,10 +189,9 @@ int main(int argc, char * argv[])
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
       if ((i+1) % reshFeq == 0){
-      	if (resh.calIndexTable (clist1, &timer)){
+      	if (resh.calIndexTable (clist, &timer)){
       	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
-      	  clist1.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-      	  clist2.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
       	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
 	  tcrec.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);
