@@ -16,6 +16,7 @@ enum mdTimeItem {
   mdTimeRemoveTransFreedom	= 6,
   mdTimeNonBondedInteraction	= 7,
   mdTimeNBInterStatistic	= 8,
+  mdTimeNBInterTwinRange	= 14,
   mdTimeBondedInteraction	= 9,
   mdTimeBInterStatistic		= 10,
   mdTimeAngleInteraction	= 11,

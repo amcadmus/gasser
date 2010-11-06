@@ -550,7 +550,7 @@ calTwinRangeCorrection (const MDSystem &		sys,
 			TwinRangeCorrectionRecorder &	twrec,
 			MDTimer *			timer)
 {
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  if (timer != NULL) timer->tic(mdTimeNBInterTwinRange);
   if (clist.isempty()){
     size_t applyNonBondedInteraction_AllPair_sbuffSize =
 	(sizeof(CoordType) + sizeof(TypeType)) *
@@ -608,7 +608,7 @@ calTwinRangeCorrection (const MDSystem &		sys,
   st.updateHost ();
   twrec.energyCorrection() = st.nonBondedEnergy();
   twrec.pressureCorrection() = st.pressure(sys.box);
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+  if (timer != NULL) timer->toc(mdTimeNBInterTwinRange);
 }
 
 
