@@ -53,9 +53,9 @@ DecideNeighboringMethod (const MDSystem & sys,
   else NCell.z = 1;
   
   mode = CellListBuilt;
-  if (CellOnX && dclist.NCell.x < 4) mode = AllPairBuilt;
-  if (CellOnY && dclist.NCell.y < 4) mode = AllPairBuilt;
-  if (CellOnZ && dclist.NCell.z < 4) mode = AllPairBuilt;
+  if (CellOnX && NCell.x < 4) mode = AllPairBuilt;
+  if (CellOnY && NCell.y < 4) mode = AllPairBuilt;
+  if (CellOnZ && NCell.z < 4) mode = AllPairBuilt;
 
   if (mode == CellListBuilt){
     if (CellOnX) NCell.x *= devide;
@@ -360,8 +360,8 @@ mallocDeviceNeighborList (const MDSystem & sys,
   IndexType expectedNumberInList 
       = 4./3. * M_PI * myrlist * myrlist * myrlist * density;
   dnlist.listLength = IndexType(expectedNumberInList * DeviceNeighborListExpansion);
-  if (dnlist.listLength < 20){
-    dnlist.listLength = 20;
+  if (dnlist.listLength < 30){
+    dnlist.listLength = 30;
   }
   cudaMalloc ((void**)&(dnlist.data), sizeof(IndexType) * dnlist.stride * dnlist.listLength);
   cudaMalloc ((void**)&(dnlist.Nneighbor), sizeof(IndexType) * sys.ddata.numAtom);
@@ -989,6 +989,9 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
   
   // loop over 27 neighbor cells
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    // if (threadIdx.x == 0){
+    //   printf ("%d %d\n", bid, clist.numNeighborCell[bid]);
+    // }
     __syncthreads();
     IndexType targetCellIdx = getNeighborCellIndex    (clist, bid, i);
     CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
@@ -1040,6 +1043,7 @@ __global__ void buildDeviceNeighborList_DeviceCellList (
       return;
     }
     nlist.Nneighbor[ii] = Nneighbor;
+    // printf ("%d %d\n", ii, Nneighbor);
   }
 }
 

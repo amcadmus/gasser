@@ -1214,6 +1214,7 @@ firstStep (MDSystem & sys,
   if (ptr_nlist != NULL){
     ptr_inter->applyNonBondedInteraction (sys, *ptr_nlist, timer);
   }
+  // printf ("@ %f\n", sys.ddata.forcz[0]);
   if (ptr_bdInterList != NULL){
     ptr_inter->applyBondedInteraction (sys, *ptr_bdInterList, timer);
   }
