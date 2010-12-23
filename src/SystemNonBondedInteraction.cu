@@ -222,7 +222,7 @@ reinit (const Topology::System & sysTop)
   }
   maxNumExclusion = 0;
   for (IndexType i = 0; i < exclusionNeighborIndex.size(); ++i){
-    for (IndexType j = 0; j < exclusionNeighborIndex[i].size(); ++i){
+    for (IndexType j = 0; j < exclusionNeighborIndex[i].size(); ++j){
       IndexType c;
       if ((c = exclusionNeighborIndex[i][j].size()) > maxNumExclusion){
 	maxNumExclusion = c;
@@ -230,6 +230,7 @@ reinit (const Topology::System & sysTop)
     }
   }
 }	   
+
 	   
 void SystemNonBondedInteraction::
 add (const TypeType &i,

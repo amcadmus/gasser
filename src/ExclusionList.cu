@@ -175,15 +175,8 @@ reinit (const MDSystem & sysData,
 	const SystemNonBondedInteraction & sysNbInter)
 {
   IndexType stride = sysData.hdata.numAtom;
-  IndexType maxNumExclusion = 0;
-  for (IndexType i = 0; i < sysNbInter.exclusionNeighborIndex.size(); ++i){
-    for (IndexType j = 0; j < sysNbInter.exclusionNeighborIndex[i].size(); ++i){
-      IndexType c;
-      if ((c = sysNbInter.exclusionNeighborIndex[i][j].size()) > maxNumExclusion){
-	maxNumExclusion = c;
-      }
-    }
-  }
+  IndexType maxNumExclusion = sysNbInter.maxNumberOfExclusion();
+  
   hexcllist.reinit (stride, maxNumExclusion);
 
   IndexType shift0 = 0;

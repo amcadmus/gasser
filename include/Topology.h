@@ -81,6 +81,9 @@ public:
   {
     IndexType atom0;
     IndexType atom1;
+public:
+    Exclusion (const IndexType & i,
+	       const IndexType & j);
   };
   
   

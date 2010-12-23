@@ -193,7 +193,7 @@ int main(int argc, char * argv[])
   inter.registNonBondedInteraction (sysNbInter);
   inter.registBondedInteraction    (sysBdInter);
   inter.clearInteraction (sys);
-  inter.applyNonBondedInteraction (sys, nlist, st);
+  inter.applyNonBondedInteraction (sys, nlist, st, NULL);
   inter.applyBondedInteraction    (sys, bdInterList, st);
 
   MDTimer timer;
@@ -252,7 +252,7 @@ int main(int argc, char * argv[])
 	// fflush(stdout);
       }
       inter.clearInteraction (sys);
-      inter.applyNonBondedInteraction (sys, nlist,  st, &timer);
+      inter.applyNonBondedInteraction (sys, nlist,  st, NULL, &timer);
       inter.applyBondedInteraction    (sys, bdInterList, st, &timer);
       if ((i+1) % energy_feq == 0){
 	st.updateHost();

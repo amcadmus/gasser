@@ -149,7 +149,7 @@ int main(int argc, char * argv[])
 	// fflush(stdout);
       }
       inter.clearInteraction (sys);
-      inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+      inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
       if ((i+1) % thermoFeq == 0){
 	st.updateHost();
 	ScalorType ep = st.nonBondedEnergy ();

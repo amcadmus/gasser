@@ -9,6 +9,7 @@
 #include "Auxiliary.h"
 #include "BondList.h"
 #include "AngleList.h"
+#include "ExclusionList.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -47,10 +48,7 @@ calNonBondedInteraction_neighbor (const IndexType		numAtom,
 				  ScalorType *			forcz,
 				  const TypeType *		type,
 				  const RectangularBox		box,
-				  const DeviceNeighborList	nlist,
-				  mdError_t *			ptr_de,
-				  IndexType *			errorIndex,
-				  ScalorType *			errorScalor);
+				  const DeviceNeighborList	nlist);
 __global__ void
 calNonBondedInteraction_neighbor (const IndexType		numAtom,
 				  const CoordType *		coord,
@@ -63,11 +61,34 @@ calNonBondedInteraction_neighbor (const IndexType		numAtom,
 				  ScalorType *			statistic_buff0,
 				  ScalorType *			statistic_buff1,
 				  ScalorType *			statistic_buff2,
-				  ScalorType *			statistic_buff3,
-				  mdError_t *			ptr_de,
-				  IndexType *			errorIndex,
-				  ScalorType *			errorScalor);
+				  ScalorType *			statistic_buff3);
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  const DeviceExclusionList	dexcllist,
+				  const bool			sharedExclusionList);
 
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  const DeviceExclusionList	dexcllist,
+				  const bool			sharedExclusionList,
+				  ScalorType *			statistic_buff0,
+				  ScalorType *			statistic_buff1,
+				  ScalorType *			statistic_buff2,
+				  ScalorType *			statistic_buff3);
 
 // needs NCell blocks
 __global__ void
