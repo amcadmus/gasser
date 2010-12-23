@@ -6,7 +6,8 @@
 
 enum mdBondInteractionNParam{
   mdForceNParamHarmonicSpring	= 2,
-  mdForceNParamFENE		= 2
+  mdForceNParamFENE		= 2,
+  mdForceNParamFENE2		= 3
 };
 
 
@@ -40,56 +41,101 @@ public:
   virtual const ScalorType * c_ptr () const ;
 };
 
+class FENE2Parameter : public BondInteractionParameter
+{
+  ScalorType param [mdForceNParamFENE2];
+public:
+  FENE2Parameter () {}
+  FENE2Parameter (ScalorType k,
+		  ScalorType rs,
+		  ScalorType r0);
+  void reinit (ScalorType k,
+	       ScalorType rs,
+	       ScalorType r0);
+  virtual InteractionType type () const;
+  virtual unsigned numParam () const ;
+  virtual ScalorType * c_ptr () ;
+  virtual const ScalorType * c_ptr () const ;
+};
+
 
 namespace HarmonicSpring {
-    typedef enum paramIndex{
-      epsilon		= 0,
-      r0		= 1
-    } paramIndex_t;
+  typedef enum paramIndex{
+    epsilon		= 0,
+    r0		= 1
+  } paramIndex_t;
     
-    __host__ void initParameter (ScalorType * param,
-				 ScalorType k,
-				 ScalorType r0);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  __host__ void initParameter (ScalorType * param,
+			       ScalorType k,
+			       ScalorType r0);
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
 };
 
 namespace FENE {
-    typedef enum paramIndex{
-      epsilon		= 0,
-      rinf2		= 1
-    } paramIndex_t;
+  typedef enum paramIndex{
+    epsilon		= 0,
+    rinf2		= 1
+  } paramIndex_t;
 
-    __host__ void initParameter (ScalorType * param,
-				 ScalorType k,
-				 ScalorType rinf);
-    __device__ void force (const ScalorType * param,
-			   ScalorType diffx,
-			   ScalorType diffy,
-			   ScalorType diffz,
-			   ScalorType *fx, 
-			   ScalorType *fy,
-			   ScalorType *fz);
-    __device__ ScalorType forcePoten (const ScalorType * param,
-				      ScalorType diffx,
-				      ScalorType diffy,
-				      ScalorType diffz,
-				      ScalorType *fx, 
-				      ScalorType *fy,
-				      ScalorType *fz);
+  __host__ void initParameter (ScalorType * param,
+			       ScalorType k,
+			       ScalorType rinf);
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
 };
+
+namespace FENE2 {
+  typedef enum paramIndex{
+    epsilon		= 0,
+    rs2		= 1,
+    r0p		= 2
+  } paramIndex_t;
+
+  __host__ void initParameter (ScalorType * param,
+			       ScalorType k,
+			       ScalorType rs,
+			       ScalorType r0);
+  __device__ void force (const ScalorType * param,
+			 ScalorType diffx,
+			 ScalorType diffy,
+			 ScalorType diffz,
+			 ScalorType *fx, 
+			 ScalorType *fy,
+			 ScalorType *fz);
+  __device__ ScalorType forcePoten (const ScalorType * param,
+				    ScalorType diffx,
+				    ScalorType diffy,
+				    ScalorType diffz,
+				    ScalorType *fx, 
+				    ScalorType *fy,
+				    ScalorType *fz);
+};
+
 
 
 __device__ void 
@@ -99,10 +145,13 @@ bondForce (const InteractionType ftype,
 	   ScalorType *fx,   ScalorType *fy,   ScalorType *fz)
 {
   if (ftype == mdForceHarmonicSpring){
-      HarmonicSpring::force (param, diffx, diffy, diffz, fx, fy, fz);
+    HarmonicSpring::force (param, diffx, diffy, diffz, fx, fy, fz);
   }
   if (ftype == mdForceFENE){
-      FENE::force (param, diffx, diffy, diffz, fx, fy, fz);
+    FENE::force (param, diffx, diffy, diffz, fx, fy, fz);
+  }
+  if (ftype == mdForceFENE2){
+    FENE2::force (param, diffx, diffy, diffz, fx, fy, fz);
   }
   // switch (ftype){
   // case mdForceHarmonicSpring:
@@ -130,6 +179,9 @@ bondForcePoten (const InteractionType ftype,
   }
   if (ftype == mdForceFENE){
     *dp = FENE::forcePoten (param,  diffx, diffy, diffz, fx, fy, fz);
+  }  
+  if (ftype == mdForceFENE2){
+    *dp = FENE2::forcePoten (param,  diffx, diffy, diffz, fx, fy, fz);
   }  
   // switch (ftype){
   // case mdForceHarmonicSpring:
@@ -203,11 +255,11 @@ inline __host__ void FENE::initParameter (ScalorType * param,
 }
 
 __device__  void FENE::force (const ScalorType * param,
-				       ScalorType diffx,
-				       ScalorType diffy,
-				       ScalorType diffz,
-				       ScalorType *fx, 
-				       ScalorType *fy,
+			      ScalorType diffx,
+			      ScalorType diffy,
+			      ScalorType diffz,
+			      ScalorType *fx, 
+			      ScalorType *fy,
 			      ScalorType *fz)
 {
   ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
@@ -241,6 +293,65 @@ __device__ ScalorType FENE::forcePoten (const ScalorType * param,
     return -0.5f * param[epsilon] * param[rinf2] * __logf (tmp);
   }
 }
+
+
+
+inline __host__ void FENE2::initParameter (ScalorType * param,
+					   ScalorType ep,
+					   ScalorType rs,
+					   ScalorType r0_)
+{
+  param[epsilon] = ep;
+  param[rs2] = rs * rs;
+  param[r0p] = r0_;
+}
+
+__device__  void FENE2::force (const ScalorType * param,
+			       ScalorType diffx,
+			       ScalorType diffy,
+			       ScalorType diffz,
+			       ScalorType *fx, 
+			       ScalorType *fy,
+			       ScalorType *fz)
+{
+  ScalorType dr = sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+  ScalorType r_r0 = dr - param[r0p];
+  
+  ScalorType scalor = param[epsilon] * param[rs2] * r_r0 / (dr * (param[rs2] - r_r0*r_r0));
+  *fx = diffx * scalor;
+  *fy = diffy * scalor;
+  *fz = diffz * scalor;
+}
+  
+__device__ ScalorType FENE2::forcePoten (const ScalorType * param,
+					 ScalorType diffx,
+					 ScalorType diffy,
+					 ScalorType diffz,
+					 ScalorType *fx, 
+					 ScalorType *fy,
+					 ScalorType *fz)
+{
+  ScalorType dr = sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+  ScalorType r_r0 = dr - param[r0p];
+  ScalorType core = param[rs2] - r_r0*r_r0;
+
+  ScalorType scalor = param[epsilon] * param[rs2] * r_r0 / (core * dr);
+  
+  *fx = diffx * scalor;
+  *fy = diffy * scalor;
+  *fz = diffz * scalor;
+  // printf ("dr is %f, scalor is %f\n", dr, scalor);
+  
+  ScalorType tmp = core / param[rs2];
+  if (tmp <= 0.f){
+    return 1e10;
+  }
+  else{
+    return -0.5f* param[epsilon] * param[rs2] * __logf (tmp);
+  }
+}
+
+
 
 
 #endif

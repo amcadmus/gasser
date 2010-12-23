@@ -115,3 +115,44 @@ FENEParameter (ScalorType k, ScalorType rinf)
 }
 
 
+
+
+InteractionType FENE2Parameter::
+type () const 
+{
+  return mdForceFENE2;
+}
+
+unsigned FENE2Parameter::
+numParam () const 
+{
+  return mdForceNParamFENE2;
+}
+
+const ScalorType * FENE2Parameter::
+c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * FENE2Parameter::
+c_ptr () 
+{
+  return param;
+}
+
+void FENE2Parameter::
+reinit (ScalorType k, ScalorType rs, ScalorType r0)
+{
+  FENE2::initParameter (param, k, rs, r0);
+}
+
+
+FENE2Parameter::
+FENE2Parameter (ScalorType k, ScalorType rs, ScalorType r0)
+{
+  FENE2::initParameter (param, k, rs, r0);
+}
+
+
+
