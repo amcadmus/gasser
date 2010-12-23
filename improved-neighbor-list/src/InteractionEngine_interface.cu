@@ -1,5 +1,6 @@
 #define DEVICE_CODE
 
+#include "systemDefines.h"
 #include "InteractionEngine_interface.h"
 #include "NonBondedInteraction.h"
 #include "BondInteraction.h"
@@ -146,6 +147,8 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 
   energyCorr = sysNbInter.energyCorrection ();
   pressureCorr = sysNbInter.pressureCorrection ();
+
+  hasExclusion = sysNbInter.hasExclusion();
 }
 
 

@@ -10,6 +10,7 @@
 #include "BondedInteractionList.h"
 #include "WidomTestParticleInsertion.h"
 #include "TwinRangeCorrectionRecorder.h"
+#include "ExclusionList.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -21,6 +22,7 @@ class InteractionEngine
   IndexType calAngleInteraction_sbuffSize;
   bool hasBond;
   bool hasAngle;
+  bool hasExclusion;
   // IndexType applyNonBondedInteraction_CellList_sbuffSize;
   // ScalorType * statistic_nb_buff0;
   // ScalorType * statistic_nb_buff1;
@@ -71,28 +73,34 @@ public:
 
   void applyNonBondedInteraction (MDSystem & sys,
 				  const ScalorType & rcut,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const ScalorType & rcut,
 				  MDStatistic & st,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
 
   void applyNonBondedInteraction (MDSystem & sys,
 				  const CellList & clist,
 				  const ScalorType & rcut,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const CellList & clist,
 				  const ScalorType & rcut,
 				  MDStatistic & st,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
   
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
 				  MDStatistic & st,
+				  // const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
 
   void calTwinRangeCorrection (const MDSystem &			sys,
@@ -100,6 +108,7 @@ public:
 			       const ScalorType &		rcut1,
 			       const ScalorType &		rcut2,
 			       TwinRangeCorrectionRecorder &	twrec,
+			       // const ExclusionList *		excllist = NULL,
 			       MDTimer *			timer = NULL);
   void buildNeighborListCalTwinRangeCorrection (const MDSystem &	sys,
 						const CellList &	clist,
@@ -107,6 +116,7 @@ public:
 						const ScalorType &	rcut2,
 						NeighborList &		nlist,
 						TwinRangeCorrectionRecorder & twrec,
+						// const ExclusionList *	excllist = NULL,
 						MDTimer *		timer = NULL);
 			       
   void calculateWidomDeltaEnergy (const MDSystem & sys,
