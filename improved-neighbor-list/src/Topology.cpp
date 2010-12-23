@@ -107,6 +107,12 @@ specifyInteraction(const TypeType & atomType0_,
 //   rcut = p.rcut();
 // }
 
+Topology::Exclusion::
+Exclusion (const IndexType & atom0_,
+	   const IndexType & atom1_)
+    : atom0 (atom0_), atom1(atom1_)
+{
+}
 
 Topology::Bond::
 Bond (const IndexType & atom0_,
@@ -202,7 +208,17 @@ addAngle (const Angle & ag)
   }
   angles.push_back(ag);
 }
-  
+
+void Topology::Molecule::
+addExclusion (const Exclusion & ex)
+{
+  if (ex.atom0 >= atoms.size() ||
+      ex.atom1 >= atoms.size()){
+    throw MDExcptWrongAtomIndex ();
+  }
+  exclusions.push_back(ex);
+}
+
 void Topology::Molecule::
 clear()
 {

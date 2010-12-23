@@ -46,6 +46,10 @@ class InteractionEngine
   ScalorType energyCorr;
   ScalorType pressureCorr;
 private:
+  IndexType maxNumExclusion;
+  bool sharedExclusionList;
+  size_t exclusion_sbuffSize;
+private:
   void initNonBondedInteraction (const MDSystem & sys);
 public:
   InteractionEngine(const MDSystem  & sys, 
@@ -95,12 +99,12 @@ public:
   
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
-				  // const ExclusionList * excllist = NULL,
+				  const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const NeighborList & nlist,
 				  MDStatistic & st,
-				  // const ExclusionList * excllist = NULL,
+				  const ExclusionList * excllist = NULL,
 				  MDTimer *timer = NULL);
 
   void calTwinRangeCorrection (const MDSystem &			sys,

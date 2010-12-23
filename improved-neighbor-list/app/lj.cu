@@ -127,7 +127,7 @@ int main(int argc, char * argv[])
 	  // fflush(stdout);
 	}
 	else{
-	  inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	  inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
 	  // inter.applyNonBondedInteraction (sys, rcut, st, &timer);
 	}
 	inte_vv.step2 (sys, dt, st, &timer);
@@ -162,7 +162,7 @@ int main(int argc, char * argv[])
 	  // fflush(stdout);
 	}
 	else{
-	  inter.applyNonBondedInteraction (sys, nlist, &timer);
+	  inter.applyNonBondedInteraction (sys, nlist, NULL, &timer);
 	  // inter.applyNonBondedInteraction (sys, rcut, &timer);
 	}
 	inte_vv.step2 (sys, dt, &timer);

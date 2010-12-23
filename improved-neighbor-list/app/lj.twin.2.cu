@@ -154,7 +154,7 @@ int main(int argc, char * argv[])
 	// fflush(stdout);
       }
       inter.clearInteraction (sys);
-      inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+      inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
       tcrec.correct (sys, st, &timer);
 
       timer.tic (mdTimeDataIO);
