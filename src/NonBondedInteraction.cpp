@@ -114,6 +114,80 @@ pressureCorrection (const ScalorType & r) const
 }
 
 
+
+InteractionType LennardJones6_12BParameter::
+type () const
+{
+  return mdForceLennardJones6_12B;
+}
+
+unsigned LennardJones6_12BParameter::
+numParam () const 
+{
+  return mdForceNParamLennardJones6_12B;
+}
+
+const ScalorType * LennardJones6_12BParameter::
+c_ptr () const
+{
+  return param;
+}
+
+ScalorType * LennardJones6_12BParameter::
+c_ptr () 
+{
+  return param;
+}
+
+ScalorType LennardJones6_12BParameter::
+rcut() const
+{
+  return LennardJones6_12B::calRcut (param);
+}
+
+void LennardJones6_12BParameter::
+reinit (ScalorType epsilon,
+	ScalorType sigma,
+	ScalorType shift,
+	ScalorType rcut)
+{
+  LennardJones6_12B::initParameter (param, epsilon, sigma, shift, rcut);
+}
+
+LennardJones6_12BParameter::
+LennardJones6_12BParameter (ScalorType epsilon,
+			    ScalorType sigma,
+			    ScalorType shift,
+			    ScalorType rcut)
+{
+  LennardJones6_12B::initParameter (param, epsilon, sigma, shift, rcut);
+}
+
+ScalorType LennardJones6_12BParameter::
+shiftAtCut () const 
+{    
+  ScalorType dr2 = param[LennardJones6_12B::rcut] * param[LennardJones6_12B::rcut];
+  ScalorType ri2 = 1.f/dr2;
+  ScalorType sri2 = param[LennardJones6_12B::sigma] * param[LennardJones6_12B::sigma] * ri2;
+  ScalorType sri6 = sri2*sri2*sri2;
+  return param[LennardJones6_12B::epsilon] * (sri6*sri6 - 2.f * sri6 + param[LennardJones6_12B::shift]);
+  // return 0.;
+}
+
+ScalorType LennardJones6_12BParameter::
+energyCorrection (const ScalorType & r) const
+{
+  return 0.;
+}  
+
+ScalorType LennardJones6_12BParameter::
+pressureCorrection (const ScalorType & r) const
+{
+  return 0.;
+}
+
+
+
 InteractionType LennardJones6_12CapParameter::
 type () const 
 {
@@ -201,6 +275,82 @@ pressureCorr (const ScalorType & r) const
   return 16.f * M_PI * param[LennardJones6_12_cap::epsilon] * s3 / 3.
       * (sri8 * 2. / 3. - sri2 ) * sri;    
 }
+
+
+InteractionType LennardJones6_12BCapParameter::
+type () const 
+{
+  return mdForceLennardJones6_12B_cap;
+}
+
+unsigned LennardJones6_12BCapParameter::
+numParam () const 
+{
+  return mdForceNParamLennardJones6_12B_cap;
+}
+
+const ScalorType * LennardJones6_12BCapParameter::
+c_ptr() const 
+{
+  return param;
+}
+
+ScalorType * LennardJones6_12BCapParameter::
+c_ptr() 
+{
+  return param;
+}
+
+ScalorType LennardJones6_12BCapParameter::
+rcut () const
+{
+  return LennardJones6_12B_cap::calRcut (param);
+}
+
+void LennardJones6_12BCapParameter::
+reinit (ScalorType epsilon,
+	ScalorType sigma,
+	ScalorType shift,
+	ScalorType rcut,
+	ScalorType cap)
+{
+  LennardJones6_12B_cap::initParameter
+      (param, epsilon, sigma, shift, rcut, cap);
+}
+
+LennardJones6_12BCapParameter::
+LennardJones6_12BCapParameter (ScalorType epsilon,
+			      ScalorType sigma,
+			      ScalorType shift,
+			      ScalorType rcut,
+			      ScalorType cap)
+{
+  LennardJones6_12B_cap::initParameter
+      (param, epsilon, sigma, shift, rcut, cap);
+}
+
+ScalorType LennardJones6_12BCapParameter::
+shiftAtCut () const 
+{    
+  ScalorType dr2 = param[LennardJones6_12B_cap::rcut] * param[LennardJones6_12B_cap::rcut];
+  ScalorType ri2 = 1.f/dr2;
+  ScalorType sri2 = param[LennardJones6_12B_cap::sigma] * param[LennardJones6_12B_cap::sigma] * ri2;
+  ScalorType sri6 = sri2*sri2*sri2;
+  return param[LennardJones6_12B_cap::epsilon] * (sri6*sri6 - 2.f * sri6 + param[LennardJones6_12B_cap::shift]);    
+}
+
+ScalorType LennardJones6_12BCapParameter::
+energyCorr (const ScalorType & r) const
+{
+  return 0.f;
+}  
+
+ScalorType LennardJones6_12BCapParameter::
+pressureCorr (const ScalorType & r) const
+{
+  return 0.f;
+}
+
 
 
 InteractionType CosTailParameter::

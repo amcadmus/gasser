@@ -79,3 +79,45 @@ AngleHarmonicParameter (ScalorType k, ScalorType theta0)
 
 
 
+
+
+    
+InteractionType CosAngle0Parameter::
+type () const 
+{
+  return mdForceCosAngle0;
+}
+
+unsigned CosAngle0Parameter::
+numParam () const 
+{
+  return mdForceNParamCosAngle0;
+}
+
+const ScalorType * CosAngle0Parameter::
+c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * CosAngle0Parameter::
+c_ptr ()  
+{
+  return param;
+}
+
+void CosAngle0Parameter::
+reinit (ScalorType k)
+{
+  CosAngle0::initParameter (param, k);
+}
+
+CosAngle0Parameter::
+CosAngle0Parameter (ScalorType k)
+{
+  CosAngle0::initParameter (param, k);
+}
+
+
+
+
