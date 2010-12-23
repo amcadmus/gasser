@@ -18,6 +18,8 @@ void destroyDeviceAngleList(DeviceAngleList &dbdlist )
     cudaFree (dbdlist.numAngle);
     checkCUDAError ("destroyDeviceAngleList");
     dbdlist.malloced = false;
+    dbdlist.stride = 0;
+    dbdlist.maxNumAngle = 0;
   }
 }
 

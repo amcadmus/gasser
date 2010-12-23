@@ -17,6 +17,8 @@ void destroyDeviceBondList(DeviceBondList &dbdlist )
     cudaFree (dbdlist.numBond);
     checkCUDAError ("destroyDeviceBondList");
     dbdlist.malloced = false;
+    dbdlist.stride = 0;
+    dbdlist.maxNumBond = 0;
   }
 }
 

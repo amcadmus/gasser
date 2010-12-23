@@ -117,6 +117,8 @@ reallocParameter ()
 void SystemBondedInteraction::
 reinit (const Topology::System & sysTop)
 {
+  clear ();
+  
   bondIndex.resize(sysTop.molecules.size());
   bondNeighborIndex.resize(sysTop.molecules.size());
   angleIndex.resize(sysTop.molecules.size());
