@@ -19,7 +19,7 @@
 #include "BondInteraction.h"
 #include "NonBondedInteraction.h"
 
-#define NThreadsPerBlockCell	64
+#define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	64
 
 int main(int argc, char * argv[])
@@ -44,19 +44,45 @@ int main(int argc, char * argv[])
   cudaSetDevice (atoi(argv[3]));
   checkCUDAError ("set device");
 
-  ScalorType dt = 0.001;
-  ScalorType nlistExten = 0.5;
+  ScalorType dt = 0.000005;
+  ScalorType nlistExten = 0.2;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
-  ScalorType refT = 1.08088629683116564358;
+  ScalorType refT = 1.3;
   ScalorType tauT = .1;
-  ScalorType refP = 5e-5;
-  ScalorType tauP = 1.;
-  ScalorType betaP = 23.;
+  ScalorType refP = 2.;
+  ScalorType tauP = .1;
+  ScalorType betaP = 1.;
   IndexType energy_feq = 100;
   IndexType config_feq = 10000;
   
   MDSystem sys;
   sys.initConfig(filename);
+
+  ScalorType meanVelo = sqrtf(refT);
+  ScalorType sum = 0.f;
+  // for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
+  //     double tmp[3];
+  //     RandomGenerator_MT19937::genrand_Gaussian (0., meanVelo, &tmp[0]);
+  //     RandomGenerator_MT19937::genrand_Gaussian (0., meanVelo, &tmp[1]);
+  //     RandomGenerator_MT19937::genrand_Gaussian (0., meanVelo, &tmp[2]);      
+  //     double dr = (tmp[0]*tmp[0] + tmp[1]*tmp[1] + tmp[2]*tmp[2]);
+  //     sum += 0.5 * dr;
+  //     // sum += tmp[0]*tmp[0];
+  //     sys.hdata.velox[i] = tmp[0];
+  //     sys.hdata.veloy[i] = tmp[1];
+  //     sys.hdata.veloz[i] = tmp[2];
+  //     // if (dr > 0.3 && dr <= 1){
+  //     // 	tmp[0] *= meanVelo / dr;
+  //     // 	tmp[1] *= meanVelo / dr;
+  //     // 	tmp[2] *= meanVelo / dr;
+  //     // 	sys.hdata.velox[i] = tmp[0];
+  //     // 	sys.hdata.veloy[i] = tmp[1];
+  //     // 	sys.hdata.veloz[i] = tmp[2];
+  //     // 	break;
+  //     // }
+  // }
+  // printf ("T is %f\n", 2. * sum / (3.* sys.hdata.numAtom));
+  // printf ("T is %f\n", sum / (sys.hdata.numAtom));
 
   IndexType idx = 1;
   for (; idx < sys.hdata.numAtom; ++idx){
@@ -95,24 +121,23 @@ int main(int argc, char * argv[])
   ScalorType sigma_ts = 0.5 * (sigma_tt + sigma_s);
   ScalorType rcut_hs = sigma_hs;
   ScalorType rcut_ts = sigma_ts;
-  ScalorType capValue = 100.f;
-  
-  LennardJones6_12BCapParameter p_tt_tmp, p_tt;
-  p_tt_tmp.reinit (1.f, 1.f, 0.f, rcut_tt, capValue);
-  p_tt.reinit (1.f, 1.f, -p_tt_tmp.shiftAtCut(), rcut_tt, capValue);
-  LennardJones6_12BCapParameter p_ht_tmp, p_ht;
-  p_ht_tmp.reinit (1.f, 1.f, 0.f, rcut_ht, capValue);
-  p_ht.reinit (1.f, 1.f, -p_ht_tmp.shiftAtCut(), rcut_ht, capValue);
-  LennardJones6_12BCapParameter p_hh_tmp, p_hh;
-  p_hh_tmp.reinit (1.f, 1.f, 0.f, rcut_hh, capValue);
-  p_hh.reinit (1.f, 1.f, -p_hh_tmp.shiftAtCut(), rcut_hh, capValue);
 
-  LennardJones6_12BCapParameter p_hs_tmp, p_hs;
-  p_hs_tmp.reinit (1.f, 1.f, 0.f, rcut_hs, capValue);
-  p_hs.reinit (1.f, 1.f, -p_hs_tmp.shiftAtCut(), rcut_hs, capValue);
-  LennardJones6_12BCapParameter p_ts_tmp, p_ts;
-  p_ts_tmp.reinit (1.f, 1.f, 0.f, rcut_ts, capValue);
-  p_ts.reinit (1.f, 1.f, -p_ts_tmp.shiftAtCut(), rcut_ts, capValue);
+  LennardJones6_12BParameter p_tt_tmp, p_tt;
+  p_tt_tmp.reinit (1.f, sigma_tt, 0.f, rcut_tt);
+  p_tt.reinit (1.f, sigma_tt, -p_tt_tmp.shiftAtCut(), rcut_tt);
+  LennardJones6_12BParameter p_ht_tmp, p_ht;
+  p_ht_tmp.reinit (1.f, sigma_ht, 0.f, rcut_ht);
+  p_ht.reinit (1.f, sigma_ht, -p_ht_tmp.shiftAtCut(), rcut_ht);
+  LennardJones6_12BParameter p_hh_tmp, p_hh;
+  p_hh_tmp.reinit (1.f, sigma_hh, 0.f, rcut_hh);
+  p_hh.reinit (1.f, sigma_hh, -p_hh_tmp.shiftAtCut(), rcut_hh);
+
+  LennardJones6_12BParameter p_hs_tmp, p_hs;
+  p_hs_tmp.reinit (1.f, sigma_hs, 0.f, rcut_hs);
+  p_hs.reinit (1.f, sigma_hs, -p_hs_tmp.shiftAtCut(), rcut_hs);
+  LennardJones6_12BParameter p_ts_tmp, p_ts;
+  p_ts_tmp.reinit (1.f, sigma_ts, 0.f, rcut_ts);
+  p_ts.reinit (1.f, sigma_ts, -p_ts_tmp.shiftAtCut(), rcut_ts);
 
   sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 0, p_hh));
   sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 1, p_ht));
@@ -121,12 +146,23 @@ int main(int argc, char * argv[])
   sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 0, p_hs));
   sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 1, p_ts));  
 
-  FENE2Parameter p_fene;
-  p_fene.reinit (100.f, 0.2f * sigma_tt, 0.7f * sigma_tt);
+  // FENE2Parameter p_fene_ht;
+  // p_fene_ht.reinit (100.f, 0.2f * sigma_ht, 0.7f * sigma_ht);
+  // printf ("singma_ht is %f\n", sigma_ht);
+  FENE2Parameter p_fene_tt;
+  p_fene_tt.reinit (100.f, 0.2f * sigma_tt, 0.7f * sigma_tt);
 
   for (IndexType i = 0; i < ntail; ++i){
-    molLipid.addBond (Topology::Bond (i, i+1, p_fene));
+    molLipid.addBond (Topology::Bond (i, i+1, p_fene_tt));
     molLipid.addExclusion (Topology::Exclusion (i, i+1));
+  }
+
+  if (ntail > 1){
+    CosAngle0Parameter p_angle;
+    p_angle.reinit (4.7f);
+    for (IndexType i = 0; i < ntail-1; ++i){
+      molLipid.addAngle (Topology::Angle (i, i+1, i+2, p_angle));
+    }
   }
   
   sysTop.addMolecules (molLipid, nLipidMol);
@@ -179,10 +215,11 @@ int main(int argc, char * argv[])
   thermostat.reinit (refT, dt, tauT, sys.ddata.numAtom * 3 - 3);
   Barostat_ParrinelloRahman barostat;
   barostat.reinit (dt, tauP, sys.box);
-  barostat.assignGroup (mdRectBoxDirectionX, refP, betaP);
+  barostat.assignGroup (mdRectBoxDirectionX | mdRectBoxDirectionY, refP, betaP);
+  barostat.assignGroup (mdRectBoxDirectionZ, refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
-  // blpf.addThermostat (thermostat);
-  // blpf.addBarostat   (barostat);
+  blpf.addThermostat (thermostat);
+  blpf.addBarostat   (barostat);
 
   Reshuffle resh (sys);
   
@@ -252,7 +289,7 @@ int main(int argc, char * argv[])
       	sys.updateHostFromRecovered (&timer);
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
-      if ((i+1) % 50 == 0){
+      if ((i+1) % 100 == 0){
       	if (resh.calIndexTable (clist, &timer)){
       	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
       	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
