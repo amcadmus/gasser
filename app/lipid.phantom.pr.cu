@@ -19,8 +19,8 @@
 #include "BondInteraction.h"
 #include "NonBondedInteraction.h"
 
-#define NThreadsPerBlockCell	256
-#define NThreadsPerBlockAtom	64
+#define NThreadsPerBlockCell	8
+#define NThreadsPerBlockAtom	8
 
 int main(int argc, char * argv[])
 {
@@ -44,22 +44,27 @@ int main(int argc, char * argv[])
   cudaSetDevice (atoi(argv[3]));
   checkCUDAError ("set device");
 
-  ScalorType dt = 0.000005;
+  ScalorType dt = 0.001;
   ScalorType nlistExten = 0.2;
   ScalorType rebuildThreshold = 0.5 * nlistExten;
   ScalorType refT = 1.3;
-  ScalorType tauT = .1;
+  ScalorType tauT = 1;
   ScalorType refP = 2.;
-  ScalorType tauP = .1;
+  ScalorType tauP = 1;
   ScalorType betaP = 1.;
-  IndexType energy_feq = 100;
-  IndexType config_feq = 10000;
+  IndexType energy_feq = 1;
+  IndexType config_feq = 100;
   
   MDSystem sys;
   sys.initConfig(filename);
 
   ScalorType meanVelo = sqrtf(refT);
   ScalorType sum = 0.f;
+  for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
+      sys.hdata.velox[i] = 0.;
+      sys.hdata.veloy[i] = 0.;
+      sys.hdata.veloz[i] = 0.;
+  }
   // for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
   //     double tmp[3];
   //     RandomGenerator_MT19937::genrand_Gaussian (0., meanVelo, &tmp[0]);
@@ -139,22 +144,23 @@ int main(int argc, char * argv[])
   p_ts_tmp.reinit (1.f, sigma_ts, 0.f, rcut_ts);
   p_ts.reinit (1.f, sigma_ts, -p_ts_tmp.shiftAtCut(), rcut_ts);
 
-  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 0, p_hh));
-  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 1, p_ht));
-  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(1, 1, p_tt));
+  // sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 0, p_hh));
+  // sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(0, 1, p_ht));
+  // sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(1, 1, p_tt));
   
-  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 0, p_hs));
-  sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 1, p_ts));  
+  // sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 0, p_hs));
+  // sysTop.addNonBondedInteraction(Topology::NonBondedInteraction(2, 1, p_ts));  
 
   // FENE2Parameter p_fene_ht;
   // p_fene_ht.reinit (100.f, 0.2f * sigma_ht, 0.7f * sigma_ht);
   // printf ("singma_ht is %f\n", sigma_ht);
   FENE2Parameter p_fene_tt;
-  p_fene_tt.reinit (100.f, 0.2f * sigma_tt, 0.7f * sigma_tt);
+  // p_fene_tt.reinit (100.f, 0.2f * sigma_tt, 0.7f * sigma_tt);
+  p_fene_tt.reinit (100.f, 0.2f * sigma_tt, 1.414);
 
   for (IndexType i = 0; i < ntail; ++i){
     molLipid.addBond (Topology::Bond (i, i+1, p_fene_tt));
-    molLipid.addExclusion (Topology::Exclusion (i, i+1));
+    // molLipid.addExclusion (Topology::Exclusion (i, i+1));
   }
 
   if (ntail > 1){
@@ -217,10 +223,11 @@ int main(int argc, char * argv[])
   barostat.reinit (dt, tauP, sys.box);
   barostat.assignGroup (mdRectBoxDirectionX | mdRectBoxDirectionY, refP, betaP);
   barostat.assignGroup (mdRectBoxDirectionZ, refP, betaP);
-  LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
-  blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);
-
+  // LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
+  // blpf.addThermostat (thermostat);
+  // blpf.addBarostat   (barostat);
+  VelocityVerlet vv (sys, NThreadsPerBlockAtom);
+    
   Reshuffle resh (sys);
   
   timer.tic(mdTimeTotal);
@@ -250,7 +257,8 @@ int main(int argc, char * argv[])
 	tfremover.remove (sys, &timer);
       }
       st.clearDevice();
-      blpf.oneStep (sys, dt, last_st, st, &timer);
+      // blpf.oneStep (sys, dt, last_st, st, &timer);
+      vv.step1 (sys, dt, &timer);
       ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
       if (maxdr > rebuildThreshold){
 	// printf ("# Rebuild at step %09i ... ", i+1);
@@ -266,6 +274,7 @@ int main(int argc, char * argv[])
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist,  st, &exclList, &timer);
       inter.applyBondedInteraction    (sys, bdInterList, st, &timer);
+      vv.step2 (sys, dt, st, &timer);
       if ((i+1) % energy_feq == 0){
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.3f %.3f %.3f\n",
