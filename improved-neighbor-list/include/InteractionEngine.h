@@ -279,6 +279,9 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 				     const RectangularBox box,
 				     const DeviceAngleList bdlist,
 				     ScalorType * statistic_buff,
+				     ScalorType * statistic_b_buff1,
+				     ScalorType * statistic_b_buff2,
+				     ScalorType * statistic_b_buff3,
 				     mdError_t * ptr_de);
 
 // __global__ void calNonAngleedInteraction (const IndexType numAtom,

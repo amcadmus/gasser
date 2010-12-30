@@ -63,6 +63,9 @@ void InteractionEngine::init (const MDSystem  & sys,
   sum_b_vyy.reinit (nob, NThreadForSum);
   sum_b_vzz.reinit (nob, NThreadForSum);
   sum_angle_p.reinit (nob, NThreadForSum);
+  sum_angle_vxx.reinit (nob, NThreadForSum);
+  sum_angle_vyy.reinit (nob, NThreadForSum);
+  sum_angle_vzz.reinit (nob, NThreadForSum);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamCreate(&sum_stream[i]);
   }
@@ -800,6 +803,17 @@ applyBondedInteraction (MDSystem & sys,
     err.check ("interaction engine");	
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
+  if (hasBond) {
+    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
+    cudaThreadSynchronize();
+    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
+    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
+    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    cudaThreadSynchronize();
+    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+    checkCUDAError ("InteractionEngine::applyInteraction sum bond statistic (with statistic)");
+  }
   if (hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     calAngleInteraction
@@ -811,27 +825,24 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.box,
 	    bdlist.deviceAngleList(),
 	    sum_angle_p.getBuff(),
+	    sum_angle_vxx.getBuff(),
+	    sum_angle_vyy.getBuff(),
+	    sum_angle_vzz.getBuff(),
 	    err.ptr_de);
     checkCUDAError ("InteractionEngine::applyInteraction angle");
     err.check ("interaction engine angle");	
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
   }
-  if (hasBond) {
-    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
-    cudaThreadSynchronize();
-    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
-    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
-    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
-    cudaThreadSynchronize();
-    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
-  }
   if (hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    sum_angle_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
+    sum_angle_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
+    sum_angle_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
+    checkCUDAError ("InteractionEngine::applyInteraction sum angle statistic (with statistic)");
   }
-  checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
 
@@ -1580,7 +1591,8 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       }      
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
-      ScalorType fx, fy, fz;
+      ScalorType f0x, f0y, f0z;
+      ScalorType f1x, f1y, f1z;
       IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       angleForce (center,
 		  bondedInteractionType[angleFindex],
@@ -1588,10 +1600,18 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 		  [bondedInteractionParameterPosition[angleFindex]],
 		  diff0x, diff0y, diff0z,
 		  diff1x, diff1y, diff1z,
-		  &fx, &fy, &fz);
-      fsumx += fx;
-      fsumy += fy;
-      fsumz += fz;
+		  &f0x, &f0y, &f0z,
+		  &f1x, &f1y, &f1z);
+      if (center){
+	fsumx += f0x + f1x;
+	fsumy += f0y + f1y;
+	fsumz += f0z + f1z;
+      }
+      else {
+	fsumx -= f0x;
+	fsumy -= f0y;
+	fsumz -= f0z;
+      }
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -1608,6 +1628,9 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 				     const RectangularBox box,
 				     const DeviceAngleList anglelist,
 				     ScalorType * statistic_b_buff0,
+				     ScalorType * statistic_b_buff1,
+				     ScalorType * statistic_b_buff2,
+				     ScalorType * statistic_b_buff3,
 				     mdError_t * ptr_de)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -1615,7 +1638,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
   ScalorType fsumx = 0.0f;
   ScalorType fsumy = 0.0f;
   ScalorType fsumz = 0.0f;
-  ScalorType myPoten = 0.f;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
   IndexType myNumAngle;
   extern __shared__ volatile ScalorType buff[];
@@ -1665,7 +1688,8 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       }      
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
-      ScalorType fx, fy, fz;
+      ScalorType f0x, f0y, f0z;
+      ScalorType f1x, f1y, f1z;
       IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       ScalorType dp;
       angleForcePoten (center,
@@ -1674,11 +1698,23 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 		       [bondedInteractionParameterPosition[angleFindex]],
 		       diff0x, diff0y, diff0z,
 		       diff1x, diff1y, diff1z,
-		       &fx, &fy, &fz, &dp);
+		       &f0x, &f0y, &f0z,
+		       &f1x, &f1y, &f1z,
+		       &dp);
       myPoten += dp;
-      fsumx += fx;
-      fsumy += fy;
-      fsumz += fz;
+      if (center){
+	fsumx += f0x + f1x;
+	fsumy += f0y + f1y;
+	fsumz += f0z + f1z;
+	myVxx -= f0x * diff0x - f1x * diff1x;
+	myVyy -= f0y * diff0y - f1y * diff1y;
+	myVzz -= f0z * diff0z - f1z * diff1z;
+      }
+      else {
+	fsumx -= f0x;
+	fsumy -= f0y;
+	fsumz -= f0z;
+      }
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -1688,6 +1724,19 @@ __global__ void calAngleInteraction (const IndexType numAtom,
   buff[tid] = myPoten * 0.33333333333333333f;
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVxx;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff1[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVyy;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff2[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVzz;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
+  __syncthreads();
 }
 
 

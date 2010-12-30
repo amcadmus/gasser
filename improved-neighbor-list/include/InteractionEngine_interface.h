@@ -41,6 +41,9 @@ class InteractionEngine
   SumVector<ScalorType> sum_b_vyy;
   SumVector<ScalorType> sum_b_vzz;
   SumVector<ScalorType> sum_angle_p;
+  SumVector<ScalorType> sum_angle_vxx;
+  SumVector<ScalorType> sum_angle_vyy;
+  SumVector<ScalorType> sum_angle_vzz;
   cudaStream_t sum_stream[8];
   MDError err;
   ScalorType energyCorr;
