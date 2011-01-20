@@ -15,6 +15,26 @@ MDSystem::MDSystem()
   // setNULL (&ddata);
 }
 
+void MDSystem::
+normalizeDeviceData (MDTimer * timer)
+{
+  if (timer != NULL) timer->tic(mdTimeNormalizeSys);
+  
+  IndexType nob = (ddata.numAtom + DefaultNThreadPerBlock - 1) / DefaultNThreadPerBlock;
+  dim3 atomGridDim = toGridDim (nob);
+
+  normalizeSystem
+      <<<atomGridDim, DefaultNThreadPerBlock>>> (
+	  box,
+	  ddata.numAtom,
+	  ddata.coord,
+	  ddata.coordNoix,
+	  ddata.coordNoiy,
+	  ddata.coordNoiz);
+  checkCUDAError ("NeighborList::rebuild, normalize System");
+  if (timer != NULL) timer->toc(mdTimeNormalizeSys);
+}
+
 
 void MDSystem::initConfig (const char * configfile,
 			   // const char * mapfile,

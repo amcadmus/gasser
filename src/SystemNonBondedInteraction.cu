@@ -31,6 +31,7 @@ SystemNonBondedInteraction ()
   interactionTable_ = NULL;
   isBuilt = false;
   maxrc = 0;
+  maxNumExclusion = 0;
 }
 
 SystemNonBondedInteraction::
@@ -52,6 +53,7 @@ SystemNonBondedInteraction (const Topology::System & sysTop)
   interactionTable_ = NULL;
   isBuilt = false;
   maxrc = 0;
+  maxNumExclusion = 0;
 
   reinit (sysTop);
 }
@@ -88,6 +90,8 @@ clear ()
     isBuilt = false;
   }
   maxrc = 0;
+  exclusionNeighborIndex.clear();
+  maxNumExclusion = 0;
 }
 
 void SystemNonBondedInteraction::
@@ -122,6 +126,7 @@ void SystemNonBondedInteraction::
 reinit (const Topology::System & sysTop)
 {
   clear();
+  
   TypeType maxType = 0;
   // first, cal max type
   for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
@@ -201,7 +206,31 @@ reinit (const Topology::System & sysTop)
   
   printf ("# energy correction is %f\n", energyCorr);
   printf ("# pressure correction is %f\n", pressureCorr);
+
+
+  exclusionNeighborIndex.resize(sysTop.molecules.size());
+  for (IndexType i = 0; i < sysTop.molecules.size(); ++i){
+    exclusionNeighborIndex[i].resize (sysTop.molecules[i].atoms.size());
+  }
+  for (IndexType i = 0; i < sysTop.molecules.size(); ++i){
+    for (IndexType j = 0; j < sysTop.molecules[i].exclusions.size(); ++j){
+      exclusionNeighborIndex[i][sysTop.molecules[i].exclusions[j].atom0].
+	  push_back(sysTop.molecules[i].exclusions[j].atom1);
+      exclusionNeighborIndex[i][sysTop.molecules[i].exclusions[j].atom1].
+	  push_back(sysTop.molecules[i].exclusions[j].atom0);
+    }
+  }
+  maxNumExclusion = 0;
+  for (IndexType i = 0; i < exclusionNeighborIndex.size(); ++i){
+    for (IndexType j = 0; j < exclusionNeighborIndex[i].size(); ++j){
+      IndexType c;
+      if ((c = exclusionNeighborIndex[i][j].size()) > maxNumExclusion){
+	maxNumExclusion = c;
+      }
+    }
+  }
 }	   
+
 	   
 void SystemNonBondedInteraction::
 add (const TypeType &i,

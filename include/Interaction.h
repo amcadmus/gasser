@@ -16,12 +16,16 @@ public:
 enum mdInteraction {
   mdForceNULL				= 00000,
   mdForceLennardJones6_12		= 00001,
+  mdForceLennardJones6_12B		= 00005,
   mdForceLennardJones6_12_cap		= 00002,
+  mdForceLennardJones6_12B_cap		= 00006,
   mdForceCosTail			= 00003,
   mdForceCosTail_cap			= 00004,
   mdForceHarmonicSpring			= 10000,
   mdForceFENE				= 10001,
-  mdForceAngleHarmonic			= 20000
+  mdForceFENE2				= 10002,
+  mdForceAngleHarmonic			= 20000,
+  mdForceCosAngle0			= 20001
 };
 
 

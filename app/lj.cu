@@ -11,7 +11,7 @@
 #include "InteractionEngine_interface.h"
 #include "tmp.h"
 #include "Reshuffle_interface.h"
-
+#include "Displacement_interface.h"
 
 #include "Topology.h"
 #include "SystemBondedInteraction.h"
@@ -20,7 +20,7 @@
 #include "NonBondedInteraction.h"
 
 
-#define NThreadsPerBlockCell	96
+#define NThreadsPerBlockCell	128
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
@@ -47,31 +47,34 @@ int main(int argc, char * argv[])
   Topology::Molecule mol;
   mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
   LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, 3.2f);
+  ScalorType rcut = 3.2f;
+  ljparam.reinit (1.f, 1.f, 0.f, rcut);
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
   sysTop.addMolecules (mol, sys.hdata.numAtom);
 
   sys.initTopology (sysTop);
   sys.initDeviceData ();
-
+  
   SystemNonBondedInteraction sysNbInter;
   sysNbInter.reinit (sysTop);
   
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType nlistExten = 0.3;
   ScalorType rlist = maxrcut + nlistExten;
-  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockCell, 10,
-		      RectangularBoxGeometry::mdRectBoxDirectionX |
-		      RectangularBoxGeometry::mdRectBoxDirectionY |
-		      RectangularBoxGeometry::mdRectBoxDirectionZ);
-  nlist.build(sys);
+  CellList clist (sys, rlist, NThreadsPerBlockCell, NThreadsPerBlockAtom);
+  NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockAtom, 10.f);
+  sys.normalizeDeviceData ();
+  clist.rebuild (sys, NULL);
+  nlist.rebuild (sys, clist, NULL);
+  Displacement_max disp (sys, NThreadsPerBlockAtom);
+  disp.recordCoord (sys);
+  
   MDStatistic st(sys);
   VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
-  // ScalorType refT = 0.9977411970749;
   ScalorType refT = 1.;
   VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
-  InteractionEngine_interface inter (sys, NThreadsPerBlockAtom);
+  InteractionEngine inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
   
   MDTimer timer;
@@ -80,12 +83,15 @@ int main(int argc, char * argv[])
   ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
 
-  Reshuffle resh (sys, nlist, NThreadsPerBlockCell);
+  Reshuffle resh (sys);
   
   timer.tic(mdTimeTotal);
-  resh.calIndexTable (nlist, &timer);
-  sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
-  nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
+  if (resh.calIndexTable (clist, &timer)){
+    sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+    clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+  }
   
   printf ("# prepare ok, start to run\n");
   // sys.recoverDeviceData (&timer);
@@ -107,16 +113,32 @@ int main(int argc, char * argv[])
 	st.clearDevice();
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, st, &timer);
+	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
+	if (maxdr > nlistExten * 0.5){
+	  // printf ("# Rebuild at step %09i ... ", i+1);
+	  // fflush(stdout);
+	  // rebuild
+	  sys.normalizeDeviceData (&timer);
+	  disp.recordCoord (sys);
+	  clist.rebuild (sys, &timer);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
+	  nlist.rebuild (sys, clist, &timer);
+	  // printf ("done\n");
+	  // fflush(stdout);
+	}
+	else{
+	  inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
+	  // inter.applyNonBondedInteraction (sys, rcut, st, &timer);
+	}
 	inte_vv.step2 (sys, dt, st, &timer);
 	st.updateHost();
 	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.7e \n",
 		(i+1),  
 		(i+1) * dt, 
-		st.NonBondedEnergy(),
+		st.nonBondedEnergy(),
 		st.kineticEnergy(),
 		st.kineticEnergy() / (sys.ddata.numAtom - 1) * 2./3.,
-		st.NonBondedEnergy() + st.BondedEnergy() + st.kineticEnergy(),
+		st.nonBondedEnergy() + st.bondedEnergy() + st.kineticEnergy(),
 		st.pressureXX(sys.box),
 		st.pressureYY(sys.box),
 		st.pressureZZ(sys.box),
@@ -126,25 +148,48 @@ int main(int argc, char * argv[])
       else {
 	inte_vv.step1 (sys, dt, &timer);
 	inter.clearInteraction (sys);
-	inter.applyNonBondedInteraction (sys, nlist, &timer);
+	ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
+	if (maxdr > nlistExten * 0.5){
+	  // printf ("# Rebuild at step %09i ... ", i+1);
+	  // fflush(stdout);
+	  // rebuild
+	  sys.normalizeDeviceData (&timer);
+	  disp.recordCoord (sys);
+	  clist.rebuild (sys, &timer);
+	  inter.applyNonBondedInteraction (sys, clist, rcut, &timer);
+	  nlist.rebuild (sys, clist, &timer);
+	  // printf ("done\n");
+	  // fflush(stdout);
+	}
+	else{
+	  inter.applyNonBondedInteraction (sys, nlist, NULL, &timer);
+	  // inter.applyNonBondedInteraction (sys, rcut, &timer);
+	}
 	inte_vv.step2 (sys, dt, &timer);
       }
-      if (nlist.judgeRebuild(sys, 0.5 * nlistExten, &timer)){
-	// printf ("# Rebuild at step %09i ... ", i+1);
-	// fflush(stdout);
-	nlist.reBuild(sys, &timer);
-	// printf ("done\n");
-	// fflush(stdout);
-      }
+      // if (maxdr > nlistExten * 0.5){
+      // 	printf ("# Rebuild at step %09i ... ", i+1);
+      // 	fflush(stdout);
+      // 	// rebuild
+      // 	sys.normalizeDeviceData ();
+      // 	disp.recordCoord (sys);
+      // 	clist.rebuild (sys, &timer);
+      // 	nlist.rebuild (sys, clist, &timer);
+      // 	printf ("done\n");
+      // 	fflush(stdout);
+      // }
       // if ((i+1) % 1000 == 0){
       // 	sys.recoverDeviceData (&timer);
       // 	sys.updateHostFromRecovered (&timer);
       // 	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       // }
       if ((i+1) % 100 == 0){
-      	resh.calIndexTable (nlist, &timer);
-      	sys.reshuffle   (resh.getIndexTable(), sys.hdata.numAtom, &timer);
-      	nlist.reshuffle (resh.getIndexTable(), sys.hdata.numAtom, &timer);  
+	if (resh.calIndexTable (clist, &timer)){
+	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+	}
       }
     }
     // sys.endWriteXtc();

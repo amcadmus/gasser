@@ -11,6 +11,10 @@ class SystemNonBondedInteraction
 private:  
   std::vector<std::vector<std::vector<ScalorType> > > paramMat;
   std::vector<std::vector<InteractionType > > typeMat;
+public:
+  std::vector<std::vector<std::vector<IndexType > > > exclusionNeighborIndex;
+private:
+  IndexType maxNumExclusion;
 private:
   void resizeMem (IndexType size);
   bool checkIntegrity ();
@@ -57,9 +61,11 @@ public:
   const ScalorType & maxRcut() const {return maxrc;}
 public:
   bool beBuilt () const {return isBuilt;}
+  bool hasExclusion () const {return maxNumExclusion == 0;}
   IndexType numberOfAtomTypes () const {return numAtomTypes;}
   IndexType numberOfInteraction () const {return numInteractionItems;}
   IndexType numberOfParameter () const {return numParameters;}
+  IndexType maxNumberOfExclusion () const {return maxNumExclusion;}
   const InteractionType * interactionType () const {return types;}
   const ScalorType * interactionParameter () const {return parameters;}
   const IndexType * interactionParameterPosition () const {return positions;}

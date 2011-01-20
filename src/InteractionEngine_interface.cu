@@ -1,5 +1,6 @@
 #define DEVICE_CODE
 
+#include "systemDefines.h"
 #include "InteractionEngine_interface.h"
 #include "NonBondedInteraction.h"
 #include "BondInteraction.h"
@@ -28,8 +29,9 @@ IndexType const_numAtomType[1];
 __constant__
 IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
-void InteractionEngine_interface::init (const MDSystem  & sys,
-					const IndexType & NTread)
+
+void InteractionEngine::init (const MDSystem  & sys,
+			      const IndexType & NTread)
 {
   hasBond = false;
   hasAngle = false;
@@ -61,16 +63,22 @@ void InteractionEngine_interface::init (const MDSystem  & sys,
   sum_b_vyy.reinit (nob, NThreadForSum);
   sum_b_vzz.reinit (nob, NThreadForSum);
   sum_angle_p.reinit (nob, NThreadForSum);
+  sum_angle_vxx.reinit (nob, NThreadForSum);
+  sum_angle_vyy.reinit (nob, NThreadForSum);
+  sum_angle_vzz.reinit (nob, NThreadForSum);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamCreate(&sum_stream[i]);
   }
   checkCUDAError ("InteractionEngine::init init sum statistic");
-  
-  // init nb force param
+
+  // exclusion list
+  maxNumExclusion = 0;
+  sharedExclusionList = false;
+  exclusion_sbuffSize = size_t(0);
 }
 
 
-static IndexType hroundUp4 (IndexType x)
+static IndexType hroundUp4 (const IndexType x)
 {
   if (x & 3 == 0){
     return x;
@@ -80,11 +88,11 @@ static IndexType hroundUp4 (IndexType x)
   }
 }
 
-void InteractionEngine_interface::
+void InteractionEngine::
 registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
 {
   if (! sysNbInter.beBuilt()) {
-    throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine_interface");
+    throw MDExcptUnbuiltNonBondedInteraction ("InteractionEngine");
   }
   if (sysNbInter.numberOfInteraction() > MaxNumberBondedInteraction ){
     throw MDExcptExceedConstantMemLimit (
@@ -131,18 +139,33 @@ registNonBondedInteraction (const SystemNonBondedInteraction & sysNbInter)
   		      sizeof (IndexType) * tableSize);
   checkCUDAError ("InteractionEngine::init, const_nonBondedInteractionTable");
 
-  applyNonBondedInteraction_CellList_sbuffSize =
-      sizeof(IndexType) *      hroundUp4(myBlockDim.x) +
-      sizeof(CoordType) * hroundUp4(myBlockDim.x) +
-      sizeof(TypeType)  *      hroundUp4(myBlockDim.x);
-  checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
+  // applyNonBondedInteraction_CellList_sbuffSize =
+  //     sizeof(IndexType) *	hroundUp4(myBlockDim.x) +
+  //     sizeof(CoordType) *	hroundUp4(myBlockDim.x) +
+  //     sizeof(TypeType)  *	hroundUp4(myBlockDim.x);
+  // printf ("total %d\npart1 %d\npart2 %d\npart3 %d\nround %d\n",
+  // 	  applyNonBondedInteraction_CellList_sbuffSize,
+  // 	  sizeof(IndexType) *	hroundUp4(myBlockDim.x),
+  // 	  sizeof(CoordType) *	hroundUp4(myBlockDim.x),
+  // 	  sizeof(TypeType)  *	hroundUp4(myBlockDim.x),
+  // 	  hroundUp4(myBlockDim.x));
+  // checkCUDAError ("InteractionEngine::init, init nonBondedInteractionTable");
 
   energyCorr = sysNbInter.energyCorrection ();
   pressureCorr = sysNbInter.pressureCorrection ();
+
+  maxNumExclusion = sysNbInter.maxNumberOfExclusion();
+  if (maxNumExclusion != 0){
+    sharedExclusionList = true;
+    exclusion_sbuffSize = myBlockDim.x * maxNumExclusion * sizeof(IndexType);
+    if (exclusion_sbuffSize > SystemSharedBuffSize){
+      sharedExclusionList = false;
+    }
+  }
 }
 
 
-void InteractionEngine_interface::
+void InteractionEngine::
 registBondedInteraction (const SystemBondedInteraction & sysBdInter)
 {
   if (sysBdInter.hasBond() ){
@@ -182,7 +205,7 @@ registBondedInteraction (const SystemBondedInteraction & sysBdInter)
   }
 }
 
-InteractionEngine_interface::~InteractionEngine_interface()
+InteractionEngine::~InteractionEngine()
 {
   cudaUnbindTexture(global_texRef_interaction_coord);
   cudaUnbindTexture(global_texRef_interaction_type);
@@ -191,58 +214,13 @@ InteractionEngine_interface::~InteractionEngine_interface()
   }
 }
 
-void InteractionEngine_interface::clearInteraction (MDSystem & sys)
+void InteractionEngine::clearInteraction (MDSystem & sys)
 {
   clearForce
       <<<atomGridDim, myBlockDim>>>(
 	  sys.ddata.numAtom,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz);
   checkCUDAError ("InteractionEngine::clearInteraction");
-}
-
-
-void InteractionEngine_interface::
-applyNonBondedInteraction  (MDSystem & sys,
-			    const NeighborList & nlist,
-			    MDTimer *timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
-  calNonBondedInteraction
-      <<<atomGridDim, myBlockDim>>> (
-	  sys.ddata.numAtom,
-	  sys.ddata.coord,
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
-	  sys.ddata.type, 
-	  sys.box, nlist.dnlist,
-	  err.ptr_de,
-	  err.ptr_dindex,
-	  err.ptr_dscalor);
-  checkCUDAError ("InteractionEngine::applyInteraction nb");
-  err.check ("interaction engine nb");	
-  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
-}
-
-void InteractionEngine_interface::
-applyNonBondedInteractionCell  (MDSystem & sys,
-				const NeighborList & nlist,
-				MDTimer *timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
-  calNonBondedInteraction
-      <<<nlist.cellGridDim, nlist.myBlockDim,
-      applyNonBondedInteraction_CellList_sbuffSize>>> (
-	  sys.ddata.numAtom,
-	  sys.ddata.coord,
-	  sys.ddata.forcx,
-	  sys.ddata.forcy,
-	  sys.ddata.forcz,
-	  sys.ddata.type, 
-	  sys.box,
-	  nlist.dclist,
-	  err.ptr_de);
-  checkCUDAError ("InteractionEngine::applyInteraction nb");
-  err.check ("interaction engine nb");	
-  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
 }
 
 
@@ -255,30 +233,131 @@ applyEnergyPressureCorrection (ScalorType * ddata,
   ddata[mdStatisticEnergyCorrection] = energyCorr;
   ddata[mdStatisticPressureCorrection] = pressureCorr;
 }
-  
-void InteractionEngine_interface::
-applyNonBondedInteraction (MDSystem & sys,
-			   const NeighborList & nlist,
-			   MDStatistic & st,
-			   MDTimer *timer )
+
+
+
+void InteractionEngine::
+applyNonBondedInteraction  (MDSystem & sys,
+			    const NeighborList & nlist,
+			    const ExclusionList * excllist,
+			    MDTimer *timer )
 {
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  calNonBondedInteraction
+  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
+  if (excllist == NULL){
+  calNonBondedInteraction_neighbor
       <<<atomGridDim, myBlockDim>>> (
 	  sys.ddata.numAtom,
 	  sys.ddata.coord,
-	  sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
 	  sys.ddata.type, 
-	  sys.box, nlist.dnlist
-	  ,
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
-	  err.ptr_de,
-	  err.ptr_dindex,
-	  err.ptr_dscalor
-	  );
+	  sys.box,
+	  nlist.dnlist);
+  }
+  else{
+    calNonBondedInteraction_neighbor
+	<<<atomGridDim, myBlockDim,
+	exclusion_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.forcx,
+	    sys.ddata.forcy,
+	    sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box,
+	    nlist.dnlist,
+	    excllist->dexcllist,
+	    sharedExclusionList
+	    );
+  }
+  checkCUDAError ("InteractionEngine::applyInteraction nb");
+  err.check ("interaction engine nb");	
+  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
+}
+
+// void InteractionEngine::
+// applyNonBondedInteraction  (MDSystem & sys,
+// 			    const CellList & clist,
+// 			    const ScalorType & rcut,
+// 			    NeighborList & nlist,
+// 			    MDTimer *timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+//   size_t applyNonBondedInteraction_CellList_sbuffSize =
+//       (sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+//       hroundUp4(clist.getBlockDim().x);
+//       // sizeof(IndexType) *	hroundUp4(myBlockDim.x) +
+//       // sizeof(CoordType) *	hroundUp4(myBlockDim.x) +
+//       // sizeof(TypeType)  *	hroundUp4(myBlockDim.x);
+//   calNonBondedInteraction
+//       <<<clist.getCellGrimDim(), clist.getBlockDim(),
+//       applyNonBondedInteraction_CellList_sbuffSize>>> (
+// 	  sys.ddata.numAtom,
+// 	  sys.ddata.coord,
+// 	  sys.ddata.forcx,
+// 	  sys.ddata.forcy,
+// 	  sys.ddata.forcz,
+// 	  sys.ddata.type, 
+// 	  sys.box,
+// 	  clist.dclist,
+// 	  rcut,
+// 	  nlist.dnlist,
+// 	  err.ptr_de);
+//   checkCUDAError ("InteractionEngine::applyInteraction nb");
+//   err.check ("interaction engine nb");
+//   if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+// }
+
+
+
+void InteractionEngine::
+applyNonBondedInteraction (MDSystem & sys,
+			   const NeighborList & nlist,
+			   MDStatistic & st,
+			   const ExclusionList * excllist,
+			   MDTimer *timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  if (excllist == NULL){
+    calNonBondedInteraction_neighbor
+	<<<atomGridDim, myBlockDim>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.forcx,
+	    sys.ddata.forcy,
+	    sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box,
+	    nlist.dnlist
+	    ,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff()
+	    );
+  }
+  else {
+    calNonBondedInteraction_neighbor
+	<<<atomGridDim, myBlockDim,
+	exclusion_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.forcx,
+	    sys.ddata.forcy,
+	    sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box,
+	    nlist.dnlist
+	    ,
+	    excllist->dexcllist,
+	    sharedExclusionList,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff()
+	    );
+  }
   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
   err.check ("interaction engine nb");	
   cudaThreadSynchronize();
@@ -300,31 +379,148 @@ applyNonBondedInteraction (MDSystem & sys,
 }
 
 
-void InteractionEngine_interface::
-applyNonBondedInteractionCell (MDSystem & sys,
-			       const NeighborList & nlist,
-			       MDStatistic & st,
-			       MDTimer *timer )
+void InteractionEngine::
+applyNonBondedInteraction  (MDSystem & sys,
+			    const CellList & clist,
+			    const ScalorType & rcut,
+			    MDTimer *timer )
 {
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  calNonBondedInteraction
-      <<<nlist.cellGridDim, nlist.myBlockDim,
-      applyNonBondedInteraction_CellList_sbuffSize>>> (
+  if (!clist.isempty()){
+    if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
+    size_t applyNonBondedInteraction_CellList_sbuffSize =
+	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(clist.getCellBlockDim().x);
+    calNonBondedInteraction_cell
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
+	applyNonBondedInteraction_CellList_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.forcx,
+	    sys.ddata.forcy,
+	    sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box,
+	    clist.dclist,
+	    rcut,
+	    err.ptr_de);
+    checkCUDAError ("InteractionEngine::applyInteraction nb");
+    err.check ("interaction engine nb");    
+    if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
+  }
+  else {
+    applyNonBondedInteraction (sys, rcut, timer);
+  }
+}
+
+
+void InteractionEngine::
+applyNonBondedInteraction (MDSystem & sys,
+			   const CellList & clist,
+			   const ScalorType & rcut,
+			   MDStatistic & st,
+			   MDTimer *timer )
+{
+  if (!clist.isempty()){
+    if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+    size_t applyNonBondedInteraction_CellList_sbuffSize =
+	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(clist.getCellBlockDim().x);
+    calNonBondedInteraction_cell
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
+	applyNonBondedInteraction_CellList_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    sys.ddata.forcx,
+	    sys.ddata.forcy,
+	    sys.ddata.forcz,
+	    sys.ddata.type, 
+	    sys.box,
+	    clist.dclist,
+	    rcut,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de
+	    );
+    checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
+    err.check ("interaction engine nb");	
+    cudaThreadSynchronize();
+    sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+    sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+    sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+    sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+    ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+    volumei = 1.f / volumei;
+    // printf ("apply Ec %f, Pc %f\n",
+    // 	  energyCorr * volumei,
+    // 	  pressureCorr * volumei * volumei);
+    applyEnergyPressureCorrection
+	<<<1, 1, 0, 4>>> (st.ddata,
+			  energyCorr * volumei,
+			  pressureCorr * volumei * volumei);
+    cudaThreadSynchronize();
+    if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+  }
+  else {
+    applyNonBondedInteraction (sys, rcut, st, timer);
+  }
+}
+
+
+void InteractionEngine::
+applyNonBondedInteraction  (MDSystem & sys,
+			    const ScalorType & rcut,
+			    MDTimer *timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNonBondedInteraction);
+  size_t applyNonBondedInteraction_AllPair_sbuffSize =
+      (sizeof(CoordType) + sizeof(TypeType)) *
+      hroundUp4(myBlockDim.x);
+  calNonBondedInteraction_all
+      <<<atomGridDim, myBlockDim,
+      applyNonBondedInteraction_AllPair_sbuffSize>>> (
 	  sys.ddata.numAtom,
 	  sys.ddata.coord,
 	  sys.ddata.forcx,
 	  sys.ddata.forcy,
 	  sys.ddata.forcz,
-	  sys.ddata.type,
+	  sys.ddata.type, 
 	  sys.box,
-	  nlist.dclist
-	  ,
+	  rcut,
+	  err.ptr_de);
+  checkCUDAError ("InteractionEngine::applyInteraction nb");
+  err.check ("interaction engine nb");    
+  if (timer != NULL) timer->toc(mdTimeNonBondedInteraction);
+}
+
+
+void InteractionEngine::
+applyNonBondedInteraction (MDSystem & sys,
+			   const ScalorType & rcut,
+			   MDStatistic & st,
+			   MDTimer *timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  size_t applyNonBondedInteraction_AllPair_sbuffSize =
+      (sizeof(CoordType) + sizeof(TypeType)) *
+      hroundUp4(myBlockDim.x);
+  calNonBondedInteraction_all
+      <<<atomGridDim, myBlockDim,
+      applyNonBondedInteraction_AllPair_sbuffSize>>> (
+	  sys.ddata.numAtom,
+	  sys.ddata.coord,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
+	  sys.ddata.type, 
+	  sys.box,
+	  rcut,
 	  sum_nb_p.getBuff(),
 	  sum_nb_vxx.getBuff(),
 	  sum_nb_vyy.getBuff(),
 	  sum_nb_vzz.getBuff(),
-	  err.ptr_de
-	  );
+	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
   err.check ("interaction engine nb");	
   cudaThreadSynchronize();
@@ -332,13 +528,222 @@ applyNonBondedInteractionCell (MDSystem & sys,
   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+  volumei = 1.f / volumei;
+  // printf ("apply Ec %f, Pc %f\n",
+  // 	  energyCorr * volumei,
+  // 	  pressureCorr * volumei * volumei);
+  applyEnergyPressureCorrection
+      <<<1, 1, 0, 4>>> (st.ddata,
+			energyCorr * volumei,
+			pressureCorr * volumei * volumei);
   cudaThreadSynchronize();
   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
 }
 
 
 
-void InteractionEngine_interface::
+// void InteractionEngine::
+// applyNonBondedInteraction (MDSystem & sys,
+// 			   const CellList & clist,
+// 			   const ScalorType & rcut,
+// 			   NeighborList & nlist,
+// 			   MDStatistic & st,
+// 			   MDTimer *timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+//   if (!clist.isempty()){
+//     size_t applyNonBondedInteraction_CellList_sbuffSize =
+// 	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+// 	hroundUp4(clist.getBlockDim().x);
+//     calNonBondedInteraction
+// 	<<<clist.getCellGrimDim(), clist.getBlockDim(),
+// 	applyNonBondedInteraction_CellList_sbuffSize>>> (
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.forcx,
+// 	    sys.ddata.forcy,
+// 	    sys.ddata.forcz,
+// 	    sys.ddata.type, 
+// 	    sys.box,
+// 	    clist.dclist,
+// 	    rcut,
+// 	    nlist.dnlist,
+// 	    sum_nb_p.getBuff(),
+// 	    sum_nb_vxx.getBuff(),
+// 	    sum_nb_vyy.getBuff(),
+// 	    sum_nb_vzz.getBuff(),
+// 	    err.ptr_de
+// 	    );
+//   }
+//   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
+//   err.check ("interaction engine nb");	
+//   cudaThreadSynchronize();
+//   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+//   sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+//   sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+//   sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+//   ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
+//   volumei = 1.f / volumei;
+//   // printf ("apply Ec %f, Pc %f\n",
+//   // 	  energyCorr * volumei,
+//   // 	  pressureCorr * volumei * volumei);
+//   applyEnergyPressureCorrection
+//       <<<1, 1, 0, 4>>> (st.ddata,
+// 			energyCorr * volumei,
+// 			pressureCorr * volumei * volumei);
+//   cudaThreadSynchronize();
+//   if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+// }
+
+
+
+void InteractionEngine::
+calTwinRangeCorrection (const MDSystem &		sys,
+			const CellList &		clist,
+			const ScalorType &		rcut1,
+			const ScalorType &		rcut2,
+			TwinRangeCorrectionRecorder &	twrec,
+			MDTimer *			timer)
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterTwinRange);
+  if (clist.isempty()){
+    size_t applyNonBondedInteraction_AllPair_sbuffSize =
+	(sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(myBlockDim.x);
+    calTwinRangeCorrection_all
+	<<<atomGridDim, myBlockDim,
+	applyNonBondedInteraction_AllPair_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    twrec.forcx,
+	    twrec.forcy,
+	    twrec.forcz,
+	    sys.ddata.type,
+	    sys.box,
+	    rcut1,
+	    rcut2,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de);
+  }
+  else {
+    size_t applyNonBondedInteraction_CellList_sbuffSize =
+	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(clist.getCellBlockDim().x);
+    calTwinRangeCorrection_cell
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
+	applyNonBondedInteraction_CellList_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    twrec.forcx,
+	    twrec.forcy,
+	    twrec.forcz,
+	    sys.ddata.type,
+	    sys.box,
+	    clist.dclist,
+	    rcut1,
+	    rcut2,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de);
+  } 
+  checkCUDAError ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");
+  err.check ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");	
+  cudaThreadSynchronize();
+  MDStatistic st (sys);
+  sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  cudaThreadSynchronize();
+  st.updateHost ();
+  twrec.energyCorrection() = st.nonBondedEnergy();
+  twrec.pressureCorrection() = st.pressure(sys.box);
+  if (timer != NULL) timer->toc(mdTimeNBInterTwinRange);
+}
+
+
+void InteractionEngine::
+buildNeighborListCalTwinRangeCorrection (const MDSystem &		sys,
+					 const CellList &		clist,
+					 const ScalorType &		rcut1,
+					 const ScalorType &		rcut2,
+					 NeighborList &			nlist,
+					 TwinRangeCorrectionRecorder &	twrec,
+					 MDTimer *			timer)
+{
+  if (timer != NULL) timer->tic(mdTimeBuildNeighborList);
+  if (clist.isempty()){
+    size_t applyNonBondedInteraction_AllPair_sbuffSize =
+	(sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(myBlockDim.x);
+    buildNeighborListCalTwinRangeCorr_all
+	<<<atomGridDim, myBlockDim,
+	applyNonBondedInteraction_AllPair_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    twrec.forcx,
+	    twrec.forcy,
+	    twrec.forcz,
+	    sys.ddata.type,
+	    sys.box,
+	    rcut1,
+	    rcut2,
+	    nlist.dnlist,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de);
+  }
+  else {
+    size_t applyNonBondedInteraction_CellList_sbuffSize =
+	(sizeof(IndexType) + sizeof(CoordType) + sizeof(TypeType)) *
+	hroundUp4(clist.getCellBlockDim().x);
+    buildNeighborListCalTwinRangeCorr_cell
+	<<<clist.getCellGrimDim(), clist.getCellBlockDim(),
+	applyNonBondedInteraction_CellList_sbuffSize>>> (
+	    sys.ddata.numAtom,
+	    sys.ddata.coord,
+	    twrec.forcx,
+	    twrec.forcy,
+	    twrec.forcz,
+	    sys.ddata.type,
+	    sys.box,
+	    clist.dclist,
+	    rcut1,
+	    rcut2,
+	    nlist.dnlist,
+	    sum_nb_p.getBuff(),
+	    sum_nb_vxx.getBuff(),
+	    sum_nb_vyy.getBuff(),
+	    sum_nb_vzz.getBuff(),
+	    err.ptr_de);
+  } 
+  checkCUDAError ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");
+  err.check ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");	
+  cudaThreadSynchronize();
+  MDStatistic st (sys);
+  sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  cudaThreadSynchronize();
+  st.updateHost ();
+  twrec.energyCorrection() = st.nonBondedEnergy();
+  twrec.pressureCorrection() = st.pressure(sys.box);
+  if (timer != NULL) timer->toc(mdTimeBuildNeighborList);
+}
+
+
+
+
+void InteractionEngine::
 applyBondedInteraction (MDSystem & sys,
 			const BondedInteractionList & bdlist,
 			MDTimer *timer )
@@ -371,7 +776,7 @@ applyBondedInteraction (MDSystem & sys,
   }
 }
 
-void InteractionEngine_interface::
+void InteractionEngine::
 applyBondedInteraction (MDSystem & sys,
 			const BondedInteractionList & bdlist,
 			MDStatistic & st,
@@ -398,6 +803,17 @@ applyBondedInteraction (MDSystem & sys,
     err.check ("interaction engine");	
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
   }
+  if (hasBond) {
+    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
+    cudaThreadSynchronize();
+    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
+    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
+    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    cudaThreadSynchronize();
+    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
+    checkCUDAError ("InteractionEngine::applyInteraction sum bond statistic (with statistic)");
+  }
   if (hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     calAngleInteraction
@@ -409,156 +825,153 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.box,
 	    bdlist.deviceAngleList(),
 	    sum_angle_p.getBuff(),
+	    sum_angle_vxx.getBuff(),
+	    sum_angle_vyy.getBuff(),
+	    sum_angle_vzz.getBuff(),
 	    err.ptr_de);
     checkCUDAError ("InteractionEngine::applyInteraction angle");
     err.check ("interaction engine angle");	
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
   }
-  if (hasBond) {
-    if (timer != NULL) timer->tic(mdTimeBInterStatistic);
-    cudaThreadSynchronize();
-    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
-    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
-    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
-    cudaThreadSynchronize();
-    if (timer != NULL) timer->toc(mdTimeBInterStatistic);
-  }
   if (hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
     sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
+    sum_angle_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
+    sum_angle_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
+    sum_angle_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
+    checkCUDAError ("InteractionEngine::applyInteraction sum angle statistic (with statistic)");
   }
-  checkCUDAError ("InteractionEngine::applyInteraction sum statistic (with statistic)");
 }
 
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NVT & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  else if (nlist.mode == AllPairBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_allPair_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	DefaultNThreadPerBlock,
-	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.myrlist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+// void InteractionEngine::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NVT & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   else if (nlist.mode == AllPairBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_allPair_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	DefaultNThreadPerBlock,
+// 	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.myrlist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NVT2 & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+// void InteractionEngine::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NVT2 & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
-void InteractionEngine_interface::
-calculateWidomDeltaEnergy (const MDSystem & sys,
-			   const NeighborList & nlist,
-			   WidomTestParticleInsertion_NPT & wtest,
-			   MDTimer * timer )
-{
-  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
-  // printf ("### %d\n", nlist.mode);
-  if (nlist.mode == CellListBuilt){
-    // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
-    widomDeltaPoten_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	nlist.myBlockDim.x,
-	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.dclist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  else if (nlist.mode == AllPairBuilt){
-    // printf ("### here %f\n", wtest.energyCorrection());
-    widomDeltaPoten_allPair_NVT
-	<<<toGridDim(wtest.numTestParticle()),
-	DefaultNThreadPerBlock,
-	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
-	    wtest.numTestParticle(),
-	    wtest.coordTestParticle,
-	    wtest.typeTestParticle,
-	    sys.ddata.numAtom,
-	    sys.ddata.coord,
-	    sys.ddata.type,
-	    sys.box,
-	    nlist.myrlist,
-	    wtest.sumExpDeltaU.getBuff(),
-	    err.ptr_de);
-  }
-  // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
-  //   printf ("%d %f  (%f %f %f)\n", i,
-  // 	    wtest.sumExpDeltaU.getBuff()[i],
-  // 	    wtest.coordTestParticle[i].x,
-  // 	    wtest.coordTestParticle[i].y,
-  // 	    wtest.coordTestParticle[i].z
-  // 	);
-  // }
+// void InteractionEngine::
+// calculateWidomDeltaEnergy (const MDSystem & sys,
+// 			   const NeighborList & nlist,
+// 			   WidomTestParticleInsertion_NPT & wtest,
+// 			   MDTimer * timer )
+// {
+//   if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+//   // printf ("### %d\n", nlist.mode);
+//   if (nlist.mode == CellListBuilt){
+//     // printf ("### here %f, n: %d\n", wtest.energyCorrection(), wtest.numTestParticle());
+//     widomDeltaPoten_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	nlist.myBlockDim.x,
+// 	nlist.myBlockDim.x * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.dclist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   else if (nlist.mode == AllPairBuilt){
+//     // printf ("### here %f\n", wtest.energyCorrection());
+//     widomDeltaPoten_allPair_NVT
+// 	<<<toGridDim(wtest.numTestParticle()),
+// 	DefaultNThreadPerBlock,
+// 	DefaultNThreadPerBlock * sizeof(ScalorType)>>> (
+// 	    wtest.numTestParticle(),
+// 	    wtest.coordTestParticle,
+// 	    wtest.typeTestParticle,
+// 	    sys.ddata.numAtom,
+// 	    sys.ddata.coord,
+// 	    sys.ddata.type,
+// 	    sys.box,
+// 	    nlist.myrlist,
+// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    err.ptr_de);
+//   }
+//   // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
+//   //   printf ("%d %f  (%f %f %f)\n", i,
+//   // 	    wtest.sumExpDeltaU.getBuff()[i],
+//   // 	    wtest.coordTestParticle[i].x,
+//   // 	    wtest.coordTestParticle[i].y,
+//   // 	    wtest.coordTestParticle[i].z
+//   // 	);
+//   // }
   
-  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
-}
+//   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+// }
 
 
 __global__ void clearForce (const IndexType numAtom,
@@ -652,19 +1065,16 @@ __global__ void clearForce (const IndexType numAtom,
 //   }
 // }
 
-    
 
-__global__ void calNonBondedInteraction (const IndexType numAtom,
-					 const CoordType * coord,
-					 ScalorType * forcx,
-					 ScalorType * forcy, 
-					 ScalorType * forcz,
-					 const TypeType * type,
-					 const RectangularBox box,
-					 const DeviceNeighborList nlist,
-					 mdError_t * ptr_de,
-					 IndexType * errorIndex,
-					 ScalorType * errorScalor)
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -673,53 +1083,19 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
   ScalorType fsumz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
 
-  // IndexType num = 0;
-  // IndexType start = bid * blockDim.x;
-  // if (start < numAtom){
-  //   if (start + blockDim.x <= numAtom){
-  //     num = blockDim.x;
-  //   }
-  //   else {
-  //     num = start + blockDim.x - numAtom;
-  //   }
-  // }
-  // IndexType maxNei = maxVectorBlock (nlist.Nneighbor, start, num);
-  // IndexType myNei = nlist.Nneighbor[ii];
-  
   if (ii < numAtom) {
-#ifdef COMPILE_NO_TEX
-    CoordType ref (coord[ii]);
-#else
     CoordType ref (tex1Dfetch(global_texRef_interaction_coord, ii));
-#endif    
     ScalorType fx(0.f), fy(0.f), fz(0.f);
     for (IndexType jj = 0, nlistPosi = ii;
     	 jj < nlist.Nneighbor[ii];
     	 ++jj, nlistPosi += nlist.stride){
-
-    // for (IndexType jj = 0, nlistPosi = ii;
-    // 	 jj < maxNei;
-    // 	 ++jj, nlistPosi += nlist.stride){
-    //   __syncthreads();
-    //   if (jj >= myNei) continue;
-      
       IndexType targetIdx ( nlist.data [nlistPosi] );
       IndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
-#ifdef COMPILE_NO_TEX
-      CoordType target ( coord[targetIdx] );
-#else
       CoordType target ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
-#endif
       ScalorType diffx ( target.x - ref.x );
       ScalorType diffy ( target.y - ref.y );
       ScalorType diffz ( target.z - ref.z );
       shortestImage (box, &diffx, &diffy, &diffz);
-      // ScalorType * forceParam;
-      // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
-      // 				&forceParam);
-      // nbForce (nbForceType[nbForceIndex], forceParam,
-      // 	       diffx, diffy, diffz, 
-      // 	       &fx, &fy, &fz);
       nbForce (nonBondedInteractionType[nbForceIndex],
 	       &nonBondedInteractionParameter
 	       [nonBondedInteractionParameterPosition[nbForceIndex]],
@@ -735,22 +1111,101 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
   }
 }
 
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  const DeviceExclusionList	dexcllist,
+				  const bool			sharedExclusionList)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
 
-__global__ void calNonBondedInteraction (const IndexType numAtom,
-					 const CoordType * coord,
-					 ScalorType * forcx,
-					 ScalorType * forcy, 
-					 ScalorType * forcz,
-					 const TypeType * type,
-					 const RectangularBox box,
-					 const DeviceNeighborList nlist,
-					 ScalorType * statistic_nb_buff0,
-					 ScalorType * statistic_nb_buff1,
-					 ScalorType * statistic_nb_buff2,
-					 ScalorType * statistic_nb_buff3,
-					 mdError_t * ptr_de,
-					 IndexType * errorIndex,
-					 ScalorType * errorScalor)
+  IndexType * ptr_excllist;
+  IndexType myNumExclusion (0);
+  extern __shared__ char excl_sbuff[];
+  
+  if (dexcllist.maxNumExclusion != 0 && ii < numAtom){
+    myNumExclusion  = dexcllist.numExclusion[ii];
+    if (sharedExclusionList){
+      ptr_excllist = (IndexType *) excl_sbuff;
+      for (IndexType jj = 0; jj < myNumExclusion; ++jj){
+	ptr_excllist[jj*blockDim.x+tid] =
+	    dexcllist.exclusionNeighborIndex[jj*dexcllist.stride+ii];
+      }
+    }
+  }
+
+  if (ii < numAtom) {
+    CoordType ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+    ScalorType fx(0.f), fy(0.f), fz(0.f);
+    for (IndexType jj = 0, nlistPosi = ii;
+    	 jj < nlist.Nneighbor[ii];
+    	 ++jj, nlistPosi += nlist.stride){
+      IndexType targetIdx ( nlist.data [nlistPosi] );
+      IndexType nbForceIndex;
+      CoordType target;
+      ScalorType diffx, diffy, diffz;
+      if (sharedExclusionList){
+	for (IndexType kk = 0; kk < myNumExclusion; ++kk){
+	  if (ptr_excllist[kk*blockDim.x+tid] == targetIdx) {
+	    goto skipInter;
+	  }
+	}
+      }
+      else {
+	for (IndexType kk = 0; kk < myNumExclusion; ++kk){
+	  if (dexcllist.exclusionNeighborIndex[kk*dexcllist.stride+ii] == targetIdx) {
+	    goto skipInter;
+	  }	  
+	}
+      }
+      nbForceIndex = ( nlist.forceIndex [nlistPosi] );
+      target = ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
+      diffx = ( target.x - ref.x );
+      diffy = ( target.y - ref.y );
+      diffz = ( target.z - ref.z );
+      shortestImage (box, &diffx, &diffy, &diffz);
+      nbForce (nonBondedInteractionType[nbForceIndex],
+	       &nonBondedInteractionParameter
+	       [nonBondedInteractionParameterPosition[nbForceIndex]],
+      	       diffx, diffy, diffz, 
+      	       &fx, &fy, &fz);
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
+      skipInter:
+      {
+      }
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+}
+
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  ScalorType *			statistic_nb_buff0,
+				  ScalorType *			statistic_nb_buff1,
+				  ScalorType *			statistic_nb_buff2,
+				  ScalorType *			statistic_nb_buff3)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -760,13 +1215,10 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
   ScalorType fsumz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
   ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+
   if (ii < numAtom) {
     CoordType ref;
-#ifdef COMPILE_NO_TEX    
-    ref = coord[ii];
-#else
     ref = tex1Dfetch(global_texRef_interaction_coord, ii);
-#endif
     ScalorType fx(0.f), fy(0.f), fz(0.f);
     ScalorType dp;
     for (IndexType jj = 0, nlistPosi = ii;
@@ -774,29 +1226,19 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
 	 ++jj, nlistPosi += nlist.stride){
       IndexType targetIdx ( nlist.data[nlistPosi] );
       IndexType nbForceIndex ( nlist.forceIndex [nlistPosi] );
-#ifdef COMPILE_NO_TEX    
-      CoordType target ( coord[targetIdx] );
-#else
       CoordType target ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
-#endif
       ScalorType diffx ( target.x - ref.x );
       ScalorType diffy ( target.y - ref.y );
       ScalorType diffz ( target.z - ref.z );
       shortestImage (box, &diffx, &diffy, &diffz);
-
-
-      // ScalorType * forceParam;
-      // NBForceSetting::getParam (nbForceIndex, nbForceParam, nbForceParamPosi,
-      // 				&forceParam);
-      // nbForcePoten (nbForceType[nbForceIndex],
-      // 		    forceParam,
-      // 		    diffx, diffy, diffz, 
-      // 		    &fx, &fy, &fz, &dp);
       nbForcePoten (nonBondedInteractionType[nbForceIndex],
 		    &nonBondedInteractionParameter
 		    [nonBondedInteractionParameterPosition[nbForceIndex]],
       		    diffx, diffy, diffz, 
       		    &fx, &fy, &fz, &dp);
+      // printf ("## %d\t%d\t%f\t%f\t%f\n",
+      // 	      ii, targetIdx,
+      // 	      ref.z, target.z, fz);
       // printf ("%f, %f %f %f,  %f %f %f,  %f %f %f, %f\n",
       // 	      sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
       // 	      ref.x, ref.y, ref.z,
@@ -824,6 +1266,121 @@ __global__ void calNonBondedInteraction (const IndexType numAtom,
     statistic_nb_buff3[ii] = myVzz * 0.5f;
   }  
 }
+
+
+__global__ void
+calNonBondedInteraction_neighbor (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  ScalorType *			forcx,
+				  ScalorType *			forcy, 
+				  ScalorType *			forcz,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  const DeviceNeighborList	nlist,
+				  const DeviceExclusionList	dexcllist,
+				  const bool			sharedExclusionList,
+				  ScalorType *			statistic_nb_buff0,
+				  ScalorType *			statistic_nb_buff1,
+				  ScalorType *			statistic_nb_buff2,
+				  ScalorType *			statistic_nb_buff3)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+
+  IndexType * ptr_excllist;
+  IndexType myNumExclusion (0);
+  extern __shared__ char excl_sbuff[];
+  
+  if (dexcllist.maxNumExclusion != 0 && ii < numAtom){
+    myNumExclusion  = dexcllist.numExclusion[ii];
+    if (sharedExclusionList){
+      ptr_excllist = (IndexType *) excl_sbuff;
+      for (IndexType jj = 0; jj < myNumExclusion; ++jj){
+	ptr_excllist[jj*blockDim.x+tid] =
+	    dexcllist.exclusionNeighborIndex[jj*dexcllist.stride+ii];
+      }
+    }
+  }
+
+  if (ii < numAtom) {
+    CoordType ref;
+    ref = tex1Dfetch(global_texRef_interaction_coord, ii);
+    ScalorType fx(0.f), fy(0.f), fz(0.f);
+    ScalorType dp;
+    for (IndexType jj = 0, nlistPosi = ii;
+	 jj < nlist.Nneighbor[ii];
+	 ++jj, nlistPosi += nlist.stride){
+      IndexType targetIdx ( nlist.data[nlistPosi] );
+      IndexType nbForceIndex;
+      CoordType target;
+      ScalorType diffx, diffy, diffz;
+      if (sharedExclusionList){
+	for (IndexType kk = 0; kk < myNumExclusion; ++kk){
+	  if (ptr_excllist[kk*blockDim.x+tid] == targetIdx) {
+	    goto skipInter;
+	  }
+	}
+      }
+      else {
+	for (IndexType kk = 0; kk < myNumExclusion; ++kk){
+	  if (dexcllist.exclusionNeighborIndex[kk*dexcllist.stride+ii] == targetIdx) {
+	    goto skipInter;
+	  }	  
+	}
+      }
+      nbForceIndex = ( nlist.forceIndex [nlistPosi] );
+      target = ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
+      diffx = ( target.x - ref.x );
+      diffy = ( target.y - ref.y );
+      diffz = ( target.z - ref.z );
+      shortestImage (box, &diffx, &diffy, &diffz);
+      nbForcePoten (nonBondedInteractionType[nbForceIndex],
+		    &nonBondedInteractionParameter
+		    [nonBondedInteractionParameterPosition[nbForceIndex]],
+      		    diffx, diffy, diffz, 
+      		    &fx, &fy, &fz, &dp);
+      // printf ("## %d\t%d\t%f\t%f\t%f\n",
+      // 	      ii, targetIdx,
+      // 	      ref.z, target.z, fz);
+      // printf ("%f, %f %f %f,  %f %f %f,  %f %f %f, %f\n",
+      // 	      sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
+      // 	      ref.x, ref.y, ref.z,
+      // 	      target.x, target.y, target.z,
+      // 	      diffx, diffy, diffz,
+      // 	      dp
+      // 	  );
+      myPoten += dp;
+      myVxx += fx * diffx;
+      myVyy += fy * diffy;
+      myVzz += fz * diffz;
+      fsumx += fx;
+      fsumy += fy;
+      fsumz += fz;
+      skipInter:
+      {
+      }
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+  
+  if (ii < numAtom){
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }  
+}
+
+
+
 
 
 __global__ void calBondInteraction (const IndexType numAtom,
@@ -1034,7 +1591,8 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       }      
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
-      ScalorType fx, fy, fz;
+      ScalorType f0x, f0y, f0z;
+      ScalorType f1x, f1y, f1z;
       IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       angleForce (center,
 		  bondedInteractionType[angleFindex],
@@ -1042,10 +1600,18 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 		  [bondedInteractionParameterPosition[angleFindex]],
 		  diff0x, diff0y, diff0z,
 		  diff1x, diff1y, diff1z,
-		  &fx, &fy, &fz);
-      fsumx += fx;
-      fsumy += fy;
-      fsumz += fz;
+		  &f0x, &f0y, &f0z,
+		  &f1x, &f1y, &f1z);
+      if (center){
+	fsumx += f0x + f1x;
+	fsumy += f0y + f1y;
+	fsumz += f0z + f1z;
+      }
+      else {
+	fsumx -= f0x;
+	fsumy -= f0y;
+	fsumz -= f0z;
+      }
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -1062,6 +1628,9 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 				     const RectangularBox box,
 				     const DeviceAngleList anglelist,
 				     ScalorType * statistic_b_buff0,
+				     ScalorType * statistic_b_buff1,
+				     ScalorType * statistic_b_buff2,
+				     ScalorType * statistic_b_buff3,
 				     mdError_t * ptr_de)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -1069,7 +1638,7 @@ __global__ void calAngleInteraction (const IndexType numAtom,
   ScalorType fsumx = 0.0f;
   ScalorType fsumy = 0.0f;
   ScalorType fsumz = 0.0f;
-  ScalorType myPoten = 0.f;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
   IndexType ii = tid + bid * blockDim.x;
   IndexType myNumAngle;
   extern __shared__ volatile ScalorType buff[];
@@ -1119,7 +1688,8 @@ __global__ void calAngleInteraction (const IndexType numAtom,
       }      
       shortestImage (box, &diff0x, &diff0y, &diff0z);
       shortestImage (box, &diff1x, &diff1y, &diff1z);
-      ScalorType fx, fy, fz;
+      ScalorType f0x, f0y, f0z;
+      ScalorType f1x, f1y, f1z;
       IndexType angleFindex = anglelist.angleIndex[jj * anglelist.stride + ii];
       ScalorType dp;
       angleForcePoten (center,
@@ -1128,11 +1698,23 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 		       [bondedInteractionParameterPosition[angleFindex]],
 		       diff0x, diff0y, diff0z,
 		       diff1x, diff1y, diff1z,
-		       &fx, &fy, &fz, &dp);
+		       &f0x, &f0y, &f0z,
+		       &f1x, &f1y, &f1z,
+		       &dp);
       myPoten += dp;
-      fsumx += fx;
-      fsumy += fy;
-      fsumz += fz;
+      if (center){
+	fsumx += f0x + f1x;
+	fsumy += f0y + f1y;
+	fsumz += f0z + f1z;
+	myVxx -= f0x * diff0x - f1x * diff1x;
+	myVyy -= f0y * diff0y - f1y * diff1y;
+	myVzz -= f0z * diff0z - f1z * diff1z;
+      }
+      else {
+	fsumx -= f0x;
+	fsumy -= f0y;
+	fsumz -= f0z;
+      }
     }
     forcx[ii] += fsumx;
     forcy[ii] += fsumy;
@@ -1142,6 +1724,19 @@ __global__ void calAngleInteraction (const IndexType numAtom,
   buff[tid] = myPoten * 0.33333333333333333f;
   sumVectorBlockBuffer_2 (buff);
   if (threadIdx.x == 0) statistic_b_buff0[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVxx;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff1[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVyy;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff2[bid] = buff[0];
+  __syncthreads();
+  buff[tid] = myVzz;
+  sumVectorBlockBuffer_2 (buff);
+  if (threadIdx.x == 0) statistic_b_buff3[bid] = buff[0];
+  __syncthreads();
 }
 
 
@@ -1452,16 +2047,17 @@ __global__ void calAngleInteraction (const IndexType numAtom,
 
 
 
-__global__ void calNonBondedInteraction (
-    const IndexType numAtom,
-    const CoordType * coord,
-    ScalorType * forcx,
-    ScalorType * forcy, 
-    ScalorType * forcz,
-    const TypeType * type,
-    const RectangularBox box,
-    DeviceCellList clist,
-    mdError_t * ptr_de)
+__global__ void
+calNonBondedInteraction_cell (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const DeviceCellList	clist,
+			      const ScalorType		rcut,
+			      mdError_t *		ptr_de)
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -1484,7 +2080,6 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.rlist;
 
   // the target index and coordinates are shared
 
@@ -1497,7 +2092,7 @@ __global__ void calNonBondedInteraction (
   volatile TypeType * targettype =
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
   
-  ScalorType rlist2 = rlist * rlist;
+  ScalorType rcut2 = rcut * rcut;
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
     IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
@@ -1511,6 +2106,11 @@ __global__ void calNonBondedInteraction (
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
+    bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    if (clist.NCell.x == 1) oneCellX = true;
+    if (clist.NCell.y == 1) oneCellY = true;
+    if (clist.NCell.z == 1) oneCellZ = true;
+
     __syncthreads();
     // find neighbor
     if (ii != MaxIndexValue){
@@ -1519,12 +2119,12 @@ __global__ void calNonBondedInteraction (
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
 	// ScalorType dr2;
-	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
+	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rcut2 &&
 	    targetIndexes[jj] != ii){
 	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
@@ -1556,20 +2156,21 @@ __global__ void calNonBondedInteraction (
 }
 
 
-__global__ void calNonBondedInteraction (
-    const IndexType numAtom,
-    const CoordType * coord,
-    ScalorType * forcx,
-    ScalorType * forcy, 
-    ScalorType * forcz,
-    const TypeType * type,
-    const RectangularBox box,
-    DeviceCellList clist,
-    ScalorType * statistic_nb_buff0,
-    ScalorType * statistic_nb_buff1,
-    ScalorType * statistic_nb_buff2,
-    ScalorType * statistic_nb_buff3,
-    mdError_t * ptr_de)
+__global__ void
+calNonBondedInteraction_cell (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const DeviceCellList	clist,
+			      const ScalorType		rcut,
+			      ScalorType *		statistic_nb_buff0,
+			      ScalorType *		statistic_nb_buff1,
+			      ScalorType *		statistic_nb_buff2,
+			      ScalorType *		statistic_nb_buff3,
+			      mdError_t *		ptr_de)
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -1593,8 +2194,7 @@ __global__ void calNonBondedInteraction (
     reftype = tex1Dfetch(global_texRef_interaction_type, ii);
 #endif
   }
-  ScalorType rlist = clist.rlist;
-
+  
   // the target index and coordinates are shared
 
   extern __shared__ volatile char pub_sbuff[];
@@ -1606,7 +2206,7 @@ __global__ void calNonBondedInteraction (
   volatile TypeType * targettype =
       (volatile TypeType *) &target[roundUp4(blockDim.x)];
 
-  ScalorType rlist2 = rlist * rlist;
+  ScalorType rcut2 = rcut * rcut;
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
     IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
@@ -1620,6 +2220,10 @@ __global__ void calNonBondedInteraction (
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
+    bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    if (clist.NCell.x == 1) oneCellX = true;
+    if (clist.NCell.y == 1) oneCellY = true;
+    if (clist.NCell.z == 1) oneCellZ = true;
 
     __syncthreads();
     // find neighbor
@@ -1629,12 +2233,12 @@ __global__ void calNonBondedInteraction (
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
 	// ScalorType dr2;
-	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rlist2 &&
+	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rcut2 &&
 	    targetIndexes[jj] != ii){
 	  IndexType fidx(0);
 	  fidx = AtomNBForceTable::calForceIndex (
@@ -1672,6 +2276,954 @@ __global__ void calNonBondedInteraction (
     statistic_nb_buff3[ii] = myVzz * 0.5f;
   }
 }
+
+
+__global__ void
+calNonBondedInteraction (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const TypeType *		type,
+			 const RectangularBox		box,
+			 DeviceCellList			clist,
+			 const ScalorType		rcut,
+			 DeviceNeighborList		nlist,
+			 mdError_t *			ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType bidx, bidy, bidz;
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
+
+  IndexType Nneighbor = 0;
+  // load index
+  IndexType ii = getDeviceCellListData (clist, bid, tid);
+  // load iith coordinate // use texturefetch instead
+  CoordType ref;
+  TypeType reftype;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  if (ii != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+    reftype = type[ii];
+#else
+    ref = tex1Dfetch (global_texRef_interaction_coord, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+#endif
+  }
+  // ScalorType rlist = clist.rlist;
+
+  // the target index and coordinates are shared
+
+  extern __shared__ volatile char pub_sbuff[];
+  
+  volatile IndexType * targetIndexes =
+      (volatile IndexType *) pub_sbuff;
+  CoordType * target =
+      (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  ScalorType rlist2 = nlist.rlist * nlist.rlist;
+  ScalorType rcut2  = rcut * rcut;
+  bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  if (clist.NCell.x == 1) oneCellX = true;
+  if (clist.NCell.y == 1) oneCellY = true;
+  if (clist.NCell.z == 1) oneCellZ = true;
+
+  for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    __syncthreads();
+    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndexes[tid] != MaxIndexValue){
+      target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
+    }
+
+    __syncthreads();
+    // find neighbor
+    if (ii != MaxIndexValue){
+      for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	// if (targetIndexes[jj] == MaxIndexValue) break;
+	ScalorType diffx = target[jj].x - shift.x - ref.x;
+	ScalorType diffy = target[jj].y - shift.y - ref.y;
+	ScalorType diffz = target[jj].z - shift.z - ref.z;
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+	IndexType fidx(0);
+	fidx = AtomNBForceTable::calForceIndex (
+	    const_nonBondedInteractionTable,
+	    const_numAtomType[0],
+	    reftype,
+	    targettype[jj]);
+	if (dr2 < rcut2 &&
+	    targetIndexes[jj] != ii){
+	  // if (fidx != mdForceNULL) {
+	  ScalorType fx, fy, fz, dp;
+	  nbForcePoten (nonBondedInteractionType[fidx],
+			&nonBondedInteractionParameter
+			[nonBondedInteractionParameterPosition[fidx]],
+			diffx, diffy, diffz,
+			&fx, &fy, &fz, &dp);
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
+	  // }
+	}
+	if (dr2 < rlist2 &&
+	    targetIndexes[jj] != ii){
+	  IndexType listIdx = Nneighbor * nlist.stride + ii;
+	  nlist.data[listIdx] = targetIndexes[jj];
+	  nlist.forceIndex[listIdx] = fidx;
+	  Nneighbor ++;
+	}
+      }
+    }
+  }
+
+  if (ii != MaxIndexValue){
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+    if (Nneighbor > nlist.listLength && ptr_de != NULL){
+      *ptr_de = mdErrorShortNeighborList;
+      return;
+    }
+    nlist.Nneighbor[ii] = Nneighbor;
+  }
+}
+
+
+__global__ void
+calNonBondedInteraction (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const TypeType *		type,
+			 const RectangularBox		box,
+			 DeviceCellList			clist,
+			 const ScalorType		rcut,
+			 DeviceNeighborList		nlist,
+			 ScalorType *			statistic_nb_buff0,
+			 ScalorType *			statistic_nb_buff1,
+			 ScalorType *			statistic_nb_buff2,
+			 ScalorType *			statistic_nb_buff3,
+			 mdError_t *			ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType bidx, bidy, bidz;
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
+
+  IndexType Nneighbor = 0;
+  // load index
+  IndexType ii = getDeviceCellListData (clist, bid, tid);
+  // load iith coordinate // use texturefetch instead
+  CoordType ref;
+  TypeType reftype;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+  if (ii != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+    reftype = type[ii];
+#else
+    ref = tex1Dfetch (global_texRef_interaction_coord, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+#endif
+  }
+  // ScalorType rlist = clist.rlist;
+
+  // the target index and coordinates are shared
+
+  extern __shared__ volatile char pub_sbuff[];
+  
+  volatile IndexType * targetIndexes =
+      (volatile IndexType *) pub_sbuff;
+  CoordType * target =
+      (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  ScalorType rlist2 = nlist.rlist * nlist.rlist;
+  ScalorType rcut2  = rcut * rcut;
+  bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  if (clist.NCell.x == 1) oneCellX = true;
+  if (clist.NCell.y == 1) oneCellY = true;
+  if (clist.NCell.z == 1) oneCellZ = true;
+
+  for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    __syncthreads();
+    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndexes[tid] != MaxIndexValue){
+      target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
+    }
+
+    __syncthreads();
+    // find neighbor
+    if (ii != MaxIndexValue){
+      for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	ScalorType diffx = target[jj].x - shift.x - ref.x;
+	ScalorType diffy = target[jj].y - shift.y - ref.y;
+	ScalorType diffz = target[jj].z - shift.z - ref.z;
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+	IndexType fidx(0);
+	fidx = AtomNBForceTable::calForceIndex (
+	    const_nonBondedInteractionTable,
+	    const_numAtomType[0],
+	    reftype,
+	    targettype[jj]);
+	if (dr2 < rcut2 &&
+	    targetIndexes[jj] != ii){
+	  // if (fidx != mdForceNULL) {
+	  ScalorType fx, fy, fz, dp;
+	  nbForcePoten (nonBondedInteractionType[fidx],
+			&nonBondedInteractionParameter
+			[nonBondedInteractionParameterPosition[fidx]],
+			diffx, diffy, diffz,
+			&fx, &fy, &fz, &dp);
+	  myPoten += dp;
+	  myVxx += fx * diffx;
+	  myVyy += fy * diffy;
+	  myVzz += fz * diffz;
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
+	  // }
+	}
+	if (dr2 < rlist2 &&
+	    targetIndexes[jj] != ii){
+	  IndexType listIdx = Nneighbor * nlist.stride + ii;
+	  nlist.data[listIdx] = targetIndexes[jj];
+	  nlist.forceIndex[listIdx] = fidx;
+	  Nneighbor ++;
+	}
+      }
+    }
+  }
+
+  if (ii != MaxIndexValue){
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+    if (Nneighbor > nlist.listLength && ptr_de != NULL){
+      *ptr_de = mdErrorShortNeighborList;
+      return;
+    }
+    nlist.Nneighbor[ii] = Nneighbor;
+  }
+}
+
+
+
+
+
+
+__global__ void
+calNonBondedInteraction_all (const IndexType		numAtom,
+			     const CoordType *		coord,
+			     ScalorType *		forcx,
+			     ScalorType *		forcy, 
+			     ScalorType *		forcz,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     const ScalorType		rcut,
+			     mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  
+  IndexType numberAtom = numAtom;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+
+  extern __shared__ volatile char pub_sbuff[];
+
+  volatile CoordType * target =
+      (volatile CoordType *) pub_sbuff;
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  __syncthreads();
+  
+  CoordType ref;
+  TypeType reftype;
+  if (ii < numberAtom){
+    ref = coord[ii];
+    reftype = type[ii];
+  }
+  ScalorType rcut2 = rcut * rcut;
+  
+  for (IndexType targetBlockId = 0;
+       targetBlockId * blockDim.x < numberAtom; ++targetBlockId){
+    IndexType jj = tid + targetBlockId * blockDim.x;
+    __syncthreads();
+    if (jj < numberAtom){
+      target[tid].x = coord[jj].x;
+      target[tid].y = coord[jj].y;
+      target[tid].z = coord[jj].z;
+      targettype[tid] = type[jj];
+    }
+    __syncthreads();
+    if (ii < numberAtom){
+      for (IndexType kk = 0; kk < blockDim.x; ++kk){
+	if (kk + targetBlockId * blockDim.x >= numberAtom) break;
+	ScalorType diffx = target[kk].x - ref.x;
+	ScalorType diffy = target[kk].y - ref.y;
+	ScalorType diffz = target[kk].z - ref.z;
+	shortestImage (box, &diffx, &diffy, &diffz);
+	ScalorType dr2;
+	if ((dr2 = diffx*diffx+diffy*diffy+diffz*diffz) < rcut2 &&
+	    kk + targetBlockId * blockDim.x != ii){
+	  IndexType fidx = AtomNBForceTable::calForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[kk]);
+	  if (dr2 < rcut2 ) {
+	    // if (fidx != mdForceNULL) {
+	    ScalorType fx, fy, fz, dp;
+	    nbForcePoten (nonBondedInteractionType[fidx],
+			  &nonBondedInteractionParameter
+			  [nonBondedInteractionParameterPosition[fidx]],
+			  diffx, diffy, diffz,
+			  &fx, &fy, &fz, &dp);
+	    fsumx += fx;
+	    fsumy += fy;
+	    fsumz += fz;
+	    // }
+	  }
+	}
+      }
+    }
+  }
+  if (ii < numberAtom){
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+}
+
+
+__global__ void
+calNonBondedInteraction_all  (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const ScalorType		rcut,
+			      ScalorType *		statistic_nb_buff0,
+			      ScalorType *		statistic_nb_buff1,
+			      ScalorType *		statistic_nb_buff2,
+			      ScalorType *		statistic_nb_buff3,
+			      mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  
+  IndexType numberAtom = numAtom;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+
+  extern __shared__ volatile char pub_sbuff[];
+
+  volatile CoordType * target =
+      (volatile CoordType *) pub_sbuff;
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  __syncthreads();
+  
+  CoordType ref;
+  TypeType reftype;
+  if (ii < numberAtom){
+    ref = coord[ii];
+    reftype = type[ii];
+  }
+  ScalorType rcut2 = rcut * rcut;
+  
+  for (IndexType targetBlockId = 0;
+       targetBlockId * blockDim.x < numberAtom; ++targetBlockId){
+    IndexType jj = tid + targetBlockId * blockDim.x;
+    __syncthreads();
+    if (jj < numberAtom){
+      target[tid].x = coord[jj].x;
+      target[tid].y = coord[jj].y;
+      target[tid].z = coord[jj].z;
+      targettype[tid] = type[jj];
+    }
+    __syncthreads();
+    if (ii < numberAtom){
+      for (IndexType kk = 0; kk < blockDim.x; ++kk){
+	if (kk + targetBlockId * blockDim.x >= numberAtom) break;
+	ScalorType diffx = target[kk].x - ref.x;
+	ScalorType diffy = target[kk].y - ref.y;
+	ScalorType diffz = target[kk].z - ref.z;
+	shortestImage (box, &diffx, &diffy, &diffz);
+	ScalorType dr2;
+	if ((dr2 = diffx*diffx+diffy*diffy+diffz*diffz) < rcut2 &&
+	    kk + targetBlockId * blockDim.x != ii){
+	  IndexType fidx = AtomNBForceTable::calForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[kk]);
+	  if (dr2 < rcut2 ) {
+	    // if (fidx != mdForceNULL) {
+	    ScalorType fx, fy, fz, dp;
+	    nbForcePoten (nonBondedInteractionType[fidx],
+			  &nonBondedInteractionParameter
+			  [nonBondedInteractionParameterPosition[fidx]],
+			  diffx, diffy, diffz,
+			  &fx, &fy, &fz, &dp);
+	    myPoten += dp;
+	    myVxx += fx * diffx;
+	    myVyy += fy * diffy;
+	    myVzz += fz * diffz;
+	    fsumx += fx;
+	    fsumy += fy;
+	    fsumz += fz;
+	    // }
+	  }
+	}
+      }
+    }
+  }
+  if (ii < numberAtom){
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }
+}
+
+
+
+__global__ void
+calTwinRangeCorrection_cell (const IndexType		numAtom,
+			     const CoordType *		coord,
+			     ScalorType *		forcx,
+			     ScalorType *		forcy, 
+			     ScalorType *		forcz,
+			     const TypeType *		type,
+			     const RectangularBox	box,
+			     const DeviceCellList	clist,
+			     const ScalorType		rcut1,
+			     const ScalorType		rcut2,
+			     ScalorType *		statistic_nb_buff0,
+			     ScalorType *		statistic_nb_buff1,
+			     ScalorType *		statistic_nb_buff2,
+			     ScalorType *		statistic_nb_buff3,
+			     mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType bidx, bidy, bidz;
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
+  
+  // load index
+  IndexType ii = getDeviceCellListData (clist, bid, tid);
+  // load iith coordinate // use texturefetch instead
+  CoordType ref;
+  TypeType reftype;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+  if (ii != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+    reftype = type[ii];
+#else
+    ref = tex1Dfetch (global_texRef_interaction_coord, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+#endif
+  }
+  
+  // the target index and coordinates are shared
+
+  extern __shared__ volatile char pub_sbuff[];
+  
+  volatile IndexType * targetIndexes =
+      (volatile IndexType *) pub_sbuff;
+  CoordType * target =
+      (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  ScalorType rcut12 = rcut1 * rcut1;
+  ScalorType rcut22 = rcut2 * rcut2;
+  for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    __syncthreads();
+    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndexes[tid] != MaxIndexValue){
+      target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
+    }
+    bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    if (clist.NCell.x == 1) oneCellX = true;
+    if (clist.NCell.y == 1) oneCellY = true;
+    if (clist.NCell.z == 1) oneCellZ = true;
+
+    __syncthreads();
+    // find neighbor
+    if (ii != MaxIndexValue){
+      for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	// if (targetIndexes[jj] == MaxIndexValue) break;
+	ScalorType diffx = target[jj].x - shift.x - ref.x;
+	ScalorType diffy = target[jj].y - shift.y - ref.y;
+	ScalorType diffz = target[jj].z - shift.z - ref.z;
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+	if (dr2 < rcut22 && dr2 >= rcut12 &&
+	    targetIndexes[jj] != ii){
+	  IndexType fidx(0);
+	  fidx = AtomNBForceTable::calForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[jj]);
+	  // if (fidx != mdForceNULL) {
+	  ScalorType fx, fy, fz, dp;
+	  nbForcePoten (nonBondedInteractionType[fidx],
+			&nonBondedInteractionParameter
+			[nonBondedInteractionParameterPosition[fidx]],
+			diffx, diffy, diffz,
+			&fx, &fy, &fz, &dp);
+	  // printf ("# %d\t%d\t%f\t%f\t%f\n",
+	  // 	  ii, targetIndexes[jj],
+	  // 	  ref.z, target[jj].z, fz);
+	  myPoten += dp;
+	  myVxx += fx * diffx;
+	  myVyy += fy * diffy;
+	  myVzz += fz * diffz;
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
+	  // }
+	}
+      }
+    }
+  }
+
+  if (ii != MaxIndexValue){
+    forcx[ii] = fsumx;
+    forcy[ii] = fsumy;
+    forcz[ii] = fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }
+}
+
+
+__global__ void
+calTwinRangeCorrection_all   (const IndexType		numAtom,
+			      const CoordType *		coord,
+			      ScalorType *		forcx,
+			      ScalorType *		forcy, 
+			      ScalorType *		forcz,
+			      const TypeType *		type,
+			      const RectangularBox	box,
+			      const ScalorType		rcut1,
+			      const ScalorType		rcut2,
+			      ScalorType *		statistic_nb_buff0,
+			      ScalorType *		statistic_nb_buff1,
+			      ScalorType *		statistic_nb_buff2,
+			      ScalorType *		statistic_nb_buff3,
+			      mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  
+  IndexType numberAtom = numAtom;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+
+  extern __shared__ volatile char pub_sbuff[];
+
+  volatile CoordType * target =
+      (volatile CoordType *) pub_sbuff;
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  __syncthreads();
+  
+  CoordType ref;
+  TypeType reftype;
+  if (ii < numberAtom){
+    ref = coord[ii];
+    reftype = type[ii];
+  }
+  ScalorType rcut12 = rcut1 * rcut1;
+  ScalorType rcut22 = rcut2 * rcut2;
+  
+  for (IndexType targetBlockId = 0;
+       targetBlockId * blockDim.x < numberAtom; ++targetBlockId){
+    IndexType jj = tid + targetBlockId * blockDim.x;
+    __syncthreads();
+    if (jj < numberAtom){
+      target[tid].x = coord[jj].x;
+      target[tid].y = coord[jj].y;
+      target[tid].z = coord[jj].z;
+      targettype[tid] = type[jj];
+    }
+    __syncthreads();
+    if (ii < numberAtom){
+      for (IndexType kk = 0; kk < blockDim.x; ++kk){
+	if (kk + targetBlockId * blockDim.x >= numberAtom) break;
+	ScalorType diffx = target[kk].x - ref.x;
+	ScalorType diffy = target[kk].y - ref.y;
+	ScalorType diffz = target[kk].z - ref.z;
+	shortestImage (box, &diffx, &diffy, &diffz);
+	ScalorType dr2 = diffx*diffx+diffy*diffy+diffz*diffz;
+	if (dr2 < rcut22 && dr2 >= rcut12 &&
+	    kk + targetBlockId * blockDim.x != ii){
+	  IndexType fidx = AtomNBForceTable::calForceIndex (
+	      const_nonBondedInteractionTable,
+	      const_numAtomType[0],
+	      reftype,
+	      targettype[kk]);
+	  // if (fidx != mdForceNULL) {
+	  ScalorType fx, fy, fz, dp;
+	  nbForcePoten (nonBondedInteractionType[fidx],
+			&nonBondedInteractionParameter
+			[nonBondedInteractionParameterPosition[fidx]],
+			diffx, diffy, diffz,
+			&fx, &fy, &fz, &dp);
+	  myPoten += dp;
+	  myVxx += fx * diffx;
+	  myVyy += fy * diffy;
+	  myVzz += fz * diffz;
+	  fsumx += fx;
+	  fsumy += fy;
+	  fsumz += fz;
+	  // }
+	}
+      }
+    }
+  }
+  if (ii < numberAtom){
+    forcx[ii] = fsumx;
+    forcy[ii] = fsumy;
+    forcz[ii] = fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }
+}
+
+
+
+__global__ void
+buildNeighborListCalTwinRangeCorr_cell (const IndexType		numAtom,
+					const CoordType *	coord,
+					ScalorType *		forcx,
+					ScalorType *		forcy, 
+					ScalorType *		forcz,
+					const TypeType *	type,
+					const RectangularBox	box,
+					const DeviceCellList	clist,
+					const ScalorType	rcut1,
+					const ScalorType	rcut2,
+					DeviceNeighborList	nlist,
+					ScalorType *		statistic_nb_buff0,
+					ScalorType *		statistic_nb_buff1,
+					ScalorType *		statistic_nb_buff2,
+					ScalorType *		statistic_nb_buff3,
+					mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  IndexType bidx, bidy, bidz;
+  D1toD3 (clist.NCell, bid, bidx, bidy, bidz);
+  
+  // set number of neighbor to 0
+  IndexType Nneighbor = 0;
+  // load index
+  IndexType ii = getDeviceCellListData (clist, bid, tid);
+  // load iith coordinate // use texturefetch instead
+  CoordType ref;
+  TypeType reftype;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+  if (ii != MaxIndexValue){
+#ifdef COMPILE_NO_TEX
+    ref = coord[ii];
+    reftype = type[ii];
+#else
+    ref = tex1Dfetch (global_texRef_interaction_coord, ii);
+    reftype = tex1Dfetch(global_texRef_interaction_type, ii);
+#endif
+  }
+  
+  // the target index and coordinates are shared
+
+  extern __shared__ volatile char pub_sbuff[];
+  
+  volatile IndexType * targetIndexes =
+      (volatile IndexType *) pub_sbuff;
+  CoordType * target =
+      (CoordType *) &targetIndexes[roundUp4(blockDim.x)];
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  ScalorType rcut12 = rcut1 * rcut1;
+  ScalorType rcut22 = rcut2 * rcut2;
+  for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
+    __syncthreads();
+    IndexType targetCellIdx = getNeighborCellIndex (clist, bid, i);
+    CoordNoiType shiftNoi   = getNeighborCellShiftNoi (clist, bid, i);
+    CoordType shift;
+    shift.x = shiftNoi.x * box.size.x;
+    shift.y = shiftNoi.y * box.size.y;
+    shift.z = shiftNoi.z * box.size.z;
+    targetIndexes[tid] = getDeviceCellListData(clist, targetCellIdx, tid);  
+    if (targetIndexes[tid] != MaxIndexValue){
+      target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
+      targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
+    }
+    bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    if (clist.NCell.x == 1) oneCellX = true;
+    if (clist.NCell.y == 1) oneCellY = true;
+    if (clist.NCell.z == 1) oneCellZ = true;
+
+    __syncthreads();
+    // find neighbor
+    if (ii != MaxIndexValue){
+      for (IndexType jj = 0; jj < clist.numbers[targetCellIdx]; ++jj){
+	// if (targetIndexes[jj] == MaxIndexValue) break;
+	ScalorType diffx = target[jj].x - shift.x - ref.x;
+	ScalorType diffy = target[jj].y - shift.y - ref.y;
+	ScalorType diffz = target[jj].z - shift.z - ref.z;
+	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
+	if (targetIndexes[jj] != ii){
+	  if (dr2 < rcut22 && dr2 >= rcut12 ){
+	    IndexType fidx(0);
+	    fidx = AtomNBForceTable::calForceIndex (
+		const_nonBondedInteractionTable,
+		const_numAtomType[0],
+		reftype,
+		targettype[jj]);
+	    // if (fidx != mdForceNULL) {
+	    ScalorType fx, fy, fz, dp;
+	    nbForcePoten (nonBondedInteractionType[fidx],
+			  &nonBondedInteractionParameter
+			  [nonBondedInteractionParameterPosition[fidx]],
+			  diffx, diffy, diffz,
+			  &fx, &fy, &fz, &dp);
+	    // printf ("# %d\t%d\t%f\t%f\t%f\n",
+	    // 	  ii, targetIndexes[jj],
+	    // 	  ref.z, target[jj].z, fz);
+	    myPoten += dp;
+	    myVxx += fx * diffx;
+	    myVyy += fy * diffy;
+	    myVzz += fz * diffz;
+	    fsumx += fx;
+	    fsumy += fy;
+	    fsumz += fz;
+	    // }
+	  }
+	  else if (dr2 < rcut12){
+	    IndexType fidx(0);
+	    fidx = AtomNBForceTable::calForceIndex (
+		const_nonBondedInteractionTable,
+		const_numAtomType[0],
+		reftype,
+		targettype[jj]);
+	    IndexType listIdx = Nneighbor * nlist.stride + ii;
+	    nlist.data[listIdx] = targetIndexes[jj];
+	    nlist.forceIndex[listIdx] = fidx;
+	    Nneighbor ++;
+	  }
+	}  
+      }
+    }
+  }
+
+  if (ii != MaxIndexValue){
+    forcx[ii] = fsumx;
+    forcy[ii] = fsumy;
+    forcz[ii] = fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+    if (Nneighbor > nlist.listLength && ptr_de != NULL){
+      *ptr_de = mdErrorShortNeighborList;
+    }
+    nlist.Nneighbor[ii] = Nneighbor;
+  }
+}
+
+
+__global__ void
+buildNeighborListCalTwinRangeCorr_all (const IndexType		numAtom,
+				       const CoordType *	coord,
+				       ScalorType *		forcx,
+				       ScalorType *		forcy, 
+				       ScalorType *		forcz,
+				       const TypeType *		type,
+				       const RectangularBox	box,
+				       const ScalorType		rcut1,
+				       const ScalorType		rcut2,
+				       DeviceNeighborList	nlist,
+				       ScalorType *		statistic_nb_buff0,
+				       ScalorType *		statistic_nb_buff1,
+				       ScalorType *		statistic_nb_buff2,
+				       ScalorType *		statistic_nb_buff3,
+				       mdError_t *		ptr_de)
+{
+  // RectangularBoxGeometry::normalizeSystem (box, &ddata);
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+  
+  IndexType numberAtom = numAtom;
+  IndexType Nneighbor = 0;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType fsumx (0.f), fsumy(0.f), fsumz(0.f);
+  ScalorType myPoten (0.0f), myVxx (0.0f), myVyy (0.0f), myVzz (0.0f);
+
+  extern __shared__ volatile char pub_sbuff[];
+
+  volatile CoordType * target =
+      (volatile CoordType *) pub_sbuff;
+  volatile TypeType * targettype =
+      (volatile TypeType *) &target[roundUp4(blockDim.x)];
+
+  __syncthreads();
+  
+  CoordType ref;
+  TypeType reftype;
+  if (ii < numberAtom){
+    ref = coord[ii];
+    reftype = type[ii];
+  }
+  ScalorType rcut12 = rcut1 * rcut1;
+  ScalorType rcut22 = rcut2 * rcut2;
+  
+  for (IndexType targetBlockId = 0;
+       targetBlockId * blockDim.x < numberAtom; ++targetBlockId){
+    IndexType jj = tid + targetBlockId * blockDim.x;
+    __syncthreads();
+    if (jj < numberAtom){
+      target[tid].x = coord[jj].x;
+      target[tid].y = coord[jj].y;
+      target[tid].z = coord[jj].z;
+      targettype[tid] = type[jj];
+    }
+    __syncthreads();
+    if (ii < numberAtom){
+      for (IndexType kk = 0; kk < blockDim.x; ++kk){
+	if (kk + targetBlockId * blockDim.x >= numberAtom) break;
+	ScalorType diffx = target[kk].x - ref.x;
+	ScalorType diffy = target[kk].y - ref.y;
+	ScalorType diffz = target[kk].z - ref.z;
+	shortestImage (box, &diffx, &diffy, &diffz);
+	ScalorType dr2 = diffx*diffx+diffy*diffy+diffz*diffz;
+	if (kk + targetBlockId * blockDim.x != ii){
+	  if (dr2 < rcut22 && dr2 >= rcut12 ){   
+	    IndexType fidx = AtomNBForceTable::calForceIndex (
+		const_nonBondedInteractionTable,
+		const_numAtomType[0],
+		reftype,
+		targettype[kk]);
+	    // if (fidx != mdForceNULL) {
+	    ScalorType fx, fy, fz, dp;
+	    nbForcePoten (nonBondedInteractionType[fidx],
+			  &nonBondedInteractionParameter
+			  [nonBondedInteractionParameterPosition[fidx]],
+			  diffx, diffy, diffz,
+			  &fx, &fy, &fz, &dp);
+	    myPoten += dp;
+	    myVxx += fx * diffx;
+	    myVyy += fy * diffy;
+	    myVzz += fz * diffz;
+	    fsumx += fx;
+	    fsumy += fy;
+	    fsumz += fz;
+	    // }
+	  }
+	  else if (dr2 < rcut12){
+	    IndexType fidx = AtomNBForceTable::calForceIndex (
+		const_nonBondedInteractionTable,
+		const_numAtomType[0],
+		reftype,
+		targettype[kk]);
+	    IndexType listIdx = Nneighbor * nlist.stride + ii;
+	    nlist.data[listIdx] = kk + targetBlockId * blockDim.x;
+	    nlist.forceIndex[listIdx] = fidx;
+	    Nneighbor ++;
+	  }
+	}
+      }
+    }
+  }
+  if (ii < numberAtom){
+    forcx[ii] = fsumx;
+    forcy[ii] = fsumy;
+    forcz[ii] = fsumz;
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+    if (Nneighbor > nlist.listLength && ptr_de != NULL){
+      *ptr_de = mdErrorShortNeighborList;
+    }
+    nlist.Nneighbor[ii] = Nneighbor;
+  }
+}
+
+
+
 
 
 
