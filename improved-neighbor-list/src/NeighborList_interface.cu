@@ -26,7 +26,6 @@ texture<CoordType, 1, cudaReadModeElementType> global_texRef_neighbor_coord;
 texture<TypeType, 1, cudaReadModeElementType> global_texRef_neighbor_type;
 
 
-
 void NeighborList::
 clearDeviceNeighborList()
 {
