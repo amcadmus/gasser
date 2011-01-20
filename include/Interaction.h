@@ -33,8 +33,8 @@ class NonBondedInteractionParameter : public InteractionParamter
 {
 public:
   NonBondedInteractionParameter () {}
-  NonBondedInteractionParameter (const NonBondedInteractionParameter & p1);
-  const NonBondedInteractionParameter & copy (const NonBondedInteractionParameter & p1);  
+  // NonBondedInteractionParameter (const NonBondedInteractionParameter & p1);
+  // const NonBondedInteractionParameter & copy (const NonBondedInteractionParameter & p1);  
   bool same (const NonBondedInteractionParameter & f1) const ;
   bool operator == (const NonBondedInteractionParameter & f1) const;
 public:
@@ -49,8 +49,8 @@ class BondInteractionParameter : public InteractionParamter
 {
 public:
   BondInteractionParameter () {}
-  BondInteractionParameter (const BondInteractionParameter & p1);
-  const BondInteractionParameter & copy (const BondInteractionParameter & p1);  
+  // BondInteractionParameter (const BondInteractionParameter & p1);
+  // const BondInteractionParameter & copy (const BondInteractionParameter & p1);  
   bool same (const BondInteractionParameter & f1) const ;
   bool operator == (const BondInteractionParameter & f1) const;
 };
@@ -59,8 +59,8 @@ class AngleInteractionParameter : public InteractionParamter
 {
 public:
   AngleInteractionParameter () {}
-  AngleInteractionParameter (const AngleInteractionParameter & p1);
-  const AngleInteractionParameter & copy (const AngleInteractionParameter & p1);  
+  // AngleInteractionParameter (const AngleInteractionParameter & p1);
+  // const AngleInteractionParameter & copy (const AngleInteractionParameter & p1);  
   bool same (const AngleInteractionParameter & f1) const ;
   bool operator == (const AngleInteractionParameter & f1) const;
 };
