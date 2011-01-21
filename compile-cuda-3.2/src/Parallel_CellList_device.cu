@@ -525,19 +525,19 @@ rebuild (DeviceBondList & dbdlist)
 	    dptr_numBond(),
 	    dptr_bondIndex(),
 	    dptr_bondNeighbor_globalIndex(),
-	    dbdlist.dptr_bondNeighbor_localIndex(),
+	    dbdlist.bondNeighbor_localIndex,
 	    getMaxNumAngle(),
 	    dptr_numAngle(),
 	    dptr_angleIndex(),
 	    dptr_anglePosi(),
 	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_angleNeighbor_localIndex(),
+	    dbdlist.angleNeighbor_localIndex,
 	    getMaxNumDihedral(),
 	    dptr_numDihedral(),
 	    dptr_dihedralIndex(),
 	    dptr_dihedralPosi(),
 	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_dihedralNeighbor_localIndex(),
+	    dbdlist.dihedralNeighbor_localIndex,
 	    bondTopStride());
     checkCUDAError ("DeviceCellListedMDData::rebuild map top step1");
 
@@ -572,19 +572,19 @@ rebuild (DeviceBondList & dbdlist)
 	    dptr_numBond(),
 	    dptr_bondIndex(),
 	    dptr_bondNeighbor_globalIndex(),
-	    dbdlist.dptr_bondNeighbor_localIndex(),
+	    dbdlist.bondNeighbor_localIndex,
 	    getMaxNumAngle(),
 	    dptr_numAngle(),
 	    dptr_angleIndex(),
 	    dptr_anglePosi(),
 	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_angleNeighbor_localIndex(),
+	    dbdlist.angleNeighbor_localIndex,
 	    getMaxNumDihedral(),
 	    dptr_numDihedral(),
 	    dptr_dihedralIndex(),
 	    dptr_dihedralPosi(),
 	    dptr_angleNeighbor_globalIndex(),
-	    dbdlist.dptr_dihedralNeighbor_localIndex(),
+	    dbdlist.dihedralNeighbor_localIndex,
 	    bondTopStride());
     checkCUDAError ("DeviceCellListedMDData::rebuild map top step2");
   }
@@ -1007,7 +1007,8 @@ headSort (volatile IndexType * index,
   sbuff[tid+blockDim.x] = 0;
   
   __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (sbuff, blockDim.x);
+  sumVectorBlockBuffer (sbuff, blockDim.x);
+  IndexType total1 = sbuff[0];
   IndexType target, mydata = index[tid];
   __syncthreads();
   

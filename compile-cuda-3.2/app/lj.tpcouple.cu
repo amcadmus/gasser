@@ -27,7 +27,7 @@ int main(int argc, char * argv[])
   IndexType nstep = 1000000;
   IndexType startStep = 0;
   IndexType confFeq = 1000000;
-  IndexType thermoFeq = 100;
+  IndexType thermoFeq = 1;
   ScalorType rcut = 5.0;
   ScalorType nlistExten = 0.5;
   ScalorType refT = 1.34;
@@ -104,7 +104,7 @@ int main(int argc, char * argv[])
   			refP, betaP);
   LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
   blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);
+  // blpf.addBarostat   (barostat);
 
   Reshuffle resh (sys);
 
@@ -137,7 +137,7 @@ int main(int argc, char * argv[])
       st.clearDevice();
       blpf.oneStep (sys, dt, last_st, st, &timer);
       ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
-      if (maxdr > nlistExten * 0.5){
+      // if (maxdr > nlistExten * 0.5){
 	// printf ("# Rebuild at step %09i ... ", i+1);
 	// fflush(stdout);
 	// rebuild
@@ -147,7 +147,7 @@ int main(int argc, char * argv[])
 	nlist.rebuild (sys, clist, &timer);
 	// printf ("done\n");
 	// fflush(stdout);
-      }
+      // }
       inter.clearInteraction (sys);
       inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
       if ((i+1) % thermoFeq == 0){

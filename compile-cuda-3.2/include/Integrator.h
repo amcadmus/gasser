@@ -196,21 +196,15 @@ __global__ void velocityRescale_rescale (const IndexType numAtom,
 					 ScalorType * statistic_buffzz);
 
 
-
-
-
-
-__device__ void leapFrog (ScalorType * cx, ScalorType * cy, ScalorType * cz,
-			  ScalorType * vx, ScalorType * vy, ScalorType * vz,
-			  ScalorType   fx, ScalorType   fy, ScalorType   fz);
-
 ////////////////////////////////////////////////////////////
 // implmentation
 ////////////////////////////////////////////////////////////
-__device__ void leapFrog (ScalorType dt, ScalorType massi,
-			  ScalorType * cx, ScalorType * cy, ScalorType * cz,
-			  ScalorType * vx, ScalorType * vy, ScalorType * vz,
-			  ScalorType   fx, ScalorType   fy, ScalorType   fz)
+
+static __device__ void
+leapFrog (ScalorType dt, ScalorType massi,
+	  ScalorType * cx, ScalorType * cy, ScalorType * cz,
+	  ScalorType * vx, ScalorType * vy, ScalorType * vz,
+	  ScalorType   fx, ScalorType   fy, ScalorType   fz)
 {
   *vx += dt *  fx * massi;
   *cx += dt * *vx;

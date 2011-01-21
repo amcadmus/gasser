@@ -55,7 +55,7 @@ reinit (const DeviceCellListedMDData & data)
       <<<gridDim, numThreadsInCell, sharedBuffSize>>>(
 	  data.dptr_numAtomInCell(),
 	  data.dptr_mass(),
-	  sum_mass.getBuff());
+	  sum_mass.buff);
   sum_mass.sumBuff (sumM, 0);
   cudaMemcpy (&totalMassi, sumM, sizeof(ScalorType), cudaMemcpyDeviceToHost);
   checkCUDAError ("TranslationalFreedomRemover::reinit, cpy sumM");
@@ -76,9 +76,9 @@ remove (DeviceCellListedMDData & data)
 	  data.dptr_velocityX(),
 	  data.dptr_velocityY(),
 	  data.dptr_velocityZ(),
-	  sum_x.getBuff(),
-	  sum_y.getBuff(),
-	  sum_z.getBuff());
+	  sum_x.buff,
+	  sum_y.buff,
+	  sum_z.buff);
   checkCUDAError ("TranslationalFreedomRemover::remove, prepare");
   sum_x.sumBuff (sums, 0);
   sum_y.sumBuff (sums, 1);
@@ -281,9 +281,9 @@ step2 (DeviceCellListedMDData & data,
 	  data.dptr_velocityX(),
 	  data.dptr_velocityY(),
 	  data.dptr_velocityZ(),
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   sum_kxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyYY, 0);
   sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyZZ, 0);
@@ -457,9 +457,9 @@ stepV (DeviceCellListedMDData & ddata,
 	  ddata.dptr_velocityX(),
 	  ddata.dptr_velocityY(),
 	  ddata.dptr_velocityZ(),
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   sum_kxx.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyYY, 0);
   sum_kzz.sumBuffAdd (st.dptr_statisticData(), mdStatistic_KineticEnergyZZ, 0);

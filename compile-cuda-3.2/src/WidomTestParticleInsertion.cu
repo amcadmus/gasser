@@ -141,7 +141,7 @@ expMu ()
   processDeltaEnergy_NVT
       <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (numTestParticle(),
-       sumExpDeltaU.getBuff(),
+       sumExpDeltaU.buff,
        energyCorrection(),
        numAtom,
        volume,
@@ -254,7 +254,7 @@ expMu ()
   processDeltaEnergy_NPT
       <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (numTestParticle(),
-       sumExpDeltaU.getBuff(),
+       sumExpDeltaU.buff,
        energyCorrection(),
        numAtom,
        pressure(),
@@ -392,7 +392,7 @@ expMu ()
   processDeltaEnergy_NVT
       <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (numTestParticle(),
-       sumExpDeltaU.getBuff(),
+       sumExpDeltaU.buff,
        energyCorrection(),
        numAtom,
        volume,
@@ -478,7 +478,7 @@ expMu ()
   processDeltaEnergy_NPT2
       <<<numTestParticle() / DefaultNThreadPerBlock + 1, DefaultNThreadPerBlock>>>
       (numTestParticle(),
-       sumExpDeltaU.getBuff(),
+       sumExpDeltaU.buff,
        energyCorrection(),
        numAtom,
        pressure(),

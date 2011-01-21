@@ -75,19 +75,19 @@ D1toD3 (const VEC & NCell,
 	T &z);
 
 
-__device__ IndexType &
+static __device__ IndexType &
 getDeviceCellListData (const DeviceCellList & clist, 
 		       const IndexType & cid,
 		       const IndexType & aid);
-__device__ IndexType &
+static __device__ IndexType &
 getNeighborCellIndex (const DeviceCellList & clist,
 		      const IndexType & cid,
 		      const IndexType & i);
-__device__ CoordNoiType &
+static __device__ CoordNoiType &
 getNeighborCellShiftNoi (const DeviceCellList & clist,
 			 const IndexType & cid,
 			 const IndexType & i);
-__device__ void
+static __device__ void
 pushNeighborCell (const DeviceCellList & clist,
 		  const IndexType & cid,
 		  const IndexType & neighborIndex,
@@ -329,7 +329,7 @@ getNeighborCellShiftNoi (const DeviceCellList & clist,
   return clist.neighborCellShiftNoi[cid * clist.maxNumNeighborCell + i];
 }
 
-__device__ void 
+static __device__ void 
 pushNeighborCell (const DeviceCellList & clist,
 		  const IndexType & cid,
 		  const IndexType & neighborIndex,
@@ -428,15 +428,18 @@ D1toD3 (const VEC & NCell,
 
 
 
-__device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
+static __device__ void
+kthSort (volatile IndexType * sharedbuff,
+	 IndexType k)
 {
   IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+  __shared__ IndexType predbuff[MaxThreadsPerBlock * 2];
   predbuff[tid] = getKthBit(sharedbuff[tid], k);
   predbuff[tid+blockDim.x] = 0;
 
   __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+  sumVectorBlockBuffer (predbuff, blockDim.x);
+  IndexType total1 = predbuff[0];
   IndexType target, mydata = sharedbuff[tid];
   if (getKthBit(sharedbuff[tid], k)) {
     target = blockDim.x - predbuff[tid];
@@ -452,18 +455,21 @@ __device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
   __syncthreads();
 }
 
-__device__ IndexType headSort (volatile IndexType * sharedbuff,
-			       volatile IndexType * targetCell)
+static __device__ IndexType
+headSort (volatile IndexType * sharedbuff,
+	  volatile IndexType * targetCell)
 {
   IndexType k = NUintBit - 1;
   IndexType tid = threadIdx.x;
-  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+  __shared__ IndexType predbuff[MaxThreadsPerBlock * 2];
   predbuff[tid] = getKthBit(sharedbuff[tid], k);
   predbuff[tid+blockDim.x] = 0;
 
   __syncthreads();
-  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-  IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
+  sumVectorBlockBuffer (predbuff, blockDim.x);
+  IndexType total1 = predbuff[0];
+  int target;
+  IndexType mydata = sharedbuff[tid], mycell = targetCell[tid];
   if (getKthBit(sharedbuff[tid], k)) {
     target = blockDim.x - predbuff[tid];
   }
@@ -478,7 +484,9 @@ __device__ IndexType headSort (volatile IndexType * sharedbuff,
 }
 
 
-__device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
+static __device__ void
+sortList (volatile IndexType * sharedbuff,
+	  IndexType bitDeepth)
 {
   __syncthreads();
   for (IndexType i = 0; i < bitDeepth; ++i){
