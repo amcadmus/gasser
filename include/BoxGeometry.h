@@ -38,33 +38,38 @@ namespace RectangularBoxGeometry{
   
 
 #ifdef DEVICE_CODE
-  __device__ void moveParticleToBox (RectangularBox box,
-				     ScalorType * x,
-				     ScalorType * y,
-				     ScalorType * z,
-				     IntScalorType * noix, 
-				     IntScalorType * noiy, 
-				     IntScalorType * noiz);
-  __device__ void moveParticleToBox_1image(ScalorType boxx,
-					   ScalorType *x,  
-					   IntScalorType *noix);
-  __device__ void shortestImage (RectangularBox box,
-				 ScalorType * x,
-				 ScalorType * y,
-				 ScalorType * z);
-  __device__ void shortestImage (const ScalorType boxL,
-				 const ScalorType boxLi,
-				 ScalorType * x);
-  __device__ void shortestImage (const ScalorType boxL,
-				 ScalorType & x);
-    
+  static __device__ void
+  moveParticleToBox (RectangularBox box,
+		     ScalorType * x,
+		     ScalorType * y,
+		     ScalorType * z,
+		     IntScalorType * noix, 
+		     IntScalorType * noiy, 
+		     IntScalorType * noiz);
+  static __device__ void
+  moveParticleToBox_1image (ScalorType boxx,
+			    ScalorType *x,  
+			    IntScalorType *noix);
+  static __device__ void
+  shortestImage (RectangularBox box,
+		 ScalorType * x,
+		 ScalorType * y,
+		 ScalorType * z);
+  static __device__ void
+  shortestImage (const ScalorType boxL,
+		 const ScalorType boxLi,
+		 ScalorType * x);
+  static __device__ void
+  shortestImage (const ScalorType boxL,
+		 ScalorType & x);
   // needs ceil(numAtom/blockDim.x) blocks
-  __global__ void normalizeSystem (RectangularBox box, 
-				   IndexType numAtom,
-				   CoordType * coord,
-				   IntScalorType *coordNoix, 
-				   IntScalorType *coordNoiy, 
-				   IntScalorType *coordNoiz);
+  __global__ void
+  normalizeSystem (RectangularBox box, 
+		   IndexType numAtom,
+		   CoordType * coord,
+		   IntScalorType *coordNoix, 
+		   IntScalorType *coordNoiy, 
+		   IntScalorType *coordNoiz);
 #endif
 }
 ;
@@ -122,6 +127,7 @@ setBoxSize (const ScalorType & x,
 
 
 #ifdef DEVICE_CODE
+
 __device__ void RectangularBoxGeometry::
 moveParticleToBox(RectangularBox rectBox,
 		  ScalorType *x,  

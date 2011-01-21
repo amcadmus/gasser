@@ -116,7 +116,7 @@ calMaxDisplacemant (const MDSystem & sys,
 	  sys.box,
 	  sys.ddata.coord,
 	  backupCoord,
-  	  max.getBuff());
+  	  max.buff);
   max.maxBuff (dresult, 0);
   
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);
@@ -268,7 +268,7 @@ calMeanDisplacemant (const MDSystem & sys,
 	  sys.box,
 	  sys.ddata.coord,
 	  backupCoord,
-  	  sum.getBuff());
+  	  sum.buff);
   sum.sumBuff (dresult, 0);
   
   cudaMemcpy (&hresult, dresult, sizeof(ScalorType), cudaMemcpyDeviceToHost);

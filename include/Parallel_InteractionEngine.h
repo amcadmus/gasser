@@ -139,7 +139,7 @@ public:
 			ScalorType * errsrc);
   }
   namespace CudaDevice {
-    __device__ IndexType
+    static __device__ IndexType
     calNonBondedForceIndex (const IndexType * table, 
 			    const IndexType numAtomType,
 			    const TypeType type0, 

@@ -445,7 +445,8 @@ Reshuffle_backupDeviceNeighborList (const IndexType numAtom,
     Nneighbor2[ii] = myNumbers[tid] = Nneighbor1[ii];
   }
   __syncthreads();
-  IndexType maxNum = maxVectorBlockBuffer (myNumbers, N);
+  maxVectorBlockBuffer (myNumbers, N);
+  IndexType maxNum = myNumbers[0];
   __syncthreads();
 
   for (IndexType jj = 0; jj < maxNum; ++jj){
@@ -502,7 +503,8 @@ Reshuffle_reshuffleDeviceNeighborList (const IndexType numAtom,
     myNum = myNumbers[tid] = Nneighbor1[ii];
   }
   __syncthreads();
-  IndexType maxNum = maxVectorBlockBuffer (myNumbers, blockDim.x);
+  maxVectorBlockBuffer (myNumbers, blockDim.x);
+  IndexType maxNum = myNumbers[0];
   __syncthreads();
 
   if (ii < numAtom){

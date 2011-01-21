@@ -331,10 +331,10 @@ applyNonBondedInteraction (MDSystem & sys,
 	    sys.box,
 	    nlist.dnlist
 	    ,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff()
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff
 	    );
   }
   else {
@@ -352,26 +352,26 @@ applyNonBondedInteraction (MDSystem & sys,
 	    ,
 	    excllist->dexcllist,
 	    sharedExclusionList,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff()
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff
 	    );
   }
   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
   err.check ("interaction engine nb");	
   cudaThreadSynchronize();
   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
   ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
   volumei = 1.f / volumei;
   // printf ("apply Ec %f, Pc %f\n",
   // 	  energyCorr * volumei,
   // 	  pressureCorr * volumei * volumei);
   applyEnergyPressureCorrection
-      <<<1, 1, 0, 4>>> (st.ddata,
+      <<<1, 1, 0>>> (st.ddata,
 			energyCorr * volumei,
 			pressureCorr * volumei * volumei);
   cudaThreadSynchronize();
@@ -437,26 +437,26 @@ applyNonBondedInteraction (MDSystem & sys,
 	    sys.box,
 	    clist.dclist,
 	    rcut,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff(),
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff,
 	    err.ptr_de
 	    );
     checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
     err.check ("interaction engine nb");	
     cudaThreadSynchronize();
     sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-    sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-    sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-    sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+    sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+    sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+    sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
     ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
     volumei = 1.f / volumei;
     // printf ("apply Ec %f, Pc %f\n",
     // 	  energyCorr * volumei,
     // 	  pressureCorr * volumei * volumei);
     applyEnergyPressureCorrection
-	<<<1, 1, 0, 4>>> (st.ddata,
+	<<<1, 1, 0>>> (st.ddata,
 			  energyCorr * volumei,
 			  pressureCorr * volumei * volumei);
     cudaThreadSynchronize();
@@ -516,25 +516,25 @@ applyNonBondedInteraction (MDSystem & sys,
 	  sys.ddata.type, 
 	  sys.box,
 	  rcut,
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
+	  sum_nb_p.buff,
+	  sum_nb_vxx.buff,
+	  sum_nb_vyy.buff,
+	  sum_nb_vzz.buff,
 	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyInteraction nb (with statistic)");
   err.check ("interaction engine nb");	
   cudaThreadSynchronize();
   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
   ScalorType volumei = sys.box.size.x * sys.box.size.y * sys.box.size.z;
   volumei = 1.f / volumei;
   // printf ("apply Ec %f, Pc %f\n",
   // 	  energyCorr * volumei,
   // 	  pressureCorr * volumei * volumei);
   applyEnergyPressureCorrection
-      <<<1, 1, 0, 4>>> (st.ddata,
+      <<<1, 1, 0>>> (st.ddata,
 			energyCorr * volumei,
 			pressureCorr * volumei * volumei);
   cudaThreadSynchronize();
@@ -569,10 +569,10 @@ applyNonBondedInteraction (MDSystem & sys,
 // 	    clist.dclist,
 // 	    rcut,
 // 	    nlist.dnlist,
-// 	    sum_nb_p.getBuff(),
-// 	    sum_nb_vxx.getBuff(),
-// 	    sum_nb_vyy.getBuff(),
-// 	    sum_nb_vzz.getBuff(),
+// 	    sum_nb_p.buff,
+// 	    sum_nb_vxx.buff,
+// 	    sum_nb_vyy.buff,
+// 	    sum_nb_vzz.buff,
 // 	    err.ptr_de
 // 	    );
 //   }
@@ -623,10 +623,10 @@ calTwinRangeCorrection (const MDSystem &		sys,
 	    sys.box,
 	    rcut1,
 	    rcut2,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff(),
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff,
 	    err.ptr_de);
   }
   else {
@@ -646,10 +646,10 @@ calTwinRangeCorrection (const MDSystem &		sys,
 	    clist.dclist,
 	    rcut1,
 	    rcut2,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff(),
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff,
 	    err.ptr_de);
   } 
   checkCUDAError ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");
@@ -657,9 +657,9 @@ calTwinRangeCorrection (const MDSystem &		sys,
   cudaThreadSynchronize();
   MDStatistic st (sys);
   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
   cudaThreadSynchronize();
   st.updateHost ();
   twrec.energyCorrection() = st.nonBondedEnergy();
@@ -695,10 +695,10 @@ buildNeighborListCalTwinRangeCorrection (const MDSystem &		sys,
 	    rcut1,
 	    rcut2,
 	    nlist.dnlist,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff(),
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff,
 	    err.ptr_de);
   }
   else {
@@ -719,10 +719,10 @@ buildNeighborListCalTwinRangeCorrection (const MDSystem &		sys,
 	    rcut1,
 	    rcut2,
 	    nlist.dnlist,
-	    sum_nb_p.getBuff(),
-	    sum_nb_vxx.getBuff(),
-	    sum_nb_vyy.getBuff(),
-	    sum_nb_vzz.getBuff(),
+	    sum_nb_p.buff,
+	    sum_nb_vxx.buff,
+	    sum_nb_vyy.buff,
+	    sum_nb_vzz.buff,
 	    err.ptr_de);
   } 
   checkCUDAError ("TwinRangeCorrectionRecorder::calTwinRangeCorrection");
@@ -730,9 +730,9 @@ buildNeighborListCalTwinRangeCorrection (const MDSystem &		sys,
   cudaThreadSynchronize();
   MDStatistic st (sys);
   sum_nb_p.sumBuffAdd(st.ddata, mdStatisticNonBondedPotential, 0);
-  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 1);
-  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 2);
-  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 3);
+  sum_nb_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+  sum_nb_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+  sum_nb_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
   cudaThreadSynchronize();
   st.updateHost ();
   twrec.energyCorrection() = st.nonBondedEnergy();
@@ -756,7 +756,7 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.ddata.coord,
 	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	    sys.box,
-	    bdlist.deviceBondList());
+	    bdlist.dbondlist);
     checkCUDAError ("InteractionEngine::applyInteraction bonded");
     err.check ("interaction engine b");	
     if (timer != NULL) timer->toc(mdTimeBondedInteraction);
@@ -769,7 +769,7 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.ddata.coord,
 	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	    sys.box,
-	    bdlist.deviceAngleList());
+	    bdlist.danglelist);
     checkCUDAError ("InteractionEngine::applyInteraction angle");
     err.check ("interaction engine angle");	
     if (timer != NULL) timer->toc(mdTimeAngleInteraction);
@@ -791,12 +791,12 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.ddata.coord,
 	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	    sys.box,
-	    bdlist.deviceBondList()
+	    bdlist.dbondlist
 	    ,
-	    sum_b_p.getBuff(),
-	    sum_b_vxx.getBuff(),
-	    sum_b_vyy.getBuff(),
-	    sum_b_vzz.getBuff(),
+	    sum_b_p.buff,
+	    sum_b_vxx.buff,
+	    sum_b_vyy.buff,
+	    sum_b_vzz.buff,
 	    err.ptr_de
 	    );
     checkCUDAError ("InteractionEngine::applyInteraction bonded (with statistic)");
@@ -806,10 +806,10 @@ applyBondedInteraction (MDSystem & sys,
   if (hasBond) {
     if (timer != NULL) timer->tic(mdTimeBInterStatistic);
     cudaThreadSynchronize();
-    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
-    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
-    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    sum_b_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential);
+    sum_b_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+    sum_b_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+    sum_b_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeBInterStatistic);
     checkCUDAError ("InteractionEngine::applyInteraction sum bond statistic (with statistic)");
@@ -823,11 +823,11 @@ applyBondedInteraction (MDSystem & sys,
 	    sys.ddata.coord,
 	    sys.ddata.forcx,  sys.ddata.forcy,  sys.ddata.forcz,
 	    sys.box,
-	    bdlist.deviceAngleList(),
-	    sum_angle_p.getBuff(),
-	    sum_angle_vxx.getBuff(),
-	    sum_angle_vyy.getBuff(),
-	    sum_angle_vzz.getBuff(),
+	    bdlist.danglelist,
+	    sum_angle_p.buff,
+	    sum_angle_vxx.buff,
+	    sum_angle_vyy.buff,
+	    sum_angle_vzz.buff,
 	    err.ptr_de);
     checkCUDAError ("InteractionEngine::applyInteraction angle");
     err.check ("interaction engine angle");	
@@ -835,10 +835,10 @@ applyBondedInteraction (MDSystem & sys,
   }
   if (hasAngle){
     if (timer != NULL) timer->tic(mdTimeAngleInterStatistic);
-    sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential, 4);
-    sum_angle_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX, 5);
-    sum_angle_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY, 6);
-    sum_angle_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ, 7);
+    sum_angle_p.sumBuffAdd(st.ddata, mdStatisticBondedPotential);
+    sum_angle_vxx.sumBuffAdd(st.ddata, mdStatisticVirialXX);
+    sum_angle_vyy.sumBuffAdd(st.ddata, mdStatisticVirialYY);
+    sum_angle_vzz.sumBuffAdd(st.ddata, mdStatisticVirialZZ);
     cudaThreadSynchronize();
     if (timer != NULL) timer->toc(mdTimeAngleInterStatistic);
     checkCUDAError ("InteractionEngine::applyInteraction sum angle statistic (with statistic)");
@@ -868,7 +868,7 @@ applyBondedInteraction (MDSystem & sys,
 // 	    sys.ddata.type,
 // 	    sys.box,
 // 	    nlist.dclist,
-// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    wtest.sumExpDeltaU.buff,
 // 	    err.ptr_de);
 //   }
 //   else if (nlist.mode == AllPairBuilt){
@@ -885,7 +885,7 @@ applyBondedInteraction (MDSystem & sys,
 // 	    sys.ddata.type,
 // 	    sys.box,
 // 	    nlist.myrlist,
-// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    wtest.sumExpDeltaU.buff,
 // 	    err.ptr_de);
 //   }
 //   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
@@ -913,7 +913,7 @@ applyBondedInteraction (MDSystem & sys,
 // 	    sys.ddata.type,
 // 	    sys.box,
 // 	    nlist.dclist,
-// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    wtest.sumExpDeltaU.buff,
 // 	    err.ptr_de);
 //   }
 //   if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
@@ -941,7 +941,7 @@ applyBondedInteraction (MDSystem & sys,
 // 	    sys.ddata.type,
 // 	    sys.box,
 // 	    nlist.dclist,
-// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    wtest.sumExpDeltaU.buff,
 // 	    err.ptr_de);
 //   }
 //   else if (nlist.mode == AllPairBuilt){
@@ -958,12 +958,12 @@ applyBondedInteraction (MDSystem & sys,
 // 	    sys.ddata.type,
 // 	    sys.box,
 // 	    nlist.myrlist,
-// 	    wtest.sumExpDeltaU.getBuff(),
+// 	    wtest.sumExpDeltaU.buff,
 // 	    err.ptr_de);
 //   }
 //   // for (unsigned i = 0; i < wtest.numTestParticle(); ++i){
 //   //   printf ("%d %f  (%f %f %f)\n", i,
-//   // 	    wtest.sumExpDeltaU.getBuff()[i],
+//   // 	    wtest.sumExpDeltaU.buff[i],
 //   // 	    wtest.coordTestParticle[i].x,
 //   // 	    wtest.coordTestParticle[i].y,
 //   // 	    wtest.coordTestParticle[i].z

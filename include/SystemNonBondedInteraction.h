@@ -79,7 +79,7 @@ public:
 
 
 #ifdef DEVICE_CODE
-__device__ IndexType
+static __device__ IndexType
 nonBondedInteractionTableItem (IndexType * interactionTable,
 			       IndexType numAtomType,
 			       TypeType atom0,
@@ -92,7 +92,7 @@ nonBondedInteractionTableItem (IndexType * interactionTable,
   return interactionTable[i * numAtomType + j - ((i*(i+1)) >> 1)];
 }
 
-__device__ IndexType
+static __device__ IndexType
 calNonBondedInteractionTableLength (IndexType numAtomType)
 {
   return ((numAtomType * (numAtomType + 1)) >> 1);

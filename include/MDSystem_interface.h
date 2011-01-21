@@ -39,8 +39,8 @@ public:
 public:
   HostMDData & hostData () {return hdata;}
   const HostMDData & hostData () const {return hdata;}
-  DeviceMDData & deviceData () {return ddata;}
-  const DeviceMDData & deviceData () const {return ddata;}
+  // DeviceMDData & deviceData () {return ddata;}
+  // const DeviceMDData & deviceData () const {return ddata;}
 public:
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,

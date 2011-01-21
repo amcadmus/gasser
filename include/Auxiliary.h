@@ -5,8 +5,8 @@
 #include "common.h"
 #include "SumVector.h"
 
-__device__ void      addKthBit (IndexType *a, IndexType k);
-__device__ IndexType getKthBit (IndexType  a, IndexType k);
+static __device__ void      addKthBit (IndexType *a, IndexType k);
+static __device__ IndexType getKthBit (IndexType  a, IndexType k);
 
 // __device__ void      sortBlockIndex (IndexType * data, IndexType deepth,
 // 				     IndexType * result);
@@ -159,14 +159,16 @@ addProperty (T *		to,
 
 
 
-__device__ void addKthBit (IndexType * a, IndexType k)
+__device__ void
+addKthBit (IndexType * a, IndexType k)
 {
   // IndexType tmp = (1 << k);
   // *a += tmp;
   *a += (1 << k);
 }
 
-__device__ IndexType getKthBit (IndexType a, IndexType k)
+__device__ IndexType
+getKthBit (IndexType a, IndexType k)
 {
   // return a & (1 << k);
   a <<= NUintBit - k - 1;

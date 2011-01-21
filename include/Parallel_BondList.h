@@ -77,15 +77,15 @@ public:
     IndexType getMaxNumBond () const {return maxNumBond;}
     IndexType getMaxNumAngle () const {return maxNumAngle;}
     IndexType getMaxNumDihedral () const {return maxNumDihedral;}
-    IndexType * dptr_bondNeighbor_localIndex () {return bondNeighbor_localIndex;}
-    IndexType * dptr_angleNeighbor_localIndex () {return angleNeighbor_localIndex;}
-    IndexType * dptr_dihedralNeighbor_localIndex () {return dihedralNeighbor_localIndex;}
-    const IndexType * dptr_bondNeighbor_localIndex () const
-	{return bondNeighbor_localIndex;}
-    const IndexType * dptr_angleNeighbor_localIndex () const
-	{return angleNeighbor_localIndex;}
-    const IndexType * dptr_dihedralNeighbor_localIndex () const
-	{return dihedralNeighbor_localIndex;}
+    // IndexType * dptr_bondNeighbor_localIndex () {return bondNeighbor_localIndex;}
+    // IndexType * dptr_angleNeighbor_localIndex () {return angleNeighbor_localIndex;}
+    // IndexType * dptr_dihedralNeighbor_localIndex () {return dihedralNeighbor_localIndex;}
+    // const IndexType * dptr_bondNeighbor_localIndex () const
+    // 	{return bondNeighbor_localIndex;}
+    // const IndexType * dptr_angleNeighbor_localIndex () const
+    // 	{return angleNeighbor_localIndex;}
+    // const IndexType * dptr_dihedralNeighbor_localIndex () const
+    // 	{return dihedralNeighbor_localIndex;}
 public:
     void copyFromHost (const HostBondList & hbdlist);
     void copyToHost (HostBondList & hbdlist) const;
