@@ -22,22 +22,22 @@ operator == (const AngleInteractionParameter & f1) const
   return this->same(f1);
 }
 
-AngleInteractionParameter::
-AngleInteractionParameter(const AngleInteractionParameter & p1)
-{
-  this->copy(p1);
-}
+// AngleInteractionParameter::
+// AngleInteractionParameter(const AngleInteractionParameter & p1)
+// {
+//   this->copy(p1);
+// }
 
-const AngleInteractionParameter & AngleInteractionParameter::
-copy (const AngleInteractionParameter & p1)
-{
-  ScalorType * myparam = this->c_ptr();
-  const ScalorType * fparam  = p1.c_ptr();
-  for (unsigned i = 0; i < p1.numParam(); ++i){
-    myparam[i] = fparam[i];
-  }
-  return *this;
-}
+// const AngleInteractionParameter & AngleInteractionParameter::
+// copy (const AngleInteractionParameter & p1)
+// {
+//   ScalorType * myparam = this->c_ptr();
+//   const ScalorType * fparam  = p1.c_ptr();
+//   for (unsigned i = 0; i < p1.numParam(); ++i){
+//     myparam[i] = fparam[i];
+//   }
+//   return *this;
+// }
 
     
 InteractionType AngleHarmonicParameter::
@@ -74,6 +74,48 @@ AngleHarmonicParameter::
 AngleHarmonicParameter (ScalorType k, ScalorType theta0)
 {
   AngleHarmonic::initParameter (param, k, theta0);
+}
+
+
+
+
+
+
+    
+InteractionType CosAngle0Parameter::
+type () const 
+{
+  return mdForceCosAngle0;
+}
+
+unsigned CosAngle0Parameter::
+numParam () const 
+{
+  return mdForceNParamCosAngle0;
+}
+
+const ScalorType * CosAngle0Parameter::
+c_ptr () const 
+{
+  return param;
+}
+
+ScalorType * CosAngle0Parameter::
+c_ptr ()  
+{
+  return param;
+}
+
+void CosAngle0Parameter::
+reinit (ScalorType k)
+{
+  CosAngle0::initParameter (param, k);
+}
+
+CosAngle0Parameter::
+CosAngle0Parameter (ScalorType k)
+{
+  CosAngle0::initParameter (param, k);
 }
 
 

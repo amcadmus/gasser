@@ -31,6 +31,7 @@ SystemNonBondedInteraction ()
   interactionTable_ = NULL;
   isBuilt = false;
   maxrc = 0;
+  maxNumExclusion = 0;
 }
 
 SystemNonBondedInteraction::
@@ -52,6 +53,7 @@ SystemNonBondedInteraction (const Topology::System & sysTop)
   interactionTable_ = NULL;
   isBuilt = false;
   maxrc = 0;
+  maxNumExclusion = 0;
 
   reinit (sysTop);
 }
@@ -88,6 +90,8 @@ clear ()
     isBuilt = false;
   }
   maxrc = 0;
+  exclusionNeighborIndex.clear();
+  maxNumExclusion = 0;
 }
 
 void SystemNonBondedInteraction::
@@ -122,6 +126,7 @@ void SystemNonBondedInteraction::
 reinit (const Topology::System & sysTop)
 {
   clear();
+  
   TypeType maxType = 0;
   // first, cal max type
   for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
@@ -134,14 +139,98 @@ reinit (const Topology::System & sysTop)
   std::vector<ScalorType > empty;
   add (maxType, maxType, mdForceNULL, empty, 0);
   for (unsigned i = 0; i < sysTop.nonBondedInteractions.size(); ++i){
-      add (sysTop.nonBondedInteractions[i].atomType0,
-	   sysTop.nonBondedInteractions[i].atomType1,
-	   sysTop.nonBondedInteractions[i].type,
-	   sysTop.nonBondedInteractions[i].paramArray,
-	   sysTop.nonBondedInteractions[i].rcut);
+    std::vector<ScalorType > paramArray;
+    for (unsigned j = 0; j < sysTop.nonBondedInteractions[i].numParam(); ++j){
+      paramArray.push_back (sysTop.nonBondedInteractions[i].ptr_param()[j]);
+    }
+    add (sysTop.nonBondedInteractions[i].typeOfAtom0(),
+	 sysTop.nonBondedInteractions[i].typeOfAtom1(),
+	 sysTop.nonBondedInteractions[i].typeOfInter(),
+	 paramArray,
+	 sysTop.nonBondedInteractions[i].rcut());
   }
   build ();
+
+  // num of type = max type value + 1
+  IndexType numType = maxType + 1;
+  std::vector<IndexType > natomOfType(numType, 0);
+  for (unsigned i = 0; i < sysTop.molecules.size(); ++i){
+    for (unsigned j = 0; j < sysTop.molecules[i].size(); ++j){
+      TypeType thisType = sysTop.molecules[i].atoms[j].type;
+      natomOfType[thisType] += sysTop.numbers[i];
+    }
+  }
+  // generate correction matrixes
+  energyCorr = 0.f;
+  pressureCorr = 0.f;
+  std::vector<std::vector<ScalorType > > energyCorrMat;
+  std::vector<std::vector<ScalorType > > pressureCorrMat;
+  std::vector<ScalorType > tmp (numType, 0.f);
+  for (unsigned i = 0; i < numType; ++i){
+    energyCorrMat.push_back(tmp);
+    pressureCorrMat.push_back(tmp);
+  }
+  for (unsigned i = 0; i < sysTop.nonBondedInteractions.size(); ++i){
+    TypeType type0, type1;
+    type0 = sysTop.nonBondedInteractions[i].typeOfAtom0();
+    type1 = sysTop.nonBondedInteractions[i].typeOfAtom1();
+    if (type0 == type1){
+      energyCorrMat  [IndexType(type0)][IndexType(type1)] =
+    	sysTop.nonBondedInteractions[i].energyCorrection  (maxRcut());
+      pressureCorrMat[IndexType(type0)][IndexType(type1)] =
+    	sysTop.nonBondedInteractions[i].pressureCorrection(maxRcut());
+    }
+    else{
+      energyCorrMat  [IndexType(type0)][IndexType(type1)] =
+      energyCorrMat  [IndexType(type1)][IndexType(type0)] =
+    	sysTop.nonBondedInteractions[i].energyCorrection  (maxRcut());
+      pressureCorrMat[IndexType(type0)][IndexType(type1)] =
+      pressureCorrMat[IndexType(type1)][IndexType(type0)] =
+    	sysTop.nonBondedInteractions[i].pressureCorrection(maxRcut());
+    }
+  }
+  energyCorrVec.resize(numType);
+  pressureCorrVec.resize(numType);
+  for (unsigned i = 0; i < numType; ++i){
+    energyCorrVec[i] = 0.;
+    pressureCorrVec[i] = 0.;
+    for (unsigned j = 0; j < numType; ++j){
+      energyCorrVec[i]   += natomOfType[j] * energyCorrMat[i][j];
+      pressureCorrVec[i] += natomOfType[j] * pressureCorrMat[i][j];
+    }
+    energyCorr   += natomOfType[i] * energyCorrVec[i];
+    pressureCorr += natomOfType[i] * pressureCorrVec[i];    
+    // energyCorr   += natomOfType[i] * natomOfType[j] * energyCorrMat[i][j];
+    // pressureCorr += natomOfType[i] * natomOfType[j] * pressureCorrMat[i][j];
+  }
+  
+  printf ("# energy correction is %f\n", energyCorr);
+  printf ("# pressure correction is %f\n", pressureCorr);
+
+
+  exclusionNeighborIndex.resize(sysTop.molecules.size());
+  for (IndexType i = 0; i < sysTop.molecules.size(); ++i){
+    exclusionNeighborIndex[i].resize (sysTop.molecules[i].atoms.size());
+  }
+  for (IndexType i = 0; i < sysTop.molecules.size(); ++i){
+    for (IndexType j = 0; j < sysTop.molecules[i].exclusions.size(); ++j){
+      exclusionNeighborIndex[i][sysTop.molecules[i].exclusions[j].atom0].
+	  push_back(sysTop.molecules[i].exclusions[j].atom1);
+      exclusionNeighborIndex[i][sysTop.molecules[i].exclusions[j].atom1].
+	  push_back(sysTop.molecules[i].exclusions[j].atom0);
+    }
+  }
+  maxNumExclusion = 0;
+  for (IndexType i = 0; i < exclusionNeighborIndex.size(); ++i){
+    for (IndexType j = 0; j < exclusionNeighborIndex[i].size(); ++j){
+      IndexType c;
+      if ((c = exclusionNeighborIndex[i][j].size()) > maxNumExclusion){
+	maxNumExclusion = c;
+      }
+    }
+  }
 }	   
+
 	   
 void SystemNonBondedInteraction::
 add (const TypeType &i,

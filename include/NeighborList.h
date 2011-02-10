@@ -10,8 +10,10 @@ using namespace RectangularBoxGeometry;
 
 struct DeviceCellList 
 {
-  IndexType devide;
-  ScalorType rlist;		/**< radius for list building */
+  IndexType divide;
+  ScalorType rlist;		/**< radius of list, only the atoms
+				 * from neighboring cells fall in this
+				 * raidus.*/
   IntVectorType NCell;		/**< the number of cells on each direction */
   VectorType NCelli;		/**< inverse the NCell */
   IndexType * data;		/**< matrix, the i-th line keep indexes of
@@ -28,8 +30,11 @@ struct DeviceCellList
 
 struct DeviceNeighborList
 {
-  ScalorType rlist;		/**< radius of neighbor list */
-  IndexType listLength;		/**< max length of the neighbor list */
+  ScalorType  rlist;		/**< radius of neighbor list */
+  IndexType   stride;           /**< stride of neighbor list, which is
+				 * the expected larger than or equal
+				 * to the number of Atoms */
+  IndexType   listLength;	/**< max length of the neighbor list */
   IndexType * data;		/**< matrix, i-th row stores the
 				 * indexes of neigbors of i-th atom*/
   IndexType * Nneighbor;	/**< vector stores the number of neigbors of
@@ -38,9 +43,6 @@ struct DeviceNeighborList
 				 * non-bonded interaction, whose type
 				 * and parameters are keeped by the
 				 * interaction engine. */
-  IndexType stride;             /**< stride of neighbor list, which is
-				 * the expected larger than or equal
-				 * to the number of Atoms */
   // DeviceNeighborList ();
   // ~DeviceNeighborList ();
 };
@@ -102,40 +104,30 @@ pushNeighborCell (const DeviceCellList & clist,
  * 
  * @param clist the cell list
  */
-__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList  clist);
+__global__ void
+prepare_naivelyBuildDeviceCellList (DeviceCellList  clist);
 // needs ceil(numAtom/blockDim.x) blocks
-__global__ void naivelyBuildDeviceCellList (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					    ScalorType * coordx,
-					    ScalorType * coordy,
-					    ScalorType * coordz,
-#else
-					    CoordType * coord,
-#endif
-					    RectangularBox box,
-					    DeviceCellList clist,
-					    mdError_t * ptr_de = NULL,
-					    IndexType * erridx = NULL,
-					    ScalorType * errsrc = NULL);
-__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-					     ScalorType * coordx,
-					     ScalorType * coordy,
-					     ScalorType * coordz,
-#else
-					     CoordType * coord,
-#endif
-					     IntScalorType * coordNoix,
-					     IntScalorType * coordNoiy,
-					     IntScalorType * coordNoiz,
-					     RectangularBox box,
-					     DeviceCellList clist,
-					     mdError_t * ptr_de = NULL,
-					     IndexType * erridx = NULL,
-					     ScalorType * errsrc = NULL);
+__global__ void
+naivelyBuildDeviceCellList (const IndexType		numAtom,
+			    const RectangularBox	box,
+			    DeviceCellList		clist,
+			    mdError_t *			ptr_de = NULL,
+			    IndexType *			erridx = NULL,
+			    ScalorType *		errsrc = NULL);
+__global__ void
+naivelyBuildDeviceCellList2 (const IndexType		numAtom,
+			     CoordType *		coord,
+			     IntScalorType *		coordNoix,
+			     IntScalorType *		coordNoiy,
+			     IntScalorType *		coordNoiz,
+			     const RectangularBox	box,
+			     DeviceCellList		clist,
+			     mdError_t *		ptr_de = NULL,
+			     IndexType *		erridx = NULL,
+			     ScalorType *		errsrc = NULL);
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
-		       const IndexType devide,
+		       const IndexType divide,
 		       const HostVectorType boxSize);
 
 
@@ -176,74 +168,64 @@ __global__ void buildDeviceCellList_step2 (RectangularBox box,
 // neighbor list operations
 ////////////////////////////////////////////////////////////
 //needs ceil(numAtom/blockDim.x) blocks
-__global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-						  ScalorType * coordx,
-						  ScalorType * coordy, 
-						  ScalorType * coordz,
-#else
-						  CoordType * coord,
-#endif
-						  TypeType * type,
-						  RectangularBox box,
-						  DeviceNeighborList nlist,
-						  const IndexType * nbForceTable,
-						  IndexType NatomType,
-						  bool sharednbForceTable,
-						  mdError_t * ptr_de = NULL);
+__global__ void
+buildDeviceNeighborList_AllPair  (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  DeviceNeighborList		nlist,
+				  const IndexType *		nbForceTable,
+				  const IndexType		NatomType,
+				  const bool			sharednbForceTable,
+				  mdError_t *			ptr_de);
 // needs NCell blocks
-__global__ void buildDeviceNeighborList_DeviceCellList (IndexType numAtom,
-#ifndef COORD_IN_ONE_VEC
-							ScalorType * coordx, 
-							ScalorType * coordy, 
-							ScalorType * coordz,
-#else
-							CoordType * coord,
-#endif
-							TypeType * type,
-							RectangularBox box,
-							DeviceCellList clist,
-							DeviceNeighborList nlist,
-							const IndexType * nbForceTable,
-							IndexType NatomType,
-							bool sharednbForceTable,
-							mdError_t * ptr_de = NULL);
-// needs ceil(numAtom/blockDim.x) blocks
-__global__ void judgeRebuild_backupCoord (const IndexType numAtom,
-					  const ScalorType * from,
-					  ScalorType * to);
-// needs ceil(numAtom/blockDim.x) blocks
-__global__ void judgeRebuild_judgeCoord (const IndexType numAtom,
-					 const RectangularBox box,
-#ifndef COORD_IN_ONE_VEC
-					 const ScalorType* coordx,
-					 const ScalorType* coordy,
-					 const ScalorType* coordz,
-					 const ScalorType* backupCoordx,
-					 const ScalorType* backupCoordy,
-					 const ScalorType* backupCoordz,
-#else
-					 const CoordType * coord,
-					 const CoordType * backupCoord,
-#endif
-					 const ScalorType diffTol2,
-					 ScalorType * buff,
-					 IndexType * tag);
-__global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
-					       const RectangularBox box,
-#ifndef COORD_IN_ONE_VEC
-					       const ScalorType* coordx,
-					       const ScalorType* coordy,
-					       const ScalorType* coordz,
-					       const ScalorType* backupCoordx,
-					       const ScalorType* backupCoordy,
-					       const ScalorType* backupCoordz,
-#else
-					       const CoordType * coord,
-					       const CoordType * backupCoord,
-#endif
-					       const ScalorType diffTol2,
-					       IndexType * judgeRebuild_buff);
+__global__ void
+buildDeviceNeighborList_DeviceCellList (const IndexType		numAtom,
+					const CoordType *	coord,
+					const TypeType *	type,
+					const RectangularBox	box,
+					const DeviceCellList	clist,
+					DeviceNeighborList	nlist,
+					const IndexType *	nbForceTable,
+					const IndexType		NatomType,
+					const bool		sharednbForceTable,
+					mdError_t *		ptr_de = NULL);
+// // needs ceil(numAtom/blockDim.x) blocks
+// __global__ void judgeRebuild_backupCoord (const IndexType numAtom,
+// 					  const ScalorType * from,
+// 					  ScalorType * to);
+// // needs ceil(numAtom/blockDim.x) blocks
+// __global__ void judgeRebuild_judgeCoord (const IndexType numAtom,
+// 					 const RectangularBox box,
+// #ifndef COORD_IN_ONE_VEC
+// 					 const ScalorType* coordx,
+// 					 const ScalorType* coordy,
+// 					 const ScalorType* coordz,
+// 					 const ScalorType* backupCoordx,
+// 					 const ScalorType* backupCoordy,
+// 					 const ScalorType* backupCoordz,
+// #else
+// 					 const CoordType * coord,
+// 					 const CoordType * backupCoord,
+// #endif
+// 					 const ScalorType diffTol2,
+// 					 ScalorType * buff,
+// 					 IndexType * tag);
+// __global__ void judgeRebuild_judgeCoord_block (const IndexType numAtom,
+// 					       const RectangularBox box,
+// #ifndef COORD_IN_ONE_VEC
+// 					       const ScalorType* coordx,
+// 					       const ScalorType* coordy,
+// 					       const ScalorType* coordz,
+// 					       const ScalorType* backupCoordx,
+// 					       const ScalorType* backupCoordy,
+// 					       const ScalorType* backupCoordz,
+// #else
+// 					       const CoordType * coord,
+// 					       const CoordType * backupCoord,
+// #endif
+// 					       const ScalorType diffTol2,
+// 					       IndexType * judgeRebuild_buff);
 
 //////////////////////////////////////////////////
 // reshuffle functions
@@ -446,63 +428,63 @@ D1toD3 (const VEC & NCell,
 
 
 
-  __device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
-  {
-    IndexType tid = threadIdx.x;
-    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-    predbuff[tid] = getKthBit(sharedbuff[tid], k);
-    predbuff[tid+blockDim.x] = 0;
+__device__ void kthSort (volatile IndexType * sharedbuff, IndexType k)
+{
+  IndexType tid = threadIdx.x;
+  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+  predbuff[tid] = getKthBit(sharedbuff[tid], k);
+  predbuff[tid+blockDim.x] = 0;
 
-    __syncthreads();
-    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-    IndexType target, mydata = sharedbuff[tid];
-    if (getKthBit(sharedbuff[tid], k)) {
-      target = blockDim.x - predbuff[tid];
-    }
-    else {
-      // IndexType total0 = blockDim.x - total1;
-      // IndexType after0 = blockDim.x - tid - predbuff[tid];
-      // target = total0 - after0;
-      target = tid + predbuff[tid] - total1;
-    }
-    __syncthreads();
-    sharedbuff[target] = mydata;
-    __syncthreads();
+  __syncthreads();
+  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+  IndexType target, mydata = sharedbuff[tid];
+  if (getKthBit(sharedbuff[tid], k)) {
+    target = blockDim.x - predbuff[tid];
   }
-
-  __device__ IndexType headSort (volatile IndexType * sharedbuff,
-				 volatile IndexType * targetCell)
-  {
-    IndexType k = NUintBit - 1;
-    IndexType tid = threadIdx.x;
-    __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
-    predbuff[tid] = getKthBit(sharedbuff[tid], k);
-    predbuff[tid+blockDim.x] = 0;
-
-    __syncthreads();
-    IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
-    IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
-    if (getKthBit(sharedbuff[tid], k)) {
-      target = blockDim.x - predbuff[tid];
-    }
-    else {
-      target = tid + predbuff[tid] - total1;
-    }
-    __syncthreads();
-    sharedbuff[target] = mydata;
-    targetCell[target] = mycell;
-    __syncthreads();
-    return total1;
+  else {
+    // IndexType total0 = blockDim.x - total1;
+    // IndexType after0 = blockDim.x - tid - predbuff[tid];
+    // target = total0 - after0;
+    target = tid + predbuff[tid] - total1;
   }
+  __syncthreads();
+  sharedbuff[target] = mydata;
+  __syncthreads();
+}
 
+__device__ IndexType headSort (volatile IndexType * sharedbuff,
+			       volatile IndexType * targetCell)
+{
+  IndexType k = NUintBit - 1;
+  IndexType tid = threadIdx.x;
+  __shared__ volatile IndexType predbuff[MaxThreadsPerBlock * 2];
+  predbuff[tid] = getKthBit(sharedbuff[tid], k);
+  predbuff[tid+blockDim.x] = 0;
 
-  __device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
-  {
-    __syncthreads();
-    for (IndexType i = 0; i < bitDeepth; ++i){
-      kthSort(sharedbuff, i);
-    }
+  __syncthreads();
+  IndexType total1 = sumVectorBlockBuffer (predbuff, blockDim.x);
+  IndexType target, mydata = sharedbuff[tid], mycell = targetCell[tid];
+  if (getKthBit(sharedbuff[tid], k)) {
+    target = blockDim.x - predbuff[tid];
   }
+  else {
+    target = tid + predbuff[tid] - total1;
+  }
+  __syncthreads();
+  sharedbuff[target] = mydata;
+  targetCell[target] = mycell;
+  __syncthreads();
+  return total1;
+}
+
+
+__device__ void sortList (volatile IndexType * sharedbuff, IndexType bitDeepth)
+{
+  __syncthreads();
+  for (IndexType i = 0; i < bitDeepth; ++i){
+    kthSort(sharedbuff, i);
+  }
+}
 
 
 

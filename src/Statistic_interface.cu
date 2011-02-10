@@ -73,19 +73,33 @@ void MDStatistic::deviceCopy (const MDStatistic & st)
 
 MDStatistic::
 MDStatistic ()
+    : hdata (NULL), dmalloced (false)
 {
-  hdata = NULL;
-  dmalloced = false;
-  // volume = 0;
+}
+
+MDStatistic::
+MDStatistic (const MDSystem & sys)
+    : hdata (NULL), dmalloced (false)
+{
+  reinit(sys);
+}
+
+void MDStatistic::
+clear ()
+{
+  freeAPointer ((void**)&hdata);
+  if (dmalloced){
+    cudaFree (ddata);
+    dmalloced = false;
+  }
 }
 
 
 void MDStatistic::
-init (const MDSystem & sys)
+reinit (const MDSystem & sys)
 {
-  // recorde system infomation
-  // volume = sys.box.size.x * sys.box.size.y * sys.box.size.z;
-
+  clear ();
+  
   // malloc and init system
   hdata = (ScalorType *) malloc (sizeof(ScalorType) * NumberOfStatisticItems);
   if (hdata == NULL){
@@ -107,10 +121,7 @@ init (const MDSystem & sys)
 MDStatistic::
 ~MDStatistic ()
 {
-  freeAPointer ((void**)&hdata);
-  if (dmalloced){
-    cudaFree (ddata);
-  }
+  clear ();
 }
 
 __global__ void clearStatisticData (ScalorType *ddata)

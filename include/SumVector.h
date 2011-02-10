@@ -949,6 +949,33 @@ __device__ void sumVectorBlockBuffer_2 (volatile T * sharedbuff)
   if (threadIdx.x == 0) sharedbuff[0] += sharedbuff[1];
 }
 
+template <typename T>
+__device__ void maxVectorBlockBuffer_2 (volatile T * sharedbuff)
+{
+  IndexType skip = blockDim.x;
+  IndexType presentBond = skip;
+  if (skip & 1) skip ++; 
+  skip >>= 1;
+  while (skip != 1) {
+    __syncthreads();
+    if (threadIdx.x < skip && threadIdx.x + skip < presentBond){
+      if (sharedbuff[threadIdx.x + skip] > sharedbuff[threadIdx.x]){
+	sharedbuff[threadIdx.x] = sharedbuff[threadIdx.x + skip];
+      }
+    }
+    presentBond = skip;
+    if (skip & 1) skip ++;
+    skip >>= 1;
+  }
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    if (sharedbuff[1] > sharedbuff[0]){
+      sharedbuff[0] = sharedbuff[1];
+    }
+  }
+}
+
+
 __device__ ScalorType maxVectorBlockBuffer (ScalorType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;

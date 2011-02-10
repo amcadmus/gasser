@@ -7,7 +7,8 @@
 
 // extern texture<float, 1, cudaReadModeElementType> texRef;
 
-__global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
+__global__ void
+prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   clist.data[bid * clist.stride + threadIdx.x] = MaxIndexValue;
@@ -21,13 +22,13 @@ __global__ void prepare_naivelyBuildDeviceCellList (DeviceCellList clist)
 //////////////////////////////////////////////////
 
 __global__ void
-naivelyBuildDeviceCellList (IndexType numAtom,
-			    CoordType * coord,
-			    RectangularBox box,
-			    DeviceCellList clist,
-			    mdError_t * ptr_de,
-			    IndexType * erridx,
-			    ScalorType * errsrc)
+naivelyBuildDeviceCellList (const IndexType		numAtom,
+			    const CoordType *		coord,
+			    const RectangularBox	box,
+			    DeviceCellList		clist,
+			    mdError_t *			ptr_de,
+			    IndexType *			erridx,
+			    ScalorType *		errsrc)
 {
   // normalizeSystem (box, numAtom, coordx, coordy, coordz, coordNoix, coordNoiy, coordNoiz);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -80,16 +81,17 @@ naivelyBuildDeviceCellList (IndexType numAtom,
 }
 
 
-__global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
-					    CoordType * coord,
-					    IntScalorType * coordNoix,
-					    IntScalorType * coordNoiy,
-					    IntScalorType * coordNoiz,
-					    RectangularBox box,
-					    DeviceCellList clist,
-					    mdError_t * ptr_de,
-					    IndexType * erridx,
-					    ScalorType * errsrc)
+__global__ void
+naivelyBuildDeviceCellList2 (const IndexType		numAtom,
+			     CoordType *		coord,
+			     IntScalorType *		coordNoix,
+			     IntScalorType *		coordNoiy,
+			     IntScalorType *		coordNoiz,
+			     const RectangularBox	box,
+			     DeviceCellList		clist,
+			     mdError_t *		ptr_de,
+			     IndexType *		erridx,
+			     ScalorType *		errsrc)
 {
   // normalizeSystem (box, numAtom, coordx, coordy, coordz, coordNoix, coordNoiy, coordNoiz);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -97,7 +99,9 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
   IndexType ii = tid + bid * blockDim.x;
   
   // calculate target cell id
-  __shared__ volatile IndexType targetCellid[MaxThreadsPerBlock];
+  extern __shared__ volatile IndexType sbuff[];
+  volatile IndexType * targetCellid = (volatile IndexType *) sbuff;
+  
   if (ii < numAtom){
     IndexType targetCelli, targetCellj, targetCellk;
     targetCelli = IndexType(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
@@ -150,9 +154,9 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
     for (IndexType i = 0; i < blockDim.x; ++i){
       IndexType cellid = targetCellid[i];
       if (cellid != MaxIndexValue){
-	IndexType pid = atomicInc(&clist.numbers[cellid], blockDim.x);
+	IndexType pid = atomicInc(&clist.numbers[cellid], clist.stride);
   	clist.data[cellid * clist.stride + pid] = i + bid * blockDim.x;
-	if (pid == blockDim.x && ptr_de != NULL){
+	if (pid == clist.stride && ptr_de != NULL){
 	  *ptr_de = mdErrorShortCellList;
 	}
       }
@@ -165,7 +169,7 @@ __global__ void naivelyBuildDeviceCellList2 (IndexType numAtom,
 
 __global__ void
 buildCellNeighborhood (DeviceCellList clist,
-		       const IndexType devide,
+		       const IndexType divide,
 		       const HostVectorType boxSize)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
@@ -177,9 +181,9 @@ buildCellNeighborhood (DeviceCellList clist,
   if (clist.NCell.z == 1) oneCellZ = true;
 
   IndexType upperX, upperY, upperZ;
-  oneCellX ? upperX = 1 : upperX = 2*devide+1;
-  oneCellY ? upperY = 1 : upperY = 2*devide+1;
-  oneCellZ ? upperZ = 1 : upperZ = 2*devide+1;
+  oneCellX ? upperX = 1 : upperX = 2*divide+1;
+  oneCellY ? upperY = 1 : upperY = 2*divide+1;
+  oneCellZ ? upperZ = 1 : upperZ = 2*divide+1;
   
   
   if (tid == 0) {
@@ -190,9 +194,9 @@ buildCellNeighborhood (DeviceCellList clist,
     for (int ix = 0; ix < upperX; ++ix){
       for (int iy = 0; iy < upperY; ++iy){
 	for (int iz = 0; iz < upperZ; ++iz){
-	  int myx = ix - clist.devide + int(centerx) ;
-	  int myy = iy - clist.devide + int(centery) ;
-	  int myz = iz - clist.devide + int(centerz) ;
+	  int myx = ix - clist.divide + int(centerx) ;
+	  int myy = iy - clist.divide + int(centery) ;
+	  int myz = iz - clist.divide + int(centerz) ;
 	  ScalorType scalorx = boxSize.x / clist.NCell.x ;
 	  ScalorType scalory = boxSize.y / clist.NCell.y ;
 	  ScalorType scalorz = boxSize.z / clist.NCell.z ;
@@ -259,15 +263,15 @@ buildCellNeighborhood (DeviceCellList clist,
   // int centerx, centery, centerz;
   // D1toD3 (clist.NCell, int(bid), centerx, centery, centerz);
   // IntVectorType thisCubic;
-  // thisCubic.z = thisCubic.y = thisCubic.x = 2 * clist.devide + 1;
+  // thisCubic.z = thisCubic.y = thisCubic.x = 2 * clist.divide + 1;
   // int myx, myy, myz;
   // D1toD3 (thisCubic, int(tid), myx, myy, myz);
-  // myx += int(centerx) - clist.devide;
-  // myy += int(centery) - clist.devide ;
-  // myz += int(centerz) - clist.devide ;
-  // ScalorType scalorx = boxSize.x / clist.NCell.x / devide;
-  // ScalorType scalory = boxSize.y / clist.NCell.y / devide;
-  // ScalorType scalorz = boxSize.z / clist.NCell.z / devide;
+  // myx += int(centerx) - clist.divide;
+  // myy += int(centery) - clist.divide ;
+  // myz += int(centerz) - clist.divide ;
+  // ScalorType scalorx = boxSize.x / clist.NCell.x / divide;
+  // ScalorType scalory = boxSize.y / clist.NCell.y / divide;
+  // ScalorType scalorz = boxSize.z / clist.NCell.z / divide;
 
   // ScalorType rlist2 = clist.rlist * clist.rlist;
   // ScalorType min = 1e9;
@@ -320,15 +324,16 @@ buildCellNeighborhood (DeviceCellList clist,
 
 
 
-__global__ void buildDeviceNeighborList_AllPair  (IndexType numAtom,
-						  CoordType * coord,
-						  TypeType * type,
-						  RectangularBox box,
-						  DeviceNeighborList nlist,
-						  const IndexType * nbForceTable,
-						  IndexType NatomType,
-						  bool sharednbForceTable,
-						  mdError_t * ptr_de)
+__global__ void
+buildDeviceNeighborList_AllPair  (const IndexType		numAtom,
+				  const CoordType *		coord,
+				  const TypeType *		type,
+				  const RectangularBox		box,
+				  DeviceNeighborList		nlist,
+				  const IndexType *		nbForceTable,
+				  const IndexType		NatomType,
+				  const bool			sharednbForceTable,
+				  mdError_t *			ptr_de)
 {
   // RectangularBoxGeometry::normalizeSystem (box, &ddata);
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;

@@ -19,30 +19,37 @@ enum mdStatisticItem {
   mdStatisticVirialZZ				= 6,
   mdStatisticVirialXY				= 7,
   mdStatisticVirialXZ				= 8,
-  mdStatisticVirialYZ				= 9
+  mdStatisticVirialYZ				= 9,
+  mdStatisticEnergyCorrection			= 13,
+  mdStatisticPressureCorrection			= 14,
+  mdStatisticTwinRangeEnergyCorrection		= 15,
+  mdStatisticTwinRangePressureCorrection	= 16
 };
 typedef enum mdStatisticItem mdStatisticItem_t;
 
 class MDStatistic
 {
   bool dmalloced;
+  void clear ();
   // ScalorType volume;
 public:
   ScalorType *hdata;
   ScalorType *ddata;
 public:
   MDStatistic ();
-  MDStatistic (const MDSystem & sys) {init(sys);}
+  MDStatistic (const MDSystem & sys);
   ~MDStatistic ();
-  void init (const MDSystem & sys);
+  void reinit (const MDSystem & sys);
 public:
   void clearDevice ();
   void updateHost ();
-  ScalorType getStatistic (mdStatisticItem_t item) {return hdata[item];}
+//  ScalorType getStatistic (mdStatisticItem_t item) {return hdata[item];}
 public:
   void deviceCopy (const MDStatistic & st);
   void deviceAdd  (const MDStatistic & st);
 public:
+  ScalorType nonBondedEnergy ();
+  ScalorType bondedEnergy ();
   ScalorType kineticEnergy ();
   ScalorType pressureXX (const RectangularBox & box);
   ScalorType pressureYY (const RectangularBox & box);
@@ -52,18 +59,18 @@ public:
   ScalorType virialXX ();
   ScalorType virialYY ();
   ScalorType virialZZ ();
-  ScalorType NonBondedEnergy ();
-  ScalorType BondedEnergy ();
 };
 
 
 
-inline ScalorType MDStatistic::NonBondedEnergy()
+inline ScalorType MDStatistic::nonBondedEnergy()
 {
-  return hdata[mdStatisticNonBondedPotential];
+  return hdata[mdStatisticNonBondedPotential] +
+      hdata[mdStatisticEnergyCorrection] +
+      hdata[mdStatisticTwinRangeEnergyCorrection];
 }
 
-inline ScalorType MDStatistic::BondedEnergy ()
+inline ScalorType MDStatistic::bondedEnergy ()
 {
   return hdata[mdStatisticBondedPotential];
 }
@@ -79,21 +86,27 @@ inline ScalorType MDStatistic::pressureXX (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z * 
       (hdata[mdStatisticKineticEnergyXX] -
-       hdata[mdStatisticVirialXX] * 0.5);
+       hdata[mdStatisticVirialXX] * 0.5) +
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureYY (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyYY] -
-       hdata[mdStatisticVirialYY] * 0.5);
+       hdata[mdStatisticVirialYY] * 0.5) +
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressureZZ (const RectangularBox & box)
 {
   return 2. * box.sizei.x * box.sizei.y * box.sizei.z *
       (hdata[mdStatisticKineticEnergyZZ] -
-       hdata[mdStatisticVirialZZ] * 0.5);
+       hdata[mdStatisticVirialZZ] * 0.5) +
+      hdata[mdStatisticPressureCorrection] +
+      hdata[mdStatisticTwinRangePressureCorrection];
 }
 
 inline ScalorType MDStatistic::pressure (const RectangularBox & box)
@@ -103,7 +116,7 @@ inline ScalorType MDStatistic::pressure (const RectangularBox & box)
 
 inline ScalorType MDStatistic::virial()
 {
-  return virialXX () + virialYY() + virialZZ();
+  return (virialXX () + virialYY() + virialZZ()) / 3.;
 }
 
 inline ScalorType MDStatistic::virialXX ()
