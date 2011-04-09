@@ -237,10 +237,10 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_forceX(),
 	  ddata.dptr_forceY(),
 	  ddata.dptr_forceZ(),
-	  sum_nb_p.getBuff(),
-	  sum_nb_vxx.getBuff(),
-	  sum_nb_vyy.getBuff(),
-	  sum_nb_vzz.getBuff(),
+	  sum_nb_p.buff,
+	  sum_nb_vxx.buff,
+	  sum_nb_vyy.buff,
+	  sum_nb_vzz.buff,
 	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyNonBondedInteraction");
   sum_nb_p.sumBuffAdd   (st.dptr_statisticData(), mdStatistic_NonBondedPotential, 0);
@@ -271,6 +271,21 @@ applyNonBondedInteraction (DeviceCellListedMDData & ddata,
 	  ddata.dptr_forceZ(),
 	  err.ptr_de);
   checkCUDAError ("InteractionEngine::applyNonBondedInteraction");
+}
+
+
+
+__device__ IndexType Parallel::CudaDevice::
+calNonBondedForceIndex (const IndexType * table, 
+			const IndexType numType,
+			const TypeType atom0, 
+			const TypeType atom1)
+{
+  IndexType i, j;
+  atom0 <= atom1 ?
+      (i = atom0, j = atom1) :
+      (i = atom1, j = atom0) ;
+  return table[i * numType + j - ((i*(i+1)) >> 1)];
 }
 
 
@@ -651,10 +666,10 @@ applyBondedInteraction (DeviceCellListedMDData & ddata,
 	    ddata.dptr_forceX(),
 	    ddata.dptr_forceY(),
 	    ddata.dptr_forceZ(),
-	    sum_b_p.getBuff(),
-	    sum_b_vxx.getBuff(),
-	    sum_b_vyy.getBuff(),
-	    sum_b_vzz.getBuff(),
+	    sum_b_p.buff,
+	    sum_b_vxx.buff,
+	    sum_b_vyy.buff,
+	    sum_b_vzz.buff,
 	    err.ptr_de,
 	    err.ptr_dscalor);
     checkCUDAError ("InteractionEngine::applyBondedInteraction");
@@ -698,7 +713,8 @@ calBondInteraction (const CoordType * coord,
   IndexType ii = tid + bid * blockDim.x;
   
   IndexType my_numBond = numBond[ii];
-  if (__all(my_numBond == 0)) return;
+  if (my_numBond == 0) return;
+  // if (__all(my_numBond == 0)) return;
   IndexType this_numAtomInCell = numAtomInCell[bid];
   if (tid >= this_numAtomInCell) return;
   

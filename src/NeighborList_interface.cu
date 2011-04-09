@@ -548,17 +548,17 @@ buildDeviceCellList_step1 (IndexType		numAtom,
       if (targetCelli >= IndexType(clist.NCell.x)){
 	*erridx = targetCelli;
 	*errsrc = ref.x;
-	return;
+	// return;
       }
       if (targetCellj >= IndexType(clist.NCell.y)){
 	*erridx = targetCellj;
 	*errsrc = ref.y;
-	return;
+	// return;
       }
       if (targetCellk >= IndexType(clist.NCell.z)){
 	*erridx = targetCellk;
 	*errsrc = ref.z;
-	return;
+	// return;
       }      
     }
   }

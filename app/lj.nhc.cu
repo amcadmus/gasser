@@ -30,7 +30,7 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 100000;
   IndexType confFeq = 100000;
-  IndexType thermoFeq = 1;
+  IndexType thermoFeq = 100;
   ScalorType rcut = 4.0;
   ScalorType nlistExten = 0.3;
   ScalorType refT = 1.50;

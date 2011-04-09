@@ -157,13 +157,18 @@ setEnergyCorr (const ScalorType & energyCorr_)
   }
   flag[0] = mdStatisticEnergyCorrection;
   ScalorType * tmpddata;
+  int * dflag;
   cudaMalloc ((void**)&tmpddata, sizeof(ScalorType) * NumberOfStatisticItems);
+  cudaMalloc ((void**)&dflag, sizeof(int) * NumberOfStatisticItems);
   checkCUDAError("MDStatistic::setEnergyCorr allocate for tmpddata");
   cudaMemcpy (tmpddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
 	      cudaMemcpyHostToDevice);
-  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, flag);
-  checkCUDAError("MDStatistic::setEnergyCorr allocate for tmpddata");
+  cudaMemcpy (dflag, flag, sizeof(int) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, dflag);
+  checkCUDAError("MDStatistic::setEnergyCorr sync for tmpddata");
   cudaFree (tmpddata);
+  cudaFree (dflag);
 }
 
 void MDStatistic::
@@ -177,10 +182,16 @@ setPressureCorr (const ScalorType & pressureCorr_)
   }
   flag[0] = mdStatisticPressureCorrection;
   ScalorType * tmpddata;
+  int * dflag;
   cudaMalloc ((void**)&tmpddata, sizeof(ScalorType) * NumberOfStatisticItems);
-  checkCUDAError("MDStatistic::MDStatistic allocate for tmpddata");
+  cudaMalloc ((void**)&dflag, sizeof(int) * NumberOfStatisticItems);
+  checkCUDAError("MDStatistic::setPressureCorr allocate for tmpddata");
   cudaMemcpy (tmpddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
 	      cudaMemcpyHostToDevice);
-  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, flag);
+  cudaMemcpy (dflag, flag, sizeof(int) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, dflag);
+  checkCUDAError("MDStatistic::setPressureCorr sync for tmpddata");
   cudaFree (tmpddata);
+  cudaFree (dflag);
 }

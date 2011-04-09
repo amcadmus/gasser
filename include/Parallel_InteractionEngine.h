@@ -153,18 +153,11 @@ public:
 
 
 #ifdef DEVICE_CODE
-__device__ IndexType Parallel::CudaDevice::
+static __device__ IndexType Parallel::CudaDevice::
 calNonBondedForceIndex (const IndexType * table, 
 			const IndexType numType,
 			const TypeType atom0, 
-			const TypeType atom1)
-{
-  IndexType i, j;
-  atom0 <= atom1 ?
-      (i = atom0, j = atom1) :
-      (i = atom1, j = atom0) ;
-  return table[i * numType + j - ((i*(i+1)) >> 1)];
-}
+			const TypeType atom1);
 #endif
 
 

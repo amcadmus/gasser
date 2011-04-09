@@ -12,9 +12,10 @@
 
 class BondedInteractionList : public Reshufflable
 {
-  HostBondList   hbondlist;
-  DeviceBondList dbondlist;
+  HostBondList    hbondlist;
   HostAngleList   hanglelist;
+public:
+  DeviceBondList  dbondlist;
   DeviceAngleList danglelist;
 private: // reshuffle backup things
   DeviceBondList  bkdbondlist;
@@ -26,10 +27,10 @@ public:
 	       const Topology::System & sysTop,
 	       const SystemBondedInteraction & sysBdInter);
 public:
-  const DeviceBondList & deviceBondList () const
-      {return dbondlist;}
-  const DeviceAngleList & deviceAngleList () const
-      {return danglelist;}
+  // const DeviceBondList & deviceBondList () const
+  //     {return dbondlist;}
+  // const DeviceAngleList & deviceAngleList () const
+  //     {return danglelist;}
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
 			  MDTimer * timer = NULL) ;

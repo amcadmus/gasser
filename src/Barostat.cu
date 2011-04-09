@@ -204,9 +204,9 @@ operator_L_Cv (const ScalorType & dt,
 	  sys.ddata.veloy,
 	  sys.ddata.veloz,
 	  sys.ddata.mass,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("NoseHoover_Chains2_Isobaric::operator_L_Cv NHC_P_L_Cv");
   sum_kxx.sumBuffAdd (output_st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (output_st.ddata, mdStatisticKineticEnergyYY, 0);
@@ -375,9 +375,9 @@ operator_L_v (const ScalorType & dt,
 	  sys.ddata.velox,
 	  sys.ddata.veloy,
 	  sys.ddata.veloz,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   sum_kxx.sumBuffAdd (output_st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (output_st.ddata, mdStatisticKineticEnergyYY, 0);
   sum_kzz.sumBuffAdd (output_st.ddata, mdStatisticKineticEnergyZZ, 0);
