@@ -10,67 +10,6 @@ void MDStatistic::deviceCopy (const MDStatistic & st)
   checkCUDAError ("Statistic::deviceCopy");
 }
 
-
-// __global__ void initBuff (ScalorType * buff, IndexType n);
-// void Statistic::init(const MDSystem & sys, 
-// 		     const IndexType & NThread)
-// {
-//   myBlockDim.y = 1;
-//   myBlockDim.z = 1;
-//   myBlockDim.x = NThread;
-//   IndexType nob;
-//   if (sys.ddata.numAtom % myBlockDim.x == 0){
-//     nob = sys.ddata.numAtom / myBlockDim.x;
-//   } else {
-//     nob = sys.ddata.numAtom / myBlockDim.x + 1;
-//   }
-//   atomGridDim = toGridDim (nob);
-
-//   hostData.data = (ScalorType *) malloc (sizeof(ScalorType) * Size_StatisticData);
-
-//   cudaMalloc((void**)&(deviceData.data), sizeof(ScalorType) * Size_StatisticData);
-//   clearStatisticData <<<1, 1>>> (deviceData);
-
-//   updateHost();
-  
-//   cudaMalloc((void**)&(statistic_buff), sizeof(ScalorType) * nob);
-//   initBuff <<<1, 1>>> (statistic_buff, nob);
-//   checkCUDAError("Statistic::init");
-// }
-
-// void Statistic::clearDevice ()
-// {
-//   clearStatisticData <<<1, 1>>> (deviceData);
-//   checkCUDAError("Statistic::clearDevice");
-// }
-
-// void Statistic::updateHost()
-// {
-//   cudaMemcpy (hostData.data, deviceData.data, 
-// 	      sizeof(ScalorType) * Size_StatisticData, cudaMemcpyDeviceToHost);
-//   checkCUDAError("Statistic::updateHost");
-// }
-
-// Statistic::~Statistic()
-// {
-//   free (hostData.data);
-//   cudaFree (deviceData.data);
-//   cudaFree (statistic_buff);
-//   checkCUDAError("Statistic::~Statistic");
-// }
-
-
-// __global__ void initBuff (ScalorType * buff, IndexType n)
-// {
-//   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-//   IndexType tid = threadIdx.x;
-//   if (bid + tid == 0)
-//     for (IndexType i = 0; i < n; ++i){
-//       buff[i] = 0;
-//     }
-// }
-
-
 MDStatistic::
 MDStatistic ()
     : hdata (NULL), dmalloced (false)
@@ -146,7 +85,7 @@ clearDevice ()
 }
 
 void MDStatistic::
-updateHost ()
+updateHost () const
 {
   cudaMemcpy (hdata, ddata, sizeof(ScalorType) * NumberOfStatisticItems, 
 	      cudaMemcpyDeviceToHost);
@@ -159,4 +98,89 @@ deviceAdd (const MDStatistic & st)
   addStatisticData <<<1, NumberOfStatisticItems>>> (ddata, st.ddata);
 }
 
+
+void MDStatistic::
+copy (const MDStatistic & st,
+      const IndexType num,
+      const mdStatisticItem_t items[NumberOfStatisticItems])
+{
+  ScalorType tmp[NumberOfStatisticItems];
+  cudaMemcpy (tmp, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("MDStatistic::deviceCopy");
+  updateHost();
+  for (unsigned i = 0; i < num; ++i){
+    hdata[items[i]] = tmp[items[i]];
+  }
+  cudaMemcpy (ddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+}
+
+void MDStatistic::
+add  (const MDStatistic & st,
+      const IndexType num,
+      const mdStatisticItem_t items[NumberOfStatisticItems])
+{
+  ScalorType tmp[NumberOfStatisticItems];
+  cudaMemcpy (tmp, st.ddata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("MDStatistic::deviceCopy");
+  updateHost();
+  for (unsigned i = 0; i < num; ++i){
+    hdata[items[i]] += tmp[items[i]];
+  }
+  cudaMemcpy (ddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+}
+
   
+__global__ static void
+syncData (ScalorType * tmpddata,
+	  ScalorType * ddata,
+	  int * flag)
+{
+  if (threadIdx.x < NumberOfStatisticItems){
+    int myflag = flag[threadIdx.x];
+    if (myflag != -1){
+      ddata[myflag] = tmpddata[myflag];
+    }
+  }
+}
+
+void MDStatistic::
+setEnergyCorr (const ScalorType & energyCorr_)
+{
+  hdata[mdStatisticEnergyCorrection] = energyCorr_;
+  int flag[NumberOfStatisticItems];
+  for (unsigned i = 0; i < NumberOfStatisticItems; ++i){
+    flag[i] = -1;
+  }
+  flag[0] = mdStatisticEnergyCorrection;
+  ScalorType * tmpddata;
+  cudaMalloc ((void**)&tmpddata, sizeof(ScalorType) * NumberOfStatisticItems);
+  checkCUDAError("MDStatistic::setEnergyCorr allocate for tmpddata");
+  cudaMemcpy (tmpddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, flag);
+  checkCUDAError("MDStatistic::setEnergyCorr allocate for tmpddata");
+  cudaFree (tmpddata);
+}
+
+void MDStatistic::
+setPressureCorr (const ScalorType & pressureCorr_)
+{
+  hdata[mdStatisticPressureCorrection] = pressureCorr_;
+  // printf ("# setting pressureCorr_ to %f\n", pressureCorr_);
+  int flag[NumberOfStatisticItems];
+  for (unsigned i = 0; i < NumberOfStatisticItems; ++i){
+    flag[i] = -1;
+  }
+  flag[0] = mdStatisticPressureCorrection;
+  ScalorType * tmpddata;
+  cudaMalloc ((void**)&tmpddata, sizeof(ScalorType) * NumberOfStatisticItems);
+  checkCUDAError("MDStatistic::MDStatistic allocate for tmpddata");
+  cudaMemcpy (tmpddata, hdata, sizeof(ScalorType) * NumberOfStatisticItems,
+	      cudaMemcpyHostToDevice);
+  syncData<<<1, NumberOfStatisticItems>>> (tmpddata, ddata, flag);
+  cudaFree (tmpddata);
+}
