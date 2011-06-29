@@ -45,7 +45,8 @@ reinit (const MDSystem &sys,
   sharedBuffSize = NThread * 2 * sizeof(ScalorType);
 
   LL = 3.f * sys.ddata.numAtom;
-  Q2 = Q1 = tau_T * tau_T * ref_T / (4 * M_PI * M_PI) * LL;
+  Q1 = tau_T * tau_T * ref_T / (4 * M_PI * M_PI) * LL;
+  Q2 = Q1 / LL;
   xi1 = xi2 = 1.f;
   vxi1 = vxi2 = 0.f;
   refT = ref_T;
