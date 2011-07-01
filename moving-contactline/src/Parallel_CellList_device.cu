@@ -3745,12 +3745,12 @@ normalizeSystem_CellListed (RectangularBox box,
   IndexType ii = tid + bid * blockDim.x;
  
   if (tid < numAtomInCell[bid]) {
-    RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.x, &(coord[ii].x), &(coordNoi[ii].x));
-    RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.y, &(coord[ii].y), &(coordNoi[ii].y));
-    RectangularBoxGeometry::moveParticleToBox_1image (
-	box.size.z, &(coord[ii].z), &(coordNoi[ii].z));
+    // RectangularBoxGeometry::moveParticleToBox_1image (
+    // 	box.size.x, &(coord[ii].x), &(coordNoi[ii].x));
+    // RectangularBoxGeometry::moveParticleToBox_1image (
+    // 	box.size.y, &(coord[ii].y), &(coordNoi[ii].y));
+    // RectangularBoxGeometry::moveParticleToBox_1image (
+    // 	box.size.z, &(coord[ii].z), &(coordNoi[ii].z));
   }
 }
 

@@ -82,9 +82,9 @@ void MDSystem::initConfig (const char * configfile,
 				   &bx, &by, &bz) ;
 #ifdef COORD_IN_ONE_VEC
   for (IndexType i = 0; i < numAtom; ++i){
-    hdata.coord[i].x = tmpx[i];
-    hdata.coord[i].y = tmpy[i];
-    hdata.coord[i].z = tmpz[i];
+    hdata.fixed_coord[i].x = hdata.coord[i].x = tmpx[i];
+    hdata.fixed_coord[i].y = hdata.coord[i].y = tmpy[i];
+    hdata.fixed_coord[i].z = hdata.coord[i].z = tmpz[i];
   }
   free (tmpx);
   free (tmpy);
@@ -303,6 +303,9 @@ recoverDeviceData (MDTimer * timer)
       (ddata.coord, ddata.numAtom, backMapTable, recoveredDdata.coord);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
+      (ddata.fixed_coord, ddata.numAtom, backMapTable, recoveredDdata.fixed_coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
       (ddata.coordNoix, ddata.numAtom, backMapTable, recoveredDdata.coordNoix);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
@@ -378,6 +381,9 @@ reshuffle (const IndexType * indexTable,
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
       (bkDdata.coord, ddata.numAtom, indexTable, ddata.coord);
+  Reshuffle_reshuffleArray
+      <<<atomGridDim, myBlockDim>>>
+      (bkDdata.fixed_coord, ddata.numAtom, indexTable, ddata.fixed_coord);
   Reshuffle_reshuffleArray
       <<<atomGridDim, myBlockDim>>>
       (bkDdata.coordNoix, ddata.numAtom, indexTable, ddata.coordNoix);

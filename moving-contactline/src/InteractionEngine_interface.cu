@@ -31,6 +31,52 @@ __constant__
 IndexType const_nonBondedInteractionTable [MaxLengthNonBondedInteractionTable];
 
 
+void __global__
+applyLatticeInteraction_manual (const ScalorType k,
+				const TypeType type0,
+				const TypeType type1,
+				const CoordType * coord,
+				const CoordType * coord0,
+				const TypeType * type,
+				const IndexType numAtom,
+				ScalorType * forcx,
+				ScalorType * forcy,
+				ScalorType * forcz)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  if (ii < numAtom) {
+    if (type[ii] == type0 || type[ii] == type1){
+      forcx[ii] = 2.f * k * (coord0[ii].x - coord[ii].x);
+      forcy[ii] = 2.f * k * (coord0[ii].y - coord[ii].y);
+      forcz[ii] = 2.f * k * (coord0[ii].z - coord[ii].z);
+    }
+  }
+}
+
+
+void InteractionEngine::
+applyLatticeInteraction (MDSystem & sys,
+			 const ScalorType & k,
+			 const TypeType & type0,
+			 const TypeType & type1,
+			 MDTimer *timer)
+{
+  applyLatticeInteraction_manual
+      <<<atomGridDim, myBlockDim>>> (
+	  k, type0, type1,
+	  sys.ddata.coord,
+	  sys.ddata.fixed_coord,
+	  sys.ddata.type,
+	  sys.ddata.numAtom,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz);
+  checkCUDAError ("InteractionEngine::applyLatticeInteraction");
+}
+
+
+
 void InteractionEngine::init (const MDSystem  & sys,
 			      const IndexType & NTread)
 {
@@ -2108,10 +2154,10 @@ calNonBondedInteraction_cell (const IndexType		numAtom,
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
-    bool oneCellX(false), oneCellY(false), oneCellZ(false);
-    if (clist.NCell.x == 1) oneCellX = true;
-    if (clist.NCell.y == 1) oneCellY = true;
-    if (clist.NCell.z == 1) oneCellZ = true;
+    // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    // if (clist.NCell.x == 1) oneCellX = true;
+    // if (clist.NCell.y == 1) oneCellY = true;
+    // if (clist.NCell.z == 1) oneCellZ = true;
 
     __syncthreads();
     // find neighbor
@@ -2121,9 +2167,10 @@ calNonBondedInteraction_cell (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
 	// ScalorType dr2;
 	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rcut2 &&
@@ -2222,10 +2269,10 @@ calNonBondedInteraction_cell (const IndexType		numAtom,
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
-    bool oneCellX(false), oneCellY(false), oneCellZ(false);
-    if (clist.NCell.x == 1) oneCellX = true;
-    if (clist.NCell.y == 1) oneCellY = true;
-    if (clist.NCell.z == 1) oneCellZ = true;
+    // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    // if (clist.NCell.x == 1) oneCellX = true;
+    // if (clist.NCell.y == 1) oneCellY = true;
+    // if (clist.NCell.z == 1) oneCellZ = true;
 
     __syncthreads();
     // find neighbor
@@ -2235,9 +2282,10 @@ calNonBondedInteraction_cell (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	//printf ("%d\t%d\t%f\t%f\n", ii,
 	// ScalorType dr2;
 	if (((diffx*diffx+diffy*diffy+diffz*diffz)) < rcut2 &&
@@ -2330,10 +2378,10 @@ calNonBondedInteraction (const IndexType		numAtom,
 
   ScalorType rlist2 = nlist.rlist * nlist.rlist;
   ScalorType rcut2  = rcut * rcut;
-  bool oneCellX(false), oneCellY(false), oneCellZ(false);
-  if (clist.NCell.x == 1) oneCellX = true;
-  if (clist.NCell.y == 1) oneCellY = true;
-  if (clist.NCell.z == 1) oneCellZ = true;
+  // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  // if (clist.NCell.x == 1) oneCellX = true;
+  // if (clist.NCell.y == 1) oneCellY = true;
+  // if (clist.NCell.z == 1) oneCellZ = true;
 
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
@@ -2357,9 +2405,10 @@ calNonBondedInteraction (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
 	IndexType fidx(0);
 	fidx = AtomNBForceTable::calForceIndex (
@@ -2460,10 +2509,10 @@ calNonBondedInteraction (const IndexType		numAtom,
 
   ScalorType rlist2 = nlist.rlist * nlist.rlist;
   ScalorType rcut2  = rcut * rcut;
-  bool oneCellX(false), oneCellY(false), oneCellZ(false);
-  if (clist.NCell.x == 1) oneCellX = true;
-  if (clist.NCell.y == 1) oneCellY = true;
-  if (clist.NCell.z == 1) oneCellZ = true;
+  // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  // if (clist.NCell.x == 1) oneCellX = true;
+  // if (clist.NCell.y == 1) oneCellY = true;
+  // if (clist.NCell.z == 1) oneCellZ = true;
 
   for (IndexType i = 0; i < clist.numNeighborCell[bid]; ++i){
     __syncthreads();
@@ -2486,9 +2535,10 @@ calNonBondedInteraction (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
 	IndexType fidx(0);
 	fidx = AtomNBForceTable::calForceIndex (
@@ -2800,10 +2850,10 @@ calTwinRangeCorrection_cell (const IndexType		numAtom,
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
-    bool oneCellX(false), oneCellY(false), oneCellZ(false);
-    if (clist.NCell.x == 1) oneCellX = true;
-    if (clist.NCell.y == 1) oneCellY = true;
-    if (clist.NCell.z == 1) oneCellZ = true;
+    // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    // if (clist.NCell.x == 1) oneCellX = true;
+    // if (clist.NCell.y == 1) oneCellY = true;
+    // if (clist.NCell.z == 1) oneCellZ = true;
 
     __syncthreads();
     // find neighbor
@@ -2813,9 +2863,10 @@ calTwinRangeCorrection_cell (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
 	if (dr2 < rcut22 && dr2 >= rcut12 &&
 	    targetIndexes[jj] != ii){
@@ -3030,10 +3081,10 @@ buildNeighborListCalTwinRangeCorr_cell (const IndexType		numAtom,
       target[tid] = tex1Dfetch(global_texRef_interaction_coord, targetIndexes[tid]);
       targettype[tid] = tex1Dfetch(global_texRef_interaction_type, targetIndexes[tid]);
     }
-    bool oneCellX(false), oneCellY(false), oneCellZ(false);
-    if (clist.NCell.x == 1) oneCellX = true;
-    if (clist.NCell.y == 1) oneCellY = true;
-    if (clist.NCell.z == 1) oneCellZ = true;
+    // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+    // if (clist.NCell.x == 1) oneCellX = true;
+    // if (clist.NCell.y == 1) oneCellY = true;
+    // if (clist.NCell.z == 1) oneCellZ = true;
 
     __syncthreads();
     // find neighbor
@@ -3043,9 +3094,10 @@ buildNeighborListCalTwinRangeCorr_cell (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	ScalorType dr2 = (diffx*diffx+diffy*diffy+diffz*diffz);
 	if (targetIndexes[jj] != ii){
 	  if (dr2 < rcut22 && dr2 >= rcut12 ){

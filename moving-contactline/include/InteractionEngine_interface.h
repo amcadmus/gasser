@@ -77,7 +77,11 @@ public:
   // 				  NeighborList & nlist,
   // 				  MDStatistic & st,
   // 				  MDTimer *timer = NULL);
-
+  void applyLatticeInteraction (MDSystem & sys,
+				const ScalorType & k,
+				const TypeType & type0,
+				const TypeType & type1,
+				MDTimer *timer);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const ScalorType & rcut,
 				  // const ExclusionList * excllist = NULL,

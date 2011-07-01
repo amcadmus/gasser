@@ -35,7 +35,12 @@ int main(int argc, char * argv[])
   ScalorType nlistExten = 0.3;
   ScalorType refT = 1.50;
   ScalorType tauT = 1.;
+  ScalorType lattice_k = 1000.f;
   char * filename;
+  IndexType numAtom_A = 1000;
+  IndexType numAtom_B = 1000;
+  IndexType numAtom_a = 1000;
+  IndexType numAtom_b = 1000;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -51,14 +56,40 @@ int main(int argc, char * argv[])
 
   MDSystem sys;
   sys.initConfig(filename);
+  if (sys.hdata.numAtom !=
+      numAtom_a + numAtom_b + numAtom_A + numAtom_B) {
+    printf ("# inconsistent number of atom!\n");
+    exit (1);
+  }
+
+  LennardJones6_12Parameter ljparam_attractive;
+  LennardJones6_12Parameter ljparam_repulsive;
+  ljparam_attractive.reinit (1.f, 1.f, 1.f, 0.f, rcut);
+  ljparam_repulsive .reinit (1.f, 1.f,-1.f, 0.f, rcut);
 
   Topology::System sysTop;
-  Topology::Molecule mol;
-  mol.pushAtom (Topology::Atom (1.0, 0.0, 0));
-  LennardJones6_12Parameter ljparam;
-  ljparam.reinit (1.f, 1.f, 0.f, rcut);
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 0, ljparam));
-  sysTop.addMolecules (mol, sys.hdata.numAtom);
+  Topology::Molecule mol_a;
+  mol_a.pushAtom (Topology::Atom (1.0, 0.0, 0));
+  Topology::Molecule mol_b;
+  mol_b.pushAtom (Topology::Atom (1.0, 0.0, 1));
+  Topology::Molecule mol_A;
+  mol_A.pushAtom (Topology::Atom (1.0, 0.0, 2));
+  Topology::Molecule mol_B;
+  mol_B.pushAtom (Topology::Atom (1.0, 0.0, 3));
+
+  sysTop.addMolecules (mol_a, numAtom_a);
+  sysTop.addMolecules (mol_b, numAtom_b);
+  sysTop.addMolecules (mol_A, numAtom_A);
+  sysTop.addMolecules (mol_B, numAtom_B);
+
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(2, 2, ljparam_attractive));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(3, 3, ljparam_attractive));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(2, 3, ljparam_repulsive));
+
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 2, ljparam_attractive));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 3, ljparam_attractive));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 3, ljparam_repulsive));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 2, ljparam_repulsive));  
 
   sys.initTopology (sysTop);
   sys.initDeviceData ();
@@ -109,8 +140,8 @@ int main(int argc, char * argv[])
   sys.updateHostFromRecovered (&timer);
   sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6                7        8   9\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  NHC_Hamiltonian pressure box\n");
+  printf ("#*     1     2           3         4            5       6         8   9\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure box\n");
 
   try{
     sys.initWriteXtc ("traj.xtc");
@@ -135,14 +166,12 @@ int main(int argc, char * argv[])
 	sys.normalizeDeviceData (&timer);
 	disp.recordCoord (sys);
 	clist.rebuild (sys, &timer);
-	inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
 	nlist.rebuild (sys, clist, &timer);
 	// printf ("done\n");
 	// fflush(stdout);
       }
-      else{
-	inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
-      }
+      inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
+      inter.applyLatticeInteraction (sys, lattice_k, 0, 1, &timer);
 
       inte_vv.step2 (sys, dt, &timer);
       if ((i+1) % thermoFeq == 0){	
@@ -154,7 +183,7 @@ int main(int argc, char * argv[])
 
       if ((i+1) % thermoFeq == 0){
 	st.updateHost ();
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e %.7e %.2e %.2e %.2e %.2e\n",
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7e\n",
 		(i+1),  
 		(i+1) * dt, 
 		st.nonBondedEnergy(),
@@ -162,15 +191,8 @@ int main(int argc, char * argv[])
 		st.kineticEnergy() * 2. / 3. / (double (sys.hdata.numAtom) - 3.),
 		st.nonBondedEnergy() +
 		st.kineticEnergy(),
-		st.nonBondedEnergy() +
-		st.kineticEnergy() +
-		nhc.HamiltonianContribution (),
 		st.pressure(sys.box),
-		sys.box.size.x,
-		nhc.xi1,
-		nhc.vxi1,
-		nhc.xi2,
-		nhc.vxi1
+		sys.box.size.x
 	    );
 	fflush(stdout);
       }

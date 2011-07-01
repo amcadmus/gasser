@@ -13,6 +13,7 @@ public:
   IndexType numMem;
   IndexType NFreedom;
   CoordType * coord;
+  CoordType * fixed_coord;
   IntScalorType * coordNoix;
   IntScalorType * coordNoiy;
   IntScalorType * coordNoiz;
@@ -53,6 +54,7 @@ public:
   ScalorType * coordz;
 #else
   CoordType * coord;
+  CoordType * fixed_coord;
 #endif
   IntScalorType * coordNoix;
   IntScalorType * coordNoiy;
