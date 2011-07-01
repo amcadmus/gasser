@@ -46,23 +46,23 @@ namespace RectangularBoxGeometry{
 		     IntScalorType * noix, 
 		     IntScalorType * noiy, 
 		     IntScalorType * noiz);
-  static __device__ void
-  moveParticleToBox_1image (ScalorType boxx,
-			    ScalorType *x,  
-			    IntScalorType *noix);
+  // static __device__ void
+  // moveParticleToBox_1image (ScalorType boxx,
+  // 			    ScalorType *x,  
+  // 			    IntScalorType *noix);
   static __device__ void
   shortestImage (RectangularBox box,
 		 ScalorType * x,
 		 ScalorType * y,
 		 ScalorType * z);
-  static __device__ void
-  shortestImage (const ScalorType boxL,
-		 const ScalorType boxLi,
-		 ScalorType * x);
-  static __device__ void
-  shortestImage (const ScalorType boxL,
-		 ScalorType & x);
-  // needs ceil(numAtom/blockDim.x) blocks
+  // static __device__ void
+  // shortestImage (const ScalorType boxL,
+  // 		 const ScalorType boxLi,
+  // 		 ScalorType * x);
+  // static __device__ void
+  // shortestImage (const ScalorType boxL,
+  // 		 ScalorType & x);
+  // // needs ceil(numAtom/blockDim.x) blocks
   __global__ void
   normalizeSystem (RectangularBox box, 
 		   IndexType numAtom,
@@ -136,6 +136,11 @@ moveParticleToBox(RectangularBox rectBox,
 		  IntScalorType *noiy, 
 		  IntScalorType *noiz)
 {
+  // moveParticleToBox_1image (rectBox.size.x,
+  // 			    &x, &noix);
+  // moveParticleToBox_1image (rectBox.size.y,
+  // 			    &y, &noiy);
+
   IntScalorType tmp;
   tmp = floorf(*x * rectBox.sizei.x);
   *noix += tmp;
@@ -145,28 +150,28 @@ moveParticleToBox(RectangularBox rectBox,
   *noiy += tmp;
   *y -= tmp * rectBox.size.y;
 
-  tmp = floorf(*z * rectBox.sizei.z);
-  *noiz += tmp;
-  *z -= tmp * rectBox.size.z;
+  // tmp = floorf(*z * rectBox.sizei.z);
+  // *noiz += tmp;
+  // *z -= tmp * rectBox.size.z;
 }
 
-__device__ void RectangularBoxGeometry::
-moveParticleToBox_1image(ScalorType boxx,
-			 ScalorType *x,  
-			 IntScalorType *noix)
-{
-  IntScalorType tmp;
-  if (*x >= boxx){
-    tmp = 1;
-    *noix += tmp;
-    *x -= tmp * boxx;
-  }
-  else if (*x < 0) {
-    tmp = -1;
-    *noix += tmp;
-    *x -= tmp * boxx;
-  }
-}
+// __device__ void RectangularBoxGeometry::
+// moveParticleToBox_1image(ScalorType boxx,
+// 			 ScalorType *x,  
+// 			 IntScalorType *noix)
+// {
+//   IntScalorType tmp;
+//   if (*x >= boxx){
+//     tmp = 1;
+//     *noix += tmp;
+//     *x -= tmp * boxx;
+//   }
+//   else if (*x < 0) {
+//     tmp = -1;
+//     *noix += tmp;
+//     *x -= tmp * boxx;
+//   }
+// }
 
 __forceinline__ __device__ void RectangularBoxGeometry::
 shortestImage (RectangularBox box,
@@ -176,7 +181,7 @@ shortestImage (RectangularBox box,
 {
   *x -= floorf(*x * box.sizei.x + 0.5f) * box.size.x;
   *y -= floorf(*y * box.sizei.y + 0.5f) * box.size.y;
-  *z -= floorf(*z * box.sizei.z + 0.5f) * box.size.z;
+  // *z -= floorf(*z * box.sizei.z + 0.5f) * box.size.z;
   // if (*x >  0.5f * box.size.x) *x -= box.size.x;
   // if (*x < -0.5f * box.size.x) *x += box.size.x;
   // if (*y >  0.5f * box.size.y) *y -= box.size.y;
@@ -185,24 +190,24 @@ shortestImage (RectangularBox box,
   // if (*z < -0.5f * box.size.z) *z += box.size.z;
 }
 
-__device__ void RectangularBoxGeometry::
-shortestImage (const ScalorType boxL,
-	       const ScalorType boxLi,
-	       ScalorType * x)
-{
-  *x -= floorf(*x * boxLi + 0.5f) * boxL;
-  // if (*x >=  0.5f * boxL) *x -= boxL;
-  // if (*x < -0.5f * boxL) *x += boxL;
-}
+// __device__ void RectangularBoxGeometry::
+// shortestImage (const ScalorType boxL,
+// 	       const ScalorType boxLi,
+// 	       ScalorType * x)
+// {
+//   *x -= floorf(*x * boxLi + 0.5f) * boxL;
+//   // if (*x >=  0.5f * boxL) *x -= boxL;
+//   // if (*x < -0.5f * boxL) *x += boxL;
+// }
 
-__device__ void RectangularBoxGeometry::
-shortestImage (const ScalorType boxL,
-	       ScalorType & x)
-{
-  ScalorType tmp = 0.5f * boxL;
-  if (x >= tmp) x -= boxL;
-  if (x < -tmp) x += boxL;
-}
+// __device__ void RectangularBoxGeometry::
+// shortestImage (const ScalorType boxL,
+// 	       ScalorType & x)
+// {
+//   ScalorType tmp = 0.5f * boxL;
+//   if (x >= tmp) x -= boxL;
+//   if (x < -tmp) x += boxL;
+// }
 
 
 #endif // DEVICE_CODE

@@ -58,19 +58,21 @@ rcut() const
 void LennardJones6_12Parameter::
 reinit (ScalorType epsilon,
 	ScalorType sigma,
+	ScalorType delta,
 	ScalorType shift,
 	ScalorType rcut)
 {
-  LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
+  LennardJones6_12::initParameter (param, epsilon, sigma, delta, shift, rcut);
 }
 
 LennardJones6_12Parameter::
 LennardJones6_12Parameter (ScalorType epsilon,
 			   ScalorType sigma,
+			   ScalorType delta,
 			   ScalorType shift,
 			   ScalorType rcut)
 {
-  LennardJones6_12::initParameter (param, epsilon, sigma, shift, rcut);
+  LennardJones6_12::initParameter (param, epsilon, sigma, delta, shift, rcut);
 }
 
 
@@ -94,9 +96,9 @@ energyCorrection (const ScalorType & r) const
   sri8 = sri8 * sri8;
   ScalorType s3 = param[LennardJones6_12::sigma];
   s3 = s3 * s3 * s3;	
-  return 8.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
-      * (sri8 / 3. - sri2 ) * sri;	
-  // return 0.;
+  // return 8.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+  //     * (sri8 / 3. - sri2 ) * sri;	
+  return 0.;
 }  
 
 ScalorType LennardJones6_12Parameter::
@@ -108,9 +110,9 @@ pressureCorrection (const ScalorType & r) const
   sri8 = sri8 * sri8;
   ScalorType s3 = param[LennardJones6_12::sigma];
   s3 = s3 * s3 * s3;
-  return 16.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
-      * (sri8 * 2. / 3. - sri2 ) * sri;    
-  // return 0.;
+  // return 16.f * M_PI * param[LennardJones6_12::epsilon] * s3 / 3.
+  //     * (sri8 * 2. / 3. - sri2 ) * sri;    
+  return 0.;
 }
 
 

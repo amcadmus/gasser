@@ -416,10 +416,10 @@ buildDeviceNeighborList_DeviceCellList (const IndexType		numAtom,
   // }
   // __syncthreads();
 
-  bool oneCellX(false), oneCellY(false), oneCellZ(false);
-  if (clist.NCell.x == 1) oneCellX = true;
-  if (clist.NCell.y == 1) oneCellY = true;
-  if (clist.NCell.z == 1) oneCellZ = true;
+  // bool oneCellX(false), oneCellY(false), oneCellZ(false);
+  // if (clist.NCell.x == 1) oneCellX = true;
+  // if (clist.NCell.y == 1) oneCellY = true;
+  // if (clist.NCell.z == 1) oneCellZ = true;
   ScalorType rlist2 = rlist * rlist;
   
   // loop over 27 neighbor cells
@@ -447,9 +447,10 @@ buildDeviceNeighborList_DeviceCellList (const IndexType		numAtom,
 	ScalorType diffx = target[jj].x - shift.x - ref.x;
 	ScalorType diffy = target[jj].y - shift.y - ref.y;
 	ScalorType diffz = target[jj].z - shift.z - ref.z;
-	if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
-	if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
-	if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
+	shortestImage (box, &diffx, &diffy, &diffz);
+	// if (oneCellX) shortestImage (box.size.x, box.sizei.x, &diffx);
+	// if (oneCellY) shortestImage (box.size.y, box.sizei.y, &diffy);
+	// if (oneCellZ) shortestImage (box.size.z, box.sizei.z, &diffz);
 	if ((diffx*diffx+diffy*diffy+diffz*diffz) < rlist2 &&
 	    targetIndexes[jj] != ii){
 	  IndexType fidx;

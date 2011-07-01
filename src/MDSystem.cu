@@ -16,6 +16,7 @@ HostMDData::HostMDData()
   coordx = coordy = coordz = NULL;
 #else
   coord = NULL;
+  fixed_coord = NULL;
 #endif
   coordNoix = coordNoiy = coordNoiz = NULL;
   velox = veloy = veloz = NULL;
@@ -72,6 +73,8 @@ __host__ void mallocHostMDData (IndexType numAtom, IndexType expectedMaxNumAtom,
 #else
   hdata->coord = (CoordType *) malloc (sizecoord);
   if (hdata->coord == NULL) throw (MDExcptFailedMallocOnHost("hdata->coord", sizecoord));
+  hdata->fixed_coord = (CoordType *) malloc (sizecoord);
+  if (hdata->fixed_coord == NULL) throw (MDExcptFailedMallocOnHost("hdata->fixed_coord", sizecoord));
 #endif
   
   hdata->coordNoix = (IntScalorType *) malloc (sizei);
@@ -125,9 +128,9 @@ __host__ void lazyInitHostMDData (HostMDData * hdata)
     hdata->coordy[i] = 0.;
     hdata->coordz[i] = 0.;
 #else
-    hdata->coord[i].x = 0.f;
-    hdata->coord[i].y = 0.f;
-    hdata->coord[i].z = 0.f;
+    hdata->fixed_coord[i].x = hdata->coord[i].x = 0.f;
+    hdata->fixed_coord[i].y = hdata->coord[i].y = 0.f;
+    hdata->fixed_coord[i].z = hdata->coord[i].z = 0.f;
 #endif
     
     hdata->coordNoix[i] = 0;
@@ -175,6 +178,7 @@ __host__ void destroyHostMDData (HostMDData * hdata)
   freeAPointer ((void**)&hdata->coordz);
 #else
   freeAPointer ((void**)&hdata->coord);
+  freeAPointer ((void**)&hdata->fixed_coord);
 #endif
 
   freeAPointer ((void**)&hdata->coordNoix);
@@ -222,6 +226,7 @@ __host__ void cpyDeviceMDDataToHost (const DeviceMDData * ddata,
   cudaMemcpy (hdata->coordz, ddata->coordz, sizef, cudaMemcpyDeviceToHost);
 #else
   cudaMemcpy (hdata->coord, ddata->coord, sizecoord, cudaMemcpyDeviceToHost);
+  cudaMemcpy (hdata->fixed_coord, ddata->fixed_coord, sizecoord, cudaMemcpyDeviceToHost);
 #endif
   checkCUDAError ("cpyDeviceMDDataToHost coord");
   
@@ -265,6 +270,7 @@ __host__ void cpyHostMDDataToDevice (const HostMDData * hdata, DeviceMDData * dd
   cudaMemcpy (ddata->coordz, hdata->coordz, sizef, cudaMemcpyHostToDevice);
 #else
   cudaMemcpy (ddata->coord, hdata->coord, sizecoord, cudaMemcpyHostToDevice);
+  cudaMemcpy (ddata->fixed_coord, hdata->fixed_coord, sizecoord, cudaMemcpyHostToDevice);
 #endif
   checkCUDAError ("cpyHostMDDataToDevice coord");
 
@@ -309,6 +315,7 @@ __host__ void cpyDeviceMDDataToDevice (const DeviceMDData * hdata,
   cudaMemcpy (ddata->coordz, hdata->coordz, sizef, cudaMemcpyDeviceToDevice);
 #else
   cudaMemcpy (ddata->coord, hdata->coord, sizecoord, cudaMemcpyDeviceToDevice);
+  cudaMemcpy (ddata->fixed_coord, hdata->fixed_coord, sizecoord, cudaMemcpyDeviceToDevice);
 #endif
   checkCUDAError ("cpyDeviceMDDataToDevice coord");
 
@@ -367,6 +374,7 @@ __host__ void initDeviceMDData (const HostMDData * hdata,
   cudaMalloc ((void**) &ddata->coordz, sizef);
 #else
   cudaMalloc ((void**) &ddata->coord, sizecoord);
+  cudaMalloc ((void**) &ddata->fixed_coord, sizecoord);
 #endif
   checkCUDAError ("initDeviceMDData coord");
 
@@ -408,6 +416,8 @@ __host__ void initDeviceMDData (const HostMDData * hdata,
   dim3 atomGridDim = toGridDim (nob);
   deviceCpyTypeToCoordW<<<atomGridDim, myBlockDim>>> (
       ddata->coord, ddata->type, ddata->numAtom);
+  deviceCpyTypeToCoordW<<<atomGridDim, myBlockDim>>> (
+      ddata->fixed_coord, ddata->type, ddata->numAtom);
 #endif
 }
 
@@ -421,6 +431,7 @@ __host__ void destroyDeviceMDData (DeviceMDData * ddata)
     cudaFree (ddata->coordz);
 #else
     cudaFree (ddata->coord);
+    cudaFree (ddata->fixed_coord);
 #endif
     
     cudaFree (ddata->coordNoix);
@@ -460,6 +471,7 @@ cpyDeviceMDDataElement (const DeviceMDData * ddata1,
   ddata2->coordz[indx2] = ddata1->coordz[indx1];
 #else
   (ddata2->coord[indx2]) = (ddata1->coord[indx1]);
+  (ddata2->fixed_coord[indx2]) = (ddata1->fixed_coord[indx1]);
 #endif
   
   ddata2->coordNoix[indx2] = ddata1->coordNoix[indx1];

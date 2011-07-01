@@ -723,6 +723,14 @@ calBondInteraction (const CoordType * coord,
   ScalorType fsumz = 0.0f;
   CoordType ref = coord[ii];
 
+  RectangularBox box;
+  box.size.x = boxSize.x;
+  box.size.y = boxSize.y;
+  box.size.z = boxSize.z;
+  box.sizei.x = boxSizei.x;
+  box.sizei.y = boxSizei.y;
+  box.sizei.z = boxSizei.z;
+
   for (IndexType jj = 0; jj < my_numBond; ++jj){
     IndexType list_index = bondListStride * jj + ii;
     IndexType top_index = bondTopStride * jj + ii;
@@ -734,9 +742,10 @@ calBondInteraction (const CoordType * coord,
     diffx = target_coord.x - ref.x;
     diffy = target_coord.y - ref.y;
     diffz = target_coord.z - ref.z;
-    shortestImage (boxSize.x, boxSizei.x, &diffx);
-    shortestImage (boxSize.y, boxSizei.y, &diffy);
-    shortestImage (boxSize.z, boxSizei.z, &diffz);
+    shortestImage (box, &diffx, &diffy, &diffz);
+    // shortestImage (boxSize.x, boxSizei.x, &diffx);
+    // shortestImage (boxSize.y, boxSizei.y, &diffy);
+    // shortestImage (boxSize.z, boxSizei.z, &diffz);
     if (bondedInteractionType[my_bondIndex] == mdForceFENE){
       ScalorType rinf2 = bondedInteractionParameter
     	  [bondedInteractionParameterPosition[my_bondIndex] + 1];
@@ -806,7 +815,15 @@ calBondInteraction (const CoordType * coord,
   ScalorType fsumy = 0.0f;
   ScalorType fsumz = 0.0f;
   ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
-  
+
+  RectangularBox box;
+  box.size.x = boxSize.x;
+  box.size.y = boxSize.y;
+  box.size.z = boxSize.z;
+  box.sizei.x = boxSizei.x;
+  box.sizei.y = boxSizei.y;
+  box.sizei.z = boxSizei.z;
+
   if (tid < this_numAtomInCell){
     CoordType ref = coord[ii];
     for (IndexType jj = 0; jj < my_numBond; ++jj){
@@ -823,9 +840,10 @@ calBondInteraction (const CoordType * coord,
       // printf ("%f %f %f    %f %f %f\n",
       // 	      target_coord.x, target_coord.y, target_coord.z,
       // 	      ref.x, ref.y, ref.z);
-      shortestImage (boxSize.x, boxSizei.x, &diffx);
-      shortestImage (boxSize.y, boxSizei.y, &diffy);
-      shortestImage (boxSize.z, boxSizei.z, &diffz);
+      shortestImage (box, &diffx, &diffy, &diffz);
+      // shortestImage (boxSize.x, boxSizei.x, &diffx);
+      // shortestImage (boxSize.y, boxSizei.y, &diffy);
+      // shortestImage (boxSize.z, boxSizei.z, &diffz);
       if (bondedInteractionType[my_bondIndex] == mdForceFENE){
 	ScalorType rinf2 = bondedInteractionParameter
 	    [bondedInteractionParameterPosition[my_bondIndex] + 1];

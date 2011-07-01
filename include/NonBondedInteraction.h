@@ -8,7 +8,7 @@
 
 enum mdNBInteractionNParam {
   mdForceNParamNBNull			= 1,
-  mdForceNParamLennardJones6_12		= 4,
+  mdForceNParamLennardJones6_12		= 5,
   mdForceNParamLennardJones6_12B	= 4,
   mdForceNParamLennardJones6_12_cap	= 7,
   mdForceNParamLennardJones6_12B_cap	= 7,
@@ -23,10 +23,12 @@ public:
   LennardJones6_12Parameter () {}
   LennardJones6_12Parameter (ScalorType epsilon,
 			     ScalorType sigma,
+			     ScalorType delta,
 			     ScalorType shift,
 			     ScalorType rcut);
   void reinit (ScalorType epsilon,
 	       ScalorType sigma,
+	       ScalorType delta,
 	       ScalorType shift,
 	       ScalorType rcut);
 public:
@@ -196,12 +198,14 @@ namespace LennardJones6_12{
     epsilon		= 0,
     sigma		= 1,
     shift		= 2,
-    rcut		= 3
+    rcut		= 3,
+    delta		= 4
   } paramIndex_t;
     
   void initParameter (ScalorType * param, 
 		      ScalorType epsilon,
 		      ScalorType sigma,
+		      ScalorType delta,
 		      ScalorType shift,
 		      ScalorType rcut);
   ScalorType calRcut (const ScalorType * param);
@@ -211,15 +215,6 @@ namespace LennardJones6_12{
 	 ScalorType diffx,
 	 ScalorType diffy,
 	 ScalorType diffz,
-	 ScalorType *fx, 
-	 ScalorType *fy,
-	 ScalorType *fz);
-  static __device__ void
-  force (const ScalorType * param,
-	 ScalorType diffx,
-	 ScalorType diffy,
-	 ScalorType diffz,
-	 ScalorType diff2,
 	 ScalorType *fx, 
 	 ScalorType *fy,
 	 ScalorType *fz);
@@ -519,48 +514,6 @@ nbForce (const InteractionType ftype,
 }
 #endif
 
-#ifdef DEVICE_CODE
-static __device__ void 
-nbForce (const InteractionType ftype,
-	 const ScalorType * param,
-	 ScalorType diffx, ScalorType diffy, ScalorType diffz,
-	 ScalorType diff2,
-	 ScalorType *fx,   ScalorType *fy,   ScalorType *fz)
-{
-  if (ftype == mdForceLennardJones6_12){
-    LennardJones6_12::force (param, diffx, diffy, diffz, diff2, fx, fy, fz);
-  }
-  // if (ftype == mdForceLennardJones6_12B){
-  //   LennardJones6_12B::force (param, diffx, diffy, diffz, diff2, fx, fy, fz);
-  // }
-  if (ftype == mdForceLennardJones6_12_cap){
-    LennardJones6_12_cap::force (param,  diffx, diffy, diffz, fx, fy, fz);
-  }
-  if (ftype == mdForceCosTail){
-    CosTail::force (param,  diffx, diffy, diffz, fx, fy, fz);
-  }
-  if (ftype == mdForceCosTail_cap){
-    CosTail_cap::force (param,  diffx, diffy, diffz, fx, fy, fz);
-  }
-  if (ftype == mdForceNULL){
-    *fx = *fy = *fz = 0.f;
-  } 
-  // switch (ftype){
-  // case mdForceLennardJones6_12:
-  //     LennardJones6_12::force (param, diffx, diffy, diffz, fx, fy, fz);
-  //     break;
-  // case mdForceLennardJones6_12_cap:
-  //     LennardJones6_12_cap::force (param,  diffx, diffy, diffz, fx, fy, fz);
-  //     break;
-  // case mdForceCosTail:
-  //     CosTail::force (param,  diffx, diffy, diffz, fx, fy, fz);
-  //     break;
-  // default:
-  //     *fx = *fy = *fz = 0.f;
-  //     break;
-  // }
-}
-#endif
 
 #ifdef DEVICE_CODE
 static __device__ void
@@ -747,6 +700,7 @@ inline void LennardJones6_12::
 initParameter (ScalorType * param, 
 	       ScalorType epsilon_,
 	       ScalorType sigma_,
+	       ScalorType delta_,
 	       ScalorType shift_,
 	       ScalorType rcut_)
 {
@@ -754,6 +708,7 @@ initParameter (ScalorType * param,
   param[sigma] = sigma_;
   param[shift] = shift_;
   param[rcut]  = rcut_;
+  param[delta] = delta_;
 }
 
 inline ScalorType LennardJones6_12::
@@ -814,47 +769,10 @@ force (const ScalorType * param,
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  boolScalor *= param[epsilon] * (6.f * sri6 - 12.f * sri6*sri6) * ri2;
+  boolScalor *= param[epsilon] * (param[delta] * 6.f * sri6 - 12.f * sri6*sri6) * ri2;
   *fx = diffx * boolScalor;
   *fy = diffy * boolScalor;
   *fz = diffz * boolScalor;
-
-  // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
-  // ScalorType boolScalor;
-  // if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
-  // else boolScalor = 24.f;
-  // Scalortype ri2 = __frcp_rn(dr2);
-  // ScalorType sri2 = param[sigma] * param[sigma] * ri2;
-  // ScalorType sri4 = sri2*sri2;
-  // ScalorType sri8 = sri4*sri4;
-  // ScalorType scalor = boolScalor * param[epsilon] * (2.f * (sri2*sri4*sri8) - sri8);
-  // *fx = diffx * scalor;
-  // *fy = diffy * scalor;
-  // *fz = diffz * scalor;
-}
-#endif
-
-#ifdef DEVICE_CODE
-__device__ void LennardJones6_12::
-force (const ScalorType * param,
-       ScalorType diffx,
-       ScalorType diffy,
-       ScalorType diffz,
-       ScalorType dr2,
-       ScalorType *fx, 
-       ScalorType *fy,
-       ScalorType *fz)
-{
-  ScalorType boolScalor;
-  if (dr2 >= param[rcut]*param[rcut]) boolScalor = 0.f;
-  else boolScalor = - 24.f;
-  ScalorType ri2 = __frcp_rn(dr2);
-  ScalorType sri2 = param[sigma] * param[sigma] * ri2;
-  ScalorType sri6 = sri2*sri2*sri2;
-  ScalorType scalor = boolScalor * param[epsilon] * (2.f * (sri6*sri6) - sri6) * ri2;
-  *fx = diffx * scalor;
-  *fy = diffy * scalor;
-  *fz = diffz * scalor;
 
   // ScalorType dr2 = diffx*diffx + diffy*diffy + diffz*diffz;
   // ScalorType boolScalor;
@@ -888,11 +806,11 @@ forcePoten (const ScalorType * param,
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  ScalorType scalor = - boolScalor * param[epsilon] * (12.f * sri6*sri6 - 6.f * sri6) * ri2;
+  ScalorType scalor = - boolScalor * param[epsilon] * (12.f * sri6*sri6 - param[delta] * 6.f * sri6) * ri2;
   *fx = diffx * scalor;
   *fy = diffy * scalor;
   *fz = diffz * scalor;
-  return boolScalor * (param[epsilon] * (sri6*sri6 - sri6) + param[shift] * 0.25f);
+  return boolScalor * (param[epsilon] * (sri6*sri6 - param[delta] * sri6) + param[shift] * 0.25f);
 }
 #endif
 
@@ -911,7 +829,7 @@ poten (const ScalorType * param,
   ScalorType ri2 = 1.f/dr2;
   ScalorType sri2 = param[sigma] * param[sigma] * ri2;
   ScalorType sri6 = sri2*sri2*sri2;
-  return boolScalor * (param[epsilon] * (sri6*sri6 - sri6) + param[shift] * 0.25f);
+  return boolScalor * (param[epsilon] * (sri6*sri6 - param[delta] * sri6) + param[shift] * 0.25f);
 
 }
 #endif
