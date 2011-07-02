@@ -92,9 +92,9 @@ hostMoveParticleToBox (RectangularBox rectBox,
   *noiy += tmp;
   *y -= tmp * rectBox.size.y;
 
-  tmp = floorf(*z * rectBox.sizei.z);
-  *noiz += tmp;
-  *z -= tmp * rectBox.size.z;
+//  tmp = floorf(*z * rectBox.sizei.z);
+//  *noiz += tmp;
+//  *z -= tmp * rectBox.size.z;
 }
 
 inline void RectangularBoxGeometry::

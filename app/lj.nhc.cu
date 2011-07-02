@@ -41,6 +41,7 @@ int main(int argc, char * argv[])
   IndexType numAtom_B = 1000;
   IndexType numAtom_a = 1000;
   IndexType numAtom_b = 1000;
+  IndexType numAtom_c = 1000;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -57,14 +58,68 @@ int main(int argc, char * argv[])
   MDSystem sys;
   sys.initConfig(filename);
   if (sys.hdata.numAtom !=
-      numAtom_a + numAtom_b + numAtom_A + numAtom_B) {
+      numAtom_a + numAtom_b + numAtom_c + numAtom_A + numAtom_B) {
     printf ("# inconsistent number of atom!\n");
     exit (1);
   }
-
+  for (unsigned i = 0; i < sys.hdata.numAtom ; ++i){
+    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "lja") == 0) {
+      continue;
+    }
+    else {
+      numAtom_a = i;
+      break;
+    }
+  }
+  for (unsigned i = numAtom_a; i < sys.hdata.numAtom ; ++i){
+    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljb") == 0) {
+      continue;
+    }
+    else {
+      numAtom_b = i;
+      break;
+    }
+  }
+  numAtom_b -= numAtom_a;
+  for (unsigned i = numAtom_b; i < sys.hdata.numAtom ; ++i){
+    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljc") == 0) {
+      continue;
+    }
+    else {
+      numAtom_c = i;
+      break;
+    }
+  }
+  numAtom_c -= numAtom_b;
+  for (unsigned i = numAtom_c; i < sys.hdata.numAtom ; ++i){
+    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljA") == 0) {
+      continue;
+    }
+    else {
+      numAtom_A = i;
+      break;
+    }
+  }
+  numAtom_A -= numAtom_c;
+  for (unsigned i = numAtom_A; i < sys.hdata.numAtom ; ++i){
+    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljB") == 0) {
+      continue;
+    }
+    else {
+      numAtom_B = i;
+      break;
+    }
+  }
+  numAtom_B -= numAtom_A;
+  printf ("# numAtoms are: %d %d %d %d %d\n",
+	  numAtom_a, numAtom_b, numAtom_c,
+	  numAtom_A, numAtom_B);
+  
   LennardJones6_12Parameter ljparam_attractive;
   LennardJones6_12Parameter ljparam_repulsive;
-  ljparam_attractive.reinit (1.f, 1.f, 1.f, 0.f, rcut);
+  LennardJones6_12Parameter ljparam_attractive0p8;
+  ljparam_attractive.reinit    (1.f, 1.f, 1.f, 0.f, rcut);
+  ljparam_attractive0p8.reinit (1.f, 1.f, .8f, 0.f, rcut);
   ljparam_repulsive .reinit (1.f, 1.f,-1.f, 0.f, rcut);
 
   Topology::System sysTop;
@@ -72,6 +127,8 @@ int main(int argc, char * argv[])
   mol_a.pushAtom (Topology::Atom (1.0, 0.0, 0));
   Topology::Molecule mol_b;
   mol_b.pushAtom (Topology::Atom (1.0, 0.0, 1));
+  Topology::Molecule mol_c;
+  mol_c.pushAtom (Topology::Atom (1.0, 0.0, 4));
   Topology::Molecule mol_A;
   mol_A.pushAtom (Topology::Atom (1.0, 0.0, 2));
   Topology::Molecule mol_B;
@@ -79,12 +136,16 @@ int main(int argc, char * argv[])
 
   sysTop.addMolecules (mol_a, numAtom_a);
   sysTop.addMolecules (mol_b, numAtom_b);
+  sysTop.addMolecules (mol_c, numAtom_c);
   sysTop.addMolecules (mol_A, numAtom_A);
   sysTop.addMolecules (mol_B, numAtom_B);
 
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(2, 2, ljparam_attractive));
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(3, 3, ljparam_attractive));
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(2, 3, ljparam_repulsive));
+
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(4, 2, ljparam_attractive0p8));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(4, 3, ljparam_attractive0p8));
 
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 2, ljparam_attractive));
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 3, ljparam_attractive));
