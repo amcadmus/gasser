@@ -31,17 +31,17 @@ int main(int argc, char * argv[])
   IndexType nstep = 100000;
   IndexType confFeq = 100000;
   IndexType thermoFeq = 100;
-  ScalorType rcut = 4.0;
+  ScalorType rcut = 2.5;
   ScalorType nlistExten = 0.3;
-  ScalorType refT = 1.50;
+  ScalorType refT = 1.00;
   ScalorType tauT = 1.;
   ScalorType lattice_k = 1000.f;
   char * filename;
-  IndexType numAtom_A = 1000;
-  IndexType numAtom_B = 1000;
-  IndexType numAtom_a = 1000;
-  IndexType numAtom_b = 1000;
-  IndexType numAtom_c = 1000;
+  IndexType numAtom_A = 12320;
+  IndexType numAtom_B = 12000;
+  IndexType numAtom_a = 2000;
+  IndexType numAtom_b = 2000;
+  IndexType numAtom_c = 4000;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -62,7 +62,8 @@ int main(int argc, char * argv[])
     printf ("# inconsistent number of atom!\n");
     exit (1);
   }
-  for (unsigned i = 0; i < sys.hdata.numAtom ; ++i){
+  unsigned position = 0;
+  for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "lja") == 0) {
       continue;
     }
@@ -71,7 +72,8 @@ int main(int argc, char * argv[])
       break;
     }
   }
-  for (unsigned i = numAtom_a; i < sys.hdata.numAtom ; ++i){
+  position = numAtom_a;
+  for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljb") == 0) {
       continue;
     }
@@ -80,8 +82,9 @@ int main(int argc, char * argv[])
       break;
     }
   }
-  numAtom_b -= numAtom_a;
-  for (unsigned i = numAtom_b; i < sys.hdata.numAtom ; ++i){
+  numAtom_b -= position;
+  position += numAtom_b;
+  for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljc") == 0) {
       continue;
     }
@@ -90,8 +93,9 @@ int main(int argc, char * argv[])
       break;
     }
   }
-  numAtom_c -= numAtom_b;
-  for (unsigned i = numAtom_c; i < sys.hdata.numAtom ; ++i){
+  numAtom_c -= position;
+  position += numAtom_c;
+  for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljA") == 0) {
       continue;
     }
@@ -100,21 +104,20 @@ int main(int argc, char * argv[])
       break;
     }
   }
-  numAtom_A -= numAtom_c;
-  for (unsigned i = numAtom_A; i < sys.hdata.numAtom ; ++i){
-    if (strcmp(&(sys.hdata.atomName[i*StringSize]), "ljB") == 0) {
-      continue;
-    }
-    else {
-      numAtom_B = i;
-      break;
-    }
-  }
-  numAtom_B -= numAtom_A;
+  numAtom_A -= position;
+  position += numAtom_A;
+  numAtom_B = sys.hdata.numAtom - position;
   printf ("# numAtoms are: %d %d %d %d %d\n",
 	  numAtom_a, numAtom_b, numAtom_c,
 	  numAtom_A, numAtom_B);
+  if (sys.hdata.numAtom !=
+      numAtom_a + numAtom_b + numAtom_c + numAtom_A + numAtom_B) {    
+    printf ("# inconsistent number of atom!\n");
+    exit (1);
+    
+  }
   
+
   LennardJones6_12Parameter ljparam_attractive;
   LennardJones6_12Parameter ljparam_repulsive;
   LennardJones6_12Parameter ljparam_attractive0p8;
@@ -232,7 +235,7 @@ int main(int argc, char * argv[])
 	// fflush(stdout);
       }
       inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
-      inter.applyLatticeInteraction (sys, lattice_k, 0, 1, &timer);
+      inter.applyLatticeInteraction (sys, lattice_k, 0, 1, 4, &timer);
 
       inte_vv.step2 (sys, dt, &timer);
       if ((i+1) % thermoFeq == 0){	

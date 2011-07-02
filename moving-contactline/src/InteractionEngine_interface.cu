@@ -35,6 +35,7 @@ void __global__
 applyLatticeInteraction_manual (const ScalorType k,
 				const TypeType type0,
 				const TypeType type1,
+				const TypeType type2,
 				const CoordType * coord,
 				const CoordType * coord0,
 				const TypeType * type,
@@ -46,7 +47,7 @@ applyLatticeInteraction_manual (const ScalorType k,
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
   if (ii < numAtom) {
-    if (type[ii] == type0 || type[ii] == type1){
+    if (type[ii] == type0 || type[ii] == type1 || type[ii] == type2){
       forcx[ii] += 1.f * k * (coord0[ii].x - coord[ii].x);
       forcy[ii] += 1.f * k * (coord0[ii].y - coord[ii].y);
       forcz[ii] += 1.f * k * (coord0[ii].z - coord[ii].z);
@@ -60,11 +61,12 @@ applyLatticeInteraction (MDSystem & sys,
 			 const ScalorType & k,
 			 const TypeType & type0,
 			 const TypeType & type1,
+			 const TypeType & type2,
 			 MDTimer *timer)
 {
   applyLatticeInteraction_manual
       <<<atomGridDim, myBlockDim>>> (
-	  k, type0, type1,
+	  k, type0, type1, type2, 
 	  sys.ddata.coord,
 	  sys.ddata.fixed_coord,
 	  sys.ddata.type,
