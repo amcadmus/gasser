@@ -81,6 +81,7 @@ public:
 				const ScalorType & k,
 				const TypeType & type0,
 				const TypeType & type1,
+				const TypeType & type2,
 				MDTimer *timer);
   void applyNonBondedInteraction (MDSystem & sys,
 				  const ScalorType & rcut,
