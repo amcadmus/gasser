@@ -47,9 +47,9 @@ applyLatticeInteraction_manual (const ScalorType k,
   IndexType ii = threadIdx.x + bid * blockDim.x;
   if (ii < numAtom) {
     if (type[ii] == type0 || type[ii] == type1){
-      forcx[ii] = 2.f * k * (coord0[ii].x - coord[ii].x);
-      forcy[ii] = 2.f * k * (coord0[ii].y - coord[ii].y);
-      forcz[ii] = 2.f * k * (coord0[ii].z - coord[ii].z);
+      forcx[ii] += 1.f * k * (coord0[ii].x - coord[ii].x);
+      forcy[ii] += 1.f * k * (coord0[ii].y - coord[ii].y);
+      forcz[ii] += 1.f * k * (coord0[ii].z - coord[ii].z);
     }
   }
 }
