@@ -40,6 +40,7 @@ applyLatticeInteraction_manual (const ScalorType k,
 				const CoordType * coord0,
 				const TypeType * type,
 				const IndexType numAtom,
+				const RectangularBox box,
 				ScalorType * forcx,
 				ScalorType * forcy,
 				ScalorType * forcz)
@@ -48,9 +49,13 @@ applyLatticeInteraction_manual (const ScalorType k,
   IndexType ii = threadIdx.x + bid * blockDim.x;
   if (ii < numAtom) {
     if (type[ii] == type0 || type[ii] == type1 || type[ii] == type2){
-      forcx[ii] += 1.f * k * (coord0[ii].x - coord[ii].x);
-      forcy[ii] += 1.f * k * (coord0[ii].y - coord[ii].y);
-      forcz[ii] += 1.f * k * (coord0[ii].z - coord[ii].z);
+      ScalorType diffx = coord0[ii].x - coord[ii].x;
+      ScalorType diffy = coord0[ii].y - coord[ii].y;
+      ScalorType diffz = coord0[ii].z - coord[ii].z;
+      shortestImage (box, &diffx, &diffy, &diffz);
+      forcx[ii] += 1.f * k * (diffx);
+      forcy[ii] += 1.f * k * (diffy);
+      forcz[ii] += 1.f * k * (diffz);
     }
   }
 }
@@ -71,6 +76,7 @@ applyLatticeInteraction (MDSystem & sys,
 	  sys.ddata.fixed_coord,
 	  sys.ddata.type,
 	  sys.ddata.numAtom,
+	  sys.box,
 	  sys.ddata.forcx,
 	  sys.ddata.forcy,
 	  sys.ddata.forcz);

@@ -37,11 +37,11 @@ int main(int argc, char * argv[])
   ScalorType tauT = 1.;
   ScalorType lattice_k = 1000.f;
   char * filename;
-  IndexType numAtom_A = 12320;
-  IndexType numAtom_B = 12000;
-  IndexType numAtom_a = 2000;
-  IndexType numAtom_b = 2000;
-  IndexType numAtom_c = 4000;
+  IndexType numAtom_A = 720;
+  IndexType numAtom_B = 560;
+  IndexType numAtom_a = 200;
+  IndexType numAtom_b = 200;
+  IndexType numAtom_c = 400;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -57,11 +57,7 @@ int main(int argc, char * argv[])
 
   MDSystem sys;
   sys.initConfig(filename);
-  if (sys.hdata.numAtom !=
-      numAtom_a + numAtom_b + numAtom_c + numAtom_A + numAtom_B) {
-    printf ("# inconsistent number of atom!\n");
-    exit (1);
-  }
+
   unsigned position = 0;
   for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "lja") == 0) {
