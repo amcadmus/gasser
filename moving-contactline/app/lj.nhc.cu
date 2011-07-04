@@ -37,11 +37,11 @@ int main(int argc, char * argv[])
   ScalorType tauT = 1.;
   ScalorType lattice_k = 1000.f;
   char * filename;
-  IndexType numAtom_A = 720;
-  IndexType numAtom_B = 560;
-  IndexType numAtom_a = 200;
-  IndexType numAtom_b = 200;
-  IndexType numAtom_c = 400;
+  IndexType numAtom_A = 1000;
+  IndexType numAtom_B = 1000;
+  IndexType numAtom_a = 1000;
+  IndexType numAtom_b = 1000;
+  IndexType numAtom_c = 1000;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -117,9 +117,15 @@ int main(int argc, char * argv[])
   LennardJones6_12Parameter ljparam_attractive;
   LennardJones6_12Parameter ljparam_repulsive;
   LennardJones6_12Parameter ljparam_attractive0p8;
+  LennardJones6_12Parameter ljparam_attractive_aA;
+  LennardJones6_12Parameter ljparam_repulsive_aB;
+
   ljparam_attractive.reinit    (1.f, 1.f, 1.f, 0.f, rcut);
-  ljparam_attractive0p8.reinit (1.f, 1.f, .8f, 0.f, rcut);
+  ljparam_attractive0p8.reinit (1.f, 1.f, .5f, 0.f, rcut);
   ljparam_repulsive .reinit (1.f, 1.f,-1.f, 0.f, rcut);
+  ljparam_attractive_aA.reinit (1.f, 1.f,.7f, 0.f, rcut);
+  ljparam_repulsive_aB.reinit (1.f, 1.f,.3f, 0.f, rcut);
+  
 
   Topology::System sysTop;
   Topology::Molecule mol_a;
@@ -146,10 +152,10 @@ int main(int argc, char * argv[])
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(4, 2, ljparam_attractive0p8));
   sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(4, 3, ljparam_attractive0p8));
 
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 2, ljparam_attractive));
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 3, ljparam_attractive));
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 3, ljparam_repulsive));
-  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 2, ljparam_repulsive));  
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 2, ljparam_attractive_aA));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 3, ljparam_attractive_aA));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(0, 3, ljparam_repulsive_aB));
+  sysTop.addNonBondedInteraction (Topology::NonBondedInteraction(1, 2, ljparam_repulsive_aB));  
 
   sys.initTopology (sysTop);
   sys.initDeviceData ();
@@ -173,6 +179,8 @@ int main(int argc, char * argv[])
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
+  inter.applyNonBondedInteraction (sys, nlist, st, NULL, NULL);
+  inter.applyLatticeInteraction (sys, lattice_k, 0, 1, 4, NULL);
   
   MDTimer timer;
   unsigned i;
@@ -264,12 +272,12 @@ int main(int argc, char * argv[])
       }
 
       if ((i+1) % 100 == 0){
-	if (resh.calIndexTable (clist, &timer)){
-	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
-	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
-	}
+      	if (resh.calIndexTable (clist, &timer)){
+      	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+      	  clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	  disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+      	}
       }
     }
     sys.endWriteXtc();
