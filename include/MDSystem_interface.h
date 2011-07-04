@@ -12,6 +12,7 @@ class MDSystem;
 
 #include "xdrfile/xdrfile.h"
 #include "xdrfile/xdrfile_xtc.h"
+#include "xdrfile/xdrfile_trr.h"
 
 using namespace RectangularBoxGeometry;
 
@@ -23,6 +24,10 @@ class MDSystem : public Reshufflable
   matrix xdbox;
   rvec *xdx;
   float xdprec;
+  XDRFILE *xdtrrfile;
+  rvec *xdtrrx;
+  rvec *xdtrrv;
+  rvec *xdtrrf;
   IndexType * backMapTable;
   IndexType * backMapTableBuff;
   DeviceMDData recoveredDdata;	/**< MD data on device. Used to hold the
@@ -93,6 +98,25 @@ public:
    * 
    */
   void endWriteXtc ();
+  /** 
+   * Initialize .trr file output.
+   * 
+   * @param filename File name of the .trr file.
+   */
+  void initWriteTrr (const char * filename);
+  /** 
+   * Write host data to the .trr file.
+   * 
+   * @param step Present step.
+   * @param time Present time.
+   * @param timer A timer monitors the time consumption.
+   */
+  void writeHostDataTrr (int step, float time, MDTimer *timer=NULL);
+  /** 
+   * Close the .trr file.
+   * 
+   */
+  void endWriteTrr ();
   
   void writeHostDataGro (const char * filename,
 			 int step,

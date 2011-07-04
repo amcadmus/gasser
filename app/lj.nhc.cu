@@ -32,7 +32,7 @@ int main(int argc, char * argv[])
   IndexType confFeq = 100000;
   IndexType thermoFeq = 100;
   ScalorType rcut = 2.5;
-  ScalorType nlistExten = 0.3;
+  ScalorType nlistExten = 0.5;
   ScalorType refT = 1.00;
   ScalorType tauT = 1.;
   ScalorType lattice_k = 1000.f;
@@ -57,7 +57,7 @@ int main(int argc, char * argv[])
 
   MDSystem sys;
   sys.initConfig(filename);
-
+  
   unsigned position = 0;
   for (unsigned i = position; i < sys.hdata.numAtom ; ++i){
     if (strcmp(&(sys.hdata.atomName[i*StringSize]), "lja") == 0) {
@@ -212,10 +212,12 @@ int main(int argc, char * argv[])
   printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure box\n");
 
   try{
-    sys.initWriteXtc ("traj.xtc");
+    // sys.initWriteXtc ("traj.xtc");
+    sys.initWriteTrr ("traj.trr");
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
-    sys.writeHostDataXtc (0, 0*dt, &timer);
+    // sys.writeHostDataXtc (0, 0*dt, &timer);
+    sys.writeHostDataTrr (0, 0*dt, &timer);
     for (i = 0; i < nstep; ++i){
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
@@ -268,7 +270,8 @@ int main(int argc, char * argv[])
       if ((i+1) % confFeq == 0){
       	sys.recoverDeviceData (&timer);
       	sys.updateHostFromRecovered (&timer);
-      	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      	// sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      	sys.writeHostDataTrr (i+1, (i+1)*dt, &timer);
       }
 
       if ((i+1) % 100 == 0){
@@ -280,7 +283,8 @@ int main(int argc, char * argv[])
       	}
       }
     }
-    sys.endWriteXtc();
+    // sys.endWriteXtc();
+    sys.endWriteTrr();
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);
