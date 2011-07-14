@@ -20,18 +20,46 @@ Reshuffle_reshuffleArray (const TYPE * bkbuff,
   }
 }
 
+/// Calculate the index table according to a cell list.
+/**
+ * The index table is used to reshuffle objects that are
+ * Reshufflable. The table tells objects how the indexes of atoms
+ * mapped. After reshuffle, atoms in one cell are stored continuously.
+ * The cells are stored in a natural 3D index manner.
+ */
 
 class Reshuffle
 {
   bool malloced;
   void clear ();
 public:
-  IndexType * indexTable;
+  IndexType * indexTable;	/**< The index table, on device. This
+				 * is a public data member because of
+				 * the restriction of CUDA. */
 public:
+  /** 
+   * Constructor.
+   * 
+   * @param sys The MDSystem to reshuffle.
+   */
   Reshuffle (const MDSystem & sys);
   ~Reshuffle ();
+  /** 
+   * Reinitializer.
+   * 
+   * @param sys The MDSystem to reshuffle.
+   */
   void reinit (const MDSystem & sys);
-  bool calIndexTable (const CellList & nlist,
+  /** 
+   * Calculate the index table according to the cell list.
+   * 
+   * @param clist The cell list.
+   * @param timer Timer measuring the performance.
+   * 
+   * @return ture if the index table is successfully built. false
+   * otherwise.
+   */
+  bool calIndexTable (const CellList & clist,
 		      MDTimer * timer = NULL);
   // const IndexType * getIndexTable () const {return indexTable;}
 };

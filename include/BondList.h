@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+/// Bond list on host.
+
 struct HostBondList 
 {
   IndexType stride; // is the expected larger than or equal to the number of Atoms
@@ -24,6 +26,7 @@ public:
 		const IndexType &bondIndex);
 };
 
+/// Bond list on device.
 
 struct DeviceBondList 
 {

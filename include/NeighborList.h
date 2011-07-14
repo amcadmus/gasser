@@ -8,6 +8,8 @@
 
 using namespace RectangularBoxGeometry;
 
+/// Cell list on device
+
 struct DeviceCellList 
 {
   IndexType divide;
@@ -27,6 +29,8 @@ struct DeviceCellList
   CoordNoiType * neighborCellShiftNoi;
   IndexType maxNumNeighborCell;
 };
+
+/// Neighbor list on device.
 
 struct DeviceNeighborList
 {
