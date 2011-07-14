@@ -16,15 +16,45 @@ enum mdNBInteractionNParam {
   mdForceNParamCosTail_cap		= 9
 };
 
+/// The type and parameters of the Lennard-Jones 6-12 interaction.
+
 class LennardJones6_12Parameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12];
 public:
+  /** 
+   * Default constructor, do nothing.
+   * 
+   */
   LennardJones6_12Parameter () {}
+  /** 
+   * Constructor of the Lennard-Jones 6-12 interaction. The energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - \Big(\frac\sigma r\Big)^6 \Big] + U_s
+   * \f]
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   */
   LennardJones6_12Parameter (ScalorType epsilon,
 			     ScalorType sigma,
 			     ScalorType shift,
 			     ScalorType rcut);
+  /** 
+   * Reinitializer of the Lennard-Jones 6-12 interaction. The energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - \Big(\frac\sigma r\Big)^6 \Big] + U_s
+   * \f]
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   */
   void reinit (ScalorType epsilon,
 	       ScalorType sigma,
 	       ScalorType shift,
@@ -40,16 +70,46 @@ public:
   virtual ScalorType energyCorrection   (const ScalorType & rcut) const;
   virtual ScalorType pressureCorrection (const ScalorType & rcut) const;
 };
+
+
+/// The type and parameters of the Lennard-Jones 6-12 (ver. B) interaction.
 
 class LennardJones6_12BParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12B];
 public:
+  /** 
+   * Default constructor, do nothing.
+   */
   LennardJones6_12BParameter () {}
+  /** 
+   * Constructor of the Lennard-Jones 6-12 (ver. B) interaction. The energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - 2 \Big(\frac\sigma r\Big)^6 + U_s \Big]
+   * \f]
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   */  
   LennardJones6_12BParameter (ScalorType epsilon,
 			      ScalorType sigma,
 			      ScalorType shift,
 			      ScalorType rcut);
+  /** 
+   * Reinitializer of the Lennard-Jones 6-12 (ver. B) interaction. The energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - 2 \Big(\frac\sigma r\Big)^6 + U_s \Big]
+   * \f]
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   */  
   void reinit (ScalorType epsilon,
 	       ScalorType sigma,
 	       ScalorType shift,
@@ -66,16 +126,51 @@ public:
   virtual ScalorType pressureCorrection (const ScalorType & rcut) const;
 };
 
+/// The type and parameters of the Lennard-Jones 6-12 cap interaction.
+
 class LennardJones6_12CapParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12_cap];
 public:
+  /** 
+   * Default constructor, do nothing.
+   */
   LennardJones6_12CapParameter () {}
+  /** 
+   * Constructor of the Lennard-Jones 6-12 cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, the energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - \Big(\frac\sigma r\Big)^6 \Big] + U_s
+   * \f]
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   * @param cap  Cap Force \f$ F_{cap} \f$.
+   */
   LennardJones6_12CapParameter (ScalorType epsilon,
 				ScalorType sigma,
 				ScalorType shift,
 				ScalorType rcut,
 				ScalorType cap);
+  /** 
+   * Reinitializer of the Lennard-Jones 6-12 cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, the energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - \Big(\frac\sigma r\Big)^6 \Big] + U_s
+   * \f]
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   * @param cap  Cap Force \f$ F_{cap} \f$.
+   */
   void reinit (ScalorType epsilon,
 	       ScalorType sigma,
 	       ScalorType shift,
@@ -93,17 +188,53 @@ public:
   virtual ScalorType energyCorr   (const ScalorType & rcut) const;
   virtual ScalorType pressureCorr (const ScalorType & rcut) const;
 };
+
+
+/// The type and parameters of the Lennard-Jones 6-12 ver. B cap interaction.
 
 class LennardJones6_12BCapParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamLennardJones6_12B_cap];
 public:
+  /** 
+   * Default constructor, do nothing.
+   */
   LennardJones6_12BCapParameter () {}
+  /** 
+   * Constructor of the Lennard-Jones 6-12 (ver. B) cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, the energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - 2 \Big(\frac\sigma r\Big)^6 + U_s \Big]
+   * \f]
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   * @param cap The cap force \f$ F_{cap} \f$.
+   */  
   LennardJones6_12BCapParameter (ScalorType epsilon,
 				 ScalorType sigma,
 				 ScalorType shift,
 				 ScalorType rcut,
 				 ScalorType cap);
+  /** 
+   * Reinitializer of the Lennard-Jones 6-12 (ver. B) cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, the energy is
+   * \f[
+   * U(r) = 4\epsilon
+   * \Big[ \Big(\frac\sigma r\Big)^{12} - 2 \Big(\frac\sigma r\Big)^6 + U_s \Big]
+   * \f]
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param sigma Scaling parameter \f$ \sigma \f$.
+   * @param shift Shift of the energy \f$ U_s \f$.
+   * @param rcut Cut-off raidus.
+   * @param cap The cap force \f$ F_{cap} \f$.
+   */  
   void reinit (ScalorType epsilon,
 	       ScalorType sigma,
 	       ScalorType shift,
@@ -122,14 +253,43 @@ public:
   virtual ScalorType pressureCorr (const ScalorType & rcut) const;
 };
 
+/// The type and parameters of the cos shaped tail interaction.
+
 class CosTailParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamCosTail];
 public:
+  /** 
+   * Default constructor, do nothing.
+   */
   CosTailParameter () {}
+  /** 
+   * Constructor of the cos tail interaction. The energy is
+   * \f{eqnarray*}
+   * U(r) =
+   * 4\epsilon \Big[ \Big(\frac br\Big)^{12} - \Big(\frac br\Big)^{6} \Big] &\qquad &r < r_c\\
+   * -\epsilon \cos^2 \Big[ \frac{\pi(r - r_c)}{2w_c} \Big] & \qquad &r_c \leq r < r_c + w_c
+   * \f}
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param b Scaling parameter \f$ b \f$.
+   * @param wc Decay range \f$ w_c \f$.
+   */
   CosTailParameter (ScalorType epsilon,
 		    ScalorType b,
 		    ScalorType wc);
+  /** 
+   * Reinitializer of the cos tail interaction. The energy is
+   * \f{eqnarray*}
+   * U(r) =
+   * 4\epsilon \Big[ \Big(\frac br\Big)^{12} - \Big(\frac br\Big)^{6} \Big] &\qquad &r < r_c\\
+   * -\epsilon \cos^2 \Big[ \frac{\pi(r - r_c)}{2w_c} \Big] & \qquad &r_c \leq r < r_c + w_c
+   * \f}
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param b Scaling parameter \f$ b \f$.
+   * @param wc Decay range \f$ w_c \f$.
+   */
   void reinit (ScalorType epsilon,
 	       ScalorType b,
 	       ScalorType wc);
@@ -141,15 +301,50 @@ public:
   virtual ScalorType rcut () const ;
 };
 
+/// The type and parameters of the cos shaped tail cap interaction.
+
 class CosTailCapParameter : public NonBondedInteractionParameter
 {
   ScalorType param[mdForceNParamCosTail_cap];
 public:
+  /** 
+   * Default constructor, do nothing.
+   */
   CosTailCapParameter () {}
+  /** 
+   * Constructor of the cos tail cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, The energy is
+   * \f{eqnarray*}
+   * U(r) =
+   * 4\epsilon \Big[ \Big(\frac br\Big)^{12} - \Big(\frac br\Big)^{6} \Big] &\qquad &r < r_c\\
+   * -\epsilon \cos^2 \Big[ \frac{\pi(r - r_c)}{2w_c} \Big] & \qquad &r_c \leq r < r_c + w_c
+   * \f}
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param b Scaling parameter \f$ b \f$.
+   * @param wc Decay range \f$ w_c \f$.
+   * @param cap  Cap Force \f$ F_{cap} \f$.
+   */
   CosTailCapParameter (ScalorType epsilon,
 		       ScalorType b,
 		       ScalorType wc,
 		       ScalorType cap);
+  /** 
+   * Reinitializer of the cos tail cap interaction.
+   * If the repulsive force is smaller than \f$ F_{cap} \f$, The energy is
+   * \f{eqnarray*}
+   * U(r) =
+   * 4\epsilon \Big[ \Big(\frac br\Big)^{12} - \Big(\frac br\Big)^{6} \Big] &\qquad &r < r_c\\
+   * -\epsilon \cos^2 \Big[ \frac{\pi(r - r_c)}{2w_c} \Big] & \qquad &r_c \leq r < r_c + w_c
+   * \f}
+   * Otherwise, the force is constant \f$ F_{cap} \f$.
+   * 
+   * @param epsilon Strength parameter \f$ \epsilon \f$.
+   * @param b Scaling parameter \f$ b \f$.
+   * @param wc Decay range \f$ w_c \f$.
+   * @param cap  Cap Force \f$ F_{cap} \f$.
+   */
   void reinit (ScalorType epsilon,
 	       ScalorType b,
 	       ScalorType wc,

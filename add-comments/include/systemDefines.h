@@ -52,7 +52,7 @@ typedef int3		IntVectorType;
 typedef uint3		IndexVectorType;
 #endif
 
-
+/// 4D float vector on host.
 struct floatH4 
 {
   float x, y, z, w;
@@ -60,11 +60,15 @@ struct floatH4
   // floatH4 & operator = (const floatH4 & a) 
   //     {x = a.x; y = a.y; z = a.z; w = a.w;
 };
+
+/// 3D float vector on host.
 struct floatH3
 {
   float x, y, z;
   floatH3 () : x(0.f), y(0.f), z(0.f) {}
 };
+
+/// 3D int vector on host.
 struct intH3
 {
   int x, y, z;

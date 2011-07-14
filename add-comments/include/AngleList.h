@@ -4,10 +4,13 @@
 #include "common.h"
 #include "AngleInteraction.h"
 
+/// Angle list on host.
 
 struct HostAngleList 
 {
-  IndexType stride; // is the expected larger than or equal to the number of Atoms
+  IndexType stride; /**< The stride of the list, which is the expected
+			 * larger than or equal to the number of
+			 * Atoms. */
   // IndexType listLength;
   IndexType maxNumAngle;
   IndexType * angleNeighborIndex;
@@ -29,16 +32,20 @@ public:
 		 const IndexType &anglePosi);
 };
 
+/// Angle list on device.
 
 struct DeviceAngleList 
 {
-  bool malloced ;
-  IndexType stride; // is the expected larger than or equal to the number of Atoms
-  IndexType maxNumAngle;
-  IndexType * angleNeighborIndex;
-  IndexType * angleIndex;
-  IndexType * anglePosi;
-  IndexType * numAngle;
+  bool malloced ;		/**< Tell us if it is allocated. */
+  IndexType stride; 	/**< The stride of the list, which is the
+			 * expected larger than or equal to the number
+			 * of Atoms. */
+  IndexType maxNumAngle;	/**< Maximum number of angle
+				 * interaction per atom. */
+  IndexType * angleNeighborIndex; /**< Neighbor index of the angle interaction. */
+  IndexType * angleIndex;	/**< Index of the angle interaction. */
+  IndexType * anglePosi;	/**< Position of atom in the angle interaction. */
+  IndexType * numAngle;		/**< The number of angle interaction of atoms. */
 };
 
 void initDeviceAngleList (DeviceAngleList & dbdlist) ;

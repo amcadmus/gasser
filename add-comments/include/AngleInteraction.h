@@ -9,13 +9,35 @@ enum mdAngleInteractionNParam{
   mdForceNParamCosAngle0	= 1
 };
 
+/// Parameter of the harmonic angle interaction
+
 class AngleHarmonicParameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamAngleHarmonic];
 public:
   AngleHarmonicParameter () {}
+  /** 
+   * Constructor of the harmonic angle interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (\theta - \theta_0)^2
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param theta0 Equilibrium angle \f$ \theta_0 \f$.
+   */
   AngleHarmonicParameter (ScalorType k,
 			  ScalorType theta0);
+  /** 
+   * Reinitializer of the harmonic angle interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (\theta - \theta_0)^2
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param theta0 Equilibrium angle \f$ \theta_0 \f$.
+   */
   void reinit (ScalorType k,
 	       ScalorType theta0);
   virtual InteractionType type () const;
@@ -24,17 +46,45 @@ public:
   virtual const ScalorType * c_ptr () const ;
 };
 
+/// Parameter of the cos angle 0 interaction
+
 class CosAngle0Parameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamCosAngle0];
 public:
+  /** 
+   * Default constructor, do nothing
+   * 
+   */
   CosAngle0Parameter () {}
+  /** 
+   * Constructor of the cos angle 0 interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (1 - \cos\theta)
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @see reinit 
+   */
   CosAngle0Parameter (ScalorType k);
+  /** 
+   * Reinitializer of the cos angle 0 interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (1 - \cos\theta)
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   */
   void reinit (ScalorType k);
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
+  // virtual unsigned numParam () const ;
+  // virtual ScalorType * c_ptr () ;
+  // virtual const ScalorType * c_ptr () const ;
 };
 
 

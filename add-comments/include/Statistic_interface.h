@@ -27,6 +27,14 @@ enum mdStatisticItem {
 };
 typedef enum mdStatisticItem mdStatisticItem_t;
 
+/// The MD statistic, calculating physical properties of interest.
+/**
+ * Now can calculate a series of thermodynamic quantities: non-bonded
+ * energy, bonded energy, kinetic energy, pressure (\f$ p_{xx}\f$, \f$
+ * p_{yy}\f$ and \f$ p_{zz}\f$) and virial (\f$ v_{xx}\f$, \f$
+ * v_{yy}\f$ and \f$ v_{zz}\f$).
+ */
+
 class MDStatistic
 {
   bool dmalloced;
@@ -54,19 +62,86 @@ public:
 	     const IndexType num,
 	     const mdStatisticItem_t items[NumberOfStatisticItems]);
 public:
+  /** 
+   * Calculate the kinetic energy.
+   * 
+   * @return The kinetic energy.
+   */
   ScalorType kineticEnergy () const;
+  /** 
+   * Calculate the xx component of the pressure tensor.
+   * 
+   * @return The xx component of the pressure tensor.
+   */
   ScalorType pressureXX (const RectangularBox & box) const;
+  /** 
+   * Calculate the yy component of the pressure tensor.
+   * 
+   * @return The yy component of the pressure tensor.
+   */
   ScalorType pressureYY (const RectangularBox & box) const;
+  /** 
+   * Calculate the zz component of the pressure tensor.
+   * 
+   * @return The zz component of the pressure tensor.
+   */
   ScalorType pressureZZ (const RectangularBox & box) const;
+  /** 
+   * Calculate the pressure.
+   * 
+   * @return The pressure.
+   */
   ScalorType pressure   (const RectangularBox & box) const;
+  /** 
+   * Calculate the virial.
+   * 
+   * @return The virial.
+   */
   ScalorType virial () const;
+  /** 
+   * Calculate the xx component of the virial tensor.
+   * 
+   * @return The xx component of the virial tensor.
+   */
   ScalorType virialXX () const;
+  /** 
+   * Calculate the yy component of the virial tensor.
+   * 
+   * @return The yy component of the virial tensor.
+   */
   ScalorType virialYY () const;
+  /** 
+   * Calculate the zz component of the virial tensor.
+   * 
+   * @return The zz component of the virial tensor.
+   */
   ScalorType virialZZ () const;
+  /** 
+   * Calculate the non-bonded energy.
+   * 
+   * @return The non-bonded energy.
+   */
   ScalorType nonBondedEnergy () const;
+  /** 
+   * Calculate the bonded energy.
+   * 
+   * @return The bonded energy.
+   */
   ScalorType bondedEnergy () const;
 public:
+  /** 
+   * Set the energy correction according to the cutoff of short-range
+   * interactions.
+   * 
+   * @param energyCorr The energy correction.
+   */
   void setEnergyCorr (const ScalorType & energyCorr);
+  /** 
+   * Set the pressure correction according to the cutoff of short-range
+   * interactions.
+   * 
+   * @param pressureCorr The pressure correction.
+   */
   void setPressureCorr (const ScalorType & pressureCorr);
 };
 

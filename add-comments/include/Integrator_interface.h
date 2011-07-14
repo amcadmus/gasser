@@ -11,6 +11,8 @@
 #include "Thermostat.h"
 #include "Barostat.h"
 
+/// Remove the non-zero moment of the system.
+
 class TranslationalFreedomRemover 
 {
   dim3 atomGridDim;
@@ -21,17 +23,48 @@ class TranslationalFreedomRemover
   SumVector<ScalorType > sum_y;
   SumVector<ScalorType > sum_z;
 public:
+  /** 
+   * Constructor.
+   * 
+   * @param sys Remove the non-zero moment of this system, which
+   * should be the same as that used in the TranslationalFreedomRemover::remove.
+   * @param NThread Number of threads in a block.
+   */
   TranslationalFreedomRemover (const MDSystem & sys, 
 			       const IndexType & NThread)
       { init (sys, NThread); }
   ~TranslationalFreedomRemover ();
+  /** 
+   * Initializer.
+   * 
+   * @param sys Remove the non-zero moment of this system, which
+   * should be the same as that used in the TranslationalFreedomRemover::remove.
+   * @param NThread Number of threads in a block.
+   */
   void init (const MDSystem & sys, 
 	     const IndexType & NThread);
 public:
+  /** 
+   * Remove the non-zero moment of the system.
+   * 
+   * @param sys Remove the non-zero moment of this system.
+   * @param timer Timer measuring the performance.
+   */
   void remove (MDSystem & sys, MDTimer * timer = NULL);
 };
 
-  
+/// The leap frog integrator.  
+/**
+ * The formula of the leap frog integrator contain two steps, the
+ * velocity step:
+ * \f[
+ * v_i (t+\frac{\Delta t}2) = v_i (t-\frac{\Delta t}2) + \Delta t\frac1{m_i}F_i(t)
+ * \f]
+ * and the position step:
+ * \f[
+ * r_i (t+{\Delta t}) = r_i (t) + \Delta t\, v_i (t+\frac{\Delta t}2)
+ * \f]
+ */
 
 class LeapFrog 
 {
@@ -47,20 +80,81 @@ class LeapFrog
 public:
   LeapFrog () {}
   ~LeapFrog ();
+  /** 
+   * Constructor.
+   * 
+   * @param sys The MDSystem to integrate, which should be the same as
+   * that used in the following calls.
+   * @param NThread Number of threads in a block.
+   */
   LeapFrog (const MDSystem & sys, 
 	    const IndexType & NThread)
       { reinit (sys, NThread);}
+  /** 
+   * Reinitializer.
+   * 
+   * @param sys The MDSystem to integrate, which should be the same as
+   * that used in the following calls.
+   * @param NThread Number of threads in a block.
+   */
   void reinit (const MDSystem & sys, 
 	       const IndexType & NThread);
 public:
-  void step (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
-  void step (MDSystem & sys, const ScalorType & dt,
-	     MDStatistic & st, MDTimer * timer = NULL);
+  /** 
+   * Integrate one step.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param timer Timer measuring the performance.
+   */
+  void step (MDSystem & sys,
+	     const ScalorType & dt,
+	     MDTimer * timer = NULL);
+  /** 
+   * Integrate one step with statistic.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param st The statistic.
+   * @param timer Timer measuring the performance.
+   */
+  void step (MDSystem & sys,
+	     const ScalorType & dt,
+	     MDStatistic & st,
+	     MDTimer * timer = NULL);
 public:
-  void stepX (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
-  void stepV (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
-  void stepV (MDSystem & sys, const ScalorType & dt,
-	      MDStatistic & st, MDTimer * timer = NULL);
+  /** 
+   * Integrate the position forward.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param timer Timer measuring the performance.
+   */
+  void stepX (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDTimer * timer = NULL);
+  /** 
+   * Integrate the velocity forward.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param timer Timer measuring the performance.
+   */
+  void stepV (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDTimer * timer = NULL);
+  /** 
+   * Integrate the velocity forward, with statistic.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param st The statistic.
+   * @param timer Timer measuring the performance.
+   */
+  void stepV (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDStatistic & st,
+	      MDTimer * timer = NULL);
   void stepV_VCouple (MDSystem & sys,
 		      const ScalorType & dt,
 		      const ScalorType * lambda,
