@@ -58,7 +58,7 @@ public:
  * The formula of the leap frog integrator contain two steps, the
  * velocity step:
  * \f[
- * v_i (t+\frac{\Delta t}2) = v_i (t-\frac{\Delta t}2) + \Delta t\frac1{m_i}F_i(t)
+ * v_i (t+\frac{\Delta t}2) = v_i (t-\frac{\Delta t}2) + \Delta t\frac{F_i(t)}{m_i}
  * \f]
  * and the position step:
  * \f[
@@ -270,8 +270,22 @@ public:
 		MDTimer * timer=NULL);
 };
 
-
-
+/// The velocity Verlet integrator.
+/**
+ * The formula of the velocity Verlet integrator are devided into two steps.
+ * Step1:
+ * \f{eqnarray*}
+ * v_i(t + \frac{\Delta t}2) &=& v_i(t) + \frac{\Delta t}2 \frac{F_i(t)}{m_i} \\
+ * r_i(t + \Delta) &=& r_i(t) + \Delta t\ v_i(t + \frac{\Delta t}2)
+ * \f}
+ * And step 2:
+ * \f{eqnarray*}
+ * v_i(t + \Delta t) &=& v_i(t + \frac{\Delta t}2) + \frac{\Delta t}2 \frac{F_i(t + \Delta t)}{m_i}
+ * \f}
+ * 
+ * Generally, first integrate step 1, calculate the interactions within the system,
+ * and then integrate step 2.
+ */
 class VelocityVerlet 
 {
   dim3 atomGridDim;
@@ -285,16 +299,58 @@ class VelocityVerlet
   IndexType sharedBuffSize;
 public:
   ~VelocityVerlet ();
+  /** 
+   * Constructor.
+   * 
+   * @param sys The MDSystem to integrate, which should be the same as
+   * that used in the following calls.
+   * @param NThread Number of threads in a block.
+   */
   VelocityVerlet (const MDSystem & sys, 
 		  const IndexType & NThread)
       { init (sys, NThread);}
+  /** 
+   * Initializer.
+   * 
+   * @param sys The MDSystem to integrate, which should be the same as
+   * that used in the following calls.
+   * @param NThread Number of threads in a block.
+   */
   void init (const MDSystem & sys, 
 	     const IndexType & NThread);
 public:
-  void step1 (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
-  void step2 (MDSystem & sys, const ScalorType & dt, MDTimer * timer = NULL);
-  void step2 (MDSystem & sys, const ScalorType & dt,
-	      MDStatistic & st, MDTimer * timer = NULL);
+  /** 
+   * Integrate the step 1.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param timer Timer measuring the performance.
+   */
+  void step1 (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDTimer * timer = NULL);
+  /** 
+   * Integrate the step 2.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param timer Timer measuring the performance.
+   */
+  void step2 (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDTimer * timer = NULL);
+  /** 
+   * Integrate the step 2 with statistic.
+   * 
+   * @param sys The MDSystem to integrate.
+   * @param dt The time step.
+   * @param st The statistic.
+   * @param timer Timer measuring the performance.
+   */
+  void step2 (MDSystem & sys,
+	      const ScalorType & dt,
+	      MDStatistic & st,
+	      MDTimer * timer = NULL);
 public:
   // void oneStep (MDSystem & sys, const RectangularBox & box,
   // 		const NeighborList & nlist, const ScalorType & dt);
