@@ -6,6 +6,13 @@
 
 //#define MaxThreadsPerBlocktmptmp  64
 
+/// Sum all data in a array.
+/** 
+ * After initialization, the SumVector allocate a array named
+ * SumVector::buff on device, write the data to be summed in this
+ * array and then run SumVector::sumBuff or SumVector::sumBuffAdd. The
+ * data in the array will not be destoried.
+ */
 template <typename SCALORTYPE>
 class SumVector 
 {
@@ -19,15 +26,37 @@ class SumVector
   void clear();
   void init   (IndexType NumberOfSum, IndexType NThread);
 public:
-  SCALORTYPE * buff;
+  SCALORTYPE * buff;		/**< Data to be summed should be
+				 * written in this array. */
 public:
   SumVector();
   ~SumVector();
+  /** 
+   * Reinitializer.
+   * 
+   * @param NumberOfSum Number of data to be summed.
+   * @param NThread Number of threads in a block.
+   */
   void reinit (IndexType NumberOfSum, IndexType NThread);
-  // SCALORTYPE * getBuff () {return buff;}
-  void sumBuff (SCALORTYPE * result, IndexType posi,
+  /** 
+   * Sum the data in the buff.
+   * 
+   * @param result The result.
+   * @param posi The position of the result.
+   * @param stream The cuda stream carrying out the summation.
+   */
+  void sumBuff (SCALORTYPE * result,
+		IndexType posi,
 		cudaStream_t stream = 0);
-  void sumBuffAdd (SCALORTYPE * result, IndexType posi,
+  /** 
+   * Sum the data in the buff, and add to the result.
+   * 
+   * @param result The result.
+   * @param posi The position of the result.
+   * @param stream The cuda stream carrying out the summation.
+   */
+  void sumBuffAdd (SCALORTYPE * result,
+		   IndexType posi,
 		   cudaStream_t stream = 0);
 };
 
