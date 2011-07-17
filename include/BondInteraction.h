@@ -10,14 +10,32 @@ enum mdBondInteractionNParam{
   mdForceNParamFENE2		= 3
 };
 
+/// Type and parameters of the harmonic spring bond interaction.
 
 class HarmonicSpringParameter : public BondInteractionParameter
 {
   ScalorType param [mdForceNParamHarmonicSpring];
 public:
+  /** 
+   * Default constructor. Do nothing.
+   */
   HarmonicSpringParameter () {}
+  /** 
+   * Constructor of the harmonic bond interaction. The energy is
+   * \f$ U(r) = \frac12 k (r - r_0)^2 \f$.
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param r0 Equilibrium bond length \f$ r_0\f$.
+   */
   HarmonicSpringParameter (ScalorType k,
 			   ScalorType r0);
+  /** 
+   * Reinitializer of the harmonic bond interaction. The energy is
+   * \f$ U(r) = \frac12 k (r - r_0)^2 \f$.
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param r0 Equilibrium bond length \f$ r_0\f$.
+   */
   void reinit (ScalorType k,
 	       ScalorType r0);
   virtual InteractionType type () const;
@@ -26,13 +44,42 @@ public:
   virtual const ScalorType * c_ptr () const ;
 };
 
+/// Type and parameters of the FENE bond interaction.
+
 class FENEParameter : public BondInteractionParameter
 {
   ScalorType param [mdForceNParamFENE];
 public:
+  /** 
+   * Default constructor. Do nothing.
+   */
   FENEParameter () {}
+  /** 
+   * Constructor of the FENE bond interaction. The energy is
+   * \f[
+   * U(r) = - \frac12 \epsilon\,r_\infty^2 \log
+   * \Big [
+   * 1 - \Big(\frac{r}{r_\infty}\big)^2
+   * \Big ]
+   * \f].
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param rinf Maximum bond length \f$ r_\infty\f$.
+   */
   FENEParameter (ScalorType k,
 		 ScalorType rinf);
+  /** 
+   * Reinitializer of the FENE bond interaction. The energy is
+   * \f[
+   * U(r) = - \frac12 \epsilon\,r_\infty^2 \log
+   * \Big [
+   * 1 - \Big(\frac{r}{r_\infty}\big)^2
+   * \Big ]
+   * \f].
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param rinf Maximum bond length \f$ r_\infty\f$.
+   */
   void reinit (ScalorType k,
 	       ScalorType rinf);
   virtual InteractionType type () const;
@@ -41,14 +88,45 @@ public:
   virtual const ScalorType * c_ptr () const ;
 };
 
+/// Type and parameters of the FENE bond (ver. 2) interaction.
+
 class FENE2Parameter : public BondInteractionParameter
 {
   ScalorType param [mdForceNParamFENE2];
 public:
+  /** 
+   * Default constructor. Do nothing.
+   */
   FENE2Parameter () {}
+  /** 
+   * Constructor of the FENE bond (ver. 2) interaction. The energy is
+   * \f[
+   * U(r) = - \frac12 \epsilon\,r_s^2 \log
+   * \Big [
+   * 1 - \Big(\frac{r - r_0}{r_s}\big)^2
+   * \Big ]
+   * \f].
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param rs Maximum bond length deviation from \f$ r_0\f$.
+   * @param r0 Equilibrium bond length \f$ r_0\f$.
+   */
   FENE2Parameter (ScalorType k,
 		  ScalorType rs,
 		  ScalorType r0);
+  /** 
+   * Reinitializer of the FENE bond (ver. 2) interaction. The energy is
+   * \f[
+   * U(r) = - \frac12 \epsilon\,r_s^2 \log
+   * \Big [
+   * 1 - \Big(\frac{r - r_0}{r_s}\big)^2
+   * \Big ]
+   * \f].
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param rs Maximum bond length deviation from \f$ r_0\f$.
+   * @param r0 Equilibrium bond length \f$ r_0\f$.
+   */
   void reinit (ScalorType k,
 	       ScalorType rs,
 	       ScalorType r0);

@@ -17,6 +17,16 @@ class NeighborList;
 
 using namespace RectangularBoxGeometry;
 
+/// Neighbor list for the short range non-bonded interactions.
+
+/**
+ * The neighbor list is always built from cell list (CellList). If the
+ * cell list is empty, then the neighbor list is build by the all-pair
+ * comparing method.
+ * 
+ */
+
+
 class NeighborList : public Reshufflable
 {
   MDError err;
@@ -55,20 +65,66 @@ private: // reshuffle backup
   IndexType *		bkdnlistForceIndex;
   CoordType *		bkbackupCoord;
 public:
+  /** 
+   * Constructor.
+   * 
+   * @param sysNbInter Non-bonded interaction of the system.
+   * @param sys MDSystem for which the neighbor list is built.
+   * @param rlist Radius to build the list. All neighbors with in this
+   * raidus will be recorded in the neighbor list.
+   * @param NTread Number of threads in a block.
+   * @param DeviceNeighborListExpansion Ratio of to expanses the length
+   * of neighbor list with respect to the default length. If the length
+   * of the neighbor list is complained to be too small, increase this
+   * value.
+   */
   NeighborList (const SystemNonBondedInteraction & sysNbInter,
 		const MDSystem & sys,
 		const ScalorType & rlist,
 		const IndexType & NTread,
 		const ScalorType & DeviceNeighborListExpansion = 1);
+  /** 
+   * Destructor.
+   * 
+   * 
+   */
   ~NeighborList();
+  /** 
+   * Reinitializer.
+   * 
+   * @param sysNbInter Non-bonded interaction of the system.
+   * @param sys MDSystem for which the neighbor list is built.
+   * @param rlist Radius to build the list. All neighbors with in this
+   * raidus will be recorded in the neighbor list.
+   * @param NTread Number of threads in a block.
+   * @param DeviceNeighborListExpansion Ratio of to expanses the length
+   * of neighbor list with respect to the default length. If the length
+   * of the neighbor list is complained to be too small, increase this
+   * value.
+   */
   void reinit (const SystemNonBondedInteraction & sysNbInter,
 	       const MDSystem & sys,
 	       const ScalorType & rlist,
 	       const IndexType & NTread,
 	       const ScalorType & DeviceNeighborListExpansion = 1);
+  /** 
+   * Rebuild the neighbor list.
+   * 
+   * @param sys MDSystem for which the neighbor list is built.
+   * @param clist Cell list based on which the neighbor list is build.
+   * @param timer Timer measuring the performance.
+   */
   void rebuild (const MDSystem & sys,
 		const CellList & clist,
 		MDTimer * timer = NULL);
+  /** 
+   * Reshuffle the neighbor list.
+   * 
+   * @param indexTable Index table to reshuffle.
+   * @param numAtom Number of atom in system, which is the same as the
+   * length of the index table
+   * @param timer Timer measuring the performance.
+   */
   virtual void reshuffle (const IndexType * indexTable,
 			  const IndexType & numAtom,
 			  MDTimer *timer = NULL);
