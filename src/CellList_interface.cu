@@ -38,12 +38,12 @@ mallocDeviceCellList (const IntVectorType & NCell,
   cellGridDim = toGridDim (numCell);
 
   cudaMalloc ((void**)&(dclist.data), 
-	      sizeof(ScalorType) * numCell * dclist.stride);
-  cudaMalloc ((void**)&(dclist.numbers), sizeof(unsigned) * numCell);
+	      sizeof(IndexType) * numCell * dclist.stride);
+  cudaMalloc ((void**)&(dclist.numbers), sizeof(IndexType) * numCell);
   cudaMalloc ((void**)&mySendBuff, 
-	      sizeof(ScalorType) * numCell * dclist.stride);
+	      sizeof(IndexType) * numCell * dclist.stride);
   cudaMalloc ((void**)&myTargetBuff, 
-	      sizeof(ScalorType) * numCell * dclist.stride);
+	      sizeof(IndexType) * numCell * dclist.stride);
   checkCUDAError ("CellList::init cell list");
 
   IndexType maxNumNeighborCell = (2*mydivide+1) * (2*mydivide+1) * (2*mydivide+1);
