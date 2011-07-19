@@ -48,9 +48,9 @@ void TranslationalFreedomRemover::remove (MDSystem & sys,
 	  sys.ddata.velox,
 	  sys.ddata.veloy,
 	  sys.ddata.veloz,
-	  sum_x.getBuff(),
-	  sum_y.getBuff(),
-	  sum_z.getBuff());
+	  sum_x.buff,
+	  sum_y.buff,
+	  sum_z.buff);
   checkCUDAError("TranslationalFreedomRemover::remove, prepare");
   sum_x.sumBuff (sums, 0);
   sum_y.sumBuff (sums, 1);
@@ -128,9 +128,9 @@ void LeapFrog::step (MDSystem & sys,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  dt,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("LeapFrog::step (with statistic)");
   sum_kxx.sumBuffAdd (st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.ddata, mdStatisticKineticEnergyYY, 0);
@@ -185,9 +185,9 @@ void LeapFrog::stepV (MDSystem & sys,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  dt,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("LeapFrog::stepV (with statistic)");
   sum_kxx.sumBuffAdd (st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.ddata, mdStatisticKineticEnergyYY, 0);
@@ -228,9 +228,9 @@ stepV_VCouple (MDSystem & sys,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  lambda[0], lambda[1], lambda[2],
 	  dt,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("LeapFrog::stepV (with statistic)");
   sum_kxx.sumBuffAdd (st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.ddata, mdStatisticKineticEnergyYY, 0);
@@ -314,9 +314,9 @@ void VelocityVerlet::step2 (MDSystem & sys,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  dt,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("VelocityVerlet::step2 (with statistic)");
   sum_kxx.sumBuffAdd (st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.ddata, mdStatisticKineticEnergyYY, 0);
@@ -403,7 +403,7 @@ void VelocityRescale::step2 (MDSystem & sys,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  dt,
-	  sum_k.getBuff());
+	  sum_k.buff);
   checkCUDAError ("VelocityRescale:: Veloccity Verlet step2");
   sum_k.sumBuff (kineticE, 0, 0);
   cudaMemcpy (&hkineticE, kineticE, sizeof(ScalorType), cudaMemcpyDeviceToHost);
@@ -430,7 +430,7 @@ void VelocityRescale::step2 (MDSystem & sys,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  sys.ddata.forcx, sys.ddata.forcy, sys.ddata.forcz,
 	  dt,
-	  sum_k.getBuff());
+	  sum_k.buff);
   checkCUDAError ("VelocityRescale:: Veloccity Verlet step2");
   sum_k.sumBuff (kineticE, 0, 0);
   cudaMemcpy (&hkineticE, kineticE, sizeof(ScalorType), cudaMemcpyDeviceToHost);
@@ -442,9 +442,9 @@ void VelocityRescale::step2 (MDSystem & sys,
 	  sys.ddata.mass,
 	  sys.ddata.velox, sys.ddata.veloy, sys.ddata.veloz,
 	  alpha,
-	  sum_kxx.getBuff(),
-	  sum_kyy.getBuff(),
-	  sum_kzz.getBuff());
+	  sum_kxx.buff,
+	  sum_kyy.buff,
+	  sum_kzz.buff);
   checkCUDAError ("VelocityRescale::step2 rescale");
   sum_kxx.sumBuffAdd (st.ddata, mdStatisticKineticEnergyXX, 0);
   sum_kyy.sumBuffAdd (st.ddata, mdStatisticKineticEnergyYY, 0);

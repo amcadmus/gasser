@@ -109,7 +109,7 @@ DeviceBondList (const DeviceCellListedMDData & data)
   reinit (data);
 }
 
-inline void Parallel::DeviceBondList::
+void Parallel::DeviceBondList::
 reinit (const DeviceCellListedMDData & data)
 {
   IndexType numThreadsInCell = Parallel::Interface::numThreadsInCell();

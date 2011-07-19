@@ -68,13 +68,13 @@ void MDError::updateHost ()
 }
 
 
-#include "Parallel_Interface.h"
+// #include "Parallel_Interface.h"
 void MDError::check (const char * msg)
 {
   cudaMemcpy (&he, ptr_de, sizeof(mdError_t), cudaMemcpyDeviceToHost);
   updateHost();
   if (mdSuccess != he){
-    fprintf (stderr, "myrank: %d, Md error: %s: %s.\n", Parallel::Interface::myRank(), msg, getErrorString(he));
+//    fprintf (stderr, "myrank: %d, Md error: %s: %s.\n", Parallel::Interface::myRank(), msg, getErrorString(he));
     fprintf (stderr, "recorded indexes are");
     for (IndexType i = 0; i < NErrorIndex; ++i){
       printf ("%d  ", hindex[i]);

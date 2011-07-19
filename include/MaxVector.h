@@ -9,7 +9,6 @@ template <typename SCALORTYPE>
 class MaxVector 
 {
   bool deviceMalloced;
-  SCALORTYPE * buff;
   IndexType buffLength;
   IndexType NMax;
   IndexType * NBlock;
@@ -22,11 +21,13 @@ class MaxVector
   IndexType roundUpDivide (IndexType v,
 			   IndexType bit);
 public:
+  SCALORTYPE * buff;
+public:
   MaxVector();
   ~MaxVector();
   void reinit (IndexType NumberOfMax,
 	       IndexType NThread);
-  SCALORTYPE * getBuff () {return buff;}
+  // SCALORTYPE * getBuff () {return buff;}
   void maxBuff (SCALORTYPE * result,
 		IndexType posi,
 		cudaStream_t stream = 0);

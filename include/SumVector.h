@@ -6,11 +6,17 @@
 
 //#define MaxThreadsPerBlocktmptmp  64
 
+/// Sum all data in a array.
+/** 
+ * After initialization, the SumVector allocate a array named
+ * SumVector::buff on device, write the data to be summed in this
+ * array and then run SumVector::sumBuff or SumVector::sumBuffAdd. The
+ * data in the array will not be destoried.
+ */
 template <typename SCALORTYPE>
 class SumVector 
 {
   bool deviceMalloced;
-  SCALORTYPE * buff;
   IndexType buffLength;
   IndexType NSum;
   IndexType * NBlock;
@@ -20,13 +26,37 @@ class SumVector
   void clear();
   void init   (IndexType NumberOfSum, IndexType NThread);
 public:
+  SCALORTYPE * buff;		/**< Data to be summed should be
+				 * written in this array. */
+public:
   SumVector();
   ~SumVector();
+  /** 
+   * Reinitializer.
+   * 
+   * @param NumberOfSum Number of data to be summed.
+   * @param NThread Number of threads in a block.
+   */
   void reinit (IndexType NumberOfSum, IndexType NThread);
-  SCALORTYPE * getBuff () {return buff;}
-  void sumBuff (SCALORTYPE * result, IndexType posi,
+  /** 
+   * Sum the data in the buff.
+   * 
+   * @param result The result.
+   * @param posi The position of the result.
+   * @param stream The cuda stream carrying out the summation.
+   */
+  void sumBuff (SCALORTYPE * result,
+		IndexType posi,
 		cudaStream_t stream = 0);
-  void sumBuffAdd (SCALORTYPE * result, IndexType posi,
+  /** 
+   * Sum the data in the buff, and add to the result.
+   * 
+   * @param result The result.
+   * @param posi The position of the result.
+   * @param stream The cuda stream carrying out the summation.
+   */
+  void sumBuffAdd (SCALORTYPE * result,
+		   IndexType posi,
 		   cudaStream_t stream = 0);
 };
 
@@ -450,7 +480,7 @@ void SumVector<SCALORTYPE>::sumBuffAdd (SCALORTYPE * result,
  * 
  * @return If this thread gives result, return 1. Otherwise return 0.
  */
-__device__ int sumPartialSum (ScalorType partialSum,
+static __device__ int sumPartialSum (ScalorType partialSum,
 			      ScalorType * buff,
 			      IndexType * counter, 
 			      ScalorType * result);
@@ -469,7 +499,7 @@ __device__ int sumPartialSum (ScalorType partialSum,
  * 
  * @return If this thread gives result, return 1. Otherwise return 0.
  */
-__device__ int sumPartialSum (ScalorType partialSum,
+static __device__ int sumPartialSum (ScalorType partialSum,
 			      ScalorType * buff,
 			      IndexType * counter,
 			      ScalorType * sharedBuff,
@@ -488,36 +518,36 @@ __device__ int sumPartialSum (ScalorType partialSum,
 //
 // the thread receive the reture value true will have the right sum in
 // result.
-__device__ int sumVector (ScalorType * data,
+static __device__ int sumVector (ScalorType * data,
 			  ScalorType * buff, IndexType * counter,
 			  ScalorType * result);
-__device__ int sumVector (ScalorType * data, IndexType * N,
+static __device__ int sumVector (ScalorType * data, IndexType * N,
 			  ScalorType * buff, IndexType * counter,
 			  ScalorType * result);
 
 
 
 // sum the data stored in pdata, sum NThread items.
-__device__ ScalorType sumVectorBlock (ScalorType * pdata);
+static __device__ ScalorType sumVectorBlock (ScalorType * pdata);
 // sum the data stored in pdata, sum N items, N should be <= NThread
-__device__ ScalorType sumVectorBlock (ScalorType * pdata, IndexType N);
+static __device__ ScalorType sumVectorBlock (ScalorType * pdata, IndexType N);
 // the summation will start at start
-__device__ ScalorType sumVectorBlock (ScalorType * data, IndexType start,
+static __device__ ScalorType sumVectorBlock (ScalorType * data, IndexType start,
 				      IndexType N);
-__device__ ScalorType sumVectorBlock (ScalorType * data,
+static __device__ ScalorType sumVectorBlock (ScalorType * data,
 				      IndexType start,
 				      IndexType N,
 				      volatile ScalorType * buff);
-__device__ ScalorType maxVectorBlock (ScalorType * data, IndexType start,
+static __device__ ScalorType maxVectorBlock (ScalorType * data, IndexType start,
 				      IndexType N);
 // summation in given buffer (shared memrory) the size of buffer
 // should be larger than half number of threads
-__device__ ScalorType sumVectorBlockBuffer (ScalorType * sharedbuffer, IndexType N);
+static __device__ ScalorType sumVectorBlockBuffer (ScalorType * sharedbuffer, IndexType N);
 
 
 
 
-__device__ int sumPartialSum (ScalorType partialSum,
+static __device__ int sumPartialSum (ScalorType partialSum,
 			      ScalorType * buff, IndexType * counter, 
 			      ScalorType * result)
 {
@@ -550,11 +580,12 @@ __device__ int sumPartialSum (ScalorType partialSum,
   return 0;
 }
 
-__device__ int sumPartialSum (ScalorType partialSum,
-			      ScalorType * buff,
-			      IndexType * counter,
-			      volatile ScalorType * sharedBuff,
-			      ScalorType * result)
+static __device__ int
+sumPartialSum (ScalorType partialSum,
+	       ScalorType * buff,
+	       IndexType * counter,
+	       volatile ScalorType * sharedBuff,
+	       ScalorType * result)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   __shared__ volatile bool isLastBlockDone;
@@ -586,9 +617,10 @@ __device__ int sumPartialSum (ScalorType partialSum,
 }
 
 
-__device__ int maxPartialMax (ScalorType partialMax,
-			      ScalorType * buff, IndexType * counter, 
-			      ScalorType * result)
+static __device__ int
+maxPartialMax (ScalorType partialMax,
+	       ScalorType * buff, IndexType * counter, 
+	       ScalorType * result)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   __shared__ volatile bool isLastBlockDone;
@@ -658,9 +690,10 @@ __device__ int sumVector (ScalorType * data,
   return 0;
 }
 
-__device__ int sumVector (ScalorType * data, IndexType N, 
-			  ScalorType * buff, IndexType * counter,
-			  ScalorType * result)
+static __device__ int
+sumVector (ScalorType * data, IndexType N, 
+	   ScalorType * buff, IndexType * counter,
+	   ScalorType * result)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;  
@@ -786,8 +819,9 @@ __device__ ScalorType sumVectorBlock (ScalorType * data, IndexType start,
   return buff[0];
 }
 
-__device__ ScalorType sumVectorBlock (volatile ScalorType * data, IndexType start,
-				      IndexType N)
+static __device__ ScalorType
+sumVectorBlock (volatile ScalorType * data, IndexType start,
+		IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -865,8 +899,9 @@ __device__ ScalorType maxVectorBlock (ScalorType * data, IndexType start,
 
 
 
-__device__ IndexType maxVectorBlock (IndexType * data, IndexType start,
-				      IndexType N)
+static __device__ IndexType
+maxVectorBlock (IndexType * data, IndexType start,
+		IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -911,7 +946,8 @@ __device__ ScalorType sumVectorBlockBuffer (ScalorType * sharedbuff, IndexType N
   return sharedbuff[0];
 }
 
-__device__ ScalorType sumVectorBlockBuffer (volatile ScalorType * sharedbuff, IndexType N)
+static __device__ ScalorType
+sumVectorBlockBuffer (volatile ScalorType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -976,7 +1012,8 @@ __device__ void maxVectorBlockBuffer_2 (volatile T * sharedbuff)
 }
 
 
-__device__ ScalorType maxVectorBlockBuffer (ScalorType * sharedbuff, IndexType N)
+static __device__ ScalorType
+maxVectorBlockBuffer (ScalorType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -994,7 +1031,8 @@ __device__ ScalorType maxVectorBlockBuffer (ScalorType * sharedbuff, IndexType N
   return sharedbuff[0];
 }
 
-__device__ ScalorType maxVectorBlockBuffer (volatile ScalorType * sharedbuff, IndexType N)
+static __device__ ScalorType
+maxVectorBlockBuffer (volatile ScalorType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -1012,7 +1050,8 @@ __device__ ScalorType maxVectorBlockBuffer (volatile ScalorType * sharedbuff, In
   return sharedbuff[0];
 }
 
-__device__ IndexType sumVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
+static __device__ IndexType
+sumVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -1030,7 +1069,8 @@ __device__ IndexType sumVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
   return sharedbuff[0];
 }
 
-__device__ IndexType sumVectorBlockBuffer (volatile IndexType * sharedbuff, IndexType N)
+static __device__ IndexType
+sumVectorBlockBuffer (volatile IndexType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -1048,7 +1088,8 @@ __device__ IndexType sumVectorBlockBuffer (volatile IndexType * sharedbuff, Inde
   return sharedbuff[0];
 }
 
-__device__ IndexType maxVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
+static __device__ IndexType
+maxVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -1067,7 +1108,8 @@ __device__ IndexType maxVectorBlockBuffer (IndexType * sharedbuff, IndexType N)
   return sharedbuff[0];
 }
 
-__device__ IndexType maxVectorBlockBuffer (volatile IndexType * sharedbuff, IndexType N)
+static __device__ IndexType
+maxVectorBlockBuffer (volatile IndexType * sharedbuff, IndexType N)
 {
   IndexType tid = threadIdx.x;
   IndexType num = N;
@@ -1088,9 +1130,10 @@ __device__ IndexType maxVectorBlockBuffer (volatile IndexType * sharedbuff, Inde
 
 
 
-__device__ ScalorType sumVectorBlockMomentum (ScalorType * mass,
-					      ScalorType * velo,
-					      IndexType N)
+static __device__ ScalorType
+sumVectorBlockMomentum (ScalorType * mass,
+			ScalorType * velo,
+			IndexType N)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;
@@ -1116,11 +1159,12 @@ __device__ ScalorType sumVectorBlockMomentum (ScalorType * mass,
 }
 
 
-__device__ int sumVectorMomentum (ScalorType * mass,
-				  ScalorType * velo,
-				  IndexType N, 
-				  ScalorType * buff, IndexType * counter,
-				  ScalorType * result)
+static __device__ int
+sumVectorMomentum (ScalorType * mass,
+		   ScalorType * velo,
+		   IndexType N, 
+		   ScalorType * buff, IndexType * counter,
+		   ScalorType * result)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType tid = threadIdx.x;  

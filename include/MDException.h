@@ -171,7 +171,7 @@ public:
 			     const size_t size) 
       { strncpy (message, "fail to malloc for ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   MDExcptFailedMallocOnHost (const char * description,
 			     const char * name,
 			     const size_t size) 
@@ -179,7 +179,7 @@ public:
 	strncat (message, delimitor, MaxExceptionMsgLength);
 	strncat (message, "fail to malloc for ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   virtual const char* what() const throw()
       {
 	return message;
@@ -196,7 +196,7 @@ public:
   MDExcptFailedReallocOnHost (const char * name, const size_t size) 
       { strncpy (message, "fail to realloc for ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   MDExcptFailedReallocOnHost (const char * description,
 			      const char * name,
 			      const size_t size) 
@@ -204,7 +204,7 @@ public:
 	strncat (message, delimitor, MaxExceptionMsgLength);
 	strncat (message, "fail to realloc for ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   virtual const char* what() const throw()
       {
 	return message;
@@ -221,7 +221,7 @@ public:
   MDExcptExceedConstantMemLimit (const char * name, const size_t size) 
       { strncpy (message, "exceed constant mem limit ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   MDExcptExceedConstantMemLimit (const char * description,
 				 const char * name,
 				 const size_t size) 
@@ -229,7 +229,7 @@ public:
 	strncat (message, delimitor, MaxExceptionMsgLength);
 	strncat (message, "exceed constant mem limit ", MaxExceptionMsgLength);
 	strncat (message, name, MaxExceptionMsgLength);
-	sprintf (message, "%s with size %d", message, size); }
+	sprintf (message, "%s with size %ld", message, size); }
   virtual const char* what() const throw()
       {
 	return message;

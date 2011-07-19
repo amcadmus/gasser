@@ -36,7 +36,7 @@ clear()
 }
 
 
-static __global__ void
+__global__ void
 Reshuffle_calPosiList  (const IndexType * cellNumbers,
 			const IndexType nob,
 			IndexType * posiList)
@@ -52,7 +52,7 @@ Reshuffle_calPosiList  (const IndexType * cellNumbers,
   }
 }
 
-static __global__ void
+__global__ void
 Reshuffle_calIndexTable (const IndexType * clistData,
 			 const IndexType * posiList,
 			 IndexType * idxTable)

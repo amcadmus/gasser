@@ -18,35 +18,33 @@
 #include "BondInteraction.h"
 #include "NonBondedInteraction.h"
 
-#define NThreadsPerBlockCell	256
+
+// #define NThreadsPerBlockCell	32
+// #define NThreadsPerBlockAtom	4
+
+#define NThreadsPerBlockCell	160
 #define NThreadsPerBlockAtom	96
 
 int main(int argc, char * argv[])
 {
-  IndexType nstep = 1000000;
-  IndexType startStep = 0;
-  IndexType confFeq = 1000000;
+  IndexType nstep = 100000;
+  IndexType confFeq = 100000;
   IndexType thermoFeq = 100;
-  ScalorType rcut = 5.0;
-  ScalorType nlistExten = 0.5;
-  ScalorType refT = 1.34;
+  ScalorType rcut = 4.0;
+  ScalorType nlistExten = 0.3;
+  ScalorType refT = 1.50;
   ScalorType tauT = 1.;
-  ScalorType refP = 0.1420;
+  ScalorType refP = 0.2;
   ScalorType tauP = 1.;
-  ScalorType betaP = 1.;
-
   char * filename;
-
-  if (argc < 4){
-    printf ("Usage:\n%s conf.gro nstep device [startStep]\n", argv[0]);
+  
+  if (argc != 4){
+    printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
     return 1;
   }
   if (argc != 1){
     nstep = atoi(argv[2]);
     filename = argv[1];
-  }
-  if (argc == 5){
-    startStep = atoi (argv[4]);
   }
   printf ("# setting device to %d\n", atoi(argv[3]));
   cudaSetDevice (atoi(argv[3]));
@@ -68,45 +66,41 @@ int main(int argc, char * argv[])
   
   SystemNonBondedInteraction sysNbInter;
   sysNbInter.reinit (sysTop);
+  ScalorType energyCorr = sysNbInter.energyCorrection ();
+  ScalorType pressureCorr = sysNbInter.pressureCorrection ();
   
   ScalorType maxrcut = sysNbInter.maxRcut();
   ScalorType rlist = maxrcut + nlistExten;
   CellList clist (sys, rlist, NThreadsPerBlockCell, NThreadsPerBlockAtom);
   NeighborList nlist (sysNbInter, sys, rlist, NThreadsPerBlockAtom, 10.f);
   sys.normalizeDeviceData ();
-  clist.rebuild (sys);
-  nlist.rebuild (sys, clist);
+  clist.rebuild (sys, NULL);
+  nlist.rebuild (sys, clist, NULL);
   Displacement_max disp (sys, NThreadsPerBlockAtom);
   disp.recordCoord (sys);
   
-  MDStatistic st (sys);
-  MDStatistic last_st (sys);
+  MDStatistic st(sys);
+  MDStatistic old_st(sys), tmp_st(sys);
+  old_st.setEnergyCorr (energyCorr);
+  old_st.setPressureCorr (pressureCorr);
+  tmp_st.setEnergyCorr (energyCorr);
+  tmp_st.setPressureCorr (pressureCorr);
   TranslationalFreedomRemover tfremover (sys, NThreadsPerBlockAtom);
   InteractionEngine inter (sys, NThreadsPerBlockAtom);
   inter.registNonBondedInteraction (sysNbInter);
-  inter.clearInteraction (sys);
-  inter.applyNonBondedInteraction (sys, nlist, st);
-
+  
   MDTimer timer;
   unsigned i;
   ScalorType dt = 0.002;
-  ScalorType seed = 1289028167;
+  ScalorType seed = 1;
   RandomGenerator_MT19937::init_genrand (seed);
-  
-  Thermostat_NoseHoover thermostat;
-  thermostat.reinit (refT, dt, tauT, sys.ddata.numAtom * 3 - 3);
-  Barostat_ParrinelloRahman barostat;
-  barostat.reinit (dt, tauP, sys.box);
-  barostat.assignGroup (mdRectBoxDirectionX |
-  			mdRectBoxDirectionY |
-  			mdRectBoxDirectionZ,
-  			refP, betaP);
-  LeapFrog_TPCouple_VCouple blpf (sys, NThreadsPerBlockAtom);
-  blpf.addThermostat (thermostat);
-  blpf.addBarostat   (barostat);
+
+  VelocityVerlet inte_vv (sys, NThreadsPerBlockAtom);
+  VelocityRescale inte_vr (sys, NThreadsPerBlockAtom, refT, 0.1);
+  NoseHoover_Chains2_Isobaric nhcp;
+  nhcp.reinit (sys, NThreadsPerBlockAtom, refT, tauT, refP, tauP, pressureCorr);
 
   Reshuffle resh (sys);
-
   
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){
@@ -117,24 +111,33 @@ int main(int argc, char * argv[])
   }
   
   printf ("# prepare ok, start to run\n");
-  // sys.recoverDeviceData (&timer);
-  // sys.updateHostFromRecovered (&timer);
-  // sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
+  sys.recoverDeviceData (&timer);
+  sys.updateHostFromRecovered (&timer);
+  sys.writeHostDataGro ("confstart.gro", 0, 0.f, &timer);
   printf ("# prepare ok, start to run\n");
-  printf ("#*     1     2           3         4            5       6         7     8       9  10  11\n");
-  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure  boxl  volume  h0  h1\n");
+  printf ("#*     1     2           3         4            5       6         7    8    9     10  11     12   13   14    15   16    17\n");
+  printf ("#* nstep  time  nonBondedE  kineticE  temperature  totalE  pressure  box  volume  h0  h1  NHC_H  vep  xi1  vxi1  xi2  vxi2\n");
+
   try{
     sys.initWriteXtc ("traj.xtc");
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
     sys.writeHostDataXtc (0, 0*dt, &timer);
-    for (i = startStep; i < nstep + startStep; ++i){
-      last_st.deviceCopy (st);
+    for (i = 0; i < nstep; ++i){
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
       }
+      old_st.deviceCopy (st);
+      old_st.updateHost ();
+      nhcp.operator_L_CP (0.5 * dt, sys, old_st, &timer);
+      
+      nhcp.operator_L_v  (0.5 * dt, sys, &timer);
+
+      nhcp.operator_L_r  (dt, sys, &timer);
+      nhcp.operator_L_box (dt, sys.box);
+      
       st.clearDevice();
-      blpf.oneStep (sys, dt, last_st, st, &timer);
+      inter.clearInteraction (sys);
       ScalorType maxdr = disp.calMaxDisplacemant (sys, &timer);
       if (maxdr > nlistExten * 0.5){
 	// printf ("# Rebuild at step %09i ... ", i+1);
@@ -143,41 +146,58 @@ int main(int argc, char * argv[])
 	sys.normalizeDeviceData (&timer);
 	disp.recordCoord (sys);
 	clist.rebuild (sys, &timer);
+	inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
 	nlist.rebuild (sys, clist, &timer);
 	// printf ("done\n");
 	// fflush(stdout);
       }
-      inter.clearInteraction (sys);
-      inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
+      else{
+	inter.applyNonBondedInteraction (sys, nlist, st, NULL, &timer);
+      }
+      
+      tmp_st.clearDevice();
+      nhcp.operator_L_v  (0.5 * dt, sys, tmp_st, &timer);
+      mdStatisticItem_t tmp_array[3];
+      tmp_array[0] = mdStatisticVirialXX;
+      tmp_array[1] = mdStatisticVirialYY;
+      tmp_array[2] = mdStatisticVirialZZ;
+      tmp_st.add (st, 3, tmp_array);
+      
+      nhcp.operator_L_CP (0.5 * dt, sys, tmp_st, st, &timer);
+
       if ((i+1) % thermoFeq == 0){
-	st.updateHost();
-	ScalorType ep = st.nonBondedEnergy ();
-	ScalorType ek = st.kineticEnergy();
-	ScalorType e = ep + ek;
+	st.updateHost ();
+	ScalorType e = st.nonBondedEnergy () + st.kineticEnergy();	
 	ScalorType v = sys.box.size.x * sys.box.size.y * sys.box.size.z;
 	ScalorType p0 = st.pressure(sys.box);
 	ScalorType h0 = v * p0 + e;
 	ScalorType h1 = v * refP + e;
-	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7f %.7e %.7e %.7e\n",
+
+	printf ("%09d %07e %.7e %.7e %.7e %.7e %.7e %.7f %.7e %.7e %.7e %.5e %.5e %.5e %.5e\n",
 		(i+1),  
 		(i+1) * dt, 
-		ep,
-		ek, 
-		ek * 2. / (3. * (double (sys.hdata.numAtom) - 1.)),
+		st.nonBondedEnergy (),
+		st.kineticEnergy(),
+		st.kineticEnergy() * 2. / (3. * (double (sys.hdata.numAtom) - 1.)),
 		e,
 		p0,
 		sys.box.size.x,
 		v,
 		h0,
-		h1
-	    );
+		h1,
+		e + nhcp.HamiltonianContribution (sys.box),
+		nhcp.vep,
+		nhcp.xi1,
+		nhcp.vxi1);
 	fflush(stdout);
       }
+
       if ((i+1) % confFeq == 0){
       	sys.recoverDeviceData (&timer);
       	sys.updateHostFromRecovered (&timer);
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
       }
+
       if ((i+1) % 100 == 0){
 	if (resh.calIndexTable (clist, &timer)){
 	  sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);

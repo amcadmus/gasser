@@ -9,7 +9,6 @@
 #include"Statistic.h"
 #include "Integrator_interface.h"
 #include "InteractionEngine_interface.h"
-#include "tmp.h"
 #include "Reshuffle_interface.h"
 #include "Displacement_interface.h"
 
@@ -59,7 +58,7 @@ int main(int argc, char * argv[])
   sys.initConfig(filename);
 
   ScalorType meanVelo = sqrtf(refT);
-  ScalorType sum = 0.f;
+  // ScalorType sum = 0.f;
   for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
       sys.hdata.velox[i] = 0.;
       sys.hdata.veloy[i] = 0.;

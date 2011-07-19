@@ -9,13 +9,35 @@ enum mdAngleInteractionNParam{
   mdForceNParamCosAngle0	= 1
 };
 
+/// Parameter of the harmonic angle interaction
+
 class AngleHarmonicParameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamAngleHarmonic];
 public:
   AngleHarmonicParameter () {}
+  /** 
+   * Constructor of the harmonic angle interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (\theta - \theta_0)^2
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param theta0 Equilibrium angle \f$ \theta_0 \f$.
+   */
   AngleHarmonicParameter (ScalorType k,
 			  ScalorType theta0);
+  /** 
+   * Reinitializer of the harmonic angle interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (\theta - \theta_0)^2
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @param theta0 Equilibrium angle \f$ \theta_0 \f$.
+   */
   void reinit (ScalorType k,
 	       ScalorType theta0);
   virtual InteractionType type () const;
@@ -24,17 +46,45 @@ public:
   virtual const ScalorType * c_ptr () const ;
 };
 
+/// Parameter of the cos angle 0 interaction
+
 class CosAngle0Parameter : public AngleInteractionParameter
 {
   ScalorType param [mdForceNParamCosAngle0];
 public:
+  /** 
+   * Default constructor, do nothing
+   * 
+   */
   CosAngle0Parameter () {}
+  /** 
+   * Constructor of the cos angle 0 interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (1 - \cos\theta)
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   * @see reinit 
+   */
   CosAngle0Parameter (ScalorType k);
+  /** 
+   * Reinitializer of the cos angle 0 interaction parameters.
+   * The energy of the interaction is
+   * \f$
+   * U(\theta) = k (1 - \cos\theta)
+   * \f$
+   * 
+   * @param k Strength parameter \f$ k \f$.
+   */
   void reinit (ScalorType k);
   virtual InteractionType type () const;
   virtual unsigned numParam () const ;
   virtual ScalorType * c_ptr () ;
   virtual const ScalorType * c_ptr () const ;
+  // virtual unsigned numParam () const ;
+  // virtual ScalorType * c_ptr () ;
+  // virtual const ScalorType * c_ptr () const ;
 };
 
 
@@ -47,72 +97,78 @@ namespace AngleHarmonic {
   __host__ void initParameter (ScalorType * param,
 			       ScalorType k,
 			       ScalorType theta0);
-  __device__ void force0 (const ScalorType * param,
-			  const ScalorType diff0x,
-			  const ScalorType diff0y,
-			  const ScalorType diff0z,
-			  const ScalorType diff1x,
-			  const ScalorType diff1y,
-			  const ScalorType diff1z,
-			  ScalorType * f0x,
-			  ScalorType * f0y,
-			  ScalorType * f0z);
-  __device__ ScalorType forcePoten0 (const ScalorType * param,
-				     const ScalorType diff0x,
-				     const ScalorType diff0y,
-				     const ScalorType diff0z,
-				     const ScalorType diff1x,
-				     const ScalorType diff1y,
-				     const ScalorType diff1z,
-				     ScalorType * f0x,
-				     ScalorType * f0y,
-				     ScalorType * f0z);
-  __device__ void force1 (const ScalorType * param,
-			  const ScalorType diff0x,
-			  const ScalorType diff0y,
-			  const ScalorType diff0z,
-			  const ScalorType diff1x,
-			  const ScalorType diff1y,
-			  const ScalorType diff1z,
-			  ScalorType * f0x,
-			  ScalorType * f0y,
-			  ScalorType * f0z);
-  __device__ ScalorType forcePoten1 (const ScalorType * param,
-				     const ScalorType diff0x,
-				     const ScalorType diff0y,
-				     const ScalorType diff0z,
-				     const ScalorType diff1x,
-				     const ScalorType diff1y,
-				     const ScalorType diff1z,
-				     ScalorType * f0x,
-				     ScalorType * f0y,
-				     ScalorType * f0z);
-  __device__ void force01 (const ScalorType * param,
-			   const ScalorType diff0x,
-			   const ScalorType diff0y,
-			   const ScalorType diff0z,
-			   const ScalorType diff1x,
-			   const ScalorType diff1y,
-			   const ScalorType diff1z,
-			   ScalorType * f0x,
-			   ScalorType * f0y,
-			   ScalorType * f0z,
-			   ScalorType * f1x,
-			   ScalorType * f1y,
-			   ScalorType * f1z);    
-  __device__ ScalorType forcePoten01 (const ScalorType * param,
-				      const ScalorType diff0x,
-				      const ScalorType diff0y,
-				      const ScalorType diff0z,
-				      const ScalorType diff1x,
-				      const ScalorType diff1y,
-				      const ScalorType diff1z,
-				      ScalorType * f0x,
-				      ScalorType * f0y,
-				      ScalorType * f0z,
-				      ScalorType * f1x,
-				      ScalorType * f1y,
-				      ScalorType * f1z);
+  static __device__ void
+  force0 (const ScalorType * param,
+	  const ScalorType diff0x,
+	  const ScalorType diff0y,
+	  const ScalorType diff0z,
+	  const ScalorType diff1x,
+	  const ScalorType diff1y,
+	  const ScalorType diff1z,
+	  ScalorType * f0x,
+	  ScalorType * f0y,
+	  ScalorType * f0z);
+  static __device__ ScalorType
+  forcePoten0 (const ScalorType * param,
+	       const ScalorType diff0x,
+	       const ScalorType diff0y,
+	       const ScalorType diff0z,
+	       const ScalorType diff1x,
+	       const ScalorType diff1y,
+	       const ScalorType diff1z,
+	       ScalorType * f0x,
+	       ScalorType * f0y,
+	       ScalorType * f0z);
+  static __device__ void
+  force1 (const ScalorType * param,
+	  const ScalorType diff0x,
+	  const ScalorType diff0y,
+	  const ScalorType diff0z,
+	  const ScalorType diff1x,
+	  const ScalorType diff1y,
+	  const ScalorType diff1z,
+	  ScalorType * f0x,
+	  ScalorType * f0y,
+	  ScalorType * f0z);
+  static __device__ ScalorType
+  forcePoten1 (const ScalorType * param,
+	       const ScalorType diff0x,
+	       const ScalorType diff0y,
+	       const ScalorType diff0z,
+	       const ScalorType diff1x,
+	       const ScalorType diff1y,
+	       const ScalorType diff1z,
+	       ScalorType * f0x,
+	       ScalorType * f0y,
+	       ScalorType * f0z);
+  static __device__ void
+  force01 (const ScalorType * param,
+	   const ScalorType diff0x,
+	   const ScalorType diff0y,
+	   const ScalorType diff0z,
+	   const ScalorType diff1x,
+	   const ScalorType diff1y,
+	   const ScalorType diff1z,
+	   ScalorType * f0x,
+	   ScalorType * f0y,
+	   ScalorType * f0z,
+	   ScalorType * f1x,
+	   ScalorType * f1y,
+	   ScalorType * f1z);    
+  static __device__ ScalorType
+  forcePoten01 (const ScalorType * param,
+		const ScalorType diff0x,
+		const ScalorType diff0y,
+		const ScalorType diff0z,
+		const ScalorType diff1x,
+		const ScalorType diff1y,
+		const ScalorType diff1z,
+		ScalorType * f0x,
+		ScalorType * f0y,
+		ScalorType * f0z,
+		ScalorType * f1x,
+		ScalorType * f1y,
+		ScalorType * f1z);
 };
 
 
@@ -123,89 +179,96 @@ namespace CosAngle0 {
 
   __host__ void initParameter (ScalorType * param,
 			       ScalorType k);
-  __device__ void force0 (const ScalorType * param,
-			  const ScalorType diff0x,
-			  const ScalorType diff0y,
-			  const ScalorType diff0z,
-			  const ScalorType diff1x,
-			  const ScalorType diff1y,
-			  const ScalorType diff1z,
-			  ScalorType * f0x,
-			  ScalorType * f0y,
-			  ScalorType * f0z);
-  __device__ ScalorType forcePoten0 (const ScalorType * param,
-				     const ScalorType diff0x,
-				     const ScalorType diff0y,
-				     const ScalorType diff0z,
-				     const ScalorType diff1x,
-				     const ScalorType diff1y,
-				     const ScalorType diff1z,
-				     ScalorType * f0x,
-				     ScalorType * f0y,
-				     ScalorType * f0z);
-  __device__ void force1 (const ScalorType * param,
-			  const ScalorType diff0x,
-			  const ScalorType diff0y,
-			  const ScalorType diff0z,
-			  const ScalorType diff1x,
-			  const ScalorType diff1y,
-			  const ScalorType diff1z,
-			  ScalorType * f0x,
-			  ScalorType * f0y,
-			  ScalorType * f0z);
-  __device__ ScalorType forcePoten1 (const ScalorType * param,
-				     const ScalorType diff0x,
-				     const ScalorType diff0y,
-				     const ScalorType diff0z,
-				     const ScalorType diff1x,
-				     const ScalorType diff1y,
-				     const ScalorType diff1z,
-				     ScalorType * f0x,
-				     ScalorType * f0y,
-				     ScalorType * f0z);
+  static __device__ void
+  force0 (const ScalorType * param,
+	  const ScalorType diff0x,
+	  const ScalorType diff0y,
+	  const ScalorType diff0z,
+	  const ScalorType diff1x,
+	  const ScalorType diff1y,
+	  const ScalorType diff1z,
+	  ScalorType * f0x,
+	  ScalorType * f0y,
+	  ScalorType * f0z);
+  static __device__ ScalorType
+  forcePoten0 (const ScalorType * param,
+	       const ScalorType diff0x,
+	       const ScalorType diff0y,
+	       const ScalorType diff0z,
+	       const ScalorType diff1x,
+	       const ScalorType diff1y,
+	       const ScalorType diff1z,
+	       ScalorType * f0x,
+	       ScalorType * f0y,
+	       ScalorType * f0z);
+  static __device__ void
+  force1 (const ScalorType * param,
+	  const ScalorType diff0x,
+	  const ScalorType diff0y,
+	  const ScalorType diff0z,
+	  const ScalorType diff1x,
+	  const ScalorType diff1y,
+	  const ScalorType diff1z,
+	  ScalorType * f0x,
+	  ScalorType * f0y,
+	  ScalorType * f0z);
+  static __device__ ScalorType
+  forcePoten1 (const ScalorType * param,
+	       const ScalorType diff0x,
+	       const ScalorType diff0y,
+	       const ScalorType diff0z,
+	       const ScalorType diff1x,
+	       const ScalorType diff1y,
+	       const ScalorType diff1z,
+	       ScalorType * f0x,
+	       ScalorType * f0y,
+	       ScalorType * f0z);
     
-  __device__ void force01 (const ScalorType * param,
-			   const ScalorType diff0x,
-			   const ScalorType diff0y,
-			   const ScalorType diff0z,
-			   const ScalorType diff1x,
-			   const ScalorType diff1y,
-			   const ScalorType diff1z,
-			   ScalorType * f0x,
-			   ScalorType * f0y,
-			   ScalorType * f0z,
-			   ScalorType * f1x,
-			   ScalorType * f1y,
-			   ScalorType * f1z);    
-  __device__ ScalorType forcePoten01 (const ScalorType * param,
-				      const ScalorType diff0x,
-				      const ScalorType diff0y,
-				      const ScalorType diff0z,
-				      const ScalorType diff1x,
-				      const ScalorType diff1y,
-				      const ScalorType diff1z,
-				      ScalorType * f0x,
-				      ScalorType * f0y,
-				      ScalorType * f0z,
-				      ScalorType * f1x,
-				      ScalorType * f1y,
-				      ScalorType * f1z);
+  static __device__ void
+  force01 (const ScalorType * param,
+	   const ScalorType diff0x,
+	   const ScalorType diff0y,
+	   const ScalorType diff0z,
+	   const ScalorType diff1x,
+	   const ScalorType diff1y,
+	   const ScalorType diff1z,
+	   ScalorType * f0x,
+	   ScalorType * f0y,
+	   ScalorType * f0z,
+	   ScalorType * f1x,
+	   ScalorType * f1y,
+	   ScalorType * f1z);    
+  static __device__ ScalorType
+  forcePoten01 (const ScalorType * param,
+		const ScalorType diff0x,
+		const ScalorType diff0y,
+		const ScalorType diff0z,
+		const ScalorType diff1x,
+		const ScalorType diff1y,
+		const ScalorType diff1z,
+		ScalorType * f0x,
+		ScalorType * f0y,
+		ScalorType * f0z,
+		ScalorType * f1x,
+		ScalorType * f1y,
+		ScalorType * f1z);
 };
 
 
 
-__device__ void angleForce (const bool center,
-			    const InteractionType ftype,
-			    ScalorType * param,
-			    const ScalorType diff0x,
-			    const ScalorType diff0y,
-			    const ScalorType diff0z,
-			    const ScalorType diff1x,
-			    const ScalorType diff1y,
-			    const ScalorType diff1z,
-			    ScalorType * f0x,
-			    ScalorType * f0y,
-			    ScalorType * f0z)
+static __device__ void
+angleForce (const bool center,
+	    const InteractionType ftype,
+	    ScalorType * param,
+	    const ScalorType diff0x,
+	    const ScalorType diff0y,
+	    const ScalorType diff0z,
+	    const ScalorType diff1x,
+	    const ScalorType diff1y,
+	    const ScalorType diff1z,
+	    ScalorType * f0x,
+	    ScalorType * f0y,
+	    ScalorType * f0z)
 {
   if (ftype == mdForceAngleHarmonic){
     if (center){
@@ -231,19 +294,20 @@ __device__ void angleForce (const bool center,
   }
 }
 
-__device__ void angleForcePoten (const bool center,
-				 const InteractionType ftype,
-				 ScalorType * param,
-				 const ScalorType diff0x,
-				 const ScalorType diff0y,
-				 const ScalorType diff0z,
-				 const ScalorType diff1x,
-				 const ScalorType diff1y,
-				 const ScalorType diff1z,
-				 ScalorType * f0x,
-				 ScalorType * f0y,
-				 ScalorType * f0z,
-				 ScalorType * dp)
+static __device__ void
+angleForcePoten (const bool center,
+		 const InteractionType ftype,
+		 ScalorType * param,
+		 const ScalorType diff0x,
+		 const ScalorType diff0y,
+		 const ScalorType diff0z,
+		 const ScalorType diff1x,
+		 const ScalorType diff1y,
+		 const ScalorType diff1z,
+		 ScalorType * f0x,
+		 ScalorType * f0y,
+		 ScalorType * f0z,
+		 ScalorType * dp)
 {
   if (ftype == mdForceAngleHarmonic){
     if (center){
@@ -274,7 +338,7 @@ __device__ void angleForcePoten (const bool center,
 }
 
 
-__device__ void
+static __device__ void
 angleForce (const bool center,
 	    const InteractionType ftype,
 	    ScalorType * param,
@@ -303,7 +367,7 @@ angleForce (const bool center,
   }
 }
 
-__device__ void
+static __device__ void
 angleForcePoten (const bool center,
 		 const InteractionType ftype,
 		 ScalorType * param,
@@ -348,16 +412,17 @@ inline __host__ void AngleHarmonic::initParameter (ScalorType * param,
   param[theta0] = M_PIF - theta0_;
 }
 
-__device__ void AngleHarmonic::force0 (const ScalorType * param,
-				       const ScalorType diff0x,
-				       const ScalorType diff0y,
-				       const ScalorType diff0z,
-				       const ScalorType diff1x,
-				       const ScalorType diff1y,
-				       const ScalorType diff1z,
-				       ScalorType * f0x,
-				       ScalorType * f0y,
-				       ScalorType * f0z)
+__device__ void AngleHarmonic::
+force0 (const ScalorType * param,
+	const ScalorType diff0x,
+	const ScalorType diff0y,
+	const ScalorType diff0z,
+	const ScalorType diff1x,
+	const ScalorType diff1y,
+	const ScalorType diff1z,
+	ScalorType * f0x,
+	ScalorType * f0y,
+	ScalorType * f0z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -408,16 +473,17 @@ __device__ void AngleHarmonic::force0 (const ScalorType * param,
 }
 
 
-__device__ ScalorType AngleHarmonic::forcePoten0 (const ScalorType * param,
-						  const ScalorType diff0x,
-						  const ScalorType diff0y,
-						  const ScalorType diff0z,
-						  const ScalorType diff1x,
-						  const ScalorType diff1y,
-						  const ScalorType diff1z,
-						  ScalorType * f0x,
-						  ScalorType * f0y,
-						  ScalorType * f0z)
+__device__ ScalorType AngleHarmonic::
+forcePoten0 (const ScalorType * param,
+	     const ScalorType diff0x,
+	     const ScalorType diff0y,
+	     const ScalorType diff0z,
+	     const ScalorType diff1x,
+	     const ScalorType diff1y,
+	     const ScalorType diff1z,
+	     ScalorType * f0x,
+	     ScalorType * f0y,
+	     ScalorType * f0z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -503,16 +569,17 @@ __device__ ScalorType AngleHarmonic::forcePoten0 (const ScalorType * param,
 }
 
 
-__device__ void AngleHarmonic::force1 (const ScalorType * param,
-				       const ScalorType diff0x,
-				       const ScalorType diff0y,
-				       const ScalorType diff0z,
-				       const ScalorType diff1x,
-				       const ScalorType diff1y,
-				       const ScalorType diff1z,
-				       ScalorType * f1x,
-				       ScalorType * f1y,
-				       ScalorType * f1z)
+__device__ void AngleHarmonic::
+force1 (const ScalorType * param,
+	const ScalorType diff0x,
+	const ScalorType diff0y,
+	const ScalorType diff0z,
+	const ScalorType diff1x,
+	const ScalorType diff1y,
+	const ScalorType diff1z,
+	ScalorType * f1x,
+	ScalorType * f1y,
+	ScalorType * f1z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -589,16 +656,17 @@ __device__ void AngleHarmonic::force1 (const ScalorType * param,
 }
 
 
-__device__ ScalorType AngleHarmonic::forcePoten1 (const ScalorType * param,
-						  const ScalorType diff0x,
-						  const ScalorType diff0y,
-						  const ScalorType diff0z,
-						  const ScalorType diff1x,
-						  const ScalorType diff1y,
-						  const ScalorType diff1z,
-						  ScalorType * f1x,
-						  ScalorType * f1y,
-						  ScalorType * f1z)
+__device__ ScalorType AngleHarmonic::
+forcePoten1 (const ScalorType * param,
+	     const ScalorType diff0x,
+	     const ScalorType diff0y,
+	     const ScalorType diff0z,
+	     const ScalorType diff1x,
+	     const ScalorType diff1y,
+	     const ScalorType diff1z,
+	     ScalorType * f1x,
+	     ScalorType * f1y,
+	     ScalorType * f1z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -999,22 +1067,24 @@ forcePoten01 (const ScalorType * param,
 
 
 
-inline __host__ void CosAngle0::initParameter (ScalorType * param,
-					       ScalorType k_)
+inline __host__ void CosAngle0::
+initParameter (ScalorType * param,
+	       ScalorType k_)
 {
   param[k] = k_;
 }
 
-__device__ void CosAngle0::force0 (const ScalorType * param,
-				   const ScalorType diff0x,
-				   const ScalorType diff0y,
-				   const ScalorType diff0z,
-				   const ScalorType diff1x,
-				   const ScalorType diff1y,
-				   const ScalorType diff1z,
-				   ScalorType * f0x,
-				   ScalorType * f0y,
-				   ScalorType * f0z)
+__device__ void CosAngle0::
+force0 (const ScalorType * param,
+	const ScalorType diff0x,
+	const ScalorType diff0y,
+	const ScalorType diff0z,
+	const ScalorType diff1x,
+	const ScalorType diff1y,
+	const ScalorType diff1z,
+	ScalorType * f0x,
+	ScalorType * f0y,
+	ScalorType * f0z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -1062,16 +1132,17 @@ __device__ ScalorType CosAngle0::forcePoten0 (const ScalorType * param,
 }
 
 
-__device__ void CosAngle0::force1 (const ScalorType * param,
-				   const ScalorType diff0x,
-				   const ScalorType diff0y,
-				   const ScalorType diff0z,
-				   const ScalorType diff1x,
-				   const ScalorType diff1y,
-				   const ScalorType diff1z,
-				   ScalorType * f1x,
-				   ScalorType * f1y,
-				   ScalorType * f1z)
+__device__ void CosAngle0::
+force1 (const ScalorType * param,
+	const ScalorType diff0x,
+	const ScalorType diff0y,
+	const ScalorType diff0z,
+	const ScalorType diff1x,
+	const ScalorType diff1y,
+	const ScalorType diff1z,
+	ScalorType * f1x,
+	ScalorType * f1y,
+	ScalorType * f1z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);
@@ -1089,16 +1160,17 @@ __device__ void CosAngle0::force1 (const ScalorType * param,
 }
 
 
-__device__ ScalorType CosAngle0::forcePoten1 (const ScalorType * param,
-					      const ScalorType diff0x,
-					      const ScalorType diff0y,
-					      const ScalorType diff0z,
-					      const ScalorType diff1x,
-					      const ScalorType diff1y,
-					      const ScalorType diff1z,
-					      ScalorType * f1x,
-					      ScalorType * f1y,
-					      ScalorType * f1z)
+__device__ ScalorType CosAngle0::
+forcePoten1 (const ScalorType * param,
+	     const ScalorType diff0x,
+	     const ScalorType diff0y,
+	     const ScalorType diff0z,
+	     const ScalorType diff1x,
+	     const ScalorType diff1y,
+	     const ScalorType diff1z,
+	     ScalorType * f1x,
+	     ScalorType * f1y,
+	     ScalorType * f1z)
 {
   ScalorType c00 = (diff0x * diff0x + diff0y * diff0y + diff0z * diff0z);
   ScalorType c01 = (diff0x * diff1x + diff0y * diff1y + diff0z * diff1z);

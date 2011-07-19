@@ -15,16 +15,16 @@ struct StatisticData
 // needs 1 thread
 __global__ void clearStatisticData	(StatisticData sdata);
 
-__device__ ScalorType * bondedP		(StatisticData sdata);
-__device__ ScalorType * nonBondedP	(StatisticData sdata);
-__device__ ScalorType * electrostaticP	(StatisticData sdata);
-__device__ ScalorType * kineticE	(StatisticData sdata);
-__device__ ScalorType * virialxx	(StatisticData sdata);
-__device__ ScalorType * virialyy	(StatisticData sdata);
-__device__ ScalorType * virialzz	(StatisticData sdata);
-__device__ ScalorType * virialxy	(StatisticData sdata);
-__device__ ScalorType * virialxz	(StatisticData sdata);
-__device__ ScalorType * virialyz	(StatisticData sdata);
+static __device__ ScalorType * bondedP		(StatisticData sdata);
+static __device__ ScalorType * nonBondedP	(StatisticData sdata);
+static __device__ ScalorType * electrostaticP	(StatisticData sdata);
+static __device__ ScalorType * kineticE	(StatisticData sdata);
+static __device__ ScalorType * virialxx	(StatisticData sdata);
+static __device__ ScalorType * virialyy	(StatisticData sdata);
+static __device__ ScalorType * virialzz	(StatisticData sdata);
+static __device__ ScalorType * virialxy	(StatisticData sdata);
+static __device__ ScalorType * virialxz	(StatisticData sdata);
+static __device__ ScalorType * virialyz	(StatisticData sdata);
 
 inline ScalorType * ptr_bondedP	(StatisticData &sdata);
 inline ScalorType * ptr_nonBondedP	(StatisticData &sdata);
