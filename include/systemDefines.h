@@ -52,6 +52,11 @@ typedef int3		IntVectorType;
 typedef uint3		IndexVectorType;
 #endif
 
+struct MatrixType 
+{
+  ScalorType xx, xy, xz, yx, yy, yz, zx, zy, zz;
+};
+
 /// 4D float vector on host.
 struct floatH4 
 {
