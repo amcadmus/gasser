@@ -16,8 +16,8 @@ cal_fm (const IntVectorType K,
 
   IntVectorType N;
   N.x = ((K.x>>1) << 1) + 1;
-  N.y = (K.y/2) * 2 + 1;
-  N.z = (K.z/2) * 2 + 1;
+  N.y = ((K.y>>1) << 1) + 1;
+  N.z = ((K.z>>1) << 1) + 1;
 
   if (ii < nele){
     IntVectorType idx;
@@ -64,8 +64,11 @@ cal_Sm (const IntVectorType K,
   if (ii < nele){
     IntVectorType N;
     N.x = ((K.x>>1) << 1) + 1;
-    N.y = (K.y/2) * 2 + 1;
-    N.z = (K.z/2) * 2 + 1;
+    N.y = ((K.y>>1) << 1) + 1;
+    N.z = ((K.z>>1) << 1) + 1;
+    // N.x = ((K.x>>1) << 1) + 1;
+    // N.y = (K.y/2) * 2 + 1;
+    // N.z = (K.z/2) * 2 + 1;
     IntVectorType idx;
     index1to3 (ii, N, &idx);
     IntVectorType im;
@@ -140,9 +143,8 @@ applyForce (const IntVectorType K,
   }
   IntVectorType N;
   N.x = ((K.x>>1) << 1) + 1;
-  N.y = (K.y/2) * 2 + 1;
-  N.z = (K.z/2) * 2 + 1;
-
+  N.y = ((K.y>>1) << 1) + 1;
+  N.z = ((K.z>>1) << 1) + 1;
       
   for (IndexType start = 0; start < nele; start += blockDim.x){
     __syncthreads();
@@ -175,11 +177,14 @@ applyForce (const IntVectorType K,
 	    4.f * M_PIF *
 	    sbuff_fm[jj] *
 	    (sbuff_Sm[jj].x * sinf(mr) - sbuff_Sm[jj].y * cosf(mr));
-	ScalorType tmp = scalor * mm.x;
+	// ScalorType tmp;
+	// tmp = scalor * mm.x;
 	// if (tmp < 1e-3f) fsum_small.x += tmp;
 	// else fsum.x += tmp;
+	// tmp = scalor * mm.y;
 	// if (tmp < 1e-3f) fsum_small.y += tmp;
 	// else fsum.y += tmp;
+	// tmp = scalor * mm.z;
 	// if (tmp < 1e-3f) fsum_small.z += tmp;
 	// else fsum.z += tmp;	  
 	fsum.x += scalor * mm.x;
@@ -199,9 +204,58 @@ applyForce (const IntVectorType K,
     forcx[ii] = fsum.x;
     forcy[ii] = fsum.y;
     forcz[ii] = fsum.z;
-	// if (ii == 0){
-	//   printf ("^^^^^^^^^^^^^^ %f\n", forcy[ii]);
-	// }
+    // if (ii == 0){
+    //   printf ("^^^^^^^^^^^^^^ %f\n", forcy[ii]);
+    // }
   }  
+}
+
+void __global__
+cal_energyPressure (const IntVectorType K,
+		    const MatrixType vecAStar,
+		    const ScalorType beta,
+		    const ScalorType volume,
+		    const ScalorType * fm,
+		    const cufftComplex * Sm,
+		    ScalorType * buff_e,
+		    ScalorType * buff_pxx,
+		    ScalorType * buff_pyy,
+		    ScalorType * buff_pzz,
+		    const IndexType nele)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  
+  IntVectorType N;
+  N.x = ((K.x>>1) << 1) + 1;
+  N.y = ((K.y>>1) << 1) + 1;
+  N.z = ((K.z>>1) << 1) + 1;
+
+  if (ii < nele){
+    IntVectorType idx;
+    index1to3 (ii, N, &idx);
+    IntVectorType im;
+    im.x = idx.x - (K.x >> 1);
+    im.y = idx.y - (K.y >> 1);
+    im.z = idx.z - (K.z >> 1);
+    VectorType mm;
+    mm.x = im.x * vecAStar.xx + im.y * vecAStar.yx + im.z * vecAStar.zx;
+    mm.y = im.x * vecAStar.xy + im.y * vecAStar.yy + im.z * vecAStar.zy;
+    mm.z = im.x * vecAStar.xz + im.y * vecAStar.yz + im.z * vecAStar.zz;
+    ScalorType m2 = (mm.x*mm.x + mm.y*mm.y + mm.z*mm.z);
+
+    if (m2 == 0){
+      buff_e[ii] = buff_pxx[ii] = buff_pyy[ii] = buff_pzz[ii] = 0.f;
+    }
+    else {
+      ScalorType energy = fm[ii] * (Sm[ii].x * Sm[ii].x + Sm[ii].y * Sm[ii].y);
+      buff_e[ii] = energy;
+      ScalorType tmp = M_PIF / beta;
+      tmp = (ScalorType(1.) + tmp * tmp * m2) / m2 * 2.f;
+      buff_pxx[ii] = energy * (ScalorType(1.f) - tmp * mm.x * mm.x);
+      buff_pyy[ii] = energy * (ScalorType(1.f) - tmp * mm.y * mm.y);
+      buff_pzz[ii] = energy * (ScalorType(1.f) - tmp * mm.z * mm.z);    
+    }
+  }
 }
 

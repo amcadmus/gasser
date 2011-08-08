@@ -18,6 +18,7 @@
 #include "BondInteraction.h"
 #include "NonBondedInteraction.h"
 #include "EwaldSumRec.h"
+#include "SPMERec.h"
 
 #define NThreadsPerBlockCell	128
 #define NThreadsPerBlockAtom	96
@@ -47,7 +48,8 @@ int main(int argc, char * argv[])
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
   ScalorType beta = 1.3;
-  int Kvalue = 20;
+  IndexType order = 6;
+  int Kvalue = 4;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -80,7 +82,7 @@ int main(int argc, char * argv[])
 
   printCoord (sys);
 
-  EwaldSumRec ewald;
+  MDStatistic myst(sys);
   MatrixType vecA;
   vecA.xy = vecA.yx = vecA.yz = vecA.zy = vecA.xz = vecA.zx = 0.f;
   vecA.xx = sys.box.size.x;
@@ -88,13 +90,26 @@ int main(int argc, char * argv[])
   vecA.zz = sys.box.size.z;
   IntVectorType K;
   K.x = K.y = K.z = Kvalue;
-  ewald.reinit (vecA, K, beta, sys.hdata.numAtom, 7, 13);
-  ewald.applyInteraction (sys);
-  sys.updateHostFromDevice ();
-  printf ("force: %f %f %f\n",
-	  sys.hdata.forcx[0],
-	  sys.hdata.forcy[0],
-	  sys.hdata.forcz[0]);
+  K.x += 2;
+  K.y += 1;
+
+  SPMERecIk spme;
+  spme.reinit (vecA, K, order, beta, sys.hdata.numAtom, 7, 13);
+  
+  // EwaldSumRec ewald;
+  // ewald.reinit (vecA, K, beta, sys.hdata.numAtom, 7, 13);
+  // ewald.applyInteraction (sys, &myst);
+  // sys.updateHostFromDevice ();
+  // printf ("force: %f %f %f\n",
+  // 	  sys.hdata.forcx[0],
+  // 	  sys.hdata.forcy[0],
+  // 	  sys.hdata.forcz[0]);
+  // myst.updateHost ();
+  // printf ("energy: %e, pressure: %e %e %e\n",
+  // 	  myst.nonBondedEnergy(),
+  // 	  myst.pressureXX(sys.box),
+  // 	  myst.pressureYY(sys.box),
+  // 	  myst.pressureZZ(sys.box));
   
   SystemNonBondedInteraction sysNbInter;
   sysNbInter.reinit (sysTop);

@@ -2,7 +2,7 @@
 
 void EwaldSumRec::
 applyInteraction (MDSystem & sys,
-		  MDStatistic * st,
+		  MDStatistic * pst,
 		  MDTimer * timer)
 {
   cal_Sm
@@ -31,6 +31,27 @@ applyInteraction (MDSystem & sys,
 	  sys.ddata.forcz,
 	  sys.ddata.numAtom);
   checkCUDAError ("EwaldSumRec::applyInteraction applyForce");
+  if (pst != NULL) {
+    cal_energyPressure
+	<<<meshGridDim, meshBlockDim>>> (
+	    K,
+	    vecAStar,
+	    beta,
+	    volume,
+	    fm,
+	    Sm,
+	    sum_e.buff,
+	    sum_vxx.buff,
+	    sum_vyy.buff,
+	    sum_vzz.buff,
+	    nele);
+    checkCUDAError ("EwaldSumRec::applyInteraction cal energy pressure");
+    sum_e.  sumBuffAdd(pst->ddata, mdStatisticNonBondedPotential);
+    sum_vxx.sumBuffAdd(pst->ddata, mdStatisticVirialXX);
+    sum_vyy.sumBuffAdd(pst->ddata, mdStatisticVirialYY);
+    sum_vzz.sumBuffAdd(pst->ddata, mdStatisticVirialZZ);
+    checkCUDAError ("EwaldSumRec::applyInteraction sum energy pressure");
+  } 
 }
 
 
@@ -67,6 +88,7 @@ reinit (const MatrixType & vecA_,
 	const IndexType & meshNThread,
 	const IndexType & atomNThread)
 {
+  freeAll();
   vecA = vecA_;
   K = K_;
   beta = beta_;
@@ -100,6 +122,12 @@ reinit (const MatrixType & vecA_,
 	  fm,
 	  nele);
   checkCUDAError ("EwaldSumRec::reinit cal_fm");
+
+  sum_e.  reinit (nele, NThreadForSum);
+  sum_vxx.reinit (nele, NThreadForSum);
+  sum_vyy.reinit (nele, NThreadForSum);
+  sum_vzz.reinit (nele, NThreadForSum);
+  checkCUDAError ("EwaldSumRec::reinit reinit sums");
 }
 
 

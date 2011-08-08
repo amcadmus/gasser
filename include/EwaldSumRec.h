@@ -6,6 +6,7 @@
 #include "systemDefines.h"
 #include "Statistic_interface.h"
 #include "MDSystem_interface.h"
+#include "SumVector.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -27,6 +28,10 @@ class EwaldSumRec
   dim3 atomGridDim;
   dim3 atomBlockDim;
   bool malloced;
+  SumVector<ScalorType > sum_e;
+  SumVector<ScalorType > sum_vxx;
+  SumVector<ScalorType > sum_vyy;
+  SumVector<ScalorType > sum_vzz;  
 private:
   void calV();
   void calAStar();
@@ -79,7 +84,19 @@ applyForce (const IntVectorType K,
 	    ScalorType * forcy,
 	    ScalorType * forcz,
 	    const IndexType natom);
-
+// mesh grid and block
+void __global__
+cal_energyPressure (const IntVectorType K,
+		    const MatrixType vecAStar,
+		    const ScalorType beta,
+		    const ScalorType volume,
+		    const ScalorType * fm,
+		    const cufftComplex * Sm,
+		    ScalorType * buff_e,
+		    ScalorType * buff_pxx,
+		    ScalorType * buff_pyy,
+		    ScalorType * buff_pzz,
+		    const IndexType nele);
 
 
 #endif

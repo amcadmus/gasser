@@ -21,7 +21,9 @@ enum mdError{
   mdErrorShortCellList		= 1,
   mdErrorShortNeighborList	= 2,
   mdErrorOverFlowCellIdx	= 3,
-  mdErrorBreakFENEBond		= 4
+  mdErrorBreakFENEBond		= 4,
+  mdErrorOverFlowMeshIdx	= 6,
+  mdErrorShortMeshNeighborList  = 5
 };
 typedef enum mdError mdError_t;
 

@@ -42,7 +42,7 @@ typedef int		TypeType;
 #define SystemSharedBuffSize		16384
 #define GlobalFunctionParamSizeLimit	256
 
-#define M_PIF				3.14159265f
+#define M_PIF				3.14159265358979f
 
 #ifdef DEVICE_CODE
 typedef float4		CoordType;
