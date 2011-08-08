@@ -21,6 +21,8 @@ freeAll ()
     cudaFree (QconvPhi0);
     cudaFree (QconvPhi1);
     cudaFree (QconvPhi2);
+    cufftDestroy (planForward);
+    cufftDestroy (planBackward);
     malloced = false;
   }
 }
@@ -122,6 +124,10 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&QconvPhi1, sizeof(cufftReal) * nele);
   cudaMalloc ((void**)&QconvPhi2, sizeof(cufftReal) * nele);
   checkCUDAError ("SPMERecIk::reinit malloc");
+
+  cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
+  cufftPlan3d (&planBackward, K.x, K.y, K.z, CUFFT_C2R);
+
   malloced = true;
 
   cal_PsiFPhiF
@@ -144,7 +150,108 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
   cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
   checkCUDAError ("SPMERecIk::reinit malloc nlist");
+
 }
+
+void SPMERecIk::
+applyInteraction (MDSystem & sys,
+		  MDStatistic * pst,
+		  MDTimer * timer)
+{
+  calQ (sys);
+  
+  cufftExecR2C (planForward, Q, QF);
+  checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
+  
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nelehalf = N.x * N.y * N.z;
+  ScalorType sizei = 1./(K.x*K.y*K.z);
+  timeQFPhiF
+      <<<meshGridDim_half, meshBlockDim>>> (
+	  QF,
+	  phiF0,
+	  phiF1,
+	  phiF2,
+	  QFxPhiF0,
+	  QFxPhiF1,
+	  QFxPhiF2,
+	  nelehalf,
+	  sizei);
+  checkCUDAError ("SPMERecIk::applyInteraction timeQFPhiF");
+
+  cufftExecC2R (planBackward, QFxPhiF0, QconvPhi0);
+  cufftExecC2R (planBackward, QFxPhiF1, QconvPhi1);
+  cufftExecC2R (planBackward, QFxPhiF2, QconvPhi2);
+  checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QconvPhi");
+
+  calForce
+      <<<atomGridDim, atomBlockDim>>> (
+	  K,
+	  vecAStar,
+	  order,
+	  sys.ddata.coord,
+	  sys.ddata.charge,
+	  sys.ddata.numAtom,
+	  QconvPhi0,
+	  QconvPhi1,
+	  QconvPhi2,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
+	  err.ptr_de);
+  checkCUDAError ("SPMERecIk::applyInteraction calForce");
+  err.check ("SPMERecIk::applyInteraction calForce");  
+}
+
+
+
+void SPMERecIk::
+calQ (const MDSystem & sys)
+{
+//
+// fast algorithm !!!!
+//
+  initMeshNeighborList
+      <<<meshGridDim, meshBlockDim>>>(
+	  K,
+	  vecAStar,
+	  nlist_n,
+	  nlist_list,
+	  nlist_stride,
+	  nlist_length);
+  buildMeshNeighborList
+      <<<atomGridDim, atomBlockDim>>> (
+	  K,
+	  vecAStar,
+	  order,
+	  sys.ddata.coord,
+	  sys.ddata.numAtom,
+	  nlist_n,
+	  nlist_list,
+	  nlist_stride,
+	  nlist_length,
+	  err.ptr_de);
+  checkCUDAError ("SPMERecIk::calQ buildNeighborList");
+  err.check ("SPMERecIk::calQ buildNeighborList");
+  cal_Q
+      <<<meshGridDim, meshBlockDim>>> (
+	  K,
+	  vecAStar,
+	  order,
+	  nlist_n,
+	  nlist_list,
+	  nlist_stride,
+	  Q);
+  checkCUDAError ("SPMERecIk::calQ cal_Q");
+  // FILE * fp = fopen ("tmpQ.out", "w");
+  // for (unsigned i = 0; i < K.x * K.y * K.z; ++i){
+  //   fprintf (fp, "%.12e\n", Q[i]);
+  // }
+  // fclose (fp);
+}
+
+
 
   
 void SPMERecIk::

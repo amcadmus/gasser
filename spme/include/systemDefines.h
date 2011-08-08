@@ -36,6 +36,7 @@ typedef int		TypeType;
 #define MaxNumberBondedInteraction		32
 #define MaxNumberBondedInteractionParamemter	(32*3)
 #define MaxLengthNonBondedInteractionTable	512
+#define MaxSPMEOrder				14
 
 #define MemAllocExtension			2
 

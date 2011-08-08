@@ -3411,8 +3411,6 @@ __global__ void
 cal_Q (const IntVectorType K,
        const MatrixType vecAStar,
        const IndexType order,
-       const ScalorType * charge,
-       const IndexType natom,
        const IndexType * nlist_n,
        const IndexType * nlist_list,
        const IndexType nlist_stride,

@@ -48,8 +48,8 @@ int main(int argc, char * argv[])
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
   ScalorType beta = 1.3;
-  IndexType order = 6;
-  int Kvalue = 4;
+  IndexType order = 4;
+  int Kvalue = 8;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -93,9 +93,6 @@ int main(int argc, char * argv[])
   K.x += 2;
   K.y += 1;
 
-  SPMERecIk spme;
-  spme.reinit (vecA, K, order, beta, sys.hdata.numAtom, 7, 13);
-  
   // EwaldSumRec ewald;
   // ewald.reinit (vecA, K, beta, sys.hdata.numAtom, 7, 13);
   // ewald.applyInteraction (sys, &myst);
@@ -142,7 +139,18 @@ int main(int argc, char * argv[])
   RandomGenerator_MT19937::init_genrand (seed);
 
   Reshuffle resh (sys);
-  
+
+  SPMERecIk spme;
+  spme.reinit (vecA, K, order, beta, sys.hdata.numAtom, 7, 13);
+  spme.applyInteraction (sys, NULL, NULL);
+  FILE * fp = fopen ("myForce", "w");
+  for (IndexType i = 0; i < sys.ddata.numAtom; ++i){
+    fprintf (fp, "%.16e\t%.16e\t%.16e\n",
+	     sys.ddata.forcx[i],
+	     sys.ddata.forcy[i],
+	     sys.ddata.forcz[i]);
+  }
+  fclose (fp);
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){
     sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
