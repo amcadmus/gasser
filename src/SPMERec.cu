@@ -117,8 +117,8 @@ cal_PsiFPhiF (const IntVectorType K,
   N.z = (N.z >> 1) + 1;
   IndexType nele = K.x * K.y * K.z;
   IndexType nelehalf = N.x * N.y * N.z;
-  ScalorType scalor0 =  1.f / (M_PIF * volume) * nele;
-  ScalorType scalor1 = -2.f / volume * nele;
+  ScalorType scalor0 =  0.5f / (M_PIF * volume) * nele;
+  ScalorType scalor1 = -2.0f / volume * nele;
   
   if (ii < nelehalf) {
     IntVectorType idx;
@@ -284,6 +284,20 @@ timeQFPhiF (const cufftComplex * QF,
   }
 }
 
+// mesh grid and block
+__global__ void
+calEnergy (const cufftReal * Q,
+	   const cufftReal * QConvPsi,
+	   ScalorType * buff_e,
+	   const IndexType nele)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < nele){
+    buff_e[ii] = Q[ii] * QConvPsi[ii];
+  }
+}
 
 // atom grid and block
 __global__ void
@@ -293,9 +307,9 @@ calForce (const IntVectorType K,
 	  const CoordType * coord,
 	  const ScalorType * charge,
 	  const IndexType natom,
-	  const cufftReal * QconvPhi0,
-	  const cufftReal * QconvPhi1,
-	  const cufftReal * QconvPhi2,
+	  const cufftReal * QConvPhi0,
+	  const cufftReal * QConvPhi1,
+	  const cufftReal * QConvPhi2,
 	  ScalorType * forcx,
 	  ScalorType * forcy,
 	  ScalorType * forcz,
@@ -362,9 +376,12 @@ calForce (const IntVectorType K,
 	    //
 	    IndexType index = index3to1 (myMeshIdx, K);
 	    ScalorType myP = Mnx[dk.x] * Mny[dk.y] * Mnz[dk.z];
-	    fsum.x += myP * QconvPhi0[index];
-	    fsum.y += myP * QconvPhi1[index];
-	    fsum.z += myP * QconvPhi2[index];
+	    //
+	    // possible improvement of reading mem!!!!
+	    //
+	    fsum.x += myP * QConvPhi0[index];
+	    fsum.y += myP * QConvPhi1[index];
+	    fsum.z += myP * QConvPhi2[index];
 	  }
 	}
       }
@@ -374,4 +391,5 @@ calForce (const IntVectorType K,
     }
   }
 }
+
 

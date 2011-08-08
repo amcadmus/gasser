@@ -17,10 +17,10 @@ freeAll ()
     cudaFree (QFxPhiF0);
     cudaFree (QFxPhiF1);
     cudaFree (QFxPhiF2);
-    cudaFree (QconvPsi);
-    cudaFree (QconvPhi0);
-    cudaFree (QconvPhi1);
-    cudaFree (QconvPhi2);
+    cudaFree (QConvPsi);
+    cudaFree (QConvPhi0);
+    cudaFree (QConvPhi1);
+    cudaFree (QConvPhi2);
     cufftDestroy (planForward);
     cufftDestroy (planBackward);
     malloced = false;
@@ -119,10 +119,10 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&QFxPhiF1, sizeof(cufftComplex) * nelehalf);
   cudaMalloc ((void**)&QFxPhiF2, sizeof(cufftComplex) * nelehalf);
   checkCUDAError ("SPMERecIk::reinit malloc");
-  cudaMalloc ((void**)&QconvPsi,  sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QconvPhi0, sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QconvPhi1, sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QconvPhi2, sizeof(cufftReal) * nele);
+  cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nele);
+  cudaMalloc ((void**)&QConvPhi0, sizeof(cufftReal) * nele);
+  cudaMalloc ((void**)&QConvPhi1, sizeof(cufftReal) * nele);
+  cudaMalloc ((void**)&QConvPhi2, sizeof(cufftReal) * nele);
   checkCUDAError ("SPMERecIk::reinit malloc");
 
   cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
@@ -151,6 +151,11 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
   checkCUDAError ("SPMERecIk::reinit malloc nlist");
 
+  sum_e.  reinit (nele, NThreadForSum);
+  sum_vxx.reinit (nele, NThreadForSum);
+  sum_vyy.reinit (nele, NThreadForSum);
+  sum_vzz.reinit (nele, NThreadForSum);
+  checkCUDAError ("EwaldSumRec::reinit reinit sums");
 }
 
 void SPMERecIk::
@@ -180,10 +185,10 @@ applyInteraction (MDSystem & sys,
 	  sizei);
   checkCUDAError ("SPMERecIk::applyInteraction timeQFPhiF");
 
-  cufftExecC2R (planBackward, QFxPhiF0, QconvPhi0);
-  cufftExecC2R (planBackward, QFxPhiF1, QconvPhi1);
-  cufftExecC2R (planBackward, QFxPhiF2, QconvPhi2);
-  checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QconvPhi");
+  cufftExecC2R (planBackward, QFxPhiF0, QConvPhi0);
+  cufftExecC2R (planBackward, QFxPhiF1, QConvPhi1);
+  cufftExecC2R (planBackward, QFxPhiF2, QConvPhi2);
+  checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QConvPhi");
 
   calForce
       <<<atomGridDim, atomBlockDim>>> (
@@ -193,15 +198,37 @@ applyInteraction (MDSystem & sys,
 	  sys.ddata.coord,
 	  sys.ddata.charge,
 	  sys.ddata.numAtom,
-	  QconvPhi0,
-	  QconvPhi1,
-	  QconvPhi2,
+	  QConvPhi0,
+	  QConvPhi1,
+	  QConvPhi2,
 	  sys.ddata.forcx,
 	  sys.ddata.forcy,
 	  sys.ddata.forcz,
 	  err.ptr_de);
   checkCUDAError ("SPMERecIk::applyInteraction calForce");
-  err.check ("SPMERecIk::applyInteraction calForce");  
+  err.check ("SPMERecIk::applyInteraction calForce");
+
+  if (pst != NULL){
+    timeQFPsiF
+	<<<meshGridDim_half, meshBlockDim>>> (
+	    QF,
+	    psiF,
+	    QFxPsiF,
+	    nelehalf,
+	    sizei);
+    checkCUDAError ("SPMERecIk::applyInteraction time QF PhiF");
+    cufftExecC2R (planBackward, QFxPsiF, QConvPsi);
+    checkCUDAError ("SPMERecIk::applyInteraction QFxPsiF->QConvPsi");
+    calEnergy
+	<<<meshGridDim, meshBlockDim>>> (
+	    Q,
+	    QConvPsi,
+	    sum_e.buff,
+	    K.x * K.y * K.z);
+    checkCUDAError ("SPMERecIk::applyInteraction cal energy");
+    sum_e.  sumBuffAdd(pst->ddata, mdStatisticNonBondedPotential);
+    checkCUDAError ("SPMERecIk::applyInteraction sum energy");
+  }
 }
 
 
@@ -250,9 +277,6 @@ calQ (const MDSystem & sys)
   // }
   // fclose (fp);
 }
-
-
-
   
 void SPMERecIk::
 calV()

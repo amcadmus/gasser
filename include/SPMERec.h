@@ -46,12 +46,16 @@ private:
   cufftComplex * QFxPhiF0;
   cufftComplex * QFxPhiF1;
   cufftComplex * QFxPhiF2;
-  cufftReal * QconvPsi;
-  cufftReal * QconvPhi0;
-  cufftReal * QconvPhi1;
-  cufftReal * QconvPhi2;
+  cufftReal * QConvPsi;
+  cufftReal * QConvPhi0;
+  cufftReal * QConvPhi1;
+  cufftReal * QConvPhi2;
   cufftHandle planForward;
   cufftHandle planBackward;
+  SumVector<ScalorType > sum_e;
+  SumVector<ScalorType > sum_vxx;
+  SumVector<ScalorType > sum_vyy;
+  SumVector<ScalorType > sum_vzz;  
 private:
   MDError err;
   IndexType * nlist_n;
@@ -75,8 +79,8 @@ public:
 	       const IndexType & atomNThread = 128);
   void calQ (const MDSystem & sys);
   void applyInteraction (MDSystem & sys,
-			 MDStatistic * pst,
-			 MDTimer * timer);
+			 MDStatistic * pst = NULL,
+			 MDTimer * timer = NULL);
 }
     ;
 
@@ -162,14 +166,19 @@ calForce (const IntVectorType K,
 	  const CoordType * coord,
 	  const ScalorType * charge,
 	  const IndexType natom,
-	  const cufftReal * QconvPhi0,
-	  const cufftReal * QconvPhi1,
-	  const cufftReal * QconvPhi2,
+	  const cufftReal * QConvPhi0,
+	  const cufftReal * QConvPhi1,
+	  const cufftReal * QConvPhi2,
 	  ScalorType * forcx,
 	  ScalorType * forcy,
 	  ScalorType * forcz,
 	  mdError_t * ptr_de );
-
+// mesh grid and block
+__global__ void
+calEnergy (const cufftReal * Q,
+	   const cufftReal * QConvPsi,
+	   ScalorType * buff_e,
+	   const IndexType nele);
 
 #endif
 
