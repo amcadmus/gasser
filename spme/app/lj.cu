@@ -140,17 +140,32 @@ int main(int argc, char * argv[])
 
   Reshuffle resh (sys);
 
+    st.updateHost ();
+  printf ("energy: %e, pressure: %e %e %e\n",
+  	  st.nonBondedEnergy(),
+  	  st.pressureXX(sys.box),
+  	  st.pressureYY(sys.box),
+  	  st.pressureZZ(sys.box));
   SPMERecIk spme;
   spme.reinit (vecA, K, order, beta, sys.hdata.numAtom, 7, 13);
-  spme.applyInteraction (sys, NULL, NULL);
+  spme.applyInteraction (sys, &st);
+  sys.updateHostFromDevice ();
   FILE * fp = fopen ("myForce", "w");
   for (IndexType i = 0; i < sys.ddata.numAtom; ++i){
     fprintf (fp, "%.16e\t%.16e\t%.16e\n",
-	     sys.ddata.forcx[i],
-	     sys.ddata.forcy[i],
-	     sys.ddata.forcz[i]);
+	     sys.hdata.forcx[i],
+	     sys.hdata.forcy[i],
+	     sys.hdata.forcz[i]);
   }
   fclose (fp);
+  st.updateHost ();
+  printf ("energy: %e, pressure: %e %e %e\n",
+  	  st.nonBondedEnergy(),
+  	  st.pressureXX(sys.box),
+  	  st.pressureYY(sys.box),
+  	  st.pressureZZ(sys.box));
+
+  
   timer.tic(mdTimeTotal);
   if (resh.calIndexTable (clist, &timer)){
     sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
