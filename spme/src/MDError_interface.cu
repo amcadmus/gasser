@@ -48,11 +48,15 @@ inline char * MDError::getErrorString (mdError_t err) {
   case mdErrorShortCellList:
       return "The cell list is too short, increase the number of thread per block";
   case mdErrorShortNeighborList:
-      return "The neighbor list is too shor, increase the DeviceNeighborListExpansion";
+      return "The neighbor list is too short, increase the DeviceNeighborListExpansion";
   case mdErrorOverFlowCellIdx:
       return "Detect an over flown cell index";
   case mdErrorBreakFENEBond:
       return "Detect a broken FENE bond";
+  case mdErrorOverFlowMeshIdx:
+      return "Detect an over flown mesh index";
+  case mdErrorShortMeshNeighborList:
+      return "The mesh neighbor list is too short";
   default:
       return "Unknow error status";
   }
@@ -74,6 +78,7 @@ void MDError::check (const char * msg)
   cudaMemcpy (&he, ptr_de, sizeof(mdError_t), cudaMemcpyDeviceToHost);
   updateHost();
   if (mdSuccess != he){
+    fprintf (stderr, "error is %s\n", getErrorString(he));
 //    fprintf (stderr, "myrank: %d, Md error: %s: %s.\n", Parallel::Interface::myRank(), msg, getErrorString(he));
     fprintf (stderr, "recorded indexes are");
     for (IndexType i = 0; i < NErrorIndex; ++i){

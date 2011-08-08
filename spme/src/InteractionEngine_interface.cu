@@ -10,6 +10,7 @@
 
 texture<CoordType,  1, cudaReadModeElementType> global_texRef_interaction_coord;
 texture<TypeType ,  1, cudaReadModeElementType> global_texRef_interaction_type;
+texture<ScalorType, 1, cudaReadModeElementType> global_texRef_interaction_charge;
 
 __constant__
 InteractionType nonBondedInteractionType [MaxNumberNonBondedInteraction];
@@ -52,6 +53,8 @@ void InteractionEngine::init (const MDSystem  & sys,
 		  sizeof(CoordType) * sys.ddata.numMem);
   cudaBindTexture(0, global_texRef_interaction_type, sys.ddata.type,
 		  sizeof(TypeType)  * sys.ddata.numMem);
+  cudaBindTexture(0, global_texRef_interaction_charge, sys.ddata.charge,
+		  sizeof(ScalorType)  * sys.ddata.numMem);
   checkCUDAError ("InteractionEngine::init, bind texture");
   
   // init sum vectors
@@ -210,6 +213,7 @@ InteractionEngine::~InteractionEngine()
 {
   cudaUnbindTexture(global_texRef_interaction_coord);
   cudaUnbindTexture(global_texRef_interaction_type);
+  cudaUnbindTexture(global_texRef_interaction_charge);
   for (IndexType i = 0; i < 8; ++i){
     cudaStreamDestroy(sum_stream[i]);
   }
@@ -3395,3 +3399,53 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
 //   }  
 // }
 
+#include "SPMERec.h"
+#include "Ewald.h"
+#include "CardinalBspline.h"
+
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cufft.h>
+
+__global__ void
+cal_Q (const IntVectorType K,
+       const MatrixType vecAStar,
+       const IndexType order,
+       const ScalorType * charge,
+       const IndexType natom,
+       const IndexType * nlist_n,
+       const IndexType * nlist_list,
+       const IndexType nlist_stride,
+       cufftReal * Q)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  IndexType nele = K.x * K.y * K.z;
+  
+  if (ii < nele){
+    IntVectorType meshIdx;
+    index1to3 (int(ii), K, &meshIdx);
+    cufftReal sum = cufftReal(0.);
+    for (IndexType jj = 0; jj < nlist_n[ii]; ++jj){
+      IndexType atomIdx = nlist_list[jj * nlist_stride + ii];
+      CoordType my_coord = tex1Dfetch(global_texRef_interaction_coord, atomIdx);
+      ScalorType charge = tex1Dfetch(global_texRef_interaction_charge, atomIdx);
+      VectorType uu;
+      uu.x = K.x * (vecAStar.xx * my_coord.x + vecAStar.xy * my_coord.y + vecAStar.xz *my_coord.z);
+      uu.y = K.y * (vecAStar.yx * my_coord.x + vecAStar.yy * my_coord.y + vecAStar.yz *my_coord.z);
+      uu.z = K.z * (vecAStar.zx * my_coord.x + vecAStar.zy * my_coord.y + vecAStar.zz *my_coord.z);
+      uu.x -= meshIdx.x;
+      uu.y -= meshIdx.y;
+      uu.z -= meshIdx.z;
+      if (uu.x < 0) uu.x += K.x;
+      if (uu.y < 0) uu.y += K.y;
+      if (uu.z < 0) uu.z += K.z;
+      sum += charge * BSplineValue(order, uu.x) * BSplineValue(order, uu.y) * BSplineValue (order, uu.z);
+    }
+    Q[ii] = sum;
+  }
+}
+
+      
+
+  
