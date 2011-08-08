@@ -201,9 +201,9 @@ applyForce (const IntVectorType K,
     // forcx[ii] = fsum.x + fsum_small.x;
     // forcy[ii] = fsum.y + fsum_small.y;
     // forcz[ii] = fsum.z + fsum_small.z;
-    forcx[ii] = fsum.x;
-    forcy[ii] = fsum.y;
-    forcz[ii] = fsum.z;
+    forcx[ii] += fsum.x;
+    forcy[ii] += fsum.y;
+    forcz[ii] += fsum.z;
     // if (ii == 0){
     //   printf ("^^^^^^^^^^^^^^ %f\n", forcy[ii]);
     // }
