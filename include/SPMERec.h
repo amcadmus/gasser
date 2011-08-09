@@ -50,6 +50,7 @@ private:
   cufftReal * QConvPhi0;
   cufftReal * QConvPhi1;
   cufftReal * QConvPhi2;
+  CoordType * QConvPhi;
   cufftHandle planForward;
   cufftHandle planBackward;
   SumVector<ScalorType > sum_e;
@@ -173,12 +174,32 @@ calForce (const IntVectorType K,
 	  ScalorType * forcy,
 	  ScalorType * forcz,
 	  mdError_t * ptr_de );
+// atom grid and block
+__global__ void
+calForce (const IntVectorType K,
+	  const MatrixType vecAStar,
+	  const IndexType order,
+	  const CoordType * coord,
+	  const ScalorType * charge,
+	  const IndexType natom,
+	  ScalorType * forcx,
+	  ScalorType * forcy,
+	  ScalorType * forcz,
+	  mdError_t * ptr_de );
 // mesh grid and block
 __global__ void
 calEnergy (const cufftReal * Q,
 	   const cufftReal * QConvPsi,
 	   ScalorType * buff_e,
 	   const IndexType nele);
+// mesh grid and block
+__global__ void 
+assembleQConvPhi (const cufftReal * QConvPhi0,
+		  const cufftReal * QConvPhi1,
+		  const cufftReal * QConvPhi2,
+		  CoordType * QConvPhi,
+		  const IndexType nele);
+
 
 #endif
 
