@@ -62,6 +62,21 @@ void MDTimer::printRecord (FILE * fp)
   fprintf(fp, "Cal. angle interaction(st):          %1.3e s   %3.1f %\n",
 	  0.001 * timeRecord[mdTimeAngleInterStatistic],
 	  100 * timeRecord[mdTimeAngleInterStatistic] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME cal Q:                          %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecCalQ],
+	  100 * timeRecord[mdTimeSPMERecCalQ] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME FFT:                            %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecFFT],
+	  100 * timeRecord[mdTimeSPMERecFFT] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME time matrix:                    %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecTimeMatrix],
+	  100 * timeRecord[mdTimeSPMERecTimeMatrix] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME cal force:                      %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecForce],
+	  100 * timeRecord[mdTimeSPMERecForce] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME cal energy:                     %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecEnergy],
+	  100 * timeRecord[mdTimeSPMERecEnergy] / timeRecord[mdTimeTotal]);
   fprintf(fp, "Data transfer:                       %1.3e s   %3.1f %\n",
 	  0.001 * timeRecord[mdTimeDataTransfer],
 	  100 * timeRecord[mdTimeDataTransfer] / timeRecord[mdTimeTotal]);

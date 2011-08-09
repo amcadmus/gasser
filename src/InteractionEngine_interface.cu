@@ -3408,13 +3408,13 @@ widomDeltaPoten_allPair_NVT (const IndexType		numTestParticle,
 #include <cufft.h>
 
 __global__ void
-cal_Q (const IntVectorType K,
-       const MatrixType vecAStar,
-       const IndexType order,
-       const IndexType * nlist_n,
-       const IndexType * nlist_list,
-       const IndexType nlist_stride,
-       cufftReal * Q)
+calQMat (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const IndexType order,
+	 const IndexType * nlist_n,
+	 const IndexType * nlist_list,
+	 const IndexType nlist_stride,
+	 cufftReal * Q)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
