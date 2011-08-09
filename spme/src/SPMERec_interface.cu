@@ -42,19 +42,19 @@ SPMERecIk::
 void SPMERecIk::
 calB ()
 {
-  cal_Bx
+  calBx
       <<<((K.x + meshBlockDim.x - 1) / meshBlockDim.x), meshBlockDim>>> (
 	  K,
 	  order,
 	  vecbx);
   checkCUDAError ("SPMERecIk::calB x");
-  cal_By
+  calBy
       <<<((K.y + meshBlockDim.x - 1) / meshBlockDim.x), meshBlockDim>>> (
 	  K,
 	  order,
 	  vecby);
   checkCUDAError ("SPMERecIk::calB y");
-  cal_Bz
+  calBz
       <<<((K.z + meshBlockDim.x - 1) / meshBlockDim.x), meshBlockDim>>> (
 	  K,
 	  order,
@@ -130,7 +130,7 @@ reinit (const MatrixType & vecA_,
 
   malloced = true;
 
-  cal_PsiFPhiF
+  calPsiFPhiF
       <<<meshGridDim_half, meshBlockDim>>> (
 	  K,
 	  vecAStar,
@@ -143,7 +143,7 @@ reinit (const MatrixType & vecA_,
 	  phiF0,
 	  phiF1,
 	  phiF2);
-  checkCUDAError ("SPMERecIk::reinit cal_PsiFPhiF");
+  checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
 
   nlist_stride = nele;
   nlist_length = order * order * order * 2;
@@ -163,11 +163,16 @@ applyInteraction (MDSystem & sys,
 		  MDStatistic * pst,
 		  MDTimer * timer)
 {
+  if (timer != NULL) timer->tic (mdTimeSPMERecCalQ);
   calQ (sys);
+  if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
   
+  if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
   cufftExecR2C (planForward, Q, QF);
   checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
+  if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
   
+  if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
   IntVectorType N(K);
   N.z = (N.z >> 1) + 1;
   IndexType nelehalf = N.x * N.y * N.z;
@@ -184,12 +189,16 @@ applyInteraction (MDSystem & sys,
 	  nelehalf,
 	  sizei);
   checkCUDAError ("SPMERecIk::applyInteraction timeQFPhiF");
+  if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
 
+  if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
   cufftExecC2R (planBackward, QFxPhiF0, QConvPhi0);
   cufftExecC2R (planBackward, QFxPhiF1, QConvPhi1);
   cufftExecC2R (planBackward, QFxPhiF2, QConvPhi2);
   checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QConvPhi");
+  if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
 
+  if (timer != NULL) timer->tic (mdTimeSPMERecForce);
   calForce
       <<<atomGridDim, atomBlockDim>>> (
 	  K,
@@ -207,8 +216,10 @@ applyInteraction (MDSystem & sys,
 	  err.ptr_de);
   checkCUDAError ("SPMERecIk::applyInteraction calForce");
   err.check ("SPMERecIk::applyInteraction calForce");
+  if (timer != NULL) timer->toc (mdTimeSPMERecForce);
 
   if (pst != NULL){
+    if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
     timeQFPsiF
 	<<<meshGridDim_half, meshBlockDim>>> (
 	    QF,
@@ -217,8 +228,12 @@ applyInteraction (MDSystem & sys,
 	    nelehalf,
 	    sizei);
     checkCUDAError ("SPMERecIk::applyInteraction time QF PhiF");
+    if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
+    if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
     cufftExecC2R (planBackward, QFxPsiF, QConvPsi);
     checkCUDAError ("SPMERecIk::applyInteraction QFxPsiF->QConvPsi");
+    if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
+    if (timer != NULL) timer->tic (mdTimeSPMERecEnergy);
     calEnergy
 	<<<meshGridDim, meshBlockDim>>> (
 	    Q,
@@ -228,6 +243,7 @@ applyInteraction (MDSystem & sys,
     checkCUDAError ("SPMERecIk::applyInteraction cal energy");
     sum_e.  sumBuffAdd(pst->ddata, mdStatisticNonBondedPotential);
     checkCUDAError ("SPMERecIk::applyInteraction sum energy");
+    if (timer != NULL) timer->toc (mdTimeSPMERecEnergy);
   }
 }
 
@@ -261,7 +277,7 @@ calQ (const MDSystem & sys)
 	  err.ptr_de);
   checkCUDAError ("SPMERecIk::calQ buildNeighborList");
   err.check ("SPMERecIk::calQ buildNeighborList");
-  cal_Q
+  calQMat
       <<<meshGridDim, meshBlockDim>>> (
 	  K,
 	  vecAStar,
@@ -270,7 +286,7 @@ calQ (const MDSystem & sys)
 	  nlist_list,
 	  nlist_stride,
 	  Q);
-  checkCUDAError ("SPMERecIk::calQ cal_Q");
+  checkCUDAError ("SPMERecIk::calQ calQ");
   // FILE * fp = fopen ("tmpQ.out", "w");
   // for (unsigned i = 0; i < K.x * K.y * K.z; ++i){
   //   fprintf (fp, "%.12e\n", Q[i]);

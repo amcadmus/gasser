@@ -86,29 +86,29 @@ public:
 
 
 __global__ void
-cal_Bx (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b);
+calBx (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b);
 __global__ void
-cal_By (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b);
+calBy (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b);
 __global__ void
-cal_Bz (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b);
+calBz (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b);
 __global__ void
-cal_PsiFPhiF (const IntVectorType K,
-	      const MatrixType vecAStar,
-	      const ScalorType beta,
-	      const ScalorType volume,
-	      const ScalorType * bx,
-	      const ScalorType * by,
-	      const ScalorType * bz,
-	      cufftComplex * psiF,
-	      cufftComplex * phiF0,
-	      cufftComplex * phiF1,
-	      cufftComplex * phiF2);
+calPsiFPhiF (const IntVectorType K,
+	     const MatrixType vecAStar,
+	     const ScalorType beta,
+	     const ScalorType volume,
+	     const ScalorType * bx,
+	     const ScalorType * by,
+	     const ScalorType * bz,
+	     cufftComplex * psiF,
+	     cufftComplex * phiF0,
+	     cufftComplex * phiF1,
+	     cufftComplex * phiF2);
 
 
 // mesh gridDim and blockDim
@@ -133,13 +133,13 @@ buildMeshNeighborList (const IntVectorType K,
 		       mdError_t * ptr_de );
 // mesh gridDim and blockDim
 __global__ void
-cal_Q (const IntVectorType K,
-       const MatrixType vecAStar,
-       const IndexType order,
-       const IndexType * nlist_n,
-       const IndexType * nlist_list,
-       const IndexType nlist_stride,
-       cufftReal * Q);
+calQMat (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const IndexType order,
+	 const IndexType * nlist_n,
+	 const IndexType * nlist_list,
+	 const IndexType nlist_stride,
+	 cufftReal * Q);
 // half mesh grid and block
 __global__ void
 timeQFPsiF (const cufftComplex * QF,

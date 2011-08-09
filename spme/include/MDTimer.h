@@ -22,8 +22,13 @@ enum mdTimeItem {
   mdTimeAngleInteraction	= 11,
   mdTimeAngleInterStatistic	= 12,
   mdTimeDataTransfer		= 13,
-  mdTimeJudgeRebuild		= 19,
-  mdTimeDataIO			= 20
+  mdTimeSPMERecCalQ		= 15,
+  mdTimeSPMERecFFT		= 16,
+  mdTimeSPMERecTimeMatrix	= 17,
+  mdTimeSPMERecForce		= 18,
+  mdTimeSPMERecEnergy		= 19,
+  mdTimeJudgeRebuild		= 29,
+  mdTimeDataIO			= 30
 };
 
 typedef enum mdTimeItem mdTimeItem_t;

@@ -6,9 +6,9 @@
 #include "CardinalBspline.h"
 
 __global__ void
-cal_Bx (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b)
+calBx (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -35,9 +35,9 @@ cal_Bx (const IntVectorType K,
 }
 
 __global__ void
-cal_By (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b)
+calBy (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -64,9 +64,9 @@ cal_By (const IntVectorType K,
 }
 
 __global__ void
-cal_Bz (const IntVectorType K,
-	const IndexType order,
-	ScalorType * b)
+calBz (const IntVectorType K,
+       const IndexType order,
+       ScalorType * b)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -98,17 +98,17 @@ cal_Bz (const IntVectorType K,
 
 
 __global__ void
-cal_PsiFPhiF (const IntVectorType K,
-	      const MatrixType vecAStar,
-	      const ScalorType beta,
-	      const ScalorType volume,
-	      const ScalorType * bx,
-	      const ScalorType * by,
-	      const ScalorType * bz,
-	      cufftComplex * psiF,
-	      cufftComplex * phiF0,
-	      cufftComplex * phiF1,
-	      cufftComplex * phiF2)
+calPsiFPhiF (const IntVectorType K,
+	     const MatrixType vecAStar,
+	     const ScalorType beta,
+	     const ScalorType volume,
+	     const ScalorType * bx,
+	     const ScalorType * by,
+	     const ScalorType * bz,
+	     cufftComplex * psiF,
+	     cufftComplex * phiF0,
+	     cufftComplex * phiF1,
+	     cufftComplex * phiF2)
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
