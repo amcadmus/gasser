@@ -3424,6 +3424,7 @@ calQMat (const IntVectorType K,
     IntVectorType meshIdx;
     index1to3 (int(ii), K, &meshIdx);
     cufftReal sum = cufftReal(0.);
+    cufftReal sum_small = cufftReal(0.);
     for (IndexType jj = 0; jj < nlist_n[ii]; ++jj){
       IndexType atomIdx = nlist_list[jj * nlist_stride + ii];
       CoordType my_coord = tex1Dfetch(global_texRef_interaction_coord, atomIdx);
@@ -3438,12 +3439,16 @@ calQMat (const IntVectorType K,
       if (uu.x < 0) uu.x += K.x;
       if (uu.y < 0) uu.y += K.y;
       if (uu.z < 0) uu.z += K.z;
-      sum += charge * BSplineValue(order, uu.x) * BSplineValue(order, uu.y) * BSplineValue (order, uu.z);
+      ScalorType tmp = charge *
+	  BSplineValue(order, double(uu.x)) *
+	  BSplineValue(order, double(uu.y)) *
+	  BSplineValue(order, double(uu.z));
+      if (fabsf(tmp) > 1e-2) sum += tmp;
+      else sum_small += tmp;
     }
-    Q[ii] = sum;
+    Q[ii] = sum + sum_small;
   }
 }
-
       
 
   

@@ -43,13 +43,13 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 20;
   char * filename;
-  ScalorType rcut = 3.2f;
+  ScalorType rcut = 2.0f;
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.3;
+  ScalorType beta = 1.2;
   IndexType order = 4;
-  int Kvalue = 8;
+  int Kvalue = 32;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -65,6 +65,11 @@ int main(int argc, char * argv[])
 
   MDSystem sys;
   sys.initConfig(filename);
+  // for (IndexType i = 0; i < sys.hdata.numAtom; ++i){
+  //   ScalorType tmp = sys.hdata.coord[i].y;
+  //   sys.hdata.coord[i].y = sys.hdata.coord[i].z;
+  //   sys.hdata.coord[i].z = tmp;
+  // }
 
   Topology::System sysTop;
   Topology::Molecule mol0;
@@ -90,8 +95,8 @@ int main(int argc, char * argv[])
   vecA.zz = sys.box.size.z;
   IntVectorType K;
   K.x = K.y = K.z = Kvalue;
-  K.x += 2;
-  K.y += 1;
+  // K.x += 2;
+  // K.y += 1;
 
   // EwaldSumRec ewald;
   // ewald.reinit (vecA, K, beta, sys.hdata.numAtom, 7, 13);
@@ -140,16 +145,35 @@ int main(int argc, char * argv[])
 
   Reshuffle resh (sys);
 
-    st.updateHost ();
+  timer.tic(mdTimeTotal);
+
+  if (resh.calIndexTable (clist, &timer)){
+    sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
+    clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
+    disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
+  }
+
+  st.updateHost ();
   printf ("energy: %e, pressure: %e %e %e\n",
   	  st.nonBondedEnergy(),
   	  st.pressureXX(sys.box),
   	  st.pressureYY(sys.box),
   	  st.pressureZZ(sys.box));
   SPMERecIk spme;
-  spme.reinit (vecA, K, order, beta, sys.hdata.numAtom, 7, 13);
-  spme.applyInteraction (sys, &st);
-  sys.updateHostFromDevice ();
+  spme.reinit (vecA,
+	       K,
+	       order,
+	       beta,
+	       sys.hdata.numAtom,
+	       NThreadsPerBlockAtom,
+	       NThreadsPerBlockAtom);
+  for (IndexType i = 0; i < 1; ++i){
+    inter.clearInteraction (sys);
+    spme.applyInteraction (sys, &st, &timer);
+  }
+  sys.recoverDeviceData (&timer);
+  sys.updateHostFromRecovered (&timer);
   FILE * fp = fopen ("myForce", "w");
   for (IndexType i = 0; i < sys.ddata.numAtom; ++i){
     fprintf (fp, "%.16e\t%.16e\t%.16e\n",
@@ -164,15 +188,6 @@ int main(int argc, char * argv[])
   	  st.pressureXX(sys.box),
   	  st.pressureYY(sys.box),
   	  st.pressureZZ(sys.box));
-
-  
-  timer.tic(mdTimeTotal);
-  if (resh.calIndexTable (clist, &timer)){
-    sys.reshuffle   (resh.indexTable, sys.hdata.numAtom, &timer);
-    clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-    nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
-    disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
-  }
   
   printf ("# prepare ok, start to run\n");
   // sys.recoverDeviceData (&timer);
