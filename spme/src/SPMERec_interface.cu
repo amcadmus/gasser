@@ -153,7 +153,7 @@ reinit (const MatrixType & vecA_,
   checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
 
   nlist_stride = nele;
-  nlist_length = order * order * order * 2;
+  nlist_length = order * order * order * 1;
   cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
   cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
   checkCUDAError ("SPMERecIk::reinit malloc nlist");
@@ -221,6 +221,7 @@ applyInteraction (MDSystem & sys,
 	  sys.ddata.coord,
 	  sys.ddata.charge,
 	  sys.ddata.numAtom,
+	  QConvPhi,
 	  // QConvPhi0,
 	  // QConvPhi1,
 	  // QConvPhi2,
@@ -386,9 +387,9 @@ calForce (const IntVectorType K,
 	value.y = uu.y - meshIdx.y;
 	value.z = uu.z - meshIdx.z;
 	for (IndexType jj = 0; jj < order; ++jj){
-	  Mnx[jj] = BSplineValue (order, value.x);
-	  Mny[jj] = BSplineValue (order, value.y);
-	  Mnz[jj] = BSplineValue (order, value.z);
+	  Mnx[jj] = BSplineValue (order, double(value.x));
+	  Mny[jj] = BSplineValue (order, double(value.y));
+	  Mnz[jj] = BSplineValue (order, double(value.z));
 	  value.x += 1.;
 	  value.y += 1.;
 	  value.z += 1.;
@@ -438,6 +439,7 @@ calForce (const IntVectorType K,
 	  const CoordType * coord,
 	  const ScalorType * charge,
 	  const IndexType natom,
+	  const CoordType * QConvPhi,
 	  ScalorType * forcx,
 	  ScalorType * forcy,
 	  ScalorType * forcz,
@@ -487,7 +489,9 @@ calForce (const IntVectorType K,
       }
       ScalorType mycharge = charge[ii];
       VectorType fsum;
+      VectorType fsum_small;
       fsum.x = fsum.y = fsum.z = ScalorType(0.f);
+      fsum_small.x = fsum_small.y = fsum_small.z = ScalorType(0.f);
       IntVectorType myMeshIdx;
       IntVectorType dk;
       for (dk.x = 0; dk.x < order; ++dk.x){
@@ -505,15 +509,26 @@ calForce (const IntVectorType K,
 	    IndexType index = index3to1 (myMeshIdx, K);
 	    ScalorType myP = Mnx[dk.x] * Mny[dk.y] * Mnz[dk.z];
 	    CoordType tmpQConvPhi = tex1Dfetch (global_texRef_SPME_QConv, index);
-	    fsum.x += myP * tmpQConvPhi.x;
-	    fsum.y += myP * tmpQConvPhi.y;
-	    fsum.z += myP * tmpQConvPhi.z;
+	    // CoordType tmpQConvPhi = QConvPhi[index];
+	    // fsum.x += myP * tmpQConvPhi.x;
+	    // fsum.y += myP * tmpQConvPhi.y;
+	    // fsum.z += myP * tmpQConvPhi.z;
+	    ScalorType tmp;
+	    tmp = myP * tmpQConvPhi.x;
+	    if (fabs(tmp) > 1e-2) fsum.x += tmp;
+	    else fsum_small.x += tmp;
+	    tmp = myP * tmpQConvPhi.y;
+	    if (fabs(tmp) > 1e-2) fsum.y += tmp;
+	    else fsum_small.y += tmp;
+	    tmp = myP * tmpQConvPhi.z;
+	    if (fabs(tmp) > 1e-2) fsum.z += tmp;
+	    else fsum_small.z += tmp;
 	  }
 	}
       }
-      forcx[ii] += mycharge * fsum.x;
-      forcy[ii] += mycharge * fsum.y;
-      forcz[ii] += mycharge * fsum.z;
+      forcx[ii] += mycharge * (fsum.x + fsum_small.x);
+      forcy[ii] += mycharge * (fsum.y + fsum_small.y);
+      forcz[ii] += mycharge * (fsum.z + fsum_small.z);
     }
   }
 }

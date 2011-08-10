@@ -5,7 +5,7 @@
 
 #include "common.h"
 
-__device__ ScalorType
+__device__ ScalorType static
 kernel_rm1_rec_f (const ScalorType m2,
 		  const ScalorType beta)
 {
@@ -13,7 +13,7 @@ kernel_rm1_rec_f (const ScalorType m2,
   return expf (- tmp*tmp*m2) / m2;
 }
 
-__device__ IndexType 
+__device__ IndexType static
 index3to1 (const IndexType ix,
 	   const IndexType iy,
 	   const IndexType iz,
@@ -24,7 +24,7 @@ index3to1 (const IndexType ix,
   return iz + nz * (iy + ny * ix);
 }
 
-__device__ IndexType 
+__device__ IndexType static
 index3to1 (const IntVectorType i,
 	   const IntVectorType N)
 {
@@ -32,7 +32,7 @@ index3to1 (const IntVectorType i,
 }
 
 
-__device__ void
+__device__ void static
 index1to3 (const IndexType input,
 	   const IndexType nx,
 	   const IndexType ny,
@@ -49,7 +49,7 @@ index1to3 (const IndexType input,
 }
 
 
-__device__ void
+__device__ void static
 index1to3 (const IndexType input,
 	   const IntVectorType N,
 	   IntVectorType * i)

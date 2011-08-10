@@ -423,7 +423,7 @@ __global__ void velocityVerlet_part2a (const IndexType numAtom,
 
   extern __shared__ volatile ScalorType buff [];
   if (ii < numAtom)
-    buff[tid] = 0.5 * mass[ii] * (vx*vx + vy*vy + vz*vz);
+    buff[tid] = 0.5f * mass[ii] * (vx*vx + vy*vy + vz*vz);
   else
     buff[tid] = 0.f;
   sumVectorBlockBuffer_2 (buff);
@@ -475,7 +475,7 @@ __global__ void velocityRescale_rescale (const IndexType numAtom,
   extern __shared__ volatile ScalorType buff [];
 
   ScalorType scalor;
-  if (ii < numAtom) scalor = 0.5 * mass[ii];
+  if (ii < numAtom) scalor = 0.5f * mass[ii];
   else scalor = 0.f;
   
   if (ii < numAtom){
