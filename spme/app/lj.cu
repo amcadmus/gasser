@@ -47,9 +47,9 @@ int main(int argc, char * argv[])
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.2;
-  IndexType order = 4;
-  int Kvalue = 32;
+  ScalorType beta = 1.3;
+  IndexType order = 6;
+  int Kvalue = 128;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -168,7 +168,7 @@ int main(int argc, char * argv[])
 	       sys.hdata.numAtom,
 	       NThreadsPerBlockAtom,
 	       NThreadsPerBlockAtom);
-  for (IndexType i = 0; i < 1; ++i){
+  for (IndexType i = 0; i < nstep; ++i){
     inter.clearInteraction (sys);
     spme.applyInteraction (sys, &st, &timer);
   }

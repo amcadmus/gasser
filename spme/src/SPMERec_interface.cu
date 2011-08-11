@@ -99,11 +99,20 @@ reinit (const MatrixType & vecA_,
   meshBlockDim.x = meshNThread;
   nob = (nele  + meshBlockDim.x - 1) / meshBlockDim.x;
   meshGridDim = toGridDim (nob);
+  meshGridDim.y = 8;
+  meshGridDim.x /= meshGridDim.y;
+  meshGridDim.x ++;
   nob = (nelehalf  + meshBlockDim.x - 1) / meshBlockDim.x;
   meshGridDim_half = toGridDim (nob);
+  meshGridDim_half.y = 8;
+  meshGridDim_half.x /= meshGridDim_half.y;
+  meshGridDim_half.x ++;
   atomBlockDim.x = atomNThread;
   nob = (natom + atomBlockDim.x - 1) / atomBlockDim.x;
   atomGridDim = toGridDim (nob);
+  atomGridDim.y = 8;
+  atomGridDim.x /= atomGridDim.y;
+  atomGridDim.x ++;
 
   cudaMalloc ((void**)&vecbx, sizeof(ScalorType) * K.x);
   cudaMalloc ((void**)&vecby, sizeof(ScalorType) * K.y);
@@ -153,15 +162,18 @@ reinit (const MatrixType & vecA_,
   checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
 
   nlist_stride = nele;
-  nlist_length = order * order * order * 1;
+  ScalorType rho = natom / volume;
+  ScalorType vcell = volume * ScalorType (order * order * order) / ScalorType (K.x * K.y * K.z);
+  nlist_length = (rho * vcell * 1.5f + 15.);
+  printf ("# spme nlist length is %d\n", nlist_length);
   cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
   cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
   checkCUDAError ("SPMERecIk::reinit malloc nlist");
 
   sum_e.  reinit (nele, NThreadForSum);
-  sum_vxx.reinit (nele, NThreadForSum);
-  sum_vyy.reinit (nele, NThreadForSum);
-  sum_vzz.reinit (nele, NThreadForSum);
+  // sum_vxx.reinit (nele, NThreadForSum);
+  // sum_vyy.reinit (nele, NThreadForSum);
+  // sum_vzz.reinit (nele, NThreadForSum);
   checkCUDAError ("EwaldSumRec::reinit reinit sums");
 }
 
