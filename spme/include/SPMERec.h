@@ -22,6 +22,7 @@ class SPMERecIk
   // IndexType cudaArch;
   IndexType order;
   IntVectorType K;
+  IntVectorType KPadding;
   ScalorType volume;
   ScalorType beta;
   MatrixType vecA;
@@ -37,6 +38,7 @@ private:
   ScalorType * vecby;
   ScalorType * vecbz;
   void calB ();
+  bool fftOutOfPlace;
   cufftReal * Q;
   cufftComplex * psiF;
   cufftComplex * phiF0;
@@ -155,6 +157,12 @@ calQMat (const IntVectorType K,
 	 const IndexType natom,
 	 cufftReal * Q,
 	 mdError_t * ptr_de );
+__global__ void
+timeQFPsiF (const cufftReal * QF,
+	    const cufftComplex * PsiF,
+	    cufftReal * F,
+	    const IndexType nelehalf,
+	    const ScalorType sizei);
 // half mesh grid and block
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
@@ -162,7 +170,17 @@ timeQFPsiF (const cufftComplex * QF,
 	    cufftComplex * QFxPsiF,
 	    const IndexType nelehalf,
 	    const ScalorType sizei);
-// half mesh grid and block
+__global__ void
+timeQFPhiF (const cufftReal * QF,
+	    const cufftComplex * PhiF0,
+	    const cufftComplex * PhiF1,
+	    const cufftComplex * PhiF2,
+	    cufftReal * F0,
+	    cufftReal * F1,
+	    cufftReal * F2,
+	    const IndexType nelehalf,
+	    const ScalorType sizei);
+//half mesh grid and block
 __global__ void
 timeQFPhiF (const cufftComplex * QF,
 	    const cufftComplex * PhiF0,

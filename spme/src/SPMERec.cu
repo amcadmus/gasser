@@ -367,7 +367,6 @@ calQMat (const IntVectorType K,
 }
 #endif
 
-
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
 	    const cufftComplex * PsiF,
@@ -405,6 +404,50 @@ timeQFPhiF (const cufftComplex * QF,
     QFxPhiF1[ii].y = (QF[ii].x * PhiF1[ii].y + QF[ii].y * PhiF1[ii].x) * sizei;
     QFxPhiF2[ii].x = (QF[ii].x * PhiF2[ii].x - QF[ii].y * PhiF2[ii].y) * sizei;
     QFxPhiF2[ii].y = (QF[ii].x * PhiF2[ii].y + QF[ii].y * PhiF2[ii].x) * sizei;
+  }
+}
+
+__global__ void
+timeQFPsiF (const cufftReal * QF,
+	    const cufftComplex * PsiF,
+	    cufftReal * F,
+	    const IndexType nelehalf,
+	    const ScalorType sizei)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  
+  if (ii < nelehalf){
+    IndexType realIdx = (ii << 1);
+    IndexType imagIdx = realIdx + 1;
+    F[realIdx] = (QF[realIdx] * PsiF[ii].x - QF[imagIdx] * PsiF[ii].y) * sizei;
+    F[imagIdx] = (QF[realIdx] * PsiF[ii].y + QF[imagIdx] * PsiF[ii].x) * sizei;
+  }
+}
+
+__global__ void
+timeQFPhiF (const cufftReal * QF,
+	    const cufftComplex * PhiF0,
+	    const cufftComplex * PhiF1,
+	    const cufftComplex * PhiF2,
+	    cufftReal * F0,
+	    cufftReal * F1,
+	    cufftReal * F2,
+	    const IndexType nelehalf,
+	    const ScalorType sizei)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+  
+  if (ii < nelehalf){
+    IndexType realIdx = (ii << 1);
+    IndexType imagIdx = realIdx + 1;
+    F0[realIdx] = (QF[realIdx] * PhiF0[ii].x - QF[imagIdx] * PhiF0[ii].y) * sizei;
+    F0[imagIdx] = (QF[realIdx] * PhiF0[ii].y + QF[imagIdx] * PhiF0[ii].x) * sizei;
+    F1[realIdx] = (QF[realIdx] * PhiF1[ii].x - QF[imagIdx] * PhiF1[ii].y) * sizei;
+    F1[imagIdx] = (QF[realIdx] * PhiF1[ii].y + QF[imagIdx] * PhiF1[ii].x) * sizei;
+    F2[realIdx] = (QF[realIdx] * PhiF2[ii].x - QF[imagIdx] * PhiF2[ii].y) * sizei;
+    F2[imagIdx] = (QF[realIdx] * PhiF2[ii].y + QF[imagIdx] * PhiF2[ii].x) * sizei;
   }
 }
 

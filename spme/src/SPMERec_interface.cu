@@ -14,11 +14,13 @@ freeAll ()
     cudaFree (phiF0);
     cudaFree (phiF1);
     cudaFree (phiF2);
-    cudaFree (QF);
-    cudaFree (QFxPsiF);
-    cudaFree (QFxPhiF0);
-    cudaFree (QFxPhiF1);
-    cudaFree (QFxPhiF2);
+    if (fftOutOfPlace) {
+      cudaFree (QF);
+      cudaFree (QFxPsiF);
+      cudaFree (QFxPhiF0);
+      cudaFree (QFxPhiF1);
+      cudaFree (QFxPhiF2);
+    }
     cudaFree (QConvPsi);
     cudaFree (QConvPhi0);
     cudaFree (QConvPhi1);
@@ -38,7 +40,8 @@ freeAll ()
 SPMERecIk::
 SPMERecIk()
     : malloced (false),
-      enable_nlist (true)
+      enable_nlist (true),
+      fftOutOfPlace (true)
 {
   IndexType * d_arch, cudaArch;
   cudaMalloc ((void**)&d_arch, sizeof(IndexType));
@@ -101,11 +104,13 @@ reinit (const MatrixType & vecA_,
   beta = beta_;
   calV();
   calAStar();
-
+  
   IndexType nele = K.x * K.y * K.z;
   IntVectorType N(K);
   N.z = (N.z >> 1) + 1;
   IndexType nelehalf = N.x * N.y * N.z;
+  KPadding = K;
+  KPadding.z = (N.z << 1);
 
   IndexType nob;
   meshBlockDim.x = meshNThread;
@@ -130,24 +135,42 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&vecby, sizeof(ScalorType) * K.y);
   cudaMalloc ((void**)&vecbz, sizeof(ScalorType) * K.z);
   calB ();
-  checkCUDAError ("SPMERecIk::reinit malloc");
-  cudaMalloc ((void**)&Q, sizeof(cufftReal) * nele);
-  checkCUDAError ("SPMERecIk::reinit malloc");
+  if (fftOutOfPlace){
+    cudaMalloc ((void**)&Q, sizeof(cufftReal) * nele);
+    cudaMalloc ((void**)&QF,  sizeof(cufftComplex) * nelehalf);
+    checkCUDAError ("SPMERecIk::reinit malloc");
+    cudaMalloc ((void**)&QFxPsiF,  sizeof(cufftComplex) * nelehalf);
+    cudaMalloc ((void**)&QFxPhiF0, sizeof(cufftComplex) * nelehalf);
+    cudaMalloc ((void**)&QFxPhiF1, sizeof(cufftComplex) * nelehalf);
+    cudaMalloc ((void**)&QFxPhiF2, sizeof(cufftComplex) * nelehalf);
+    checkCUDAError ("SPMERecIk::reinit malloc");
+    cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nele);
+    cudaMalloc ((void**)&QConvPhi0, sizeof(cufftReal) * nele);
+    cudaMalloc ((void**)&QConvPhi1, sizeof(cufftReal) * nele);
+    cudaMalloc ((void**)&QConvPhi2, sizeof(cufftReal) * nele);
+    checkCUDAError ("SPMERecIk::reinit malloc");
+  }
+  else {
+    // nob = (nelehalf * 2  + meshBlockDim.x - 1) / meshBlockDim.x;
+    // dim3 meshGridDim_tmp = toGridDim (nob);
+    // meshGridDim_tmp.y = 8;
+    // meshGridDim_tmp.x /= meshGridDim_half.y;
+    // meshGridDim_tmp.x ++;
+    // setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (Q, nelehalf*2, ScalorType(0.f));
+    // cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nelehalf * 2);
+    // cudaMalloc ((void**)&QConvPhi0, sizeof(cufftReal) * nelehalf * 2);
+    // cudaMalloc ((void**)&QConvPhi1, sizeof(cufftReal) * nelehalf * 2);
+    // cudaMalloc ((void**)&QConvPhi2, sizeof(cufftReal) * nelehalf * 2);
+    // setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPsi, nelehalf*2, ScalorType(0.f));
+    // setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPhi0, nelehalf*2, ScalorType(0.f));
+    // setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPhi1, nelehalf*2, ScalorType(0.f));
+    // setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPhi2, nelehalf*2, ScalorType(0.f));
+  }
   cudaMalloc ((void**)&psiF,  sizeof(cufftComplex) * nelehalf);
   cudaMalloc ((void**)&phiF0, sizeof(cufftComplex) * nelehalf);
   cudaMalloc ((void**)&phiF1, sizeof(cufftComplex) * nelehalf);
   cudaMalloc ((void**)&phiF2, sizeof(cufftComplex) * nelehalf);
   checkCUDAError ("SPMERecIk::reinit malloc");
-  cudaMalloc ((void**)&QF,  sizeof(cufftComplex) * nelehalf);
-  cudaMalloc ((void**)&QFxPsiF,  sizeof(cufftComplex) * nelehalf);
-  cudaMalloc ((void**)&QFxPhiF0, sizeof(cufftComplex) * nelehalf);
-  cudaMalloc ((void**)&QFxPhiF1, sizeof(cufftComplex) * nelehalf);
-  cudaMalloc ((void**)&QFxPhiF2, sizeof(cufftComplex) * nelehalf);
-  checkCUDAError ("SPMERecIk::reinit malloc");
-  cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QConvPhi0, sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QConvPhi1, sizeof(cufftReal) * nele);
-  cudaMalloc ((void**)&QConvPhi2, sizeof(cufftReal) * nele);
   cudaMalloc ((void**)&QConvPhi,  sizeof(CoordType) * nele);
   cudaBindTexture(0, global_texRef_SPME_QConv, QConvPhi,
 		  sizeof(CoordType) * nele);
@@ -155,8 +178,8 @@ reinit (const MatrixType & vecA_,
 
   cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
   cufftPlan3d (&planBackward, K.x, K.y, K.z, CUFFT_C2R);
-  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_ALL);
-  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_PADDING);
   
   malloced = true;
 
@@ -215,30 +238,57 @@ applyInteraction (MDSystem & sys,
   if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
-  cufftExecR2C (planForward, Q, QF);
+  if (fftOutOfPlace){
+    cufftExecR2C (planForward, Q, QF);
+  }
+  else {
+    cufftExecR2C (planForward, Q, (cufftComplex *)Q);
+  }
   checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
   ScalorType sizei = 1./(K.x*K.y*K.z);
-  timeQFPhiF
-      <<<meshGridDim_half, meshBlockDim>>> (
-	  QF,
-	  phiF0,
-	  phiF1,
-	  phiF2,
-	  QFxPhiF0,
-	  QFxPhiF1,
-	  QFxPhiF2,
-	  nelehalf,
-	  sizei);
+  if (fftOutOfPlace){
+    timeQFPhiF
+	<<<meshGridDim_half, meshBlockDim>>> (
+	    QF,
+	    phiF0,
+	    phiF1,
+	    phiF2,
+	    QFxPhiF0,
+	    QFxPhiF1,
+	    QFxPhiF2,
+	    nelehalf,
+	    sizei);
+  }
+  else {
+    timeQFPhiF
+	<<<meshGridDim_half, meshBlockDim>>> (
+	    Q,
+	    phiF0,
+	    phiF1,
+	    phiF2,
+	    QConvPhi0,
+	    QConvPhi1,
+	    QConvPhi2,
+	    nelehalf,
+	    sizei);
+  }
   checkCUDAError ("SPMERecIk::applyInteraction timeQFPhiF");
   if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
 
   if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
-  cufftExecC2R (planBackward, QFxPhiF0, QConvPhi0);
-  cufftExecC2R (planBackward, QFxPhiF1, QConvPhi1);
-  cufftExecC2R (planBackward, QFxPhiF2, QConvPhi2);
+  if (fftOutOfPlace){
+    cufftExecC2R (planBackward, QFxPhiF0, QConvPhi0);
+    cufftExecC2R (planBackward, QFxPhiF1, QConvPhi1);
+    cufftExecC2R (planBackward, QFxPhiF2, QConvPhi2);
+  }
+  else {
+    cufftExecC2R (planBackward, (cufftComplex *)QConvPhi0, QConvPhi0);
+    cufftExecC2R (planBackward, (cufftComplex *)QConvPhi1, QConvPhi1);
+    cufftExecC2R (planBackward, (cufftComplex *)QConvPhi2, QConvPhi2);
+  }
   checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QConvPhi");
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
   // cudaMemcpy (see, QConvPhi0, see_size, cudaMemcpyDeviceToHost);
@@ -275,17 +325,33 @@ applyInteraction (MDSystem & sys,
 
   if (pst != NULL){
     if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
-    timeQFPsiF
-	<<<meshGridDim_half, meshBlockDim>>> (
-	    QF,
-	    psiF,
-	    QFxPsiF,
-	    nelehalf,
-	    sizei);
+    if (fftOutOfPlace){
+      timeQFPsiF
+	  <<<meshGridDim_half, meshBlockDim>>> (
+	      QF,
+	      psiF,
+	      QFxPsiF,
+	      nelehalf,
+	      sizei);
+    }
+    else {
+      timeQFPsiF
+	  <<<meshGridDim_half, meshBlockDim>>> (
+	      Q,
+	      psiF,
+	      QConvPsi,
+	      nelehalf,
+	      sizei);
+    }
     checkCUDAError ("SPMERecIk::applyInteraction time QF PhiF");
     if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
     if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
-    cufftExecC2R (planBackward, QFxPsiF, QConvPsi);
+    if (fftOutOfPlace){
+      cufftExecC2R (planBackward, QFxPsiF, QConvPsi);
+    }
+    else {
+      cufftExecC2R (planBackward, (cufftComplex*)QConvPsi, QConvPsi);
+    }
     checkCUDAError ("SPMERecIk::applyInteraction QFxPsiF->QConvPsi");
     if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
     if (timer != NULL) timer->tic (mdTimeSPMERecEnergy);
