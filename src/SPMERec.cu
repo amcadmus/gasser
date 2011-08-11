@@ -132,22 +132,33 @@ calPsiFPhiF (const IntVectorType K,
     mm.y = idx.x * vecAStar.xy + idx.y * vecAStar.yy + idx.z * vecAStar.zy;
     mm.z = idx.x * vecAStar.xz + idx.y * vecAStar.yz + idx.z * vecAStar.zz;
     ScalorType m2 = (mm.x*mm.x + mm.y*mm.y + mm.z*mm.z);
+    ScalorType expp;
     if (m2 == 0){
-      psiF[ii].x  = psiF[ii].y  = 0.f;
-      phiF0[ii].x = phiF0[ii].y = 0.f;
-      phiF1[ii].x = phiF1[ii].y = 0.f;
-      phiF2[ii].x = phiF2[ii].y = 0.f;
+      expp = 0;
     }
     else {
-      ScalorType expp = kernel_rm1_rec_f (m2, beta) * valueB;
-      psiF[ii].x = scalor0 * expp;
-      psiF[ii].y = 0.f;
-      phiF0[ii].x = 0.f;
-      phiF1[ii].x = 0.f;
-      phiF2[ii].x = 0.f;
-      phiF0[ii].y = scalor1 * expp * mm.x;
-      phiF1[ii].y = scalor1 * expp * mm.y;
-      phiF2[ii].y = scalor1 * expp * mm.z;
+      expp = kernel_rm1_rec_f (m2, beta) * valueB;
+    }
+    psiF[ii].x = scalor0 * expp;
+    psiF[ii].y = ScalorType (0.f);
+    phiF0[ii].x = phiF1[ii].x = phiF2[ii].x = 0.f;    
+    
+    // if (zerox && zeroy && zeroz){
+    //   phiF0[ii].y = phiF1[ii].y = phiF2[ii].y = 0.f;
+    // }
+    // else {
+    phiF0[ii].y = scalor1 * expp * mm.x;
+    phiF1[ii].y = scalor1 * expp * mm.y;
+    phiF2[ii].y = scalor1 * expp * mm.z;
+    // }
+    if (idx.x == (K.x >> 1) && (((K.x >> 1) << 1) == K.x)){
+      phiF0[ii].y = 0.f;
+    }
+    if (idx.y == (K.y >> 1) && (((K.y >> 1) << 1) == K.y)){
+      phiF1[ii].y = 0.f;
+    }
+    if (idx.z == (K.z >> 1) && (((K.z >> 1) << 1) == K.z)){
+      phiF2[ii].y = 0.f;
     }
   }
 }
