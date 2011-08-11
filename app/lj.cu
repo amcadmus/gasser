@@ -47,9 +47,9 @@ int main(int argc, char * argv[])
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.;
+  ScalorType beta = 1.3;
   IndexType order = 8;
-  int Kvalue = 81;
+  int Kvalue = 128;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);

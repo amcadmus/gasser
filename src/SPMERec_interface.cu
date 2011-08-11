@@ -193,8 +193,20 @@ applyInteraction (MDSystem & sys,
 		  MDStatistic * pst,
 		  MDTimer * timer)
 {
+  // int nele = K.x * K.y * K.z;
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nelehalf = N.x * N.y * N.z;
+  // size_t see_size = nele * sizeof(cufftReal);
+  // size_t cpl_size = nelehalf * sizeof(cufftComplex);
+  // cufftReal* see = (cufftReal *) malloc (see_size);
+  // cufftComplex* cpl = (cufftComplex *) malloc (cpl_size);
   if (timer != NULL) timer->tic (mdTimeSPMERecCalQ);
   calQ (sys, timer);
+  // cudaMemcpy (see, Q, see_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (cpl, phiF0, cpl_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (cpl, phiF1, cpl_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (cpl, phiF2, cpl_size, cudaMemcpyDeviceToHost);
   if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
@@ -203,9 +215,6 @@ applyInteraction (MDSystem & sys,
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
-  IntVectorType N(K);
-  N.z = (N.z >> 1) + 1;
-  IndexType nelehalf = N.x * N.y * N.z;
   ScalorType sizei = 1./(K.x*K.y*K.z);
   timeQFPhiF
       <<<meshGridDim_half, meshBlockDim>>> (
@@ -227,6 +236,9 @@ applyInteraction (MDSystem & sys,
   cufftExecC2R (planBackward, QFxPhiF2, QConvPhi2);
   checkCUDAError ("SPMERecIk::applyInteraction QFxPhiF->QConvPhi");
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
+  // cudaMemcpy (see, QConvPhi0, see_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (see, QConvPhi1, see_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (see, QConvPhi2, see_size, cudaMemcpyDeviceToHost);
 
   if (timer != NULL) timer->tic (mdTimeSPMERecForce);
   assembleQConvPhi
@@ -541,9 +553,9 @@ calForce (const IntVectorType K,
 	value.y = uu.y - meshIdx.y;
 	value.z = uu.z - meshIdx.z;
 	for (IndexType jj = 0; jj < order; ++jj){
-	  Mnx[jj] = BSplineValue (order, value.x);
-	  Mny[jj] = BSplineValue (order, value.y);
-	  Mnz[jj] = BSplineValue (order, value.z);
+	  Mnx[jj] = BSplineValue (order, double(value.x));
+	  Mny[jj] = BSplineValue (order, double(value.y));
+	  Mnz[jj] = BSplineValue (order, double(value.z));
 	  value.x += 1.;
 	  value.y += 1.;
 	  value.z += 1.;
