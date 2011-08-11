@@ -47,9 +47,9 @@ int main(int argc, char * argv[])
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.3;
-  IndexType order = 6;
-  int Kvalue = 128;
+  ScalorType beta = 1.;
+  IndexType order = 8;
+  int Kvalue = 81;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
   printf ("# setting device to %d\n", atoi(argv[3]));
   cudaSetDevice (atoi(argv[3]));
   checkCUDAError ("set device");
-
+  
   MDSystem sys;
   sys.initConfig(filename);
   // for (IndexType i = 0; i < sys.hdata.numAtom; ++i){

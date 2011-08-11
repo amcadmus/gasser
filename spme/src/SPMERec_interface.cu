@@ -92,6 +92,13 @@ reinit (const MatrixType & vecA_,
   calV();
   calAStar();
 
+  IndexType * d_arch;
+  cudaMalloc ((void**)&d_arch, sizeof(IndexType));
+  getArch <<<1,1>>> (d_arch);
+  cudaMemcpy (&cudaArch, d_arch, sizeof(IndexType), cudaMemcpyDeviceToHost);
+  cudaFree (d_arch);
+  printf ("cudaArch is %d\n", cudaArch);
+
   IndexType nele = K.x * K.y * K.z;
   IntVectorType N(K);
   N.z = (N.z >> 1) + 1;
@@ -145,7 +152,9 @@ reinit (const MatrixType & vecA_,
 
   cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
   cufftPlan3d (&planBackward, K.x, K.y, K.z, CUFFT_C2R);
-
+  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  
   malloced = true;
 
   calPsiFPhiF
@@ -185,7 +194,7 @@ applyInteraction (MDSystem & sys,
 		  MDTimer * timer)
 {
   if (timer != NULL) timer->tic (mdTimeSPMERecCalQ);
-  calQ (sys);
+  calQ (sys, timer);
   if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
@@ -279,66 +288,85 @@ applyInteraction (MDSystem & sys,
 
 
 void SPMERecIk::
-calQ (const MDSystem & sys)
+calQ (const MDSystem & sys,
+      MDTimer * timer)
 {
 //
 // fast algorithm !!!!
 //
-  initMeshNeighborList
-      <<<meshGridDim, meshBlockDim>>>(
-	  K,
-	  vecAStar,
-	  nlist_n,
-	  nlist_list,
-	  nlist_stride,
-	  nlist_length);
-  buildMeshNeighborList
-      <<<atomGridDim, atomBlockDim>>> (
-	  K,
-	  vecAStar,
-	  order,
-	  sys.ddata.coord,
-	  sys.ddata.numAtom,
-	  nlist_n,
-	  nlist_list,
-	  nlist_stride,
-	  nlist_length,
-	  err.ptr_de);
-  checkCUDAError ("SPMERecIk::calQ buildNeighborList");
-  err.check ("SPMERecIk::calQ buildNeighborList");
-  calQMat
-      <<<meshGridDim, meshBlockDim>>> (
-	  K,
-	  vecAStar,
-	  order,
-	  nlist_n,
-	  nlist_list,
-	  nlist_stride,
-	  Q);
-  checkCUDAError ("SPMERecIk::calQ calQ");
-  // FILE * fp = fopen ("tmpQ.out", "w");
-  // for (unsigned i = 0; i < K.x * K.y * K.z; ++i){
-  //   fprintf (fp, "%.12e\n", Q[i]);
-  // }
-  // fclose (fp);
+  // // int nele = K.x * K.y * K.z;
+  // // cufftReal * see = (cufftReal * )malloc (sizeof(cufftReal) * nele);
+  
+  // // if (cudaArch < 200){
+  // if (timer != NULL) timer->tic (mdTimeSPMERecMeshNeighborList);
+  // initMeshNeighborList
+  //     <<<meshGridDim, meshBlockDim>>>(
+  // 	  K,
+  // 	  vecAStar,
+  // 	  nlist_n,
+  // 	  nlist_list,
+  // 	  nlist_stride,
+  // 	  nlist_length);
+  // buildMeshNeighborList
+  //     <<<atomGridDim, atomBlockDim>>> (
+  // 	  K,
+  // 	  vecAStar,
+  // 	  order,
+  // 	  sys.ddata.coord,
+  // 	  sys.ddata.numAtom,
+  // 	  nlist_n,
+  // 	  nlist_list,
+  // 	  nlist_stride,
+  // 	  nlist_length,
+  // 	  err.ptr_de);
+  // checkCUDAError ("SPMERecIk::calQ buildNeighborList");
+  // err.check ("SPMERecIk::calQ buildNeighborList");
+  // if (timer != NULL) timer->toc (mdTimeSPMERecMeshNeighborList);
+  // if (timer != NULL) timer->tic (mdTimeSPMECalQFromNList);
+  // calQMat
+  //     <<<meshGridDim, meshBlockDim>>> (
+  // 	  K,
+  // 	  vecAStar,
+  // 	  order,
+  // 	  nlist_n,
+  // 	  nlist_list,
+  // 	  nlist_stride,
+  // 	  Q);
+  // checkCUDAError ("SPMERecIk::calQ calQ");
+  // if (timer != NULL) timer->toc (mdTimeSPMECalQFromNList);
 
-#if (__CUDA_ARCH__ >= 200)
-  setValue
-      <<<meshBlockDim, meshGridDim>>> (
-	  Q,
-	  K.x * K.y * K.z,
-	  ScalorType (0.f));
-  calQMat
-      <<<atomBlockDim, atomGridDim>>> (
-	  K,
-	  vecAStar,
-	  order,
-	  sys.ddata.coord,
-	  sys.ddata.charge,
-	  sys.ddata.numAtom,
-	  Q,
-	  err.ptr_de);
-#endif
+
+  // // FILE * fp = fopen ("tmpQ.out", "w");
+  // // for (unsigned i = 0; i < K.x * K.y * K.z; ++i){
+  // //   fprintf (fp, "%.12e\n", Q[i]);
+  // // }
+  // // fclose (fp);
+
+
+  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+  // }
+  // else if (cudaArch >= 200){
+    setValue
+    	<<<meshGridDim, meshBlockDim>>> (
+    	    Q,
+    	    K.x * K.y * K.z,
+    	    ScalorType (0.f));
+    // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+    calQMat
+    	<<<atomGridDim, atomBlockDim>>> (
+    	    K,
+    	    vecAStar,
+    	    order,
+    	    sys.ddata.coord,
+    	    sys.ddata.charge,
+    	    sys.ddata.numAtom,
+    	    Q,
+    	    err.ptr_de);
+    checkCUDAError ("SPMERecIk::calQ calQ atomicAdd");
+    // // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+  // }
+
+  // free (see);
 }
 
 
@@ -567,88 +595,3 @@ calForce (const IntVectorType K,
   }
 }
 
-#if (__CUDA_ARCH__ >= 200)
-// atom grid and block
-__global__ void
-calQMat (const IntVectorType K,
-	 const MatrixType vecAStar,
-	 const IndexType order,
-	 const CoordType * coord,
-	 const ScalorType * charge,
-	 const IndexType natom,
-	 cufftReal * Q,
-	 mdError_t * ptr_de )
-{
-  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-  IndexType ii = threadIdx.x + bid * blockDim.x;
-
-  if (ii < natom){
-    CoordType my_coord (coord[ii]);
-    VectorType uu;
-    uu.x = K.x * (vecAStar.xx * my_coord.x + vecAStar.xy * my_coord.y + vecAStar.xz *my_coord.z);
-    uu.y = K.y * (vecAStar.yx * my_coord.x + vecAStar.yy * my_coord.y + vecAStar.yz *my_coord.z);
-    uu.z = K.z * (vecAStar.zx * my_coord.x + vecAStar.zy * my_coord.y + vecAStar.zz *my_coord.z);
-    if      (uu.x <  0  ) uu.x += K.x;
-    else if (uu.x >= K.x) uu.x -= K.x;
-    if      (uu.y <  0  ) uu.y += K.y;
-    else if (uu.y >= K.y) uu.y -= K.y;
-    if      (uu.z <  0  ) uu.z += K.z;
-    else if (uu.z >= K.z) uu.z -= K.z;
-    IntVectorType meshIdx;
-    meshIdx.x = int(uu.x);
-    meshIdx.y = int(uu.y);
-    meshIdx.z = int(uu.z);
-    if (meshIdx.x >= K.x || meshIdx.x < 0 ||
-	meshIdx.y >= K.y || meshIdx.y < 0 ||
-	meshIdx.z >= K.z || meshIdx.z < 0 ){
-      *ptr_de = mdErrorOverFlowMeshIdx;
-    }
-    else {
-      ScalorType Mnx[MaxSPMEOrder];
-      ScalorType Mny[MaxSPMEOrder];
-      ScalorType Mnz[MaxSPMEOrder];
-      {
-	VectorType value;
-	value.x = uu.x - meshIdx.x;
-	value.y = uu.y - meshIdx.y;
-	value.z = uu.z - meshIdx.z;
-	for (IndexType jj = 0; jj < order; ++jj){
-	  Mnx[jj] = BSplineValue (order, value.x);
-	  Mny[jj] = BSplineValue (order, value.y);
-	  Mnz[jj] = BSplineValue (order, value.z);
-	  value.x += 1.;
-	  value.y += 1.;
-	  value.z += 1.;
-	}
-      }
-      ScalorType mycharge = charge[ii];
-      VectorType fsum;
-      VectorType fsum_small;
-      fsum.x = fsum.y = fsum.z = ScalorType(0.f);
-      fsum_small.x = fsum_small.y = fsum_small.z = ScalorType(0.f);
-      IntVectorType myMeshIdx;
-      IntVectorType dk;
-      for (dk.x = 0; dk.x < order; ++dk.x){
-	myMeshIdx.x = meshIdx.x - dk.x;
-	if (myMeshIdx.x < 0) myMeshIdx.x += K.x;
-	for (dk.y = 0; dk.y < order; ++dk.y){
-	  myMeshIdx.y = meshIdx.y - dk.y;
-	  if (myMeshIdx.y < 0) myMeshIdx.y += K.y;
-	  for (dk.z = 0; dk.z < order; ++dk.z){
-	    myMeshIdx.z = meshIdx.z - dk.z;
-	    if (myMeshIdx.z < 0) myMeshIdx.z += K.z;
-	    //
-	    // possible improvement!!!!
-	    //
-	    IndexType index = index3to1 (myMeshIdx, K);
-	    atomicAdd (&Q[index], Mnx[dk.x] * Mny[dk.y] * Mnz[dk.z] * mycharge);
-	  }
-	}
-      }
-      forcx[ii] += mycharge * (fsum.x + fsum_small.x);
-      forcy[ii] += mycharge * (fsum.y + fsum_small.y);
-      forcz[ii] += mycharge * (fsum.z + fsum_small.z);
-    }
-  }
-}
-#endif

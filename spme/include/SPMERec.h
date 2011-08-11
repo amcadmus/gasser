@@ -19,6 +19,7 @@
 
 class SPMERecIk
 {
+  IndexType cudaArch;
   IndexType order;
   IntVectorType K;
   ScalorType volume;
@@ -78,14 +79,17 @@ public:
 	       const IndexType & natom,
 	       const IndexType & meshNThread = 128,
 	       const IndexType & atomNThread = 128);
-  void calQ (const MDSystem & sys);
+  void calQ (const MDSystem & sys,
+	     MDTimer * timer = NULL);
   void applyInteraction (MDSystem & sys,
 			 MDStatistic * pst = NULL,
 			 MDTimer * timer = NULL);
 }
     ;
 
-
+// <<< 1, 1 >>>
+__global__ void
+getArch (IndexType * arch);
 __global__ void
 calBx (const IntVectorType K,
        const IndexType order,
@@ -141,7 +145,7 @@ calQMat (const IntVectorType K,
 	 const IndexType * nlist_list,
 	 const IndexType nlist_stride,
 	 cufftReal * Q);
-#if (__CUDA_ARCH__ >= 200)
+// #if (__CUDA_ARCH__ >= 200)
 __global__ void
 calQMat (const IntVectorType K,
 	 const MatrixType vecAStar,
@@ -151,7 +155,7 @@ calQMat (const IntVectorType K,
 	 const IndexType natom,
 	 cufftReal * Q,
 	 mdError_t * ptr_de );
-#endif
+// #endif
 // half mesh grid and block
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
