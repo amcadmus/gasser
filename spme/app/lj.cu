@@ -49,7 +49,7 @@ int main(int argc, char * argv[])
   ScalorType dt = 0.001;
   ScalorType beta = 1.3;
   IndexType order = 8;
-  int Kvalue = 128;
+  int Kvalue = 256;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
