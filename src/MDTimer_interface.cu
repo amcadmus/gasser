@@ -62,6 +62,12 @@ void MDTimer::printRecord (FILE * fp)
   fprintf(fp, "Cal. angle interaction(st):          %1.3e s   %3.1f %\n",
 	  0.001 * timeRecord[mdTimeAngleInterStatistic],
 	  100 * timeRecord[mdTimeAngleInterStatistic] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME cal Q: build mesh nlist:        %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMERecMeshNeighborList],
+	  100 * timeRecord[mdTimeSPMERecMeshNeighborList] / timeRecord[mdTimeTotal]);
+  fprintf(fp, "SPME cal Q: from mesh nlist:         %1.3e s   %3.1f %\n",
+	  0.001 * timeRecord[mdTimeSPMECalQFromNList],
+	  100 * timeRecord[mdTimeSPMECalQFromNList] / timeRecord[mdTimeTotal]);
   fprintf(fp, "SPME cal Q:                          %1.3e s   %3.1f %\n",
 	  0.001 * timeRecord[mdTimeSPMERecCalQ],
 	  100 * timeRecord[mdTimeSPMERecCalQ] / timeRecord[mdTimeTotal]);

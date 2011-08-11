@@ -22,6 +22,8 @@ enum mdTimeItem {
   mdTimeAngleInteraction	= 11,
   mdTimeAngleInterStatistic	= 12,
   mdTimeDataTransfer		= 13,
+  mdTimeSPMERecMeshNeighborList	= 20,
+  mdTimeSPMECalQFromNList	= 21,
   mdTimeSPMERecCalQ		= 15,
   mdTimeSPMERecFFT		= 16,
   mdTimeSPMERecTimeMatrix	= 17,
