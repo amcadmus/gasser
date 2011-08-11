@@ -276,6 +276,7 @@ buildMeshNeighborList (const IntVectorType K,
 // atom grid and block
 __global__ void
 calQMat (const IntVectorType K,
+	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -345,7 +346,7 @@ calQMat (const IntVectorType K,
 	    //
 	    // possible improvement!!!!
 	    //
-	    IndexType index = index3to1 (myMeshIdx, K);
+	    IndexType index = index3to1 (myMeshIdx, KPadding);
 	    atomicAdd (&Q[index], Mnx[dk.x] * Mny[dk.y] * Mnz[dk.z] * mycharge);
 	  }
 	}
@@ -356,6 +357,7 @@ calQMat (const IntVectorType K,
 #else
 __global__ void
 calQMat (const IntVectorType K,
+	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -366,6 +368,7 @@ calQMat (const IntVectorType K,
 {
 }
 #endif
+
 
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
@@ -481,6 +484,29 @@ assembleQConvPhi (const cufftReal * QConvPhi0,
     QConvPhi[ii].x = QConvPhi0[ii];
     QConvPhi[ii].y = QConvPhi1[ii];
     QConvPhi[ii].z = QConvPhi2[ii];
+    QConvPhi[ii].w = 0.;
+  }
+}
+
+__global__ void 
+assembleQConvPhi (const IntVectorType K,
+		  const IntVectorType KPadding,
+		  const cufftReal * QConvPhi0,
+		  const cufftReal * QConvPhi1,
+		  const cufftReal * QConvPhi2,
+		  CoordType * QConvPhi,
+		  const IndexType nele)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < nele){
+    IntVectorType idx;
+    index1to3 (ii, K, &idx);
+    IndexType iiPadding = index3to1 (idx, KPadding);
+    QConvPhi[ii].x = QConvPhi0[iiPadding];
+    QConvPhi[ii].y = QConvPhi1[iiPadding];
+    QConvPhi[ii].z = QConvPhi2[iiPadding];
     QConvPhi[ii].w = 0.;
   }
 }
