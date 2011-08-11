@@ -150,6 +150,16 @@ calQMat (const IntVectorType K,
 	 cufftReal * Q);
 __global__ void
 calQMat (const IntVectorType K,
+	 const IntVectorType KPadding,
+	 const MatrixType vecAStar,
+	 const IndexType order,
+	 const IndexType * nlist_n,
+	 const IndexType * nlist_list,
+	 const IndexType nlist_stride,
+	 cufftReal * Q);
+__global__ void
+calQMat (const IntVectorType K,
+	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -226,6 +236,20 @@ calEnergy (const cufftReal * Q,
 	   ScalorType * buff_e,
 	   const IndexType nele);
 // mesh grid and block
+__global__ void 
+assembleQConvPhi (const cufftReal * QConvPhi0,
+		  const cufftReal * QConvPhi1,
+		  const cufftReal * QConvPhi2,
+		  CoordType * QConvPhi,
+		  const IndexType nele);
+__global__ void 
+assembleQConvPhi (const IntVectorType K,
+		  const IntVectorType KPadding,
+		  const cufftReal * QConvPhi0,
+		  const cufftReal * QConvPhi1,
+		  const cufftReal * QConvPhi2,
+		  CoordType * QConvPhi,
+		  const IndexType nele);
 __global__ void 
 assembleQConvPhi (const cufftReal * QConvPhi0,
 		  const cufftReal * QConvPhi1,
