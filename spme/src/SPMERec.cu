@@ -318,9 +318,9 @@ calQMat (const IntVectorType K,
 	value.y = uu.y - meshIdx.y;
 	value.z = uu.z - meshIdx.z;
 	for (IndexType jj = 0; jj < order; ++jj){
-	  Mnx[jj] = BSplineValue (order, value.x);
-	  Mny[jj] = BSplineValue (order, value.y);
-	  Mnz[jj] = BSplineValue (order, value.z);
+	  Mnx[jj] = BSplineValue (order, double(value.x));
+	  Mny[jj] = BSplineValue (order, double(value.y));
+	  Mnz[jj] = BSplineValue (order, double(value.z));
 	  value.x += 1.;
 	  value.y += 1.;
 	  value.z += 1.;
