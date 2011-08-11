@@ -19,7 +19,7 @@
 
 class SPMERecIk
 {
-  IndexType cudaArch;
+  // IndexType cudaArch;
   IndexType order;
   IntVectorType K;
   ScalorType volume;
@@ -60,6 +60,7 @@ private:
   SumVector<ScalorType > sum_vzz;  
 private:
   MDError err;
+  bool enable_nlist;
   IndexType * nlist_n;
   IndexType * nlist_list;
   IndexType nlist_stride;
@@ -145,7 +146,6 @@ calQMat (const IntVectorType K,
 	 const IndexType * nlist_list,
 	 const IndexType nlist_stride,
 	 cufftReal * Q);
-// #if (__CUDA_ARCH__ >= 200)
 __global__ void
 calQMat (const IntVectorType K,
 	 const MatrixType vecAStar,
@@ -155,7 +155,6 @@ calQMat (const IntVectorType K,
 	 const IndexType natom,
 	 cufftReal * Q,
 	 mdError_t * ptr_de );
-// #endif
 // half mesh grid and block
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
