@@ -353,6 +353,18 @@ calQMat (const IntVectorType K,
     }
   }
 }
+#else
+__global__ void
+calQMat (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const IndexType order,
+	 const CoordType * coord,
+	 const ScalorType * charge,
+	 const IndexType natom,
+	 cufftReal * Q,
+	 mdError_t * ptr_de )
+{
+}
 #endif
 
 

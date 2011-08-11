@@ -27,16 +27,26 @@ freeAll ()
     cudaFree (QConvPhi);
     cufftDestroy (planForward);
     cufftDestroy (planBackward);
-    cudaFree (nlist_n);
-    cudaFree (nlist_list);
+    if (enable_nlist){
+      cudaFree (nlist_n);
+      cudaFree (nlist_list);
+    }
     malloced = false;
   }
 }
 
 SPMERecIk::
 SPMERecIk()
-    : malloced (false)
+    : malloced (false),
+      enable_nlist (true)
 {
+  IndexType * d_arch, cudaArch;
+  cudaMalloc ((void**)&d_arch, sizeof(IndexType));
+  getArch <<<1,1>>> (d_arch);
+  cudaMemcpy (&cudaArch, d_arch, sizeof(IndexType), cudaMemcpyDeviceToHost);
+  cudaFree (d_arch);
+  printf ("cudaArch is %d\n", cudaArch);
+  if (cudaArch == 200) enable_nlist = false;
 }
 
 SPMERecIk::
@@ -91,13 +101,6 @@ reinit (const MatrixType & vecA_,
   beta = beta_;
   calV();
   calAStar();
-
-  IndexType * d_arch;
-  cudaMalloc ((void**)&d_arch, sizeof(IndexType));
-  getArch <<<1,1>>> (d_arch);
-  cudaMemcpy (&cudaArch, d_arch, sizeof(IndexType), cudaMemcpyDeviceToHost);
-  cudaFree (d_arch);
-  printf ("cudaArch is %d\n", cudaArch);
 
   IndexType nele = K.x * K.y * K.z;
   IntVectorType N(K);
@@ -172,15 +175,17 @@ reinit (const MatrixType & vecA_,
 	  phiF2);
   checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
 
-  nlist_stride = nele;
-  ScalorType rho = natom / volume;
-  ScalorType vcell = volume * ScalorType (order * order * order) / ScalorType (K.x * K.y * K.z);
-  nlist_length = (rho * vcell * 1.5f + 15.);
-  printf ("# spme nlist length is %d\n", nlist_length);
-  cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
-  cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
-  checkCUDAError ("SPMERecIk::reinit malloc nlist");
-
+  if (enable_nlist) {
+    nlist_stride = nele;
+    ScalorType rho = natom / volume;
+    ScalorType vcell = volume * ScalorType (order * order * order) / ScalorType (K.x * K.y * K.z);
+    nlist_length = (rho * vcell * 1.5f + 15.);
+    printf ("# spme nlist length is %d\n", nlist_length);
+    cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
+    cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
+    checkCUDAError ("SPMERecIk::reinit malloc nlist");
+  }
+  
   sum_e.  reinit (nele, NThreadForSum);
   // sum_vxx.reinit (nele, NThreadForSum);
   // sum_vyy.reinit (nele, NThreadForSum);
@@ -303,67 +308,53 @@ void SPMERecIk::
 calQ (const MDSystem & sys,
       MDTimer * timer)
 {
+  if (enable_nlist){
 //
-// fast algorithm !!!!
-//
-  // // int nele = K.x * K.y * K.z;
-  // // cufftReal * see = (cufftReal * )malloc (sizeof(cufftReal) * nele);
-  
-  // // if (cudaArch < 200){
-  // if (timer != NULL) timer->tic (mdTimeSPMERecMeshNeighborList);
-  // initMeshNeighborList
-  //     <<<meshGridDim, meshBlockDim>>>(
-  // 	  K,
-  // 	  vecAStar,
-  // 	  nlist_n,
-  // 	  nlist_list,
-  // 	  nlist_stride,
-  // 	  nlist_length);
-  // buildMeshNeighborList
-  //     <<<atomGridDim, atomBlockDim>>> (
-  // 	  K,
-  // 	  vecAStar,
-  // 	  order,
-  // 	  sys.ddata.coord,
-  // 	  sys.ddata.numAtom,
-  // 	  nlist_n,
-  // 	  nlist_list,
-  // 	  nlist_stride,
-  // 	  nlist_length,
-  // 	  err.ptr_de);
-  // checkCUDAError ("SPMERecIk::calQ buildNeighborList");
-  // err.check ("SPMERecIk::calQ buildNeighborList");
-  // if (timer != NULL) timer->toc (mdTimeSPMERecMeshNeighborList);
-  // if (timer != NULL) timer->tic (mdTimeSPMECalQFromNList);
-  // calQMat
-  //     <<<meshGridDim, meshBlockDim>>> (
-  // 	  K,
-  // 	  vecAStar,
-  // 	  order,
-  // 	  nlist_n,
-  // 	  nlist_list,
-  // 	  nlist_stride,
-  // 	  Q);
-  // checkCUDAError ("SPMERecIk::calQ calQ");
-  // if (timer != NULL) timer->toc (mdTimeSPMECalQFromNList);
-
-
-  // // FILE * fp = fopen ("tmpQ.out", "w");
-  // // for (unsigned i = 0; i < K.x * K.y * K.z; ++i){
-  // //   fprintf (fp, "%.12e\n", Q[i]);
-  // // }
-  // // fclose (fp);
-
-
-  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
-  // }
-  // else if (cudaArch >= 200){
+// fast algorithm of nlist !!!!
+//  
+    if (timer != NULL) timer->tic (mdTimeSPMERecMeshNeighborList);
+    initMeshNeighborList
+	<<<meshGridDim, meshBlockDim>>>(
+	    K,
+	    vecAStar,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    nlist_length);
+    buildMeshNeighborList
+	<<<atomGridDim, atomBlockDim>>> (
+	    K,
+	    vecAStar,
+	    order,
+	    sys.ddata.coord,
+	    sys.ddata.numAtom,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    nlist_length,
+	    err.ptr_de);
+    checkCUDAError ("SPMERecIk::calQ buildNeighborList");
+    err.check ("SPMERecIk::calQ buildNeighborList");
+    if (timer != NULL) timer->toc (mdTimeSPMERecMeshNeighborList);
+    if (timer != NULL) timer->tic (mdTimeSPMECalQFromNList);
+    calQMat
+	<<<meshGridDim, meshBlockDim>>> (
+	    K,
+	    vecAStar,
+	    order,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    Q);
+    checkCUDAError ("SPMERecIk::calQ calQ");
+    if (timer != NULL) timer->toc (mdTimeSPMECalQFromNList);
+  }
+  else {
     setValue
     	<<<meshGridDim, meshBlockDim>>> (
     	    Q,
     	    K.x * K.y * K.z,
     	    ScalorType (0.f));
-    // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
     calQMat
     	<<<atomGridDim, atomBlockDim>>> (
     	    K,
@@ -375,9 +366,12 @@ calQ (const MDSystem & sys,
     	    Q,
     	    err.ptr_de);
     checkCUDAError ("SPMERecIk::calQ calQ atomicAdd");
-    // // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
-  // }
-
+  }
+  
+  // // int nele = K.x * K.y * K.z;
+  // // cufftReal * see = (cufftReal * )malloc (sizeof(cufftReal) * nele);
+  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
   // free (see);
 }
 
