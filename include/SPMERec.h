@@ -141,6 +141,17 @@ calQMat (const IntVectorType K,
 	 const IndexType * nlist_list,
 	 const IndexType nlist_stride,
 	 cufftReal * Q);
+#if (__CUDA_ARCH__ >= 200)
+__global__ void
+calQMat (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const IndexType order,
+	 const CoordType * coord,
+	 const ScalorType * charge,
+	 const IndexType natom,
+	 cufftReal * Q,
+	 mdError_t * ptr_de );
+#endif
 // half mesh grid and block
 __global__ void
 timeQFPsiF (const cufftComplex * QF,
