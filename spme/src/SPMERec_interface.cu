@@ -41,7 +41,7 @@ SPMERecIk::
 SPMERecIk()
     : malloced (false),
       enable_nlist (true),
-      fftOutOfPlace (false)
+      fftOutOfPlace (true)
 {
   IndexType * d_arch, cudaArch;
   cudaMalloc ((void**)&d_arch, sizeof(IndexType));
