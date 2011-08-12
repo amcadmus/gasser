@@ -110,7 +110,9 @@ reinit (const MatrixType & vecA_,
   N.z = (N.z >> 1) + 1;
   IndexType nelehalf = N.x * N.y * N.z;
   KPadding = K;
-  KPadding.z = (N.z << 1);
+  if (!fftOutOfPlace){
+    KPadding.z = (N.z << 1);
+  }
 
   IndexType nob;
   meshBlockDim.x = meshNThread;
@@ -182,8 +184,11 @@ reinit (const MatrixType & vecA_,
 
   cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
   cufftPlan3d (&planBackward, K.x, K.y, K.z, CUFFT_C2R);
-  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // cufftResult r = cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // if (r != CUFFT_SUCCESS) exit(1);
   // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_ALL);
   
   malloced = true;
 
@@ -229,13 +234,22 @@ applyInteraction (MDSystem & sys,
   IntVectorType N(K);
   N.z = (N.z >> 1) + 1;
   IndexType nelehalf = N.x * N.y * N.z;
-  // size_t see_size = nele * sizeof(cufftReal);
+  // size_t see_size = KPadding.x * KPadding.y * KPadding.z * sizeof(cufftReal);
   // size_t cpl_size = nelehalf * sizeof(cufftComplex);
   // cufftReal* see = (cufftReal *) malloc (see_size);
   // cufftComplex* cpl = (cufftComplex *) malloc (cpl_size);
   if (timer != NULL) timer->tic (mdTimeSPMERecCalQ);
   calQ (sys, timer);
+  // cufftHandle planBackward1, planForward1;
+  // cufftPlan3d (&planForward1,  KPadding.x, KPadding.y, KPadding.z, CUFFT_R2C);
+  // cufftPlan3d (&planBackward1,  KPadding.x, KPadding.y, KPadding.z, CUFFT_C2R);
+  // cufftPlan1d (&planForward1,   10, CUFFT_R2C, 1);
+  // cufftPlan1d (&planBackward1,   10, CUFFT_C2R, 1);
   // cudaMemcpy (see, Q, see_size, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (cpl, phiF0, cpl_size, cudaMemcpyDeviceToHost);
+  // cufftExecR2C (planForward,  (cufftReal*)phiF0, phiF0);
+  // cudaMemcpy (cpl, phiF0, cpl_size, cudaMemcpyDeviceToHost);
+  // cufftExecC2R (planBackward, phiF0, (cufftReal*)phiF0);
   // cudaMemcpy (cpl, phiF0, cpl_size, cudaMemcpyDeviceToHost);
   // cudaMemcpy (cpl, phiF1, cpl_size, cudaMemcpyDeviceToHost);
   // cudaMemcpy (cpl, phiF2, cpl_size, cudaMemcpyDeviceToHost);
@@ -247,6 +261,7 @@ applyInteraction (MDSystem & sys,
   }
   else {
     cufftExecR2C (planForward, Q, (cufftComplex *)Q);
+    // cudaMemcpy (see, Q, see_size, cudaMemcpyDeviceToHost);
   }
   checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
