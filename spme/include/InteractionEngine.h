@@ -338,6 +338,23 @@ __global__ void calNonBondedInteraction (
 
 
 __global__ void
+calEwaldSumDir_neighbor (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const RectangularBox		box,
+			 const DeviceNeighborList	nlist,
+			 const ScalorType		rcut,
+			 const ScalorType		beta,
+			 ScalorType *			statistic_nb_buff0,
+			 ScalorType *			statistic_nb_buff1,
+			 ScalorType *			statistic_nb_buff2,
+			 ScalorType *			statistic_nb_buff3);
+
+
+
+__global__ void
 widomDeltaPoten_NVT (const IndexType		numTestParticle,
 		     const CoordType *		coordTestParticle,
 		     const TypeType *		typeTestParticle,
