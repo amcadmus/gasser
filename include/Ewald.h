@@ -37,7 +37,7 @@ kernel_rm1_dir_energy_forceScale (const ScalorType r,
   * fscale= - (erfcBetaRRi +
 	       beta * global_twoSqrtPIi *
 	       exp (- betar * betar)) * ri * ri;
-  return 0.5 * erfcBetaRRi;
+  return erfcBetaRRi;
 }
 
 

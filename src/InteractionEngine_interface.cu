@@ -3587,7 +3587,7 @@ calEwaldSumDir_neighbor (const IndexType		numAtom,
       ScalorType dr = sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
       if (dr <= rcut){
 	ScalorType fscale;
-	myPoten += kernel_rm1_dir_energy_forceScale (dr, beta, &fscale);
+	myPoten += chargeScale * kernel_rm1_dir_energy_forceScale (dr, beta, &fscale);
 	fscale *= chargeScale;
 	fx = diffx * fscale;
 	fy = diffy * fscale;
