@@ -851,6 +851,46 @@ applyBondedInteraction (MDSystem & sys,
 }
 
 
+
+void InteractionEngine::
+applyEwaldDir (MDSystem &		sys,
+	       const NeighborList &	nlist,
+	       const ScalorType &	rcut,
+	       const ScalorType &	beta,
+	       MDStatistic *		st,
+	       MDTimer *		timer )
+{
+  if (timer != NULL) timer->tic(mdTimeNBInterStatistic);
+  calEwaldSumDir_neighbor
+      <<<atomGridDim, myBlockDim>>> (
+	  sys.ddata.numAtom,
+	  sys.ddata.coord,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
+	  sys.box,
+	  nlist.dnlist,
+	  rcut,
+	  beta,
+	  sum_nb_p.buff,
+	  sum_nb_vxx.buff,
+	  sum_nb_vyy.buff,
+	  sum_nb_vzz.buff
+	  );
+  checkCUDAError ("InteractionEngine::applyEwaldDir (with statistic)");
+  err.check ("interaction engine Ewald dir");	
+  cudaThreadSynchronize();
+  sum_nb_p.  sumBuffAdd(st->ddata, mdStatisticNonBondedPotential, 0);
+  sum_nb_vxx.sumBuffAdd(st->ddata, mdStatisticVirialXX);
+  sum_nb_vyy.sumBuffAdd(st->ddata, mdStatisticVirialYY);
+  sum_nb_vzz.sumBuffAdd(st->ddata, mdStatisticVirialZZ);
+  cudaThreadSynchronize();
+  if (timer != NULL) timer->toc(mdTimeNBInterStatistic);
+}
+
+
+
+
 // void InteractionEngine::
 // calculateWidomDeltaEnergy (const MDSystem & sys,
 // 			   const NeighborList & nlist,
@@ -3494,5 +3534,93 @@ calQMat (const IntVectorType K,
   }
 }
 
+#include "Ewald.h"
+
+__global__ void
+calEwaldSumDir_neighbor (const IndexType		numAtom,
+			 const CoordType *		coord,
+			 ScalorType *			forcx,
+			 ScalorType *			forcy, 
+			 ScalorType *			forcz,
+			 const RectangularBox		box,
+			 const DeviceNeighborList	nlist,
+			 const ScalorType		rcut,
+			 const ScalorType		beta,
+			 ScalorType *			statistic_nb_buff0,
+			 ScalorType *			statistic_nb_buff1,
+			 ScalorType *			statistic_nb_buff2,
+			 ScalorType *			statistic_nb_buff3)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType tid = threadIdx.x;
+
+  ScalorType fsumx = 0.0f;
+  ScalorType fsumy = 0.0f;
+  ScalorType fsumz = 0.0f;
+  IndexType ii = tid + bid * blockDim.x;
+  ScalorType myPoten = 0.0f, myVxx = 0.0f, myVyy = 0.0f, myVzz = 0.0f;
+
+  if (ii < numAtom) {
+    CoordType ref;
+    ref = tex1Dfetch (global_texRef_interaction_coord, ii);
+    ScalorType refcharge;
+    refcharge = tex1Dfetch (global_texRef_interaction_charge, ii);
+    ScalorType fx(0.f), fy(0.f), fz(0.f);
+    for (IndexType jj = 0, nlistPosi = ii;
+	 jj < nlist.Nneighbor[ii];
+	 ++jj, nlistPosi += nlist.stride){
+      IndexType targetIdx ( nlist.data[nlistPosi] );
+      CoordType target ( tex1Dfetch(global_texRef_interaction_coord, targetIdx) );
+      ScalorType chargeScale (
+	  refcharge *
+	  tex1Dfetch(global_texRef_interaction_charge, targetIdx)
+	  );
+      ScalorType diffx ( target.x - ref.x );
+      ScalorType diffy ( target.y - ref.y );
+      ScalorType diffz ( target.z - ref.z );
+      shortestImage (box, &diffx, &diffy, &diffz);
+      // nbForcePoten (nonBondedInteractionType[nbForceIndex],
+      // 		    &nonBondedInteractionParameter
+      // 		    [nonBondedInteractionParameterPosition[nbForceIndex]],
+      // 		    diffx, diffy, diffz, 
+      // 		    &fx, &fy, &fz, &dp);
+      ScalorType dr = sqrtf(diffx*diffx + diffy*diffy + diffz*diffz);
+      if (dr <= rcut){
+	ScalorType fscale;
+	myPoten += kernel_rm1_dir_energy_forceScale (dr, beta, &fscale);
+	fscale *= chargeScale;
+	fx = diffx * fscale;
+	fy = diffy * fscale;
+	fz = diffz * fscale;	
+	// printf ("## %d\t%d\t%f\t%f\t%f\n",
+	// 	      ii, targetIdx,
+	// 	      ref.z, target.z, fz);
+	// printf ("%f, %f %f %f,  %f %f %f,  %f %f %f, %f\n",
+	// 	      sqrtf(diffx*diffx+diffy*diffy+diffz*diffz),
+	// 	      ref.x, ref.y, ref.z,
+	// 	      target.x, target.y, target.z,
+	// 	      diffx, diffy, diffz,
+	// 	      dp
+	// 	  );
+	myVxx += fx * diffx;
+	myVyy += fy * diffy;
+	myVzz += fz * diffz;
+	fsumx += fx;
+	fsumy += fy;
+	fsumz += fz;
+      }
+    }
+    forcx[ii] += fsumx;
+    forcy[ii] += fsumy;
+    forcz[ii] += fsumz;
+  }
+  
+  if (ii < numAtom){
+    statistic_nb_buff0[ii] = myPoten * 0.5f;
+    statistic_nb_buff1[ii] = myVxx * 0.5f;
+    statistic_nb_buff2[ii] = myVyy * 0.5f;
+    statistic_nb_buff3[ii] = myVzz * 0.5f;
+  }  
+}
 
   

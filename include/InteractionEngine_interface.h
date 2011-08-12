@@ -282,6 +282,12 @@ public:
 			       const BondedInteractionList & bdlist,
 			       MDStatistic & st,
 			       MDTimer *timer = NULL);
+  void applyEwaldDir (MDSystem &		sys,
+		      const NeighborList &	nlist,
+		      const ScalorType &	rcut,
+		      const ScalorType &	beta,
+		      MDStatistic *		st = NULL,
+		      MDTimer *			timer = NULL);
 }
     ;
 

@@ -13,6 +13,34 @@ kernel_rm1_rec_f (const ScalorType m2,
   return expf (- tmp*tmp*m2) / m2;
 }
 
+const double global_twoSqrtPIi (1.12837916709551);
+
+__device__ ScalorType static
+kernel_rm1_dir_forceScale (const ScalorType r,
+			   const ScalorType beta)
+{
+  ScalorType ri (ScalorType(1.)/r);
+  ScalorType betar = beta * r;
+  return - (erfcf(betar) * ri +
+	    beta * global_twoSqrtPIi *
+	    exp(-betar*betar)) * ri * ri;
+}
+
+__device__ ScalorType static
+kernel_rm1_dir_energy_forceScale (const ScalorType r,
+				  const ScalorType beta,
+				  ScalorType * fscale)
+{
+  double ri = double(1.f)/r;
+  double betar = beta * r;
+  double erfcBetaRRi = erfc (betar) * ri;
+  * fscale= - (erfcBetaRRi +
+	       beta * global_twoSqrtPIi *
+	       exp (- betar * betar)) * ri * ri;
+  return 0.5 * erfcBetaRRi;
+}
+
+
 __device__ IndexType static
 index3to1 (const IndexType ix,
 	   const IndexType iy,

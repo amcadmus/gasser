@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 20;
   char * filename;
-  ScalorType rcut = 2.0f;
+  ScalorType rcut = 2.2f;
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
@@ -152,7 +152,7 @@ int main(int argc, char * argv[])
     clist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
     nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
     disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
-  }
+  }  
 
   st.updateHost ();
   printf ("energy: %e, pressure: %e %e %e\n",
@@ -170,7 +170,8 @@ int main(int argc, char * argv[])
 	       NThreadsPerBlockAtom);
   for (IndexType i = 0; i < nstep; ++i){
     inter.clearInteraction (sys);
-    spme.applyInteraction (sys, &st, &timer);
+    inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
+    // spme.applyInteraction (sys, &st, &timer);
   }
   sys.recoverDeviceData (&timer);
   sys.updateHostFromRecovered (&timer);
