@@ -20,7 +20,7 @@
 #include "EwaldSumRec.h"
 #include "SPMERec.h"
 
-#define NThreadsPerBlockCell	128
+#define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	96
 
 void printCoord (const MDSystem & sys)
@@ -43,13 +43,13 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 20;
   char * filename;
-  ScalorType rcut = 2.2f;
+  ScalorType rcut = 4.f;
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.3;
-  IndexType order = 2;
-  int Kvalue = 32;
+  ScalorType beta = 1.1;
+  IndexType order = 6;
+  int Kvalue = 128;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -171,7 +171,7 @@ int main(int argc, char * argv[])
   for (IndexType i = 0; i < nstep; ++i){
     inter.clearInteraction (sys);
     inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
-    // spme.applyInteraction (sys, &st, &timer);
+    spme.applyInteraction (sys, &st, &timer);
   }
   sys.recoverDeviceData (&timer);
   sys.updateHostFromRecovered (&timer);
