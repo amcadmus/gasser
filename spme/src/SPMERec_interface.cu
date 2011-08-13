@@ -256,7 +256,7 @@ freeAll ()
 SPMERecIk::
 SPMERecIk()
     : malloced (false),
-      fftOutOfPlace (false)
+      fftOutOfPlace (true)
 {
 }
 
