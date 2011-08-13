@@ -1,48 +1,15 @@
 #include "SPMERec.h"
 
+bool global_texRef_SPME_QConv_binded;
 texture<CoordType,  1, cudaReadModeElementType> global_texRef_SPME_QConv;
 
-void SPMERecIk::
-freeAll ()
-{
-  if (malloced){
-    cudaFree (vecbx);
-    cudaFree (vecby);
-    cudaFree (vecbz);
-    cudaFree (Q);
-    cudaFree (psiF);
-    cudaFree (phiF0);
-    cudaFree (phiF1);
-    cudaFree (phiF2);
-    if (fftOutOfPlace) {
-      cudaFree (QF);
-      cudaFree (QFxPsiF);
-      cudaFree (QFxPhiF0);
-      cudaFree (QFxPhiF1);
-      cudaFree (QFxPhiF2);
-    }
-    cudaFree (QConvPsi);
-    cudaFree (QConvPhi0);
-    cudaFree (QConvPhi1);
-    cudaFree (QConvPhi2);
-    cudaUnbindTexture(global_texRef_SPME_QConv);
-    cudaFree (QConvPhi);
-    cufftDestroy (planForward);
-    cufftDestroy (planBackward);
-    if (enable_nlist){
-      cudaFree (nlist_n);
-      cudaFree (nlist_list);
-    }
-    malloced = false;
-  }
-}
-
-SPMERecIk::
-SPMERecIk()
+SPMERec::
+SPMERec ()
     : malloced (false),
-      enable_nlist (true),
-      fftOutOfPlace (true)
+      enable_nlist (true)
 {
+  global_texRef_SPME_QConv_binded = false;
+
   IndexType * d_arch, cudaArch;
   cudaMalloc ((void**)&d_arch, sizeof(IndexType));
   getArch <<<1,1>>> (d_arch);
@@ -52,13 +19,29 @@ SPMERecIk()
   if (cudaArch == 200) enable_nlist = false;
 }
 
-SPMERecIk::
-~SPMERecIk ()
+SPMERec::
+~SPMERec ()
 {
   freeAll();
 }
 
-void SPMERecIk::
+void SPMERec::
+freeAll ()
+{
+  if (malloced){
+    cudaFree (vecbx);
+    cudaFree (vecby);
+    cudaFree (vecbz);
+    cudaFree (Q);
+    if (enable_nlist){
+      cudaFree (nlist_n);
+      cudaFree (nlist_list);
+    }
+    malloced = false;
+  }
+}
+
+void SPMERec::
 calB ()
 {
   calBx
@@ -66,29 +49,22 @@ calB ()
 	  K,
 	  order,
 	  vecbx);
-  checkCUDAError ("SPMERecIk::calB x");
+  checkCUDAError ("SPMERec::calB x");
   calBy
       <<<((K.y + meshBlockDim.x - 1) / meshBlockDim.x), meshBlockDim>>> (
 	  K,
 	  order,
 	  vecby);
-  checkCUDAError ("SPMERecIk::calB y");
+  checkCUDAError ("SPMERec::calB y");
   calBz
       <<<((K.z + meshBlockDim.x - 1) / meshBlockDim.x), meshBlockDim>>> (
 	  K,
 	  order,
 	  vecbz);
-  checkCUDAError ("SPMERecIk::calB z");
+  checkCUDAError ("SPMERec::calB z");
 }
 
-
-void SPMERecIk::
-buildNeighborList (const MDSystem & sys)
-{
-}
-
-
-void  SPMERecIk::
+void  SPMERec::
 reinit (const MatrixType & vecA_,
 	const IntVectorType & K_,
 	const IndexType & order_,
@@ -109,10 +85,6 @@ reinit (const MatrixType & vecA_,
   IntVectorType N(K);
   N.z = (N.z >> 1) + 1;
   IndexType nelehalf = N.x * N.y * N.z;
-  KPadding = K;
-  if (!fftOutOfPlace){
-    KPadding.z = (N.z << 1);
-  }
 
   IndexType nob;
   meshBlockDim.x = meshNThread;
@@ -137,10 +109,187 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&vecby, sizeof(ScalorType) * K.y);
   cudaMalloc ((void**)&vecbz, sizeof(ScalorType) * K.z);
   calB ();
+  cudaMalloc ((void**)&Q, sizeof(cufftReal) * nele);
+  checkCUDAError ("SPMERec::reinit malloc");  
+  // printf ("vecbx is %f\n", vecbx[0]);
+  
+  if (enable_nlist) {
+    nlist_stride = nele;
+    ScalorType rho = natom / volume;
+    ScalorType vcell = volume * ScalorType (order * order * order) / ScalorType (K.x * K.y * K.z);
+    nlist_length = (rho * vcell * 1.5f + 15.);
+    printf ("# spme nlist length is %d\n", nlist_length);
+    cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
+    cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
+    checkCUDAError ("SPMERec::reinit malloc nlist");
+  }
+  
+  malloced = true;
+}
+
+
+void SPMERec::
+calQ (const MDSystem & sys,
+      MDTimer * timer)
+{
+  if (enable_nlist){
+//
+// fast algorithm of nlist !!!!
+//  
+    if (timer != NULL) timer->tic (mdTimeSPMERecMeshNeighborList);
+    initMeshNeighborList
+	<<<meshGridDim, meshBlockDim>>>(
+	    K,
+	    vecAStar,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    nlist_length);
+    buildMeshNeighborList
+	<<<atomGridDim, atomBlockDim>>> (
+	    K,
+	    vecAStar,
+	    order,
+	    sys.ddata.coord,
+	    sys.ddata.numAtom,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    nlist_length,
+	    err.ptr_de);
+    checkCUDAError ("SPMERecIk::calQ buildNeighborList");
+    err.check ("SPMERecIk::calQ buildNeighborList");
+    if (timer != NULL) timer->toc (mdTimeSPMERecMeshNeighborList);
+    if (timer != NULL) timer->tic (mdTimeSPMECalQFromNList);
+    calQMat
+	<<<meshGridDim, meshBlockDim>>> (
+	    K,
+	    vecAStar,
+	    order,
+	    nlist_n,
+	    nlist_list,
+	    nlist_stride,
+	    Q);
+    checkCUDAError ("SPMERecIk::calQ calQ");
+    if (timer != NULL) timer->toc (mdTimeSPMECalQFromNList);
+  }
+  else {
+    setValue
+    	<<<meshGridDim, meshBlockDim>>> (
+    	    Q,
+    	    K.x * K.y * K.z,
+    	    ScalorType (0.f));
+    calQMat
+    	<<<atomGridDim, atomBlockDim>>> (
+    	    K, 
+    	    vecAStar,
+    	    order,
+    	    sys.ddata.coord,
+    	    sys.ddata.charge,
+    	    sys.ddata.numAtom,
+    	    Q,
+    	    err.ptr_de);
+    checkCUDAError ("SPMERecIk::calQ calQ atomicAdd");
+  }
+  
+  // // int nele = K.x * K.y * K.z;
+  // // cufftReal * see = (cufftReal * )malloc (sizeof(cufftReal) * nele);
+  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
+  // free (see);
+}
+
+void SPMERec::
+calV()
+{
+  volume =
+      vecA.xx * (vecA.yy*vecA.zz - vecA.zy*vecA.yz) - 
+      vecA.xy * (vecA.yx*vecA.zz - vecA.zx*vecA.yz) +
+      vecA.xz * (vecA.yx*vecA.zy - vecA.zx*vecA.yy);
+}
+  
+void SPMERec::
+calAStar ()
+{
+  ScalorType volumei = ScalorType(1.) / volume;
+  vecAStar.xx = ( vecA.yy*vecA.zz - vecA.zy*vecA.yz) * volumei;
+  vecAStar.yy = ( vecA.xx*vecA.zz - vecA.zx*vecA.xz) * volumei;
+  vecAStar.zz = ( vecA.xx*vecA.yy - vecA.yx*vecA.xy) * volumei;
+  vecAStar.yx = (-vecA.yx*vecA.zz + vecA.zx*vecA.yz) * volumei;
+  vecAStar.zx = ( vecA.yx*vecA.zy - vecA.zx*vecA.yy) * volumei;
+  vecAStar.xy = (-vecA.xy*vecA.zz + vecA.zy*vecA.xz) * volumei;
+  vecAStar.zy = (-vecA.xx*vecA.zy + vecA.zx*vecA.xy) * volumei;
+  vecAStar.xz = ( vecA.xy*vecA.yz - vecA.yy*vecA.xz) * volumei;
+  vecAStar.yz = (-vecA.xx*vecA.yz + vecA.yx*vecA.xz) * volumei;
+}
+
+
+void SPMERecIk::
+freeAll ()
+{
+  if (malloced){
+    cudaFree (psiF);
+    cudaFree (phiF0);
+    cudaFree (phiF1);
+    cudaFree (phiF2);
+    if (fftOutOfPlace) {
+      cudaFree (QF);
+      cudaFree (QFxPsiF);
+      cudaFree (QFxPhiF0);
+      cudaFree (QFxPhiF1);
+      cudaFree (QFxPhiF2);
+    }
+    cudaFree (QConvPsi);
+    cudaFree (QConvPhi0);
+    cudaFree (QConvPhi1);
+    cudaFree (QConvPhi2);
+    if (global_texRef_SPME_QConv_binded){
+      cudaUnbindTexture(global_texRef_SPME_QConv);
+    }
+    cudaFree (QConvPhi);
+    cufftDestroy (planForward);
+    cufftDestroy (planBackward);
+    malloced = false;
+  }
+}
+
+SPMERecIk::
+SPMERecIk()
+    : malloced (false),
+      fftOutOfPlace (false)
+{
+}
+
+SPMERecIk::
+~SPMERecIk ()
+{
+  freeAll();
+}
+
+void  SPMERecIk::
+reinit (const MatrixType & vecA_,
+	const IntVectorType & K_,
+	const IndexType & order_,
+	const ScalorType & beta_,
+	const IndexType & natom,
+	const IndexType & meshNThread,
+	const IndexType & atomNThread)
+{
+  SPMERec::reinit (vecA_, K_, order_, beta_, natom, meshNThread, atomNThread);
+  freeAll();
+  
+  IndexType nele = K.x * K.y * K.z;
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nelehalf = N.x * N.y * N.z;
+  KPadding = K;
+  if (!fftOutOfPlace){
+    KPadding.z = (N.z << 1);
+  }
+
+  cudaMalloc ((void**)&QF,  sizeof(cufftComplex) * nelehalf);
+  checkCUDAError ("SPMERecIk::reinit malloc");
   if (fftOutOfPlace){
-    cudaMalloc ((void**)&Q, sizeof(cufftReal) * nele);
-    cudaMalloc ((void**)&QF,  sizeof(cufftComplex) * nelehalf);
-    checkCUDAError ("SPMERecIk::reinit malloc");
     cudaMalloc ((void**)&QFxPsiF,  sizeof(cufftComplex) * nelehalf);
     cudaMalloc ((void**)&QFxPhiF0, sizeof(cufftComplex) * nelehalf);
     cudaMalloc ((void**)&QFxPhiF1, sizeof(cufftComplex) * nelehalf);
@@ -154,17 +303,15 @@ reinit (const MatrixType & vecA_,
   }
   else {
     int nelePading = KPadding.x * KPadding.y * KPadding.z;
-    nob = (nelePading  + meshBlockDim.x - 1) / meshBlockDim.x;
+    IndexType nob = (nelePading  + meshBlockDim.x - 1) / meshBlockDim.x;
     dim3 meshGridDim_tmp = toGridDim (nob);
     meshGridDim_tmp.y = 8;
     meshGridDim_tmp.x /= meshGridDim_half.y;
     meshGridDim_tmp.x ++;
-    cudaMalloc ((void**)&Q, sizeof(cufftReal) * nelePading);
     cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nelePading);
     cudaMalloc ((void**)&QConvPhi0, sizeof(cufftReal) * nelePading);
     cudaMalloc ((void**)&QConvPhi1, sizeof(cufftReal) * nelePading);
     cudaMalloc ((void**)&QConvPhi2, sizeof(cufftReal) * nelePading);    
-    setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (Q, nelePading, ScalorType(0.f));
     setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPsi, nelePading, ScalorType(0.f));
     setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPhi0, nelePading, ScalorType(0.f));
     setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPhi1, nelePading, ScalorType(0.f));
@@ -180,6 +327,7 @@ reinit (const MatrixType & vecA_,
   cudaMalloc ((void**)&QConvPhi,  sizeof(CoordType) * nele);
   cudaBindTexture(0, global_texRef_SPME_QConv, QConvPhi,
 		  sizeof(CoordType) * nele);
+  global_texRef_SPME_QConv_binded = true;
   checkCUDAError ("SPMERecIk::reinit malloc");
 
   cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
@@ -190,8 +338,6 @@ reinit (const MatrixType & vecA_,
   // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_ALL);
   // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_ALL);
   
-  malloced = true;
-
   calPsiFPhiF
       <<<meshGridDim_half, meshBlockDim>>> (
 	  K,
@@ -207,17 +353,8 @@ reinit (const MatrixType & vecA_,
 	  phiF2);
   checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
 
-  if (enable_nlist) {
-    nlist_stride = nele;
-    ScalorType rho = natom / volume;
-    ScalorType vcell = volume * ScalorType (order * order * order) / ScalorType (K.x * K.y * K.z);
-    nlist_length = (rho * vcell * 1.5f + 15.);
-    printf ("# spme nlist length is %d\n", nlist_length);
-    cudaMalloc ((void**)&nlist_n, sizeof(IndexType) * nlist_stride);
-    cudaMalloc ((void**)&nlist_list, sizeof(IndexType) * nlist_stride * nlist_length);
-    checkCUDAError ("SPMERecIk::reinit malloc nlist");
-  }
-  
+  malloced = true;
+
   sum_e.  reinit (nele, NThreadForSum);
   // sum_vxx.reinit (nele, NThreadForSum);
   // sum_vyy.reinit (nele, NThreadForSum);
@@ -256,13 +393,7 @@ applyInteraction (MDSystem & sys,
   if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
   
   if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
-  if (fftOutOfPlace){
-    cufftExecR2C (planForward, Q, QF);
-  }
-  else {
-    cufftExecR2C (planForward, Q, (cufftComplex *)Q);
-    // cudaMemcpy (see, Q, see_size, cudaMemcpyDeviceToHost);
-  }
+  cufftExecR2C (planForward, Q, QF);
   checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
   if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
   
@@ -284,7 +415,7 @@ applyInteraction (MDSystem & sys,
   else {
     timeQFPhiF
 	<<<meshGridDim_half, meshBlockDim>>> (
-	    Q,
+	    QF,
 	    phiF0,
 	    phiF1,
 	    phiF2,
@@ -368,11 +499,16 @@ applyInteraction (MDSystem & sys,
     else {
       timeQFPsiF
 	  <<<meshGridDim_half, meshBlockDim>>> (
-	      Q,
+	      QF,
 	      psiF,
 	      QConvPsi,
 	      nelehalf,
 	      sizei);
+      FILE * fp = fopen ("tmp.tmp", "w");
+      for (int i = 0; i < nelehalf; ++i){
+	fprintf (fp, "%e %e\n", QConvPsi[i*2], QConvPsi[i*2+1]);
+      }
+      fclose (fp);
     }
     checkCUDAError ("SPMERecIk::applyInteraction time QF PhiF");
     if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
@@ -386,12 +522,23 @@ applyInteraction (MDSystem & sys,
     checkCUDAError ("SPMERecIk::applyInteraction QFxPsiF->QConvPsi");
     if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
     if (timer != NULL) timer->tic (mdTimeSPMERecEnergy);
-    calEnergy
-	<<<meshGridDim, meshBlockDim>>> (
-	    Q,
-	    QConvPsi,
-	    sum_e.buff,
-	    K.x * K.y * K.z);
+    if (fftOutOfPlace){
+      calEnergy
+	  <<<meshGridDim, meshBlockDim>>> (
+	      Q,
+	      QConvPsi,
+	      sum_e.buff,
+	      K.x * K.y * K.z);
+    }
+    else {
+      calEnergy
+	  <<<meshGridDim, meshBlockDim>>> (
+	      Q,
+	      QConvPsi,
+	      K, KPadding,
+	      sum_e.buff,
+	      K.x * K.y * K.z);
+    }
     checkCUDAError ("SPMERecIk::applyInteraction cal energy");
     sum_e.  sumBuffAdd(pst->ddata, mdStatisticNonBondedPotential);
     checkCUDAError ("SPMERecIk::applyInteraction sum energy");
@@ -400,116 +547,6 @@ applyInteraction (MDSystem & sys,
 }
 
 
-
-void SPMERecIk::
-calQ (const MDSystem & sys,
-      MDTimer * timer)
-{
-  if (enable_nlist){
-//
-// fast algorithm of nlist !!!!
-//  
-    if (timer != NULL) timer->tic (mdTimeSPMERecMeshNeighborList);
-    initMeshNeighborList
-	<<<meshGridDim, meshBlockDim>>>(
-	    K,
-	    vecAStar,
-	    nlist_n,
-	    nlist_list,
-	    nlist_stride,
-	    nlist_length);
-    buildMeshNeighborList
-	<<<atomGridDim, atomBlockDim>>> (
-	    K,
-	    vecAStar,
-	    order,
-	    sys.ddata.coord,
-	    sys.ddata.numAtom,
-	    nlist_n,
-	    nlist_list,
-	    nlist_stride,
-	    nlist_length,
-	    err.ptr_de);
-    checkCUDAError ("SPMERecIk::calQ buildNeighborList");
-    err.check ("SPMERecIk::calQ buildNeighborList");
-    if (timer != NULL) timer->toc (mdTimeSPMERecMeshNeighborList);
-    if (timer != NULL) timer->tic (mdTimeSPMECalQFromNList);
-    if (fftOutOfPlace){
-      calQMat
-	  <<<meshGridDim, meshBlockDim>>> (
-	      K,
-	      vecAStar,
-	      order,
-	      nlist_n,
-	      nlist_list,
-	      nlist_stride,
-	      Q);
-    }
-    else {
-      calQMat
-	  <<<meshGridDim, meshBlockDim>>> (
-	      K, KPadding,
-	      vecAStar,
-	      order,
-	      nlist_n,
-	      nlist_list,
-	      nlist_stride,
-	      Q);
-    }
-    checkCUDAError ("SPMERecIk::calQ calQ");
-    if (timer != NULL) timer->toc (mdTimeSPMECalQFromNList);
-  }
-  else {
-    setValue
-    	<<<meshGridDim, meshBlockDim>>> (
-    	    Q,
-    	    K.x * K.y * K.z,
-    	    ScalorType (0.f));
-    calQMat
-    	<<<atomGridDim, atomBlockDim>>> (
-    	    K, KPadding,
-    	    vecAStar,
-    	    order,
-    	    sys.ddata.coord,
-    	    sys.ddata.charge,
-    	    sys.ddata.numAtom,
-    	    Q,
-    	    err.ptr_de);
-    checkCUDAError ("SPMERecIk::calQ calQ atomicAdd");
-  }
-  
-  // // int nele = K.x * K.y * K.z;
-  // // cufftReal * see = (cufftReal * )malloc (sizeof(cufftReal) * nele);
-  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
-  // cudaMemcpy (see, Q, sizeof(cufftReal) * nele, cudaMemcpyDeviceToHost);
-  // free (see);
-}
-
-
-
-void SPMERecIk::
-calV()
-{
-  volume =
-      vecA.xx * (vecA.yy*vecA.zz - vecA.zy*vecA.yz) - 
-      vecA.xy * (vecA.yx*vecA.zz - vecA.zx*vecA.yz) +
-      vecA.xz * (vecA.yx*vecA.zy - vecA.zx*vecA.yy);
-}
-  
-void SPMERecIk::
-calAStar ()
-{
-  ScalorType volumei = ScalorType(1.) / volume;
-  vecAStar.xx = ( vecA.yy*vecA.zz - vecA.zy*vecA.yz) * volumei;
-  vecAStar.yy = ( vecA.xx*vecA.zz - vecA.zx*vecA.xz) * volumei;
-  vecAStar.zz = ( vecA.xx*vecA.yy - vecA.yx*vecA.xy) * volumei;
-  vecAStar.yx = (-vecA.yx*vecA.zz + vecA.zx*vecA.yz) * volumei;
-  vecAStar.zx = ( vecA.yx*vecA.zy - vecA.zx*vecA.yy) * volumei;
-  vecAStar.xy = (-vecA.xy*vecA.zz + vecA.zy*vecA.xz) * volumei;
-  vecAStar.zy = (-vecA.xx*vecA.zy + vecA.zx*vecA.xy) * volumei;
-  vecAStar.xz = ( vecA.xy*vecA.yz - vecA.yy*vecA.xz) * volumei;
-  vecAStar.yz = (-vecA.xx*vecA.yz + vecA.yx*vecA.xz) * volumei;
-}
 
 
 #include "Ewald.h"

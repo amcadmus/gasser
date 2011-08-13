@@ -22,6 +22,8 @@
 
 #define NThreadsPerBlockCell	256
 #define NThreadsPerBlockAtom	96
+// #define NThreadsPerBlockCell	5
+// #define NThreadsPerBlockAtom	7
 
 void printCoord (const MDSystem & sys)
 {
@@ -43,13 +45,13 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 20;
   char * filename;
-  ScalorType rcut = 4.f;
+  ScalorType rcut = 2.2f;
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
-  ScalorType beta = 1.1;
-  IndexType order = 6;
-  int Kvalue = 128;
+  ScalorType beta = 1.3;
+  IndexType order = 2;
+  int Kvalue = 8;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);

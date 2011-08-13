@@ -276,7 +276,6 @@ buildMeshNeighborList (const IntVectorType K,
 // atom grid and block
 __global__ void
 calQMat (const IntVectorType K,
-	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -357,7 +356,6 @@ calQMat (const IntVectorType K,
 #else
 __global__ void
 calQMat (const IntVectorType K,
-	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -411,7 +409,7 @@ timeQFPhiF (const cufftComplex * QF,
 }
 
 __global__ void
-timeQFPsiF (const cufftReal * QF,
+timeQFPsiF (const cufftComplex * QF,
 	    const cufftComplex * PsiF,
 	    cufftReal * F,
 	    const IndexType nelehalf,
@@ -423,13 +421,13 @@ timeQFPsiF (const cufftReal * QF,
   if (ii < nelehalf){
     IndexType realIdx = (ii << 1);
     IndexType imagIdx = realIdx + 1;
-    F[realIdx] = (QF[realIdx] * PsiF[ii].x - QF[imagIdx] * PsiF[ii].y) * sizei;
-    F[imagIdx] = (QF[realIdx] * PsiF[ii].y + QF[imagIdx] * PsiF[ii].x) * sizei;
+    F[realIdx] = (QF[ii].x * PsiF[ii].x - QF[ii].y * PsiF[ii].y) * sizei;
+    F[imagIdx] = (QF[ii].x * PsiF[ii].y + QF[ii].y * PsiF[ii].x) * sizei;
   }
 }
 
 __global__ void
-timeQFPhiF (const cufftReal * QF,
+timeQFPhiF (const cufftComplex * QF,
 	    const cufftComplex * PhiF0,
 	    const cufftComplex * PhiF1,
 	    const cufftComplex * PhiF2,
@@ -445,12 +443,12 @@ timeQFPhiF (const cufftReal * QF,
   if (ii < nelehalf){
     IndexType realIdx = (ii << 1);
     IndexType imagIdx = realIdx + 1;
-    F0[realIdx] = (QF[realIdx] * PhiF0[ii].x - QF[imagIdx] * PhiF0[ii].y) * sizei;
-    F0[imagIdx] = (QF[realIdx] * PhiF0[ii].y + QF[imagIdx] * PhiF0[ii].x) * sizei;
-    F1[realIdx] = (QF[realIdx] * PhiF1[ii].x - QF[imagIdx] * PhiF1[ii].y) * sizei;
-    F1[imagIdx] = (QF[realIdx] * PhiF1[ii].y + QF[imagIdx] * PhiF1[ii].x) * sizei;
-    F2[realIdx] = (QF[realIdx] * PhiF2[ii].x - QF[imagIdx] * PhiF2[ii].y) * sizei;
-    F2[imagIdx] = (QF[realIdx] * PhiF2[ii].y + QF[imagIdx] * PhiF2[ii].x) * sizei;
+    F0[realIdx] = (QF[ii].x * PhiF0[ii].x - QF[ii].y * PhiF0[ii].y) * sizei;
+    F0[imagIdx] = (QF[ii].x * PhiF0[ii].y + QF[ii].y * PhiF0[ii].x) * sizei;
+    F1[realIdx] = (QF[ii].x * PhiF1[ii].x - QF[ii].y * PhiF1[ii].y) * sizei;
+    F1[imagIdx] = (QF[ii].x * PhiF1[ii].y + QF[ii].y * PhiF1[ii].x) * sizei;
+    F2[realIdx] = (QF[ii].x * PhiF2[ii].x - QF[ii].y * PhiF2[ii].y) * sizei;
+    F2[imagIdx] = (QF[ii].x * PhiF2[ii].y + QF[ii].y * PhiF2[ii].x) * sizei;
   }
 }
 
@@ -466,6 +464,25 @@ calEnergy (const cufftReal * Q,
 
   if (ii < nele){
     buff_e[ii] = Q[ii] * QConvPsi[ii];
+  }
+}
+
+__global__ void
+calEnergy (const cufftReal * Q,
+	   const cufftReal * QConvPsi,
+	   const IntVectorType K,
+	   const IntVectorType KPadding,
+	   ScalorType * buff_e,
+	   const IndexType nele)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < nele){
+    IntVectorType idx;
+    index1to3 (ii, K, &idx);
+    IndexType iiPadding = index3to1 (idx, KPadding);
+    buff_e[ii] = Q[ii] * QConvPsi[iiPadding];
   }
 }
 
