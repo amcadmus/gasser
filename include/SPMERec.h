@@ -17,12 +17,11 @@
 // consider NPT ensemble!!!!
 //
 
-class SPMERecIk
+class SPMERec
 {
-  // IndexType cudaArch;
+protected:
   IndexType order;
   IntVectorType K;
-  IntVectorType KPadding;
   ScalorType volume;
   ScalorType beta;
   MatrixType vecA;
@@ -33,13 +32,47 @@ class SPMERecIk
   dim3 atomGridDim;
   dim3 atomBlockDim;
   bool malloced;
-private:
+protected:
   ScalorType * vecbx;
   ScalorType * vecby;
   ScalorType * vecbz;
   void calB ();
-  bool fftOutOfPlace;
+protected:
+  MDError err;
+  bool enable_nlist;
+  IndexType * nlist_n;
+  IndexType * nlist_list;
+  IndexType nlist_stride;
+  IndexType nlist_length;
+  // void buildNeighborList (const MDSystem & sys);
+protected:
   cufftReal * Q;
+  void calQ (const MDSystem & sys,
+	     MDTimer * timer = NULL);
+protected:
+  void calV();
+  void calAStar();
+  void freeAll ();
+public:
+  SPMERec ();
+  ~SPMERec ();
+  void reinit (const MatrixType & vecA,
+	       const IntVectorType & K,
+	       const IndexType & order,
+	       const ScalorType & beta,
+	       const IndexType & natom,
+	       const IndexType & meshNThread = 128,
+	       const IndexType & atomNThread = 128);
+};
+
+
+class SPMERecIk : public SPMERec
+{
+  // IndexType cudaArch;
+  bool malloced;
+private:
+  bool fftOutOfPlace;
+  IntVectorType KPadding;
   cufftComplex * psiF;
   cufftComplex * phiF0;
   cufftComplex * phiF1;
@@ -61,16 +94,6 @@ private:
   SumVector<ScalorType > sum_vyy;
   SumVector<ScalorType > sum_vzz;  
 private:
-  MDError err;
-  bool enable_nlist;
-  IndexType * nlist_n;
-  IndexType * nlist_list;
-  IndexType nlist_stride;
-  IndexType nlist_length;
-  void buildNeighborList (const MDSystem & sys);
-private:
-  void calV();
-  void calAStar();
   void freeAll ();
 public:
   SPMERecIk ();
@@ -82,8 +105,6 @@ public:
 	       const IndexType & natom,
 	       const IndexType & meshNThread = 128,
 	       const IndexType & atomNThread = 128);
-  void calQ (const MDSystem & sys,
-	     MDTimer * timer = NULL);
   void applyInteraction (MDSystem & sys,
 			 MDStatistic * pst = NULL,
 			 MDTimer * timer = NULL);
@@ -150,16 +171,6 @@ calQMat (const IntVectorType K,
 	 cufftReal * Q);
 __global__ void
 calQMat (const IntVectorType K,
-	 const IntVectorType KPadding,
-	 const MatrixType vecAStar,
-	 const IndexType order,
-	 const IndexType * nlist_n,
-	 const IndexType * nlist_list,
-	 const IndexType nlist_stride,
-	 cufftReal * Q);
-__global__ void
-calQMat (const IntVectorType K,
-	 const IntVectorType KPadding,
 	 const MatrixType vecAStar,
 	 const IndexType order,
 	 const CoordType * coord,
@@ -168,7 +179,7 @@ calQMat (const IntVectorType K,
 	 cufftReal * Q,
 	 mdError_t * ptr_de );
 __global__ void
-timeQFPsiF (const cufftReal * QF,
+timeQFPsiF (const cufftComplex * QF,
 	    const cufftComplex * PsiF,
 	    cufftReal * F,
 	    const IndexType nelehalf,
@@ -181,7 +192,7 @@ timeQFPsiF (const cufftComplex * QF,
 	    const IndexType nelehalf,
 	    const ScalorType sizei);
 __global__ void
-timeQFPhiF (const cufftReal * QF,
+timeQFPhiF (const cufftComplex * QF,
 	    const cufftComplex * PhiF0,
 	    const cufftComplex * PhiF1,
 	    const cufftComplex * PhiF2,
@@ -233,6 +244,13 @@ calForce (const IntVectorType K,
 __global__ void
 calEnergy (const cufftReal * Q,
 	   const cufftReal * QConvPsi,
+	   ScalorType * buff_e,
+	   const IndexType nele);
+__global__ void
+calEnergy (const cufftReal * Q,
+	   const cufftReal * QConvPsi,
+	   const IntVectorType K,
+	   const IntVectorType KPadding,
 	   ScalorType * buff_e,
 	   const IndexType nele);
 // mesh grid and block

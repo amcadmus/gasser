@@ -3490,49 +3490,6 @@ calQMat (const IntVectorType K,
   }
 }
 
-__global__ void
-calQMat (const IntVectorType K,
-	 const IntVectorType KPadding,
-	 const MatrixType vecAStar,
-	 const IndexType order,
-	 const IndexType * nlist_n,
-	 const IndexType * nlist_list,
-	 const IndexType nlist_stride,
-	 cufftReal * Q)
-{
-  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
-  IndexType ii = threadIdx.x + bid * blockDim.x;
-  IndexType nele = K.x * K.y * K.z;
-  
-  if (ii < nele){
-    IntVectorType meshIdx;
-    index1to3 (int(ii), K, &meshIdx);
-    cufftReal sum = cufftReal(0.);
-    cufftReal sum_small = cufftReal(0.);
-    for (IndexType jj = 0; jj < nlist_n[ii]; ++jj){
-      IndexType atomIdx = nlist_list[jj * nlist_stride + ii];
-      CoordType my_coord = tex1Dfetch(global_texRef_interaction_coord, atomIdx);
-      ScalorType charge = tex1Dfetch(global_texRef_interaction_charge, atomIdx);
-      VectorType uu;
-      uu.x = K.x * (vecAStar.xx * my_coord.x + vecAStar.xy * my_coord.y + vecAStar.xz *my_coord.z);
-      uu.y = K.y * (vecAStar.yx * my_coord.x + vecAStar.yy * my_coord.y + vecAStar.yz *my_coord.z);
-      uu.z = K.z * (vecAStar.zx * my_coord.x + vecAStar.zy * my_coord.y + vecAStar.zz *my_coord.z);
-      uu.x -= meshIdx.x;
-      uu.y -= meshIdx.y;
-      uu.z -= meshIdx.z;
-      if (uu.x < 0) uu.x += K.x;
-      if (uu.y < 0) uu.y += K.y;
-      if (uu.z < 0) uu.z += K.z;
-      ScalorType tmp = charge *
-	  BSplineValue(order, double(uu.x)) *
-	  BSplineValue(order, double(uu.y)) *
-	  BSplineValue(order, double(uu.z));
-      if (fabsf(tmp) > 1e-2) sum += tmp;
-      else sum_small += tmp;
-    }
-    Q[index3to1(meshIdx,KPadding)] = sum + sum_small;
-  }
-}
 
 #include "Ewald.h"
 
