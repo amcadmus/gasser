@@ -20,10 +20,10 @@
 #include "EwaldSumRec.h"
 #include "SPMERec.h"
 
-#define NThreadsPerBlockCell	256
-#define NThreadsPerBlockAtom	96
-// #define NThreadsPerBlockCell	5
-// #define NThreadsPerBlockAtom	7
+// #define NThreadsPerBlockCell	256
+// #define NThreadsPerBlockAtom	96
+#define NThreadsPerBlockCell	5
+#define NThreadsPerBlockAtom	7
 
 void printCoord (const MDSystem & sys)
 {
@@ -45,13 +45,13 @@ int main(int argc, char * argv[])
 {
   IndexType nstep = 20;
   char * filename;
-  ScalorType rcut = 2.2f;
+  ScalorType rcut = 4.2f;
   ScalorType nlistExten = 0.3;
   ScalorType nlistExtenFactor = 10.f;
   ScalorType dt = 0.001;
   ScalorType beta = 1.3;
-  IndexType order = 2;
-  int Kvalue = 8;
+  IndexType order = 4;
+  int Kvalue = 10;
   
   if (argc != 4){
     printf ("Usage:\n%s conf.gro nstep device\n", argv[0]);
@@ -162,7 +162,7 @@ int main(int argc, char * argv[])
   	  st.pressureXX(sys.box),
   	  st.pressureYY(sys.box),
   	  st.pressureZZ(sys.box));
-  SPMERecIk spme;
+  SPMERecAnalytical spme;
   spme.reinit (vecA,
 	       K,
 	       order,
@@ -172,7 +172,7 @@ int main(int argc, char * argv[])
 	       NThreadsPerBlockAtom);
   for (IndexType i = 0; i < nstep; ++i){
     inter.clearInteraction (sys);
-    inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
+    // inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
     spme.applyInteraction (sys, &st, &timer);
   }
   sys.recoverDeviceData (&timer);

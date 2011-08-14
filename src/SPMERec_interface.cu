@@ -232,8 +232,8 @@ freeAll ()
     cudaFree (phiF0);
     cudaFree (phiF1);
     cudaFree (phiF2);
+    cudaFree (QF);
     if (fftOutOfPlace) {
-      cudaFree (QF);
       cudaFree (QFxPsiF);
       cudaFree (QFxPhiF0);
       cudaFree (QFxPhiF1);
@@ -465,7 +465,7 @@ applyInteraction (MDSystem & sys,
 	    QConvPhi,
 	    K.x*K.y*K.z);
   }
-  calForce
+  calForceIk
       <<<atomGridDim, atomBlockDim>>> (
 	  K,
 	  vecAStar,
@@ -504,11 +504,6 @@ applyInteraction (MDSystem & sys,
 	      QConvPsi,
 	      nelehalf,
 	      sizei);
-      FILE * fp = fopen ("tmp.tmp", "w");
-      for (int i = 0; i < nelehalf; ++i){
-	fprintf (fp, "%e %e\n", QConvPsi[i*2], QConvPsi[i*2+1]);
-      }
-      fclose (fp);
     }
     checkCUDAError ("SPMERecIk::applyInteraction time QF PhiF");
     if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
@@ -547,6 +542,208 @@ applyInteraction (MDSystem & sys,
 }
 
 
+SPMERecAnalytical::
+SPMERecAnalytical()
+    : malloced (false),
+      fftOutOfPlace (true)
+{
+}
+
+SPMERecAnalytical::
+~SPMERecAnalytical ()
+{
+  freeAll();
+}
+
+
+void SPMERecAnalytical::
+freeAll ()
+{
+  if (malloced){
+    cudaFree (psiF);
+    cudaFree (QF);
+    if (fftOutOfPlace) {
+      cudaFree (QFxPsiF);
+    }
+    cudaFree (QConvPsi);
+    // if (global_texRef_SPME_QConv_binded){
+    //   cudaUnbindTexture(global_texRef_SPME_QConv);
+    // }
+    cufftDestroy (planForward);
+    cufftDestroy (planBackward);
+    malloced = false;
+  }
+}
+
+
+void  SPMERecAnalytical::
+reinit (const MatrixType & vecA_,
+	const IntVectorType & K_,
+	const IndexType & order_,
+	const ScalorType & beta_,
+	const IndexType & natom,
+	const IndexType & meshNThread,
+	const IndexType & atomNThread)
+{
+  SPMERec::reinit (vecA_, K_, order_, beta_, natom, meshNThread, atomNThread);
+  freeAll();
+  
+  IndexType nele = K.x * K.y * K.z;
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nelehalf = N.x * N.y * N.z;
+  KPadding = K;
+  if (!fftOutOfPlace){
+    KPadding.z = (N.z << 1);
+  }
+
+  cudaMalloc ((void**)&QF,  sizeof(cufftComplex) * nelehalf);
+  checkCUDAError ("SPMERecIk::reinit malloc");
+  if (fftOutOfPlace){
+    cudaMalloc ((void**)&QFxPsiF,  sizeof(cufftComplex) * nelehalf);
+    checkCUDAError ("SPMERecIk::reinit malloc");
+    cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nele);
+    checkCUDAError ("SPMERecIk::reinit malloc");
+  }
+  else {
+    int nelePading = KPadding.x * KPadding.y * KPadding.z;
+    IndexType nob = (nelePading  + meshBlockDim.x - 1) / meshBlockDim.x;
+    dim3 meshGridDim_tmp = toGridDim (nob);
+    meshGridDim_tmp.y = 8;
+    meshGridDim_tmp.x /= meshGridDim_half.y;
+    meshGridDim_tmp.x ++;
+    cudaMalloc ((void**)&QConvPsi,  sizeof(cufftReal) * nelePading);
+    setValue <<<meshGridDim_tmp.x, meshBlockDim>>> (QConvPsi, nelePading, ScalorType(0.f));
+  }
+
+  cudaMalloc ((void**)&psiF,  sizeof(cufftComplex) * nelehalf);
+  checkCUDAError ("SPMERecIk::reinit malloc");  
+
+  cufftPlan3d (&planForward,  K.x, K.y, K.z, CUFFT_R2C);
+  cufftPlan3d (&planBackward, K.x, K.y, K.z, CUFFT_C2R);
+  // cufftResult r = cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // if (r != CUFFT_SUCCESS) exit(1);
+  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_PADDING);
+  // cufftSetCompatibilityMode (planForward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  // cufftSetCompatibilityMode (planBackward, CUFFT_COMPATIBILITY_FFTW_ALL);
+  
+  calPsiF
+      <<<meshGridDim_half, meshBlockDim>>> (
+	  K,
+	  vecAStar,
+	  beta,
+	  volume,
+	  vecbx,
+	  vecby,
+	  vecbz,
+	  psiF);
+  checkCUDAError ("SPMERecIk::reinit calPsiFPhiF");
+
+  malloced = true;
+
+  sum_e.  reinit (nele, NThreadForSum);
+  // sum_vxx.reinit (nele, NThreadForSum);
+  // sum_vyy.reinit (nele, NThreadForSum);
+  // sum_vzz.reinit (nele, NThreadForSum);
+  checkCUDAError ("EwaldSumRec::reinit reinit sums");
+}
+
+void SPMERecAnalytical::
+applyInteraction (MDSystem & sys,
+		  MDStatistic * pst,
+		  MDTimer * timer)
+{
+  // int nele = K.x * K.y * K.z;
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nelehalf = N.x * N.y * N.z;
+  if (timer != NULL) timer->tic (mdTimeSPMERecCalQ);
+  calQ (sys, timer);
+  if (timer != NULL) timer->toc (mdTimeSPMERecCalQ);
+  
+  if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
+  cufftExecR2C (planForward, Q, QF);
+  checkCUDAError ("SPMERecIk::applyInteraction Q->QF");
+  if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
+  
+  if (timer != NULL) timer->tic (mdTimeSPMERecTimeMatrix);
+  ScalorType sizei = 1./(K.x*K.y*K.z);
+  if (fftOutOfPlace){
+    timeQFPsiF
+	<<<meshGridDim_half, meshBlockDim>>> (
+	    QF,
+	    psiF,
+	    QFxPsiF,
+	    nelehalf,
+	    sizei);
+  }
+  else {
+    timeQFPsiF
+	<<<meshGridDim_half, meshBlockDim>>> (
+	    QF,
+	    psiF,
+	    QConvPsi,
+	    nelehalf,
+	    sizei);
+  }
+  checkCUDAError ("SPMERecIk::applyInteraction timeQFPhiF");
+  if (timer != NULL) timer->toc (mdTimeSPMERecTimeMatrix);
+
+  if (timer != NULL) timer->tic (mdTimeSPMERecFFT);
+  if (fftOutOfPlace){
+    cufftExecC2R (planBackward, QFxPsiF, QConvPsi);
+  }
+  else {
+    cufftExecC2R (planBackward, (cufftComplex*)QConvPsi, QConvPsi);
+  }
+  checkCUDAError ("SPMERecIk::applyInteraction QFxPsiF->QConvPsi");
+  if (timer != NULL) timer->toc (mdTimeSPMERecFFT);
+
+  if (timer != NULL) timer->tic (mdTimeSPMERecForce);
+  calForceAnalytical
+      <<<atomGridDim, atomBlockDim>>> (
+	  K,
+	  vecAStar,
+	  order,
+	  sys.ddata.coord,
+	  sys.ddata.charge,
+	  sys.ddata.numAtom,
+	  QConvPsi,
+	  sys.ddata.forcx,
+	  sys.ddata.forcy,
+	  sys.ddata.forcz,
+	  err.ptr_de);
+  checkCUDAError ("SPMERecIk::applyInteraction calForce");
+  err.check ("SPMERecIk::applyInteraction calForce");
+  if (timer != NULL) timer->toc (mdTimeSPMERecForce);
+
+  if (pst != NULL){
+    if (timer != NULL) timer->tic (mdTimeSPMERecEnergy);
+    if (fftOutOfPlace){
+      calEnergy
+	  <<<meshGridDim, meshBlockDim>>> (
+	      Q,
+	      QConvPsi,
+	      sum_e.buff,
+	      K.x * K.y * K.z);
+    }
+    else {
+      calEnergy
+	  <<<meshGridDim, meshBlockDim>>> (
+	      Q,
+	      QConvPsi,
+	      K, KPadding,
+	      sum_e.buff,
+	      K.x * K.y * K.z);
+    }
+    checkCUDAError ("SPMERecIk::applyInteraction cal energy");
+    sum_e.  sumBuffAdd(pst->ddata, mdStatisticNonBondedPotential);
+    checkCUDAError ("SPMERecIk::applyInteraction sum energy");
+    if (timer != NULL) timer->toc (mdTimeSPMERecEnergy);
+  }
+}
+
+
 
 
 #include "Ewald.h"
@@ -554,19 +751,19 @@ applyInteraction (MDSystem & sys,
 
 // atom grid and block
 __global__ void
-calForce (const IntVectorType K,
-	  const MatrixType vecAStar,
-	  const IndexType order,
-	  const CoordType * coord,
-	  const ScalorType * charge,
-	  const IndexType natom,
-	  const cufftReal * QConvPhi0,
-	  const cufftReal * QConvPhi1,
-	  const cufftReal * QConvPhi2,
-	  ScalorType * forcx,
-	  ScalorType * forcy,
-	  ScalorType * forcz,
-	  mdError_t * ptr_de )
+calForceIk (const IntVectorType K,
+	    const MatrixType vecAStar,
+	    const IndexType order,
+	    const CoordType * coord,
+	    const ScalorType * charge,
+	    const IndexType natom,
+	    const cufftReal * QConvPhi0,
+	    const cufftReal * QConvPhi1,
+	    const cufftReal * QConvPhi2,
+	    ScalorType * forcx,
+	    ScalorType * forcy,
+	    ScalorType * forcz,
+	    mdError_t * ptr_de )
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -648,17 +845,17 @@ calForce (const IntVectorType K,
 
 // atom grid and block
 __global__ void
-calForce (const IntVectorType K,
-	  const MatrixType vecAStar,
-	  const IndexType order,
-	  const CoordType * coord,
-	  const ScalorType * charge,
-	  const IndexType natom,
-	  const CoordType * QConvPhi,
-	  ScalorType * forcx,
-	  ScalorType * forcy,
-	  ScalorType * forcz,
-	  mdError_t * ptr_de )
+calForceIk (const IntVectorType K,
+	    const MatrixType vecAStar,
+	    const IndexType order,
+	    const CoordType * coord,
+	    const ScalorType * charge,
+	    const IndexType natom,
+	    const CoordType * QConvPhi,
+	    ScalorType * forcx,
+	    ScalorType * forcy,
+	    ScalorType * forcz,
+	    mdError_t * ptr_de )
 {
   IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
   IndexType ii = threadIdx.x + bid * blockDim.x;
@@ -744,6 +941,123 @@ calForce (const IntVectorType K,
       forcx[ii] += mycharge * (fsum.x + fsum_small.x);
       forcy[ii] += mycharge * (fsum.y + fsum_small.y);
       forcz[ii] += mycharge * (fsum.z + fsum_small.z);
+    }
+  }
+}
+
+
+
+// atom grid and block
+__global__ void
+calForceAnalytical (const IntVectorType K,
+		    const MatrixType vecAStar,
+		    const IndexType order,
+		    const CoordType * coord,
+		    const ScalorType * charge,
+		    const IndexType natom,
+		    const cufftReal * QConvPsi,
+		    ScalorType * forcx,
+		    ScalorType * forcy,
+		    ScalorType * forcz,
+		    mdError_t * ptr_de )
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  if (ii < natom){
+    CoordType my_coord (coord[ii]);
+    VectorType uu;
+    uu.x = K.x * (vecAStar.xx * my_coord.x + vecAStar.xy * my_coord.y + vecAStar.xz *my_coord.z);
+    uu.y = K.y * (vecAStar.yx * my_coord.x + vecAStar.yy * my_coord.y + vecAStar.yz *my_coord.z);
+    uu.z = K.z * (vecAStar.zx * my_coord.x + vecAStar.zy * my_coord.y + vecAStar.zz *my_coord.z);
+    if      (uu.x <  0  ) uu.x += K.x;
+    else if (uu.x >= K.x) uu.x -= K.x;
+    if      (uu.y <  0  ) uu.y += K.y;
+    else if (uu.y >= K.y) uu.y -= K.y;
+    if      (uu.z <  0  ) uu.z += K.z;
+    else if (uu.z >= K.z) uu.z -= K.z;
+    IntVectorType meshIdx;
+    meshIdx.x = int(uu.x);
+    meshIdx.y = int(uu.y);
+    meshIdx.z = int(uu.z);
+    if (meshIdx.x >= K.x || meshIdx.x < 0 ||
+	meshIdx.y >= K.y || meshIdx.y < 0 ||
+	meshIdx.z >= K.z || meshIdx.z < 0 ){
+      *ptr_de = mdErrorOverFlowMeshIdx;
+    }
+    else {
+      ScalorType Mnx[MaxSPMEOrder];
+      ScalorType Mny[MaxSPMEOrder];
+      ScalorType Mnz[MaxSPMEOrder];
+      ScalorType dMnx[MaxSPMEOrder];
+      ScalorType dMny[MaxSPMEOrder];
+      ScalorType dMnz[MaxSPMEOrder];
+      {
+	VectorType value;
+	value.x = uu.x - meshIdx.x;
+	value.y = uu.y - meshIdx.y;
+	value.z = uu.z - meshIdx.z;
+	for (IndexType jj = 0; jj < order; ++jj){
+	  Mnx[jj] = BSplineValue (order, double(value.x));
+	  Mny[jj] = BSplineValue (order, double(value.y));
+	  Mnz[jj] = BSplineValue (order, double(value.z));
+	  dMnx[jj] = BSplineDerivative (order, double(value.x));
+	  dMny[jj] = BSplineDerivative (order, double(value.y));
+	  dMnz[jj] = BSplineDerivative (order, double(value.z));
+	  value.x += 1.;
+	  value.y += 1.;
+	  value.z += 1.;
+	}
+      }
+      ScalorType mycharge = charge[ii];
+      VectorType fsum;
+      VectorType fsum_small;
+      fsum.x = fsum.y = fsum.z = ScalorType(0.f);
+      fsum_small.x = fsum_small.y = fsum_small.z = ScalorType(0.f);
+      IntVectorType myMeshIdx;
+      IntVectorType dk;
+      // for (dk.x = 0; dk.x < order; ++dk.x){
+      for (dk.x = order-1; dk.x >= 0; --dk.x){
+	myMeshIdx.x = meshIdx.x - dk.x;
+	if (myMeshIdx.x < 0) myMeshIdx.x += K.x;
+	// for (dk.y = 0; dk.y < order; ++dk.y){
+	for (dk.y = order-1; dk.y >= 0; --dk.y){
+	  myMeshIdx.y = meshIdx.y - dk.y;
+	  if (myMeshIdx.y < 0) myMeshIdx.y += K.y;
+	  // for (dk.z = 0; dk.z < order; ++dk.z){
+	  for (dk.z = order-1; dk.z >= 0; --dk.z){
+	    myMeshIdx.z = meshIdx.z - dk.z;
+	    if (myMeshIdx.z < 0) myMeshIdx.z += K.z;
+	    //
+	    // possible improvement!!!!
+	    //
+	    IndexType index = index3to1 (myMeshIdx, K);
+	    ScalorType conv = QConvPsi[index];
+	    ScalorType sx = - conv * dMnx[dk.x] *  Mny[dk.y] *  Mnz[dk.z] * K.x;
+	    ScalorType sy = - conv *  Mnx[dk.x] * dMny[dk.y] *  Mnz[dk.z] * K.y;
+	    ScalorType sz = - conv *  Mnx[dk.x] *  Mny[dk.y] * dMnz[dk.z] * K.z;
+	    fsum.x += sx * vecAStar.xx + sy * vecAStar.yx + sz * vecAStar.zx;
+	    fsum.y += sx * vecAStar.xy + sy * vecAStar.yy + sz * vecAStar.zy;
+	    fsum.z += sx * vecAStar.xz + sy * vecAStar.yz + sz * vecAStar.zz;
+	    // if (ii == 4){
+	    //   printf ("%d %f %f %f\n", index, fsum.x, fsum.y, fsum.z);
+	    // }
+	    // ScalorType tmp;
+	    // tmp = myP * tmpQConvPhi.x;
+	    // if (fabs(tmp) > 1e-2) fsum.x += tmp;
+	    // else fsum_small.x += tmp;
+	    // tmp = myP * tmpQConvPhi.y;
+	    // if (fabs(tmp) > 1e-2) fsum.y += tmp;
+	    // else fsum_small.y += tmp;
+	    // tmp = myP * tmpQConvPhi.z;
+	    // if (fabs(tmp) > 1e-2) fsum.z += tmp;
+	    // else fsum_small.z += tmp;
+	  }
+	}
+      }
+      forcx[ii] += ScalorType(2.) * mycharge * (fsum.x + fsum_small.x);
+      forcy[ii] += ScalorType(2.) * mycharge * (fsum.y + fsum_small.y);
+      forcz[ii] += ScalorType(2.) * mycharge * (fsum.z + fsum_small.z);
     }
   }
 }

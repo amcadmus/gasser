@@ -111,6 +111,43 @@ public:
 }
     ;
 
+class SPMERecAnalytical : public SPMERec
+{
+  // IndexType cudaArch;
+  bool malloced;
+private:
+  bool fftOutOfPlace;
+  IntVectorType KPadding;
+  cufftComplex * psiF;
+  cufftComplex * QF;
+  cufftComplex * QFxPsiF;
+  cufftReal * QConvPsi;
+  cufftHandle planForward;
+  cufftHandle planBackward;
+  SumVector<ScalorType > sum_e;
+  SumVector<ScalorType > sum_vxx;
+  SumVector<ScalorType > sum_vyy;
+  SumVector<ScalorType > sum_vzz;  
+private:
+  void freeAll ();
+public:
+  SPMERecAnalytical ();
+  ~SPMERecAnalytical ();
+  void reinit (const MatrixType & vecA,
+	       const IntVectorType & K,
+	       const IndexType & order,
+	       const ScalorType & beta,
+	       const IndexType & natom,
+	       const IndexType & meshNThread = 128,
+	       const IndexType & atomNThread = 128);
+  void applyInteraction (MDSystem & sys,
+			 MDStatistic * pst = NULL,
+			 MDTimer * timer = NULL);
+}
+    ;
+
+
+
 // <<< 1, 1 >>>
 __global__ void
 getArch (IndexType * arch);
@@ -126,6 +163,15 @@ __global__ void
 calBz (const IntVectorType K,
        const IndexType order,
        ScalorType * b);
+__global__ void
+calPsiF (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const ScalorType beta,
+	 const ScalorType volume,
+	 const ScalorType * bx,
+	 const ScalorType * by,
+	 const ScalorType * bz,
+	 cufftComplex * psiF);
 __global__ void
 calPsiFPhiF (const IntVectorType K,
 	     const MatrixType vecAStar,
@@ -214,32 +260,46 @@ timeQFPhiF (const cufftComplex * QF,
 	    const ScalorType sizei);
 // atom grid and block
 __global__ void
-calForce (const IntVectorType K,
-	  const MatrixType vecAStar,
-	  const IndexType order,
-	  const CoordType * coord,
-	  const ScalorType * charge,
-	  const IndexType natom,
-	  const cufftReal * QConvPhi0,
-	  const cufftReal * QConvPhi1,
-	  const cufftReal * QConvPhi2,
-	  ScalorType * forcx,
-	  ScalorType * forcy,
-	  ScalorType * forcz,
-	  mdError_t * ptr_de );
+calForceIk (const IntVectorType K,
+	    const MatrixType vecAStar,
+	    const IndexType order,
+	    const CoordType * coord,
+	    const ScalorType * charge,
+	    const IndexType natom,
+	    const cufftReal * QConvPhi0,
+	    const cufftReal * QConvPhi1,
+	    const cufftReal * QConvPhi2,
+	    ScalorType * forcx,
+	    ScalorType * forcy,
+	    ScalorType * forcz,
+	    mdError_t * ptr_de );
 // atom grid and block
 __global__ void
-calForce (const IntVectorType K,
-	  const MatrixType vecAStar,
-	  const IndexType order,
-	  const CoordType * coord,
-	  const ScalorType * charge,
-	  const IndexType natom,
-	  const CoordType * QConvPhi,
-	  ScalorType * forcx,
-	  ScalorType * forcy,
-	  ScalorType * forcz,
-	  mdError_t * ptr_de );
+calForceIk (const IntVectorType K,
+	    const MatrixType vecAStar,
+	    const IndexType order,
+	    const CoordType * coord,
+	    const ScalorType * charge,
+	    const IndexType natom,
+	    const CoordType * QConvPhi,
+	    ScalorType * forcx,
+	    ScalorType * forcy,
+	    ScalorType * forcz,
+	    mdError_t * ptr_de );
+
+__global__ void
+calForceAnalytical (const IntVectorType K,
+		    const MatrixType vecAStar,
+		    const IndexType order,
+		    const CoordType * coord,
+		    const ScalorType * charge,
+		    const IndexType natom,
+		    const cufftReal * QConvPsi,
+		    ScalorType * forcx,
+		    ScalorType * forcy,
+		    ScalorType * forcz,
+		    mdError_t * ptr_de );
+
 // mesh grid and block
 __global__ void
 calEnergy (const cufftReal * Q,

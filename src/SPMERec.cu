@@ -113,6 +113,48 @@ calBz (const IntVectorType K,
   }
 }
 
+__global__ void
+calPsiF (const IntVectorType K,
+	 const MatrixType vecAStar,
+	 const ScalorType beta,
+	 const ScalorType volume,
+	 const ScalorType * bx,
+	 const ScalorType * by,
+	 const ScalorType * bz,
+	 cufftComplex * psiF)
+{
+  IndexType bid = blockIdx.x + gridDim.x * blockIdx.y;
+  IndexType ii = threadIdx.x + bid * blockDim.x;
+
+  IntVectorType N(K);
+  N.z = (N.z >> 1) + 1;
+  IndexType nele = K.x * K.y * K.z;
+  IndexType nelehalf = N.x * N.y * N.z;
+  ScalorType scalor0 =  0.5f / (M_PIF * volume) * nele;
+  
+  if (ii < nelehalf) {
+    IntVectorType idx;
+    index1to3 (ii, N, &idx);
+    ScalorType valueB =  bx[idx.x] * by[idx.y] * bz[idx.z];
+    if (idx.x > (K.x >> 1)) idx.x -= K.x;
+    if (idx.y > (K.y >> 1)) idx.y -= K.y;
+    // if (idx.z > (K.z >> 1)) idx.z -= K.z;
+    VectorType mm;
+    mm.x = idx.x * vecAStar.xx + idx.y * vecAStar.yx + idx.z * vecAStar.zx;
+    mm.y = idx.x * vecAStar.xy + idx.y * vecAStar.yy + idx.z * vecAStar.zy;
+    mm.z = idx.x * vecAStar.xz + idx.y * vecAStar.yz + idx.z * vecAStar.zz;
+    ScalorType m2 = (mm.x*mm.x + mm.y*mm.y + mm.z*mm.z);
+    ScalorType expp;
+    if (m2 == 0){
+      expp = 0;
+    }
+    else {
+      expp = kernel_rm1_rec_f (m2, beta) * valueB;
+    }
+    psiF[ii].x = scalor0 * expp;
+    psiF[ii].y = ScalorType (0.f);    
+  }
+}
 
 __global__ void
 calPsiFPhiF (const IntVectorType K,
