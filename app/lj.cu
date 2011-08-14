@@ -20,10 +20,10 @@
 #include "EwaldSumRec.h"
 #include "SPMERec.h"
 
-// #define NThreadsPerBlockCell	256
-// #define NThreadsPerBlockAtom	96
-#define NThreadsPerBlockCell	5
-#define NThreadsPerBlockAtom	7
+#define NThreadsPerBlockCell	256
+#define NThreadsPerBlockAtom	96
+// #define NThreadsPerBlockCell	5
+// #define NThreadsPerBlockAtom	7
 
 void printCoord (const MDSystem & sys)
 {
@@ -172,7 +172,7 @@ int main(int argc, char * argv[])
 	       NThreadsPerBlockAtom);
   for (IndexType i = 0; i < nstep; ++i){
     inter.clearInteraction (sys);
-    // inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
+    inter.applyEwaldDir   (sys, nlist, rcut, beta, &st, &timer);
     spme.applyInteraction (sys, &st, &timer);
   }
   sys.recoverDeviceData (&timer);
