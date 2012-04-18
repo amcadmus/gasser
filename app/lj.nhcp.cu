@@ -81,6 +81,8 @@ int main(int argc, char * argv[])
   
   MDStatistic st(sys);
   MDStatistic old_st(sys), tmp_st(sys);
+  st.setEnergyCorr (energyCorr);
+  st.setPressureCorr (pressureCorr);
   old_st.setEnergyCorr (energyCorr);
   old_st.setPressureCorr (pressureCorr);
   tmp_st.setEnergyCorr (energyCorr);
@@ -109,6 +111,12 @@ int main(int argc, char * argv[])
     nlist.reshuffle (resh.indexTable, sys.hdata.numAtom, &timer);  
     disp.reshuffle  (resh.indexTable, sys.hdata.numAtom, &timer);  
   }
+
+  sys.normalizeDeviceData (&timer);
+  disp.recordCoord (sys);
+  clist.rebuild (sys, &timer);
+  inter.applyNonBondedInteraction (sys, clist, rcut, st, &timer);
+  nlist.rebuild (sys, clist, &timer);
   
   printf ("# prepare ok, start to run\n");
   sys.recoverDeviceData (&timer);
@@ -157,11 +165,12 @@ int main(int argc, char * argv[])
       
       tmp_st.clearDevice();
       nhcp.operator_L_v  (0.5 * dt, sys, tmp_st, &timer);
-      mdStatisticItem_t tmp_array[3];
+      mdStatisticItem_t tmp_array[4];
       tmp_array[0] = mdStatisticVirialXX;
       tmp_array[1] = mdStatisticVirialYY;
       tmp_array[2] = mdStatisticVirialZZ;
-      tmp_st.add (st, 3, tmp_array);
+      tmp_array[3] = mdStatisticPressureCorrection;
+      tmp_st.add (st, 4, tmp_array);
       
       nhcp.operator_L_CP (0.5 * dt, sys, tmp_st, st, &timer);
 

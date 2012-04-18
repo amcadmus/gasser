@@ -110,7 +110,7 @@ public:
   // ScalorType LL;
 
   MDStatistic tmp_st;
-  mdStatisticItem_t virial_array[3];
+  mdStatisticItem_t virial_array[4];
   mdStatisticItem_t kinetic_array[3];
   SumVector<ScalorType> sum_kxx;
   SumVector<ScalorType> sum_kyy;

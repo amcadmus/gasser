@@ -57,6 +57,7 @@ reinit (const MDSystem &sys,
   virial_array[0] = mdStatisticVirialXX;
   virial_array[1] = mdStatisticVirialYY;
   virial_array[2] = mdStatisticVirialZZ;
+  virial_array[3] = mdStatisticPressureCorrection;
   kinetic_array[0] = mdStatisticKineticEnergyXX;
   kinetic_array[1] = mdStatisticKineticEnergyYY;
   kinetic_array[2] = mdStatisticKineticEnergyZZ;
@@ -445,7 +446,7 @@ operator_L_CP (const ScalorType & dt,
 
   tmp_st.clearDevice();
   operator_L_Cv  (dt, sys, tmp_st);
-  tmp_st.add (input_st, 3, virial_array);
+  tmp_st.add (input_st, 4, virial_array);
   operator_L_xi  (dt);
 
   operator_L_vep  (0.25 * dt);
@@ -483,7 +484,7 @@ operator_L_CP (const ScalorType & dt,
 
   tmp_st.clearDevice();
   operator_L_Cv  (dt, sys, tmp_st);
-  tmp_st.add (input_st, 3, virial_array);
+  tmp_st.add (input_st, 4, virial_array);
   operator_L_xi  (dt);
 
   operator_L_vep  (0.25 * dt);
