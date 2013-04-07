@@ -12,6 +12,7 @@ class MDSystem;
 
 #include "xdrfile/xdrfile.h"
 #include "xdrfile/xdrfile_xtc.h"
+#include "xdrfile/xdrfile_trr.h"
 
 using namespace RectangularBoxGeometry;
 

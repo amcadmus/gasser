@@ -113,9 +113,11 @@ int main(int argc, char * argv[])
 
   try{
     sys.initWriteXtc ("traj.xtc");
+    sys.initWriteTrr ("traj.trr");
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
     sys.writeHostDataXtc (0, 0*dt, &timer);
+    sys.writeHostDataTrr (0, 0*dt, &timer);
     for (i = 0; i < nstep; ++i){
       if (i%10 == 0){
 	tfremover.remove (sys, &timer);
@@ -178,6 +180,7 @@ int main(int argc, char * argv[])
       	sys.recoverDeviceData (&timer);
       	sys.updateHostFromRecovered (&timer);
       	sys.writeHostDataXtc (i+1, (i+1)*dt, &timer);
+      	sys.writeHostDataTrr (i+1, (i+1)*dt, &timer);
       }
 
       if ((i+1) % 100 == 0){
@@ -190,6 +193,7 @@ int main(int argc, char * argv[])
       }
     }
     sys.endWriteXtc();
+    sys.endWriteTrr();
     sys.recoverDeviceData (&timer);
     sys.updateHostFromRecovered (&timer);
     sys.writeHostDataGro ("confout.gro", nstep, nstep*dt, &timer);

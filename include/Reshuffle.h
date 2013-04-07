@@ -13,7 +13,7 @@ __global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
 						    const ScalorType * coordy1,
 						    const ScalorType * coordz1,
 #else
-						    const CoordType * coord,
+						    const CoordType * coord1,
 #endif
 						    const IntScalorType * coordNoix1,
 						    const IntScalorType * coordNoiy1,
@@ -23,7 +23,7 @@ __global__ void Reshuffle_backupDeviceMDData_part1 (IndexType numAtom,
 						    ScalorType * coordy2,
 						    ScalorType * coordz2,
 #else
-						    CoordType * coord,
+						    CoordType * coord2,
 #endif
 						    IntScalorType * coordNoix2,
 						    IntScalorType * coordNoiy2,
@@ -201,7 +201,7 @@ __global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
 						       const ScalorType * coordy1,
 						       const ScalorType * coordz1,
 #else
-						       const CoordType * coord,
+						       const CoordType * coord1,
 #endif
 						       const IntScalorType * coordNoix1,
 						       const IntScalorType * coordNoiy1,
@@ -212,7 +212,7 @@ __global__ void Reshuffle_reshuffleDeviceMDData_part1 (IndexType numAtom,
 						       ScalorType * coordy2,
 						       ScalorType * coordz2,
 #else
-						       CoordType * coord,
+						       CoordType * coord2,
 #endif
 						       IntScalorType * coordNoix2,
 						       IntScalorType * coordNoiy2,
