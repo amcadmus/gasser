@@ -66,6 +66,7 @@ int main(int argc, char * argv[])
 
   Topology::System sysTop;
   Topology::Molecule mol0;
+  //				mass charge type
   mol0.pushAtom (Topology::Atom (1.0, 0.0, 0));
   mol0.pushAtom (Topology::Atom (1.0, 0.0, 1));
   mol0.pushAtom (Topology::Atom (1.0, 0.0, 2));
@@ -143,6 +144,7 @@ int main(int argc, char * argv[])
   hsparam.reinit (10.f, 4.f);
   feneparam.reinit (30.f, 1.5f);
 
+  //				atom_idx atom_idx parameter
   mol0.addBond (Topology::Bond (0, 1, feneparam));
   mol0.addBond (Topology::Bond (1, 2, feneparam));
   mol0.addBond (Topology::Bond (0, 2, hsparam));

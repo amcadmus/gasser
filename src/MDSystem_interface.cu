@@ -10,6 +10,9 @@ MDSystem::MDSystem()
 {
   xdfile = NULL;
   xdx = NULL;
+  xdtrrx = NULL;
+  xdtrrv = NULL;
+  xdtrrf = NULL;
   tmpNAtomType = 0;
   // setNULL (&hdata);
   // setNULL (&ddata);
@@ -217,6 +220,9 @@ void MDSystem::writeHostDataGro (const char * filename,
 MDSystem::~MDSystem()
 {
   freeAPointer ((void **)&xdx);
+  freeAPointer ((void **)&xdtrrx);
+  freeAPointer ((void **)&xdtrrv);
+  freeAPointer ((void **)&xdtrrf);
 }
 
   
@@ -279,8 +285,78 @@ void MDSystem::writeHostDataXtc (int step, float time, MDTimer *timer)
 
 void MDSystem::endWriteXtc()
 {
+  freeAPointer ((void**)&xdx);
   xdrfile_close(xdfile);
 }
+
+
+void MDSystem::
+initWriteTrr (const char * filename)
+{
+  xdtrrfile = NULL;
+  xdtrrfile = xdrfile_open (filename, "w");
+  if (xdtrrfile == NULL){
+    MDExcptCannotOpenFile ("MDSystem::initWriteTrr", filename);
+  }
+  for (unsigned i = 0; i < 3; ++i){
+    for (unsigned j = 0; j < 3; ++j){
+      xdbox[i][j] = 0.f;
+    }	      
+  }
+  xdbox[0][0] = box.size.x;
+  xdbox[1][1] = box.size.y;
+  xdbox[2][2] = box.size.z;
+  xdtrrx = (rvec *) malloc (sizeof(rvec) * hdata.numMem);
+  xdtrrv = (rvec *) malloc (sizeof(rvec) * hdata.numMem);
+  xdtrrf = (rvec *) malloc (sizeof(rvec) * hdata.numMem);
+  if (xdtrrx == NULL){
+    MDExcptFailedMallocOnHost ("MDSystem::initWriteXtc", "xdtrrx", sizeof(rvec) * hdata.numMem);
+  }
+  if (xdtrrv == NULL){
+    MDExcptFailedMallocOnHost ("MDSystem::initWriteXtc", "xdtrrv", sizeof(rvec) * hdata.numMem);
+  }
+  if (xdtrrf == NULL){
+    MDExcptFailedMallocOnHost ("MDSystem::initWriteXtc", "xdtrrf", sizeof(rvec) * hdata.numMem);
+  }
+}
+
+
+void MDSystem::
+writeHostDataTrr (int step, float time, MDTimer *timer)
+{
+  if (timer != NULL) timer->tic(mdTimeDataIO);
+  for (IndexType i = 0; i < hdata.numAtom; ++i){
+    xdtrrx[i][0] = hdata.coord[i].x;
+    xdtrrx[i][1] = hdata.coord[i].y;
+    xdtrrx[i][2] = hdata.coord[i].z;
+    xdtrrv[i][0] = hdata.velox[i];
+    xdtrrv[i][1] = hdata.veloy[i];
+    xdtrrv[i][2] = hdata.veloz[i];
+    xdtrrf[i][0] = hdata.forcx[i];
+    xdtrrf[i][1] = hdata.forcy[i];
+    xdtrrf[i][2] = hdata.forcz[i];
+  }
+  xdbox[0][0] = box.size.x;
+  xdbox[1][1] = box.size.y;
+  xdbox[2][2] = box.size.z;
+  int status = write_trr (xdtrrfile, hdata.numAtom, step, time, 0.f,
+			  xdbox, xdtrrx, xdtrrv, xdtrrf);
+  if (status != exdrOK) {
+    printf ("error writing trr file!\n");
+    exit (1);
+  }
+  if (timer != NULL) timer->tic(mdTimeDataIO);
+}
+
+
+void MDSystem::endWriteTrr()
+{
+  xdrfile_close(xdtrrfile);
+  freeAPointer ((void **)&xdtrrx);
+  freeAPointer ((void **)&xdtrrv);
+  freeAPointer ((void **)&xdtrrf);
+}
+
 
 
 void MDSystem::
