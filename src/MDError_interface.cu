@@ -62,9 +62,10 @@ void MDError::updateHost ()
 {
   cudaMemcpy (hindex, ptr_dindex, NErrorIndex * sizeof(IndexType),
 	      cudaMemcpyDeviceToHost);
+  checkCUDAError ("MDError::updateHost index");
   cudaMemcpy (hscalor, ptr_dscalor, NErrorScalor * sizeof(ScalorType),
 	      cudaMemcpyDeviceToHost);
-  checkCUDAError ("MDError::updateHost");
+  checkCUDAError ("MDError::updateHost scalor");
 }
 
 
@@ -72,8 +73,10 @@ void MDError::updateHost ()
 void MDError::check (const char * msg)
 {
   cudaMemcpy (&he, ptr_de, sizeof(mdError_t), cudaMemcpyDeviceToHost);
+  checkCUDAError ("MDError::updateHost scalor he");
   updateHost();
   if (mdSuccess != he){
+    printf ("error code is %d\n", he);
 //    fprintf (stderr, "myrank: %d, Md error: %s: %s.\n", Parallel::Interface::myRank(), msg, getErrorString(he));
     fprintf (stderr, "recorded indexes are");
     for (IndexType i = 0; i < NErrorIndex; ++i){

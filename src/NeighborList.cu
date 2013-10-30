@@ -103,24 +103,33 @@ naivelyBuildDeviceCellList2 (const IndexType		numAtom,
   volatile IndexType * targetCellid = (volatile IndexType *) sbuff;
   
   if (ii < numAtom){
-    IndexType targetCelli, targetCellj, targetCellk;
-    targetCelli = IndexType(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
-    targetCellj = IndexType(coord[ii].y * box.sizei.y * ScalorType (clist.NCell.y));
-    targetCellk = IndexType(coord[ii].z * box.sizei.z * ScalorType (clist.NCell.z));
-    if (targetCelli == clist.NCell.x){
+    int targetCelli, targetCellj, targetCellk;
+    targetCelli = int(coord[ii].x * box.sizei.x * ScalorType (clist.NCell.x));
+    targetCellj = int(coord[ii].y * box.sizei.y * ScalorType (clist.NCell.y));
+    targetCellk = int(coord[ii].z * box.sizei.z * ScalorType (clist.NCell.z));
+    if (targetCelli >= clist.NCell.x){
       targetCelli -= clist.NCell.x;
       coord[ii].x -= box.size.x;
       coordNoix[ii] ++;
     }
-    if (targetCellj == clist.NCell.y){
+    else if (targetCelli < 0){
+      targetCelli = 0;
+    }
+    if (targetCellj >= clist.NCell.y){
       targetCellj -= clist.NCell.y;
       coord[ii].y -= box.size.y;
       coordNoiy[ii] ++;
     }
-    if (targetCellk == clist.NCell.z){
+    else if (targetCellj < 0){
+      targetCellj = 0;
+    }
+    if (targetCellk >= clist.NCell.z){
       targetCellk -= clist.NCell.z;
       coord[ii].z -= box.size.z;
       coordNoiz[ii] ++;
+    }
+    else if (targetCellk < 0){
+      targetCellk = 0;
     }
     targetCellid[tid] = D3toD1 (clist.NCell, targetCelli, targetCellj, targetCellk);
     if (ptr_de != NULL && 
