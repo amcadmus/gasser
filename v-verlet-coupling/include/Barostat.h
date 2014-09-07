@@ -20,8 +20,10 @@ public:
 class Barostat_VCouple : public Barostat
 {
 public:
-  virtual void calCouple (const ScalorType * nowP,
-			  ScalorType * lambda,
+  // virtual void calCouple (const ScalorType * nowP,
+  // 			  ScalorType * lambda,
+  // 			  RectangularBox & box) const = 0;
+  virtual void getCouple (ScalorType * lambda,
 			  RectangularBox & box) const = 0;
 };
 
@@ -74,9 +76,14 @@ public:
 		    const ScalorType & refP,
 		    const ScalorType & beta);
   void clearGroups ();
-  void calCouple (const ScalorType * nowP,
-		  ScalorType * lambda,
-		  RectangularBox & box) const;
+  
+  // void calCouple (const ScalorType * nowP,
+  // 		  ScalorType * lambda,
+  // 		  RectangularBox & box) const;
+  void integrate_LeapFrog (const ScalorType * nowP);
+  void calCouple (ScalorType * lambda,
+		  RectangularBox & box) const = 0;
+
 };
 
 
