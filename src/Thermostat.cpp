@@ -77,3 +77,16 @@ calCouple (const ScalorType & kineticE ) const
   return (xi += dt * scalor * (kineticE - refK));
 }
 
+void Thermostat_NoseHoover::
+integrate_LeapFrog (const ScalorType & dt,
+		    const ScalorType kineticE)
+{
+  xi += dt * scalor * (kineticE - refK);
+}
+
+void Thermostat_NoseHoover::
+integrate_VelocityVerlet (const ScalorType & dt,
+			  const ScalorType kineticE)
+{
+  xi += dt * scalor * (kineticE - refK);
+}
