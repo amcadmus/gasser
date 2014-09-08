@@ -1,0 +1,14 @@
+*~
+*.d
+*.o
+*.aux
+*.dvi
+*.pdf
+*.blg
+*.log
+*.bz2
+*.tar
+*.gz
+
+
+
